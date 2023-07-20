@@ -193,11 +193,15 @@ foreign wgpu_native {
     @(link_name = "wgpuComputePassEncoderPushDebugGroup")
     compute_pass_encoder_push_debug_group :: proc(compute_pass_encoder: Compute_Pass_Encoder, group_label: cstring) ---
     @(link_name = "wgpuComputePassEncoderSetBindGroup")
-    compute_pass_encoder_set_bind_group :: proc(compute_pass_encoder: Compute_Pass_Encoder, group_index: c.uint32_t, group: Bind_Group, dynamic_offset_count: c.size_t, dynamicOffsets: ^c.uint32_t) ---
+    compute_pass_encoder_set_bind_group :: proc(compute_pass_encoder: Compute_Pass_Encoder, group_index: c.uint32_t, group: Bind_Group, dynamic_offset_count: c.size_t, dynamic_offsets: ^c.uint32_t) ---
     @(link_name = "wgpuComputePassEncoderSetLabel")
     compute_pass_encoder_set_label :: proc(compute_pass_encoder: Compute_Pass_Encoder, label: cstring) ---
     @(link_name = "wgpuComputePassEncoderSetPipeline")
     compute_pass_encoder_set_pipeline :: proc(compute_pass_encoder: Compute_Pass_Encoder, pipeline: Compute_Pipeline) ---
+    @(link_name = "wgpuComputePassEncoderReference")
+    compute_pass_encoder_reference :: proc(compute_pass_encoder: Compute_Pass_Encoder) ---
+    @(link_name = "wgpuComputePassEncoderRelease")
+    compute_pass_encoder_release :: proc(compute_pass_encoder: Compute_Pass_Encoder) ---
 
     // Methods of ComputePipeline
 
