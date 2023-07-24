@@ -515,7 +515,7 @@ Device_Descriptor :: struct {
     label:                   cstring,
     required_features_count: c.size_t,
     required_features:       [^]Feature_Name,
-    required_limits:         [^]Required_Limits,
+    required_limits:         ^Required_Limits,
     default_queue:           Queue_Descriptor,
     device_lost_callback:    Device_Lost_Callback,
     device_lost_userdata:    rawptr,
