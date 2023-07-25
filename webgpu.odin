@@ -425,7 +425,7 @@ foreign wgpu_native {
     @(link_name = "wgpuRenderPassEncoderReference")
     render_pass_encoder_reference :: proc(render_pass_encoder: Render_Pass_Encoder) ---
     @(link_name = "wgpuRenderPassEncoderRelease")
-    render_pass_release :: proc(render_pass_encoder: Render_Pass_Encoder) ---
+    render_pass_encoder_release :: proc(render_pass_encoder: Render_Pass_Encoder) ---
 
     // Methods of RenderPipeline
 
