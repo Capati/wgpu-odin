@@ -1,0 +1,19 @@
+# Build
+
+/build/*.dll
+/build/*sample*
+
+# Bin
+
+# *.o
+
+# Sublime Text
+
+*.sublime-workspace
+
+# vs code
+
+/.vscode/*.log
+
+# logs
+/tmp
