@@ -187,7 +187,7 @@ Instance_Enumerate_Adapter_Options :: struct {
     backends: Instance_Backend_Flags,
 }
 
-Log_Callback :: #type proc(level: Log_Level, message: cstring, user_data: rawptr)
+Log_Callback :: #type proc "c" (level: Log_Level, message: cstring, user_data: rawptr)
 
 foreign wgpu_native {
     @(link_name = "wgpuGenerateReport")
