@@ -70,7 +70,7 @@ start :: proc() {
 
     // Create a instance descriptor.
     instance_descriptor := wgpu.Instance_Descriptor {
-        next_in_chain = cast(^wgpu.Chained_Struct)&wgpu.Instance_Extras{backends = {.Primary}},
+        next_in_chain = cast(^wgpu.Chained_Struct)&wgpu.Instance_Extras{backends = wgpu.Instance_Backend_Primary},
     }
 
     instance := wgpu.create_instance(&instance_descriptor)
