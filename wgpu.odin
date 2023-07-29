@@ -50,17 +50,21 @@ Log_Level :: enum c.int {
 
 Instance_Backend :: enum c.int {
     Vulkan         = 1,
-    GL             = 5,
-    Metal          = 2,
-    DX12           = 3,
-    DX11           = 4,
+    GL             = 2,
+    Metal          = 3,
+    DX12           = 4,
+    DX11           = 5,
     Browser_WebGPU = 6,
-    Primary        = Vulkan | Metal | DX12 | Browser_WebGPU,
-    Secondary      = GL | DX11,
-    None           = 0x00000000,
 }
 Instance_Backend_Flags :: bit_set[Instance_Backend;Flags]
-Instance_Backend_Flags_None :: Instance_Backend_Flags{}
+Instance_Backend_Primary :: Instance_Backend_Flags{
+    .Vulkan,
+    .Metal,
+    .DX12,
+    .Browser_WebGPU,
+}
+Instance_Backend_Secondary :: Instance_Backend_Flags{.GL, .DX11}
+Instance_Backend_None :: Instance_Backend_Flags{}
 
 Dx12_Compiler :: enum c.int {
     Undefined,
