@@ -5,7 +5,15 @@ import "core:fmt"
 import "core:log"
 import "core:mem"
 
-import sample "./triangle"
+when #config(INFO_EXAMPLE, false) {
+    import sample "./info"
+} else when #config(TRIANGLE_EXAMPLE, false) || #config(TRIANGLE_MSAA_EXAMPLE, false) {
+    import sample "./triangle"
+} else when #config(SIMPLE_COMPUTE, false) {
+    import sample "./simple_compute"
+} else {
+    import sample "./triangle"
+}
 
 main :: proc() {
     context.logger = log.create_console_logger(.Debug)
