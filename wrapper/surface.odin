@@ -14,7 +14,7 @@ Surface :: struct {
     chain:            Swap_Chain,
     device_ptr:       WGPU_Device,
     current_view_ptr: WGPU_Texture_View,
-    config:           Swap_Chain_Descriptor,
+    config:           Surface_Configuration,
     using vtable:     ^Surface_VTable,
 }
 
@@ -23,7 +23,7 @@ Surface_VTable :: struct {
     configure:            proc(
         self: ^Surface,
         device: ^Device,
-        descriptor: ^Swap_Chain_Descriptor,
+        descriptor: ^Surface_Configuration,
     ) -> Error_Type,
     get_capabilities:     proc(
         self: ^Surface,
@@ -36,7 +36,7 @@ Surface_VTable :: struct {
         self: ^Surface,
         adapter: Adapter,
         width, height: u32,
-    ) -> Swap_Chain_Descriptor,
+    ) -> Surface_Configuration,
     reference:            proc(self: ^Surface),
     release:              proc(self: ^Surface),
 }
@@ -69,7 +69,7 @@ surface_get_preferred_format :: proc(
 surface_configure :: proc(
     using self: ^Surface,
     device: ^Device,
-    descriptor: ^Swap_Chain_Descriptor,
+    descriptor: ^Surface_Configuration,
 ) -> Error_Type {
     device_ptr = device.ptr
     config = descriptor^
@@ -209,13 +209,13 @@ surface_get_current_texture :: proc(
     return frame, .No_Error
 }
 
-// Return a default `Swap_Chain_Descriptor` from `width` and `height` to use for the
+// Return a default `Surface_Configuration` from `width` and `height` to use for the
 // `Surface` with this adapter.
 surface_get_default_config :: proc(
     using self: ^Surface,
     adapter: Adapter,
     width, height: u32,
-) -> Swap_Chain_Descriptor {
+) -> Surface_Configuration {
     caps := self->get_capabilities(adapter)
 
     defer {
@@ -224,7 +224,7 @@ surface_get_default_config :: proc(
         delete(caps.alpha_modes)
     }
 
-    default_config: Swap_Chain_Descriptor = {
+    default_config: Surface_Configuration = {
         label = "Default SwapChain",
         usage = {.Render_Attachment},
         format = caps.formats[0],
