@@ -17,7 +17,7 @@ State :: struct {
     instance:                 wgpu.Instance,
     surface:                  wgpu.Surface,
     device:                   wgpu.Device,
-    config:                   wgpu.Swap_Chain_Descriptor,
+    config:                   wgpu.Surface_Configuration,
     pipeline:                 wgpu.Render_Pipeline,
     multisampled_framebuffer: wgpu.Texture_View,
 }
