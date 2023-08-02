@@ -207,7 +207,7 @@ adapter_request_device :: proc(
     // Set default limits
     required_limits := Required_Limits {
         next_in_chain = nil,
-        limits        = DEFAULT_LIMITS,
+        limits        = Default_Limits,
     }
 
     if device_options.limits_extra != {} {

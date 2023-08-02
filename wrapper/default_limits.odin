@@ -4,7 +4,7 @@ package wgpu
 // guaranteed to be supported by WebGPU. Applications needing more modern features can
 // use this as a reasonable set of limits if they are targeting only desktop and modern
 // mobile devices.
-DEFAULT_LIMITS :: Limits {
+Default_Limits :: Limits {
     max_texture_dimension_1d                        = 8192,
     max_texture_dimension_2d                        = 8192,
     max_texture_dimension_3d                        = 2048,
@@ -42,7 +42,7 @@ DEFAULT_LIMITS :: Limits {
 // “downlevel” backends such as OpenGL and D3D11, other than WebGL. For most applications
 // we recommend using these limits, assuming they are high enough for your application,
 // and you do not intent to support WebGL.
-DOWNLEVEL_LIMITS :: Limits {
+Downlevel_Limits :: Limits {
     max_texture_dimension_1d                        = 2048,
     max_texture_dimension_2d                        = 2048,
     max_texture_dimension_3d                        = 256,
@@ -76,9 +76,9 @@ DOWNLEVEL_LIMITS :: Limits {
     max_compute_workgroups_per_dimension            = 65535,
 }
 
-// This is a set of limits that is lower even than the `DOWNLEVEL_LIMITS`, configured
+// This is a set of limits that is lower even than the `Downlevel_Limits`, configured
 // to be low enough to support running in the browser using WebGL2.
-DOWNLEVEL_WEBGL2D_LIMITS :: Limits {
+Downlevel_Webgl2_D_Limits :: Limits {
     max_texture_dimension_1d                        = 2048,
     max_texture_dimension_2d                        = 2048,
     max_texture_dimension_3d                        = 256,
