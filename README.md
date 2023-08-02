@@ -2,6 +2,8 @@
 
 Bindings to [wgpu-native](https://github.com/gfx-rs/wgpu-native) **0.17.0.2** in the [Odin programming language](https://odin-lang.org/).
 
+See [examples here](./examples).
+
 ## Status
 
 > **Note**
@@ -57,10 +59,6 @@ Types and values follow the [Odin Naming Convention](https://github.com/odin-lan
 | Procedures         | snake_case                          |
 | Local Variables    | snake_case                          |
 | Constant Variables | SCREAMING_SNAKE_CASE                |
-
-## Examples
-
-See [examples here](./examples).
 
 ## License
 
