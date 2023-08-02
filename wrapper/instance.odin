@@ -59,12 +59,20 @@ default_instance := Instance {
     vtable = &default_instance_vtable,
 }
 
+// Options for creating an instance.
 Instance_Descriptor :: struct {
     backends:             Instance_Backend_Flags,
     dx12_shader_compiler: Dx12_Compiler,
     dxil_path:            cstring,
     dxc_path:             cstring,
 }
+
+// Backends are set to `Primary`, and `FXC` is chosen as the `dx12_shader_compiler`.
+Instance_Descriptor_Default :: Instance_Descriptor {
+    backends             = wgpu.Instance_Backend_Primary,
+    dx12_shader_compiler = .Fxc,
+}
+Dx12_Compiler_Default :: Dx12_Compiler.Fxc
 
 // Create an new instance of wgpu.
 create_instance :: proc(options: ^Instance_Descriptor = nil) -> Instance {
