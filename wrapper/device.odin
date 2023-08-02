@@ -125,7 +125,7 @@ Device_VTable :: struct {
     create_swap_chain:             proc(
         self: ^Device,
         surface: WGPU_Surface,
-        descriptor: ^Swap_Chain_Descriptor,
+        descriptor: ^Surface_Configuration,
     ) -> (
         Swap_Chain,
         Error_Type,
@@ -872,7 +872,7 @@ device_create_shader_module :: proc(
     return shader_module, .No_Error
 }
 
-Swap_Chain_Descriptor :: struct {
+Surface_Configuration :: struct {
     label:        cstring,
     usage:        Texture_Usage_Flags,
     format:       Texture_Format,
@@ -887,7 +887,7 @@ Swap_Chain_Descriptor :: struct {
 device_create_swap_chain :: proc(
     using self: ^Device,
     surface: WGPU_Surface,
-    descriptor: ^Swap_Chain_Descriptor,
+    descriptor: ^Surface_Configuration,
 ) -> (
     Swap_Chain,
     Error_Type,
