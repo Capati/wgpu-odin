@@ -1,7 +1,9 @@
 # Build
 
-/build/*.dll
-/build/*sample*
+/examples/build/*
+!/examples/build/assets/
+!/examples/build/SDL2.dll
+!/examples/build/wgpu_native.dll
 
 # Bin
 
