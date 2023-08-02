@@ -1,7 +1,6 @@
 package triangle
 
 // Core
-import "core:os"
 import "core:fmt"
 import "core:runtime"
 
@@ -9,27 +8,222 @@ import "core:runtime"
 import sdl "vendor:sdl2"
 
 // Package
-import wgpu "../../"
+import wgpu "../../wrapper"
+import wgpu_sdl "../../utils/sdl"
 
-Adapter_Response :: struct {
-    status:  wgpu.Request_Adapter_Status,
-    adapter: wgpu.Adapter,
+TRIANGLE_MSAA_EXAMPLE :: #config(TRIANGLE_MSAA_EXAMPLE, false)
+
+State :: struct {
+    instance:                 wgpu.Instance,
+    surface:                  wgpu.Surface,
+    device:                   wgpu.Device,
+    config:                   wgpu.Swap_Chain_Descriptor,
+    pipeline:                 wgpu.Render_Pipeline,
+    multisampled_framebuffer: wgpu.Texture_View,
 }
 
-Device_Response :: struct {
-    status:  wgpu.Request_Device_Status,
-    message: cstring,
-    device:  wgpu.Device,
+_log_callback :: proc "c" (level: wgpu.Log_Level, message: cstring, user_data: rawptr) {
+    context = runtime.default_context()
+    fmt.eprintf("[wgpu] [%v] %s\n\n", level, message)
 }
 
-Next_Texture_Response :: struct {
-    type:    wgpu.Error_Type,
-    message: cstring,
+@(init)
+init :: proc() {
+    wgpu.set_log_callback(_log_callback, nil)
+    wgpu.set_log_level(.Warn)
 }
 
-Vertex :: struct {
-    position: [2]f32,
-    color:    [3]f32,
+init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
+    state := State{}
+
+    // Instance
+    instance_descriptor := wgpu.Instance_Descriptor {
+        backends = wgpu.Instance_Backend_Primary,
+    }
+
+    state.instance = wgpu.create_instance(&instance_descriptor)
+    defer if err != .No_Error do state.instance->release()
+
+    // Surface
+    surface_descriptor := wgpu_sdl.get_surface_descriptor(window) or_return
+
+    state.surface = state.instance->create_surface(&surface_descriptor) or_return
+    defer if err != .No_Error do state.surface->release()
+
+    // Adapter
+    adapter := state.instance->request_adapter(
+        &{compatible_surface = &state.surface, power_preference = .High_Performance},
+    ) or_return
+    defer adapter->release()
+
+    // Device
+    device_options := wgpu.Device_Options {
+        label = adapter.info.name,
+    }
+
+    state.device = adapter->request_device(&device_options) or_return
+    defer if err != .No_Error do state.device->release()
+
+    // Configure presentation
+    caps := state.surface->get_capabilities(adapter)
+    defer {
+        delete(caps.formats)
+        delete(caps.present_modes)
+        delete(caps.alpha_modes)
+    }
+
+    width, height: i32
+    sdl.GetWindowSize(window, &width, &height)
+
+    state.config = {
+        usage = {.Render_Attachment},
+        format = caps.formats[0],
+        width = cast(u32)width,
+        height = cast(u32)height,
+        present_mode = .Fifo,
+        alpha_mode = caps.alpha_modes[0],
+    }
+
+    state.surface->configure(&state.device, &state.config) or_return
+
+    // Shader module
+    shader := state.device->load_wgsl_shader_module(
+        "assets/triangle.wgsl",
+        "Red triangle module",
+    ) or_return
+    defer shader->release()
+
+    // Render pipeline
+    pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
+        label = "Render Pipeline",
+        vertex = {module = &shader, entry_point = "vs"},
+        fragment = &{
+            module = &shader,
+            entry_point = "fs",
+            targets = {
+                {
+                    format = state.config.format,
+                    blend = &wgpu.Blend_State_Replace,
+                    write_mask = wgpu.Color_Write_Mask_All,
+                },
+            },
+        },
+    }
+
+    if TRIANGLE_MSAA_EXAMPLE {
+        fmt.println("Enabling 4x MSAA...")
+        pipeline_descriptor.multisample = {
+            count                     = 4,
+            mask                      = ~u32(0), // 0xFFFFFFFF
+            alpha_to_coverage_enabled = false,
+        }
+    } else {
+        pipeline_descriptor.multisample = wgpu.Multisample_State_Default
+    }
+
+    state.pipeline = state.device->create_render_pipeline(&pipeline_descriptor) or_return
+    defer if err != .No_Error do state.pipeline->release()
+
+    when TRIANGLE_MSAA_EXAMPLE {
+        state.multisampled_framebuffer = get_multisampled_framebuffer(
+            &state.device,
+            state.config.width,
+            state.config.height,
+            state.config.format,
+        ) or_return
+    }
+
+    return state, .No_Error
+}
+
+when TRIANGLE_MSAA_EXAMPLE {
+    get_multisampled_framebuffer :: proc(
+        device: ^wgpu.Device,
+        width, height: u32,
+        format: wgpu.Texture_Format,
+    ) -> (
+        view: wgpu.Texture_View,
+        err: wgpu.Error_Type,
+    ) {
+        texture := device->create_texture(
+            &wgpu.Texture_Descriptor{
+                usage = {.Render_Attachment},
+                dimension = ._2D,
+                size = {width = width, height = height, depth_or_array_layers = 1},
+                format = format,
+                mip_level_count = 1,
+                sample_count = 4,
+            },
+        ) or_return
+
+        defer texture->release()
+
+        return texture->create_view(nil)
+    }
+}
+
+resize_window :: proc(state: ^State, width, height: u32) -> wgpu.Error_Type {
+    if width == 0 && height == 0 {
+        return .No_Error
+    }
+
+    state.config.width = width
+    state.config.height = height
+
+    state.surface->configure(&state.device, &state.config) or_return
+
+    when TRIANGLE_MSAA_EXAMPLE {
+        state.multisampled_framebuffer->release()
+
+        state.multisampled_framebuffer = get_multisampled_framebuffer(
+            &state.device,
+            state.config.width,
+            state.config.height,
+            state.config.format,
+        ) or_return
+    }
+
+    return .No_Error
+}
+
+render :: proc(state: ^State) -> wgpu.Error_Type {
+    frame := state.surface->get_current_texture() or_return
+
+    encoder := state.device->create_command_encoder(
+        &wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
+    ) or_return
+
+    when TRIANGLE_MSAA_EXAMPLE {
+        colors: []wgpu.Render_Pass_Color_Attachment = {
+            {view = &state.multisampled_framebuffer, resolve_target = &frame.view},
+        }
+    } else {
+        colors: []wgpu.Render_Pass_Color_Attachment = {
+            {view = &frame.view, resolve_target = nil},
+        }
+    }
+
+    colors[0].load_op = .Clear
+    colors[0].store_op = .Store
+    colors[0].clear_value = wgpu.Color_Green
+
+    render_pass := encoder->begin_render_pass(
+        &{label = "Default render pass encoder", color_attachments = colors},
+    )
+
+    render_pass->set_pipeline(&state.pipeline)
+    render_pass->draw(3)
+    render_pass->end()
+    render_pass->release()
+
+    command_buffer := encoder->finish() or_return
+    encoder->release()
+
+    state.device.queue->submit(command_buffer)
+
+    frame->present()
+
+    return .No_Error
 }
 
 start :: proc() {
@@ -54,294 +248,24 @@ start :: proc() {
     defer sdl.DestroyWindow(sdl_window)
 
     if sdl_window == nil {
-        fmt.eprintf("ERROR: Failed to create the SDL Platform: [%s]\n", sdl.GetError())
+        fmt.eprintf("ERROR: Failed to create the SDL Window: [%s]\n", sdl.GetError())
         return
     }
 
-    sys_info: sdl.SysWMinfo
-    sdl.GetVersion(&sys_info.version)
-
-    if !sdl.GetWindowWMInfo(sdl_window, &sys_info) {
-        fmt.eprintf(
-            "ERROR: Could not obtain SDL WM info from window: [%s]\n",
-            sdl.GetError(),
-        )
-    }
-
-    // Create a instance descriptor.
-    instance_descriptor := wgpu.Instance_Descriptor {
-        next_in_chain = cast(^wgpu.Chained_Struct)&wgpu.Instance_Extras{backends = wgpu.Instance_Backend_Primary},
-    }
-
-    instance := wgpu.create_instance(&instance_descriptor)
-
-    // Setup surface information
-    surface_descriptor := wgpu.Surface_Descriptor {
-        label         = nil,
-        next_in_chain = nil,
-    }
-
-    when ODIN_OS == .Darwin {
-        native_window := (^NS.Window)(sys_info.info.cocoa.window)
-
-        metal_layer := CA.MetalLayer.layer()
-        defer metal_layer->release()
-
-        native_window->contentView()->setLayer(metal_layer)
-
-        surface_descriptor.label = "Metal Layer"
-
-        // Set surface descriptor
-        surface_descriptor.next_in_chain =
-        cast(^wgpu.Chained_Struct)&wgpu.Surface_Descriptor_From_Metal_Layer{
-            chain = wgpu.Chained_Struct{
-                next = nil,
-                stype = .Surface_Descriptor_From_Metal_Layer,
-            },
-            layer = metal_layer,
-        }
-    } else when ODIN_OS == .Linux {
-        wayland_value, found_wayland := os.lookup_env("WAYLAND_DISPLAY", allocator)
-        defer delete(wayland_value)
-
-        x11_value, found_x11 := os.lookup_env("DISPLAY", allocator)
-        defer delete(x11_value)
-
-        if (!found_wayland || wayland_value == "") && (!found_x11 || x11_value == "") {
-            log.eprintf("ERROR: Unable to recognize the current desktop session.\n")
-            return
+    state, state_err := init_state(sdl_window)
+    if state_err != .No_Error do return
+    defer {
+        when TRIANGLE_MSAA_EXAMPLE {
+            state.multisampled_framebuffer->release()
         }
 
-        // Set surface descriptor for Wayland or X11
-        if found_wayland {
-            surface_descriptor.label = "Wayland surface"
-
-            surface_descriptor.next_in_chain =
-            cast(^wgpu.Chained_Struct)&wgpu.Surface_Descriptor_From_Wayland_Surface{
-                chain = wgpu.Chained_Struct{
-                    next = nil,
-                    stype = .Surface_Descriptor_From_Wayland_Surface,
-                },
-                display = sys_info.info.wl.display,
-                surface = sys_info.info.wl.surface,
-            }
-        } else if found_x11 {
-            surface_descriptor.label = "X11 Window"
-
-            surface_descriptor.next_in_chain =
-            cast(^wgpu.Chained_Struct)&wgpu.Surface_Descriptor_From_Xlib_Window{
-                chain = wgpu.Chained_Struct{
-                    next = nil,
-                    stype = .Surface_Descriptor_From_Xlib_Window,
-                },
-                display = sys_info.info.x11.display,
-                window = cast(c.uint32_t)sys_info.info.x11.window,
-            }
-        }
-    } else when ODIN_OS == .Windows {
-        surface_descriptor.label = "Windows HWND"
-
-        // Set surface descriptor
-        surface_descriptor.next_in_chain =
-        cast(^wgpu.Chained_Struct)&wgpu.Surface_Descriptor_From_Windows_HWND{
-            chain = wgpu.Chained_Struct{
-                next = nil,
-                stype = .Surface_Descriptor_From_Windows_HWND,
-            },
-            hinstance = sys_info.info.win.hinstance,
-            hwnd = sys_info.info.win.window,
-        }
-    } else {
-        fmt.eprintln("Current platform is not supported.")
-        return
+        state.pipeline->release()
+        state.device->release()
+        state.surface->release()
+        state.instance->release()
     }
 
-    // Create a surface from raw window information
-    surface := wgpu.instance_create_surface(instance, &surface_descriptor)
-    defer wgpu.surface_release(surface)
-
-    adapter_descriptor: wgpu.Request_Adapter_Options = {
-        next_in_chain          = nil,
-        compatible_surface     = surface,
-        power_preference       = .High_Performance,
-        force_fallback_adapter = false,
-    }
-
-    adapter_response := Adapter_Response{}
-    wgpu.instance_request_adapter(
-        instance,
-        &adapter_descriptor,
-        _on_request_adapter_callback,
-        &adapter_response,
-    )
-
-    if adapter_response.status != .Success {
-        fmt.eprintf("Failed to request adapter: [%v]\n", adapter_response.status)
-    }
-
-    adapter := adapter_response.adapter
-    defer wgpu.adapter_release(adapter)
-
-    adapter_info: wgpu.Adapter_Properties
-    wgpu.adapter_get_properties(adapter, &adapter_info)
-
-    // Print adapter information
-    print_adapter_information(adapter_info)
-
-    device_descriptor := wgpu.Device_Descriptor {
-        next_in_chain = nil,
-        label = adapter_info.name,
-        required_features_count = 0,
-        required_features = nil,
-        default_queue = wgpu.Queue_Descriptor{
-            next_in_chain = nil,
-            label = "Default Queue",
-        },
-        device_lost_callback = _on_device_lost,
-        device_lost_userdata = nil,
-    }
-
-    device_response := Device_Response{}
-    wgpu.adapter_request_device(
-        adapter,
-        &device_descriptor,
-        _on_adapter_request_device,
-        &device_response,
-    )
-
-    if device_response.status != .Success {
-        fmt.eprintf(
-            "Failed to request a device: [%v] - %s\n",
-            device_response.status,
-            device_response.message,
-        )
-        return
-    }
-
-    device := device_response.device
-    defer wgpu.device_release(device)
-
-    queue := wgpu.device_get_queue(device)
-    defer wgpu.queue_release(queue)
-
-    surface_format := wgpu.surface_get_preferred_format(surface, adapter)
-
-    surface_config := wgpu.Swap_Chain_Descriptor {
-        label = "Main window swap chain",
-        usage = {.Render_Attachment},
-        format = surface_format,
-        width = 800,
-        height = 600,
-        present_mode = .Fifo,
-    }
-
-    swapchain := wgpu.device_create_swap_chain(device, surface, &surface_config)
-
-    loaded_shader, loaded_shader_ok := os.read_entire_file("triangle.wgsl")
-    defer delete(loaded_shader)
-
-    if !loaded_shader_ok {
-        fmt.eprintf("Failed to load WGSL shader file: [%s]\n")
-        return
-    }
-
-    wgsl_descriptor := wgpu.Shader_Module_WGSL_Descriptor {
-        chain = {next = nil, stype = .Shader_Module_WGSL_Descriptor},
-        code = cstring(raw_data(loaded_shader)),
-    }
-
-    shader_descriptor := wgpu.Shader_Module_Descriptor {
-        next_in_chain = cast(^wgpu.Chained_Struct)&wgsl_descriptor,
-        label         = "Triangle shader module",
-    }
-
-    shader_module := wgpu.device_create_shader_module(device, &shader_descriptor)
-    defer wgpu.shader_module_release(shader_module)
-
-    vertex_attributes: []wgpu.Vertex_Attribute = {
-        {
-            shader_location = 0,
-            format = .Float32x2,
-            offset = cast(u64)offset_of(Vertex, position),
-        },
-        {
-            shader_location = 1,
-            format = .Float32x3,
-            offset = cast(u64)offset_of(Vertex, color),
-        },
-    }
-
-    render_pipeline_desc := wgpu.Render_Pipeline_Descriptor {
-        label = "Render Pipeline",
-        layout = nil,
-        vertex = {
-            module = shader_module,
-            entry_point = "vs_main",
-            buffer_count = 1,
-            buffers = &{
-                array_stride = size_of(Vertex),
-                attribute_count = cast(uint)len(vertex_attributes),
-                step_mode = .Vertex,
-                attributes = raw_data(vertex_attributes),
-            },
-        },
-        primitive = {
-            topology = .Triangle_List,
-            strip_index_format = .Undefined,
-            front_face = .CCW,
-            cull_mode = .None,
-        },
-        multisample = {
-            next_in_chain = nil,
-            count = 1,
-            mask = ~u32(0),
-            alpha_to_coverage_enabled = false,
-        },
-        depth_stencil = nil,
-        fragment = &{
-            module = shader_module,
-            entry_point = "fs_main",
-            target_count = 1,
-            targets = &{
-                format = surface_format,
-                blend = &{
-                    color = {
-                        src_factor = .Src_Alpha,
-                        dst_factor = .One_Minus_Src_Alpha,
-                        operation = .Add,
-                    },
-                    alpha = {src_factor = .Zero, dst_factor = .One, operation = .Add},
-                },
-                write_mask = wgpu.Color_Write_Mask_Flags_All,
-            },
-        },
-    }
-
-    render_pipeline := wgpu.device_create_render_pipeline(device, &render_pipeline_desc)
-    defer wgpu.render_pipeline_release(render_pipeline)
-
-    data := []Vertex{
-        {{0.0, 1.0}, {1.0, 0.0, 0.0}},
-        {{-1.0, -1.0}, {0.0, 1.0, 0.0}},
-        {{1.0, -1.0}, {0.0, 0.0, 1.0}},
-    }
-
-    buffer_descriptor := wgpu.Buffer_Descriptor {
-        label = "Triangle buffer",
-        size = cast(u64)len(data) * size_of(Vertex),
-        usage = {.Copy_Dst, .Vertex},
-    }
-
-    buffer := wgpu.device_create_buffer(device, &buffer_descriptor)
-    defer wgpu.buffer_release(buffer)
-
-    wgpu.queue_write_buffer(
-        queue,
-        buffer,
-        0,
-        raw_data(data),
-        cast(uint)buffer_descriptor.size,
-    )
+    err := wgpu.Error_Type{}
 
     main_loop: for {
         e: sdl.Event
@@ -355,203 +279,23 @@ start :: proc() {
                 #partial switch (e.window.event) {
                 case .SIZE_CHANGED:
                 case .RESIZED:
-                    new_width := cast(u32)e.window.data1
-                    new_height := cast(u32)e.window.data2
-
-                    if new_width != 0 && new_height != 0 {
-                        surface_config.width = new_width
-                        surface_config.height = new_height
-
-                        wgpu.swap_chain_release(swapchain)
-
-                        fmt.printf(
-                            "Resizing to %d x %d\n",
-                            surface_config.width,
-                            surface_config.height,
-                        )
-
-                        swapchain = wgpu.device_create_swap_chain(
-                            device,
-                            surface,
-                            &surface_config,
-                        )
-                    }
+                    err = resize_window(
+                        &state,
+                        cast(u32)e.window.data1,
+                        cast(u32)e.window.data2,
+                    )
+                    if err != .No_Error do break main_loop
                 }
             }
         }
 
-        next_texture_response: Next_Texture_Response = {}
+        err = render(&state)
+        if err != .No_Error do break main_loop
+    }
 
-        wgpu.device_push_error_scope(device, .Validation)
-        next_texture := wgpu.swap_chain_get_current_texture_view(swapchain)
-        wgpu.device_pop_error_scope(
-            device,
-            _handle_current_texture_error,
-            &next_texture_response,
-        )
-
-        if next_texture_response.type != .No_Error {
-            fmt.eprintf(
-                "Failed to get current texture [%v]: %s\n",
-                next_texture_response.type,
-                next_texture_response.message,
-            )
-            break main_loop
-        }
-        defer wgpu.texture_view_release(next_texture)
-
-        encoder := wgpu.device_create_command_encoder(
-            device,
-            &wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
-        )
-
-        color_attachments: []wgpu.Render_Pass_Color_Attachment = {
-            {
-                view = next_texture,
-                resolve_target = nil,
-                load_op = .Clear,
-                store_op = .Store,
-                clear_value = {0.2, 0.2, 0.2, 1.0},
-            },
-        }
-
-        render_pass := wgpu.command_encoder_begin_render_pass(
-            encoder,
-            &wgpu.Render_Pass_Descriptor{
-                next_in_chain = nil,
-                label = "Default render pass",
-                color_attachment_count = cast(uint)len(color_attachments),
-                color_attachments = raw_data(color_attachments),
-                depth_stencil_attachment = nil,
-            },
-        )
-
-        wgpu.render_pass_encoder_set_pipeline(render_pass, render_pipeline)
-        wgpu.render_pass_encoder_set_vertex_buffer(
-            render_pass,
-            0,
-            buffer,
-            0,
-            buffer_descriptor.size,
-        )
-        wgpu.render_pass_encoder_draw(render_pass, cast(u32)len(data), 1, 0, 0)
-        wgpu.render_pass_encoder_end(render_pass)
-        wgpu.render_pass_encoder_release(render_pass)
-
-        commands: []wgpu.Command_Buffer = {
-            wgpu.command_encoder_finish(
-                encoder,
-                &wgpu.Command_Buffer_Descriptor{label = "Default command buffer"},
-            ),
-        }
-        wgpu.command_encoder_release(encoder)
-
-        wgpu.queue_submit(queue, len(commands), raw_data(commands))
-        wgpu.swap_chain_present(swapchain)
+    if err != .No_Error {
+        fmt.eprintf("Error occurred while rendering: %v\n", err)
     }
 
     fmt.println("Exiting...")
-}
-
-_on_request_adapter_callback :: proc "c" (
-    status: wgpu.Request_Adapter_Status,
-    adapter: wgpu.Adapter,
-    message: cstring,
-    user_data: rawptr,
-) {
-    response := cast(^Adapter_Response)user_data
-    response.status = status
-
-    if status == .Success {
-        response.adapter = adapter
-    }
-}
-
-_on_adapter_request_device :: proc "c" (
-    status: wgpu.Request_Device_Status,
-    device: wgpu.Device,
-    message: cstring,
-    user_data: rawptr,
-) {
-    response := cast(^Device_Response)user_data
-    response.status = status
-    response.message = message
-
-    if status == .Success {
-        response.device = device
-    }
-}
-
-_handle_current_texture_error :: proc "c" (
-    type: wgpu.Error_Type,
-    message: cstring,
-    user_data: rawptr,
-) {
-    if type == .No_Error {
-        return
-    }
-
-    response := cast(^Next_Texture_Response)user_data
-    response.type = type
-    response.message = message
-}
-
-_on_device_lost :: proc "c" (
-    reason: wgpu.Device_Lost_Reason,
-    message: cstring,
-    user_data: rawptr,
-) {
-    context = runtime.default_context()
-    fmt.eprintf("The WGPU device was lost [%d]: %s\n", reason, message)
-}
-
-print_adapter_information :: proc(info: wgpu.Adapter_Properties) {
-    fmt.printf("Selected device:\n\n")
-    fmt.printf("%s\n", info.name)
-
-    driver_description: cstring = info.driver_description
-
-    if driver_description == nil || driver_description == "" {
-        driver_description = "Unknown"
-    }
-
-    fmt.printf("\tDriver: %s\n", driver_description)
-
-    adapter_type: cstring = ""
-
-    switch info.adapter_type {
-    case wgpu.Adapter_Type.Discrete_GPU:
-        adapter_type = "Discrete GPU with separate CPU/GPU memory"
-    case wgpu.Adapter_Type.Integrated_GPU:
-        adapter_type = "Integrated GPU with shared CPU/GPU memory"
-    case wgpu.Adapter_Type.CPU:
-        adapter_type = "Cpu / Software Rendering"
-    case wgpu.Adapter_Type.Unknown:
-        adapter_type = "Unknown"
-    }
-
-    fmt.printf("\tType: %s\n", adapter_type)
-
-    backend_type: cstring
-
-    #partial switch info.backend_type {
-    case wgpu.Backend_Type.Null:
-        backend_type = "Empty"
-    case wgpu.Backend_Type.WebGPU:
-        backend_type = "WebGPU in the browser"
-    case wgpu.Backend_Type.D3D11:
-        backend_type = "Direct3D-11"
-    case wgpu.Backend_Type.D3D12:
-        backend_type = "Direct3D-12"
-    case wgpu.Backend_Type.Metal:
-        backend_type = "Metal API"
-    case wgpu.Backend_Type.Vulkan:
-        backend_type = "Vulkan API"
-    case wgpu.Backend_Type.OpenGL:
-        backend_type = "OpenGL"
-    case wgpu.Backend_Type.OpenGLES:
-        backend_type = "OpenGLES"
-    }
-
-    fmt.printf("\tBackend: %s\n\n", backend_type)
 }
