@@ -192,6 +192,7 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
     encoder := state.device->create_command_encoder(
         &wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
     ) or_return
+    defer encoder->release()
 
     when TRIANGLE_MSAA_EXAMPLE {
         colors: []wgpu.Render_Pass_Color_Attachment = {
@@ -210,17 +211,16 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
     render_pass := encoder->begin_render_pass(
         &{label = "Default render pass encoder", color_attachments = colors},
     )
+    defer render_pass->release()
 
     render_pass->set_pipeline(&state.pipeline)
     render_pass->draw(3)
     render_pass->end()
-    render_pass->release()
 
     command_buffer := encoder->finish() or_return
-    encoder->release()
+    defer command_buffer->release()
 
     state.device.queue->submit(command_buffer)
-
     frame->present()
 
     return .No_Error

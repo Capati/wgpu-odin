@@ -110,13 +110,15 @@ start :: proc() {
         &wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
     )
     if encoder_err != .No_Error do return
+    defer encoder->release()
 
     compute_pass := encoder->begin_compute_pass(&{label = "doubling compute pass"})
+    defer compute_pass->release()
+
     compute_pass->set_pipeline(&pipeline)
     compute_pass->set_bind_group(0, &bind_group)
     compute_pass->dispatch_workgroups(cast(u32)input_size)
     compute_pass->end()
-    compute_pass->release()
 
     // Encode a command to copy the results to a mappable buffer.
     encoder->copy_buffer_to_buffer(work_buffer, 0, result_buffer, 0, result_buffer.size)
@@ -125,7 +127,7 @@ start :: proc() {
     if command_buffer_err != .No_Error {
         fmt.panicf("%v", command_buffer_err)
     }
-    encoder->release()
+    defer command_buffer->release()
 
     device.queue->write_buffer(&work_buffer, 0, wgpu.to_bytes(input_data))
     device.queue->submit(command_buffer)
