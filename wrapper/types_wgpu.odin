@@ -151,7 +151,6 @@ Extent_3D :: wgpu.Extent_3D
 Limits :: wgpu.Limits
 Multisample_State :: wgpu.Multisample_State
 Origin3D :: wgpu.Origin3D
-Pipeline_Layout_Descriptor :: wgpu.Pipeline_Layout_Descriptor
 Primitive_Depth_Clip_Control :: wgpu.Primitive_Depth_Clip_Control
 Queue_Descriptor :: wgpu.Queue_Descriptor
 Render_Bundle_Descriptor :: wgpu.Render_Bundle_Descriptor
