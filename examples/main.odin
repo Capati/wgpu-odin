@@ -11,6 +11,16 @@ when #config(INFO_EXAMPLE, false) {
     import sample "./triangle"
 } else when #config(SIMPLE_COMPUTE, false) {
     import sample "./simple_compute"
+} else when #config(TUTORIAL1_WINDOW, false) {
+    import sample "./learn_wgpu/beginner/tutorial1_window"
+} else when #config(TUTORIAL2_SURFACE, false) {
+    import sample "./learn_wgpu/beginner/tutorial2_surface"
+} else when #config(TUTORIAL2_SURFACE_CHALLENGE, false) {
+    import sample "./learn_wgpu/beginner/tutorial2_surface_challenge"
+} else when #config(TUTORIAL3_PIPELINE, false) {
+    import sample "./learn_wgpu/beginner/tutorial3_pipeline"
+} else when #config(TUTORIAL3_PIPELINE_CHALLENGE, false) {
+    import sample "./learn_wgpu/beginner/tutorial3_pipeline_challenge"
 } else {
     import sample "./triangle"
 }
