@@ -66,7 +66,7 @@ GPU_Render_Pass_VTable :: struct {
         self: ^Render_Pass_Encoder,
         slot: u32,
         buffer: Buffer,
-        offset: Buffer_Size = 0,
+        offset, size: Buffer_Size,
     ),
     set_viewport:                    proc(self: ^Render_Pass_Encoder),
     release:                         proc(self: ^Render_Pass_Encoder),
@@ -195,15 +195,9 @@ render_pass_set_vertex_buffer :: proc(
     using self: ^Render_Pass_Encoder,
     slot: u32,
     buffer: Buffer,
-    offset: Buffer_Size = 0,
+    offset, size: Buffer_Size,
 ) {
-    wgpu.render_pass_encoder_set_vertex_buffer(
-        ptr,
-        slot,
-        buffer.ptr,
-        offset,
-        buffer.size,
-    )
+    wgpu.render_pass_encoder_set_vertex_buffer(ptr, slot, buffer.ptr, offset, size)
 }
 
 render_pass_release :: proc(using self: ^Render_Pass_Encoder) {
