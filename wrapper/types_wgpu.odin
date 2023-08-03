@@ -3,13 +3,13 @@ package wgpu
 // Package
 import wgpu "../bindings"
 
-ARRAY_LAYER_COUNT_UNDEFINED :: wgpu.ARRAY_LAYER_COUNT_UNDEFINED
-COPY_STRIDE_UNDEFINED :: wgpu.COPY_STRIDE_UNDEFINED
-LIMIT_U32_UNDEFINED :: wgpu.LIMIT_U32_UNDEFINED
-LIMIT_U64_UNDEFINED :: wgpu.LIMIT_U64_UNDEFINED
-MIP_LEVEL_COUNT_UNDEFINED :: wgpu.MIP_LEVEL_COUNT_UNDEFINED
-WHOLE_MAP_SI :: wgpu.WHOLE_MAP_SIZE
-WHOLE_SIZE :: wgpu.WHOLE_SIZE
+Array_Layer_Count_Undefined :: wgpu.Array_Layer_Count_Undefined
+Copy_Stride_Undefined :: wgpu.Copy_Stride_Undefined
+Limit_U32_Undefined :: wgpu.Limit_U32_Undefined
+Limit_U64_Undefined :: wgpu.Limit_U64_Undefined
+Mip_Level_Count_Undefined :: wgpu.Mip_Level_Count_Undefined
+Whole_Map_Si :: wgpu.Whole_Map_Si
+Whole_Size :: wgpu.Whole_Size
 
 WGPU_Adapter :: wgpu.Adapter
 WGPU_Bind_Group :: wgpu.Bind_Group
