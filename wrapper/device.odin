@@ -62,8 +62,7 @@ Device_VTable :: struct {
     create_compute_pipeline_async: proc(self: ^Device),
     create_pipeline_layout:        proc(
         self: ^Device,
-        bind_group_layouts: []Bind_Group_Layout,
-        label: cstring = "Default pipeline layout",
+        descriptor: ^Pipeline_Layout_Descriptor,
     ) -> (
         Pipeline_Layout,
         Error_Type,
@@ -436,41 +435,49 @@ device_create_compute_pipeline :: proc(
     return compute_pipeline, .No_Error
 }
 
+Pipeline_Layout_Descriptor :: struct {
+    label:              cstring,
+    bind_group_layouts: []Bind_Group_Layout,
+}
+
 // Creates a `Pipeline_Layout`.
 device_create_pipeline_layout :: proc(
     using self: ^Device,
-    bind_group_layouts: []Bind_Group_Layout,
-    label: cstring = "Default pipeline layout",
+    descriptor: ^Pipeline_Layout_Descriptor,
 ) -> (
     Pipeline_Layout,
     Error_Type,
 ) {
-    bind_group_layout_count := cast(uint)len(bind_group_layouts)
-
-    descriptor := Pipeline_Layout_Descriptor {
-        next_in_chain           = nil,
-        label                   = label,
-        bind_group_layout_count = bind_group_layout_count,
+    desc := wgpu.Pipeline_Layout_Descriptor {
+        next_in_chain = nil,
     }
 
-    if bind_group_layout_count > 0 {
-        if bind_group_layout_count == 1 {
-            descriptor.bind_group_layouts = &bind_group_layouts[0].ptr
-        } else {
-            bind_group_layouts_ptrs := make(
-                []WGPU_Bind_Group_Layout,
-                len(bind_group_layouts),
-            )
-            defer delete(bind_group_layouts_ptrs)
+    if descriptor != nil {
+        desc.label = descriptor.label
 
-            for b, i in bind_group_layouts {
-                bind_group_layouts_ptrs[i] = b.ptr
+        bind_group_layout_count := cast(uint)len(descriptor.bind_group_layouts)
+
+        if bind_group_layout_count > 0 {
+            desc.bind_group_layout_count = bind_group_layout_count
+
+            if bind_group_layout_count == 1 {
+                desc.bind_group_layouts = &descriptor.bind_group_layouts[0].ptr
+            } else {
+                bind_group_layouts_ptrs := make(
+                    []WGPU_Bind_Group_Layout,
+                    bind_group_layout_count,
+                )
+                defer delete(bind_group_layouts_ptrs)
+
+                for b, i in descriptor.bind_group_layouts {
+                    bind_group_layouts_ptrs[i] = b.ptr
+                }
+
+                desc.bind_group_layouts = raw_data(bind_group_layouts_ptrs)
             }
-
-            descriptor.bind_group_layouts = raw_data(bind_group_layouts_ptrs)
+        } else {
+            desc.bind_group_layouts = nil
         }
-    } else {
-        descriptor.bind_group_layouts = nil
     }
 
     err_scope := Error_Scope {
@@ -478,7 +485,7 @@ device_create_pipeline_layout :: proc(
     }
 
     wgpu.device_push_error_scope(ptr, .Validation)
-    pipeline_layout_ptr := wgpu.device_create_pipeline_layout(ptr, &descriptor)
+    pipeline_layout_ptr := wgpu.device_create_pipeline_layout(ptr, &desc)
     wgpu.device_pop_error_scope(ptr, error_scope_callback, &err_scope)
 
     if err_scope.type != .No_Error {
