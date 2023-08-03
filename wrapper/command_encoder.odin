@@ -132,6 +132,7 @@ command_encoder_begin_compute_pass :: proc(
     return compute_pass
 }
 
+// Describes a color attachment to a `Render_Pass`.
 Render_Pass_Color_Attachment :: struct {
     view:           ^Texture_View,
     resolve_target: ^Texture_View,
