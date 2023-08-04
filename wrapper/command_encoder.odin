@@ -299,12 +299,12 @@ command_encoder_copy_buffer_to_texture :: proc(
     copy_size: ^Extent_3D,
 ) -> Error_Type {
     if source != nil {
-        if source.layout.bytes_per_row % COPY_BYTES_PER_ROW_ALIGNMENT != 0 {
+        if source.layout.bytes_per_row % Copy_Bytes_Per_Row_Alignment != 0 {
             fmt.eprintf(
                 "%s: 'bytes_per_row' [%d] must be a multiple of [%d]\n",
                 #procedure,
                 source.layout.bytes_per_row,
-                COPY_BYTES_PER_ROW_ALIGNMENT,
+                Copy_Bytes_Per_Row_Alignment,
             )
             return .Validation
         }
@@ -329,12 +329,12 @@ command_encoder_copy_texture_to_buffer :: proc(
     copy_size: ^Extent_3D,
 ) -> Error_Type {
     if destination != nil {
-        if destination.layout.bytes_per_row % COPY_BYTES_PER_ROW_ALIGNMENT != 0 {
+        if destination.layout.bytes_per_row % Copy_Bytes_Per_Row_Alignment != 0 {
             fmt.eprintf(
                 "%s: 'bytes_per_row' [%d] must be a multiple of [%d]\n",
                 #procedure,
                 destination.layout.bytes_per_row,
-                COPY_BYTES_PER_ROW_ALIGNMENT,
+                Copy_Bytes_Per_Row_Alignment,
             )
             return .Validation
         }

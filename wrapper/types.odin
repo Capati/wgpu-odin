@@ -10,24 +10,24 @@ Shader_Location :: u32
 Dynamic_Offset :: u32
 
 // Buffer-Texture copies must have [`bytes_per_row`] aligned to this number.
-COPY_BYTES_PER_ROW_ALIGNMENT: u32 : 256
+Copy_Bytes_Per_Row_Alignment: u32 : 256
 // An offset into the query resolve buffer has to be aligned to self.
-QUERY_RESOLVE_BUFFER_ALIGNMENT: Buffer_Address : 256
+Query_Resolve_Buffer_Alignment: Buffer_Address : 256
 // Buffer to buffer copy as well as buffer clear offsets and sizes must be aligned to
 // this number.
-COPY_BUFFER_ALIGNMENT: Buffer_Address : 4
+Copy_Buffer_Alignment: Buffer_Address : 4
 // Buffer alignment mask to calculate proper size
-COPY_BUFFER_ALIGNMENT_MASK :: COPY_BUFFER_ALIGNMENT - 1
+Copy_Buffer_Alignment_Mask :: Copy_Buffer_Alignment - 1
 // Size to align mappings.
-MAP_ALIGNMENT: Buffer_Address : 8
+Map_Alignment: Buffer_Address : 8
 // Vertex buffer strides have to be aligned to this number.
-VERTEX_STRIDE_ALIGNMENT: Buffer_Address : 4
+Vertex_Stride_Alignment: Buffer_Address : 4
 // Alignment all push constants need
-PUSH_CONSTANT_ALIGNMENT: u32 : 4
+Push_Constant_Alignment: u32 : 4
 // Maximum queries in a query set
-QUERY_SET_MAX_QUERIES: u32 : 8192
+Query_Set_Max_Queries: u32 : 8192
 // Size of a single piece of query data.
-QUERY_SIZE: u32 : 8
+Query_Size: u32 : 8
 
 Blend_Component_Replace := Blend_Component {
     operation  = .Add,
