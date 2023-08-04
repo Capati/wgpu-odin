@@ -49,8 +49,9 @@ GPU_Render_Pass_VTable :: struct {
     set_index_buffer:                proc(
         self: ^Render_Pass_Encoder,
         buffer: Buffer,
-        format: Index_Format = .Uint16,
-        offset: Buffer_Size = 0,
+        format: Index_Format,
+        offset: Buffer_Size,
+        size: Buffer_Size,
     ),
     set_label:                       proc(self: ^Render_Pass_Encoder),
     set_pipeline:                    proc(
@@ -66,7 +67,8 @@ GPU_Render_Pass_VTable :: struct {
         self: ^Render_Pass_Encoder,
         slot: u32,
         buffer: Buffer,
-        offset, size: Buffer_Size,
+        offset: Buffer_Address = 0,
+        size: Buffer_Size = Whole_Size,
     ),
     set_viewport:                    proc(self: ^Render_Pass_Encoder),
     release:                         proc(self: ^Render_Pass_Encoder),
@@ -163,16 +165,11 @@ render_pass_execute_bundles :: proc(
 render_pass_set_index_buffer :: proc(
     using self: ^Render_Pass_Encoder,
     buffer: Buffer,
-    format: Index_Format = .Uint16,
-    offset: Buffer_Size = 0,
+    format: Index_Format,
+    offset: Buffer_Size,
+    size: Buffer_Size,
 ) {
-    wgpu.render_pass_encoder_set_index_buffer(
-        ptr,
-        buffer.ptr,
-        format,
-        offset,
-        buffer.size,
-    )
+    wgpu.render_pass_encoder_set_index_buffer(ptr, buffer.ptr, format, offset, size)
 }
 
 // Sets the active render pipeline.
@@ -195,7 +192,8 @@ render_pass_set_vertex_buffer :: proc(
     using self: ^Render_Pass_Encoder,
     slot: u32,
     buffer: Buffer,
-    offset, size: Buffer_Size,
+    offset: Buffer_Address = 0,
+    size: Buffer_Size = Whole_Size,
 ) {
     wgpu.render_pass_encoder_set_vertex_buffer(ptr, slot, buffer.ptr, offset, size)
 }
