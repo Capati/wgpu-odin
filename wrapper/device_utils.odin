@@ -1,8 +1,5 @@
 package wgpu
 
-// Core
-import "core:mem"
-
 // Describes `Buffer` when allocating.
 Buffer_Data_Descriptor :: struct {
     // Debug label of a buffer. This will show up in graphics debuggers for easy
@@ -38,16 +35,16 @@ device_create_buffer_with_data :: proc(
     unpadded_size := cast(Buffer_Address)len(descriptor.contents)
 
     // Valid vulkan usage is
-    // 1. buffer size must be a multiple of COPY_BUFFER_ALIGNMENT.
+    // 1. buffer size must be a multiple of Copy_Buffer_Alignment.
     // 2. buffer size must be greater than 0.
     // Therefore we round the value up to the nearest multiple, and ensure it's at least
-    // COPY_BUFFER_ALIGNMENT.
+    // Copy_Buffer_Alignment.
 
-    align_mask := COPY_BUFFER_ALIGNMENT - 1
-    padded_size := ((unpadded_size + align_mask) & ~align_mask)
-    if padded_size < COPY_BUFFER_ALIGNMENT {
-        padded_size = COPY_BUFFER_ALIGNMENT
-    }
+    align_mask := Copy_Buffer_Alignment - 1
+    padded_size := max(
+        ((unpadded_size + align_mask) & ~align_mask),
+        Copy_Buffer_Alignment,
+    )
 
     buffer_descriptor: Buffer_Descriptor = {
         label              = descriptor.label,
@@ -61,12 +58,8 @@ device_create_buffer_with_data :: proc(
     // Synchronously and immediately map a buffer for reading. If the buffer is not
     // immediately mappable through `mapped_at_creation` or
     // `buffer->map_async`, will panic.
-    mapped_array_buffer := buffer->get_mapped_range(0, cast(uint)unpadded_size)
-    mem.copy(
-        raw_data(mapped_array_buffer),
-        raw_data(descriptor.contents),
-        cast(int)unpadded_size,
-    )
+    mapped_array_buffer := buffer->get_mapped_range(0, cast(uint)padded_size)
+    copy(mapped_array_buffer, descriptor.contents)
     buffer->unmap() or_return
 
     return
