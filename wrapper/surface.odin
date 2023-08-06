@@ -72,13 +72,18 @@ surface_configure :: proc(
     descriptor: ^Surface_Configuration,
 ) -> Error_Type {
     device_ptr = device.ptr
-    config = descriptor^
+    config = {
+        label        = descriptor.label,
+        usage        = descriptor.usage,
+        format       = descriptor.format,
+        width        = descriptor.width,
+        height       = descriptor.height,
+        present_mode = descriptor.present_mode,
+        alpha_mode   = descriptor.alpha_mode,
+        view_formats = descriptor.view_formats,
+    }
 
     if chain.ptr != nil {
-        // TODO: this is a wgpu internal bug fix:
-        // https://github.com/gfx-rs/wgpu/issues/3967
-        wgpu.device_poll(device_ptr, false, nil)
-        //---
         chain->release()
     }
 
@@ -88,8 +93,6 @@ surface_configure :: proc(
     }
 
     chain = device->create_swap_chain(ptr, &config) or_return
-
-    wgpu.device_reference(device_ptr)
 
     return .No_Error
 }
@@ -198,11 +201,13 @@ surface_get_current_texture :: proc(
     s: Surface_Texture,
     err: Error_Type,
 ) {
-    frame_view := chain->get_current_texture_view() or_return
-
     frame := default_surface_texture
-    frame.view = frame_view
-    frame.chain = chain
+    frame.view = chain->get_current_texture_view() or_return
+    frame.chain = {
+        ptr        = chain.ptr,
+        device_ptr = device_ptr,
+        vtable     = &default_swap_chain_vtable,
+    }
 
     current_view_ptr = frame.view.ptr
 

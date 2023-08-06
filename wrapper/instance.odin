@@ -75,25 +75,25 @@ Instance_Descriptor_Default :: Instance_Descriptor {
 Dx12_Compiler_Default :: Dx12_Compiler.Fxc
 
 // Create an new instance of wgpu.
-create_instance :: proc(options: ^Instance_Descriptor = nil) -> Instance {
-    descriptor := wgpu.Instance_Descriptor {
+create_instance :: proc(descriptor: ^Instance_Descriptor) -> Instance {
+    desc := wgpu.Instance_Descriptor {
         next_in_chain = nil,
     }
 
-    if options != nil {
+    if descriptor != nil {
         instance_extras := Instance_Extras {
             chain = {next = nil, stype = cast(SType)Native_SType.Instance_Extras},
-            backends = options.backends,
-            dx12_shader_compiler = options.dx12_shader_compiler,
-            dxil_path = options.dxil_path,
-            dxc_path = options.dxc_path,
+            backends = descriptor.backends,
+            dx12_shader_compiler = descriptor.dx12_shader_compiler,
+            dxil_path = descriptor.dxil_path,
+            dxc_path = descriptor.dxc_path,
         }
 
-        descriptor.next_in_chain = cast(^Chained_Struct)&instance_extras
+        desc.next_in_chain = cast(^Chained_Struct)&instance_extras
     }
 
     instance := default_instance
-    instance.ptr = wgpu.create_instance(&descriptor)
+    instance.ptr = wgpu.create_instance(&desc)
 
     if instance.ptr == nil {
         panic("Failed to acquire Instance")

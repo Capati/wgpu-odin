@@ -9,10 +9,10 @@ import "core:fmt"
 // Surface texture that can be rendered to. Result of a successful call to
 // `surface->get_current_texture`.
 Surface_Texture :: struct {
-    chain:         Swap_Chain,
-    view:          Texture_View,
-    presented:     bool,
-    using _vtable: ^Surface_Texture_VTable,
+    chain:        Swap_Chain,
+    view:         Texture_View,
+    presented:    bool,
+    using vtable: ^Surface_Texture_VTable,
 }
 
 @(private)
@@ -29,7 +29,7 @@ default_surface_texture_vtable := Surface_Texture_VTable {
 
 @(private)
 default_surface_texture := Surface_Texture {
-    _vtable = &default_surface_texture_vtable,
+    vtable = &default_surface_texture_vtable,
 }
 
 // Schedule this texture to be presented on the owning surface.
