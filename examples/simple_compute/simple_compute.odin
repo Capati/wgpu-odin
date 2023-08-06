@@ -18,7 +18,7 @@ init :: proc() {
     wgpu.set_log_level(.Warn)
 }
 
-start :: proc() {
+main :: proc() {
     // Instance
     instance_descriptor := wgpu.Instance_Descriptor {
         backends = wgpu.Instance_Backend_Primary,

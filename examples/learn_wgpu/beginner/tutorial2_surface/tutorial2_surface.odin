@@ -27,6 +27,12 @@ _log_callback :: proc "c" (level: wgpu.Log_Level, message: cstring, user_data: r
     fmt.eprintf("[wgpu] [%v] %s\n\n", level, message)
 }
 
+@(init)
+init :: proc() {
+    wgpu.set_log_callback(_log_callback, nil)
+    wgpu.set_log_level(.Warn)
+}
+
 init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
     state := State{}
 
@@ -127,7 +133,7 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
     return .No_Error
 }
 
-start :: proc() {
+main :: proc() {
     sdl_flags := sdl.InitFlags{.VIDEO, .JOYSTICK, .GAMECONTROLLER, .EVENTS}
 
     if res := sdl.Init(sdl_flags); res != 0 {

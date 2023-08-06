@@ -6,7 +6,7 @@ import "core:fmt"
 // Vendor
 import sdl "vendor:sdl2"
 
-start :: proc() {
+main :: proc() {
     sdl_flags := sdl.InitFlags{.VIDEO, .JOYSTICK, .GAMECONTROLLER, .EVENTS}
 
     if res := sdl.Init(sdl_flags); res != 0 {

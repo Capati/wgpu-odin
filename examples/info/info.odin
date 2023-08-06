@@ -6,7 +6,7 @@ import "core:fmt"
 // Package
 import wgpu "../../wrapper"
 
-start :: proc() {
+main :: proc() {
     wgpu_version := wgpu.get_version()
 
     fmt.printf(
