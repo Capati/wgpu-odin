@@ -90,6 +90,7 @@ Mipmap_Filter_Mode :: wgpu.Mipmap_Filter_Mode
 Pipeline_Statistic_Name :: wgpu.Pipeline_Statistic_Name
 Power_Preference :: wgpu.Power_Preference
 Present_Mode :: wgpu.Present_Mode
+// Primitive_Topology :: wgpu.Primitive_Topology
 Query_Type :: wgpu.Query_Type
 Queue_Work_Done_Status :: wgpu.Queue_Work_Done_Status
 Render_Pass_Timestamp_Location :: wgpu.Render_Pass_Timestamp_Location
@@ -152,6 +153,7 @@ Limits :: wgpu.Limits
 Multisample_State :: wgpu.Multisample_State
 Origin3D :: wgpu.Origin3D
 Primitive_Depth_Clip_Control :: wgpu.Primitive_Depth_Clip_Control
+// Primitive_State :: wgpu.Primitive_State
 Queue_Descriptor :: wgpu.Queue_Descriptor
 Render_Bundle_Descriptor :: wgpu.Render_Bundle_Descriptor
 Render_Pass_Depth_Stencil_Attachment :: wgpu.Render_Pass_Depth_Stencil_Attachment
