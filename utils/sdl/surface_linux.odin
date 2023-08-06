@@ -2,6 +2,9 @@
 
 package wgpu_utils_sdl
 
+// Core
+import "core:c"
+
 // Vendor
 import sdl "vendor:sdl2"
 
