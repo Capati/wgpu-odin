@@ -167,32 +167,22 @@ adapter_request_device :: proc(
     defer delete(required_features)
 
     if device_options.features != nil && len(device_options.features) > 0 {
-        fmt.print("Enabled features:\n")
-
         for f in device_options.features {
             if !wgpu.adapter_has_feature(ptr, f) {
                 fmt.eprintf("Feature [%v] is not supported by this adapter.\n", f)
                 return {}, .Validation
             }
 
-            fmt.printf("\t%v\n", f)
-
             append(&required_features, f)
         }
     }
 
     if device_options.native_features != nil && len(device_options.native_features) > 0 {
-        if len(required_features) == 0 {
-            fmt.print("Enabled features:\n")
-        }
-
         for f in device_options.native_features {
             if !wgpu.adapter_has_feature(ptr, transmute(Feature_Name)f) {
                 fmt.eprintf("Native feature [%v] is not supported by this adapter.\n", f)
                 return {}, .Validation
             }
-
-            fmt.printf("\t%v\n", f)
 
             append(&required_features, transmute(Feature_Name)f)
         }
@@ -201,7 +191,6 @@ adapter_request_device :: proc(
     if len(required_features) > 0 {
         descriptor.required_features_count = len(required_features)
         descriptor.required_features = raw_data(required_features)
-        fmt.print("\n")
     }
 
     // Set default limits
@@ -268,10 +257,8 @@ adapter_request_device :: proc(
 
 // Release the `Adapter`.
 adapter_release :: proc(using self: ^Adapter) {
-    if ptr != nil {
-        delete(features)
-        wgpu.adapter_release(ptr)
-    }
+    delete(features)
+    wgpu.adapter_release(ptr)
 }
 
 @(private)
