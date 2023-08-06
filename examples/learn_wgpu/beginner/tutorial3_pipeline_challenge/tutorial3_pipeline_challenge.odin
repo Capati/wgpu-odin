@@ -16,7 +16,9 @@ State :: struct {
     device:                    wgpu.Device,
     config:                    wgpu.Surface_Configuration,
     render_pipeline:           wgpu.Render_Pipeline,
+    // The new colored pipeline
     challenge_render_pipeline: wgpu.Render_Pipeline,
+    // Flag to use the colored pipeline
     use_color:                 bool,
 }
 
@@ -28,6 +30,12 @@ Physical_Size :: struct {
 _log_callback :: proc "c" (level: wgpu.Log_Level, message: cstring, user_data: rawptr) {
     context = runtime.default_context()
     fmt.eprintf("[wgpu] [%v] %s\n\n", level, message)
+}
+
+@(init)
+init :: proc() {
+    wgpu.set_log_callback(_log_callback, nil)
+    wgpu.set_log_level(.Warn)
 }
 
 init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
@@ -147,8 +155,6 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
         &challenge_render_pipeline_descriptor,
     ) or_return
 
-    state.use_color = true
-
     return state, .No_Error
 }
 
@@ -186,10 +192,11 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
     )
     defer render_pass->release()
 
+    // Use the colored pipeline if `use_color` is `true`
     if state.use_color {
-        render_pass->set_pipeline(&state.render_pipeline)
-    } else {
         render_pass->set_pipeline(&state.challenge_render_pipeline)
+    } else {
+        render_pass->set_pipeline(&state.render_pipeline)
     }
     render_pass->draw(3)
     render_pass->end()
@@ -203,7 +210,7 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
     return .No_Error
 }
 
-start :: proc() {
+main :: proc() {
     sdl_flags := sdl.InitFlags{.VIDEO, .JOYSTICK, .GAMECONTROLLER, .EVENTS}
 
     if res := sdl.Init(sdl_flags); res != 0 {
@@ -259,14 +266,15 @@ start :: proc() {
                     if err != .No_Error do break main_loop
                 }
 
+            // Switch colored pipeline flag
             case .KEYDOWN:
                 if e.key.keysym.sym == .SPACE {
-                    state.use_color = false
+                    state.use_color = true
                 }
 
             case .KEYUP:
                 if e.key.keysym.sym == .SPACE {
-                    state.use_color = true
+                    state.use_color = false
                 }
             }
         }

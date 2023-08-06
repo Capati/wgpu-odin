@@ -226,7 +226,7 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
     return .No_Error
 }
 
-start :: proc() {
+main :: proc() {
     sdl_flags := sdl.InitFlags{.VIDEO, .JOYSTICK, .GAMECONTROLLER, .EVENTS}
 
     if res := sdl.Init(sdl_flags); res != 0 {

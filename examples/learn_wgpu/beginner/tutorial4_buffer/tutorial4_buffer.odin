@@ -1,4 +1,4 @@
-package tutorial3_pipeline
+package tutorial4_buffer
 
 // Core
 import "core:fmt"
@@ -11,11 +11,20 @@ import sdl "vendor:sdl2"
 import wgpu "../../../../wrapper"
 import wgpu_sdl "../../../../utils/sdl"
 
+Vertex :: struct {
+    position: [3]f32,
+    color:    [3]f32,
+}
+
 State :: struct {
     surface:         wgpu.Surface,
     device:          wgpu.Device,
     config:          wgpu.Surface_Configuration,
     render_pipeline: wgpu.Render_Pipeline,
+    vertex_buffer:   wgpu.Buffer,
+    index_buffer:    wgpu.Buffer,
+    // num_vertices:    u32,
+    num_indices:     u32,
 }
 
 Physical_Size :: struct {
@@ -76,9 +85,11 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
     width, height: i32
     sdl.GetWindowSize(window, &width, &height)
 
+    surface_format := state.surface->get_preferred_format(&adapter)
+
     state.config = {
         usage = {.Render_Attachment},
-        format = state.surface->get_preferred_format(&adapter),
+        format = surface_format,
         width = cast(u32)width,
         height = cast(u32)height,
         present_mode = .Fifo,
@@ -88,7 +99,7 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
     state.surface->configure(&state.device, &state.config) or_return
 
     shader := state.device->load_wgsl_shader_module(
-        "assets/learn_wgpu/tutorial3/shader.wgsl",
+        "assets/learn_wgpu/tutorial4/shader.wgsl",
         "shader.wgsl",
     ) or_return
     defer shader->release()
@@ -96,11 +107,29 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
     render_pipeline_layout := state.device->create_pipeline_layout(
         &{label = "Render Pipeline Layout"},
     ) or_return
+    defer render_pipeline_layout->release()
+
+    vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
+        array_stride = size_of(Vertex),
+        step_mode = .Vertex,
+        attributes = {
+            {offset = 0, shader_location = 0, format = .Float32x3},
+            {
+                offset = cast(u64)offset_of(Vertex, color),
+                shader_location = 1,
+                format = .Float32x3,
+            },
+        },
+    }
 
     render_pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
         label = "Render Pipeline",
         layout = &render_pipeline_layout,
-        vertex = {module = &shader, entry_point = "vs_main"},
+        vertex = {
+            module = &shader,
+            entry_point = "vs_main",
+            buffers = {vertex_buffer_layout},
+        },
         fragment = &{
             module = &shader,
             entry_point = "fs_main",
@@ -112,13 +141,48 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
                 },
             },
         },
-        primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
+        primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .None},
         depth_stencil = nil,
         multisample = {count = 1, mask = ~u32(0), alpha_to_coverage_enabled = false},
     }
 
     state.render_pipeline = state.device->create_render_pipeline(
         &render_pipeline_descriptor,
+    ) or_return
+
+    // vertices := []Vertex{
+    //     {position = {0.0, 0.5, 0.0}, color = {1.0, 0.0, 0.0}},
+    //     {position = {-0.5, -0.5, 0.0}, color = {0.0, 1.0, 0.0}},
+    //     {position = {0.5, -0.5, 0.0}, color = {0.0, 0.0, 1.0}},
+    // }
+
+    vertices := []Vertex {
+        {position = {-0.0868241, 0.49240386, 0.0}, color = {0.5, 0.0, 0.5}}, // A
+        {position = {-0.49513406, 0.06958647, 0.0}, color = {0.5, 0.0, 0.5}}, // B
+        {position = {-0.21918549, -0.44939706, 0.0}, color = {0.5, 0.0, 0.5}}, // C
+        {position = {0.35966998, -0.3473291, 0.0}, color = {0.5, 0.0, 0.5}}, // D
+        {position = {0.44147372, 0.2347359, 0.0}, color = {0.5, 0.0, 0.5}}, // E
+    }
+
+    indices: []u16 = {0, 1, 4, 1, 2, 4, 2, 3, 4}
+
+    // state.num_vertices = cast(u32)len(vertices)
+    state.num_indices = cast(u32)len(indices)
+
+    state.vertex_buffer = state.device->create_buffer_with_data(
+        &wgpu.Buffer_Data_Descriptor{
+            label = "Vertex Buffer",
+            contents = wgpu.to_bytes(vertices),
+            usage = {.Vertex},
+        },
+    ) or_return
+
+    state.index_buffer = state.device->create_buffer_with_data(
+        &wgpu.Buffer_Data_Descriptor{
+            label = "Index Buffer",
+            contents = wgpu.to_bytes(indices),
+            usage = {.Index},
+        },
     ) or_return
 
     return state, .No_Error
@@ -159,7 +223,10 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
     defer render_pass->release()
 
     render_pass->set_pipeline(&state.render_pipeline)
-    render_pass->draw(3)
+    render_pass->set_vertex_buffer(0, state.vertex_buffer)
+    render_pass->set_index_buffer(state.index_buffer, .Uint16, 0, wgpu.Whole_Size)
+    render_pass->draw_indexed(state.num_indices)
+    // render_pass->draw(state.num_vertices)
     render_pass->end()
 
     command_buffer := encoder->finish() or_return
@@ -183,7 +250,7 @@ main :: proc() {
     window_flags: sdl.WindowFlags = {.SHOWN, .ALLOW_HIGHDPI, .RESIZABLE}
 
     sdl_window := sdl.CreateWindow(
-        "Tutorial 3 - Pipeline",
+        "Tutorial 4 - Buffer",
         sdl.WINDOWPOS_CENTERED,
         sdl.WINDOWPOS_CENTERED,
         800,
@@ -201,6 +268,7 @@ main :: proc() {
     if state_err != .No_Error do return
     defer {
         state.render_pipeline->release()
+        state.vertex_buffer->release()
         state.device->release()
         state.surface->release()
     }
