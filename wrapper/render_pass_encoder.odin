@@ -22,9 +22,11 @@ GPU_Render_Pass_VTable :: struct {
     ),
     draw_indexed:                    proc(
         self: ^Render_Pass_Encoder,
-        index_count, instance_count, firstIndex: u32,
-        base_vertex: i32,
-        first_instance: u32,
+        index_count: u32,
+        instance_count: u32 = 1,
+        firstIndex: u32 = 0,
+        base_vertex: i32 = 0,
+        first_instance: u32 = 0,
     ),
     draw_indexed_indirect:           proc(self: ^Render_Pass_Encoder),
     draw_indirect:                   proc(self: ^Render_Pass_Encoder),
@@ -98,9 +100,11 @@ default_render_pass_encoder := Render_Pass_Encoder {
 // Draws indexed primitives using the active index buffer and the active vertex buffers.
 render_pass_draw_indexed :: proc(
     using self: ^Render_Pass_Encoder,
-    index_count, instance_count, firstIndex: u32,
-    base_vertex: i32,
-    first_instance: u32,
+    index_count: u32,
+    instance_count: u32 = 1,
+    firstIndex: u32 = 0,
+    base_vertex: i32 = 0,
+    first_instance: u32 = 0,
 ) {
     wgpu.render_pass_encoder_draw_indexed(
         ptr,

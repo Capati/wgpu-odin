@@ -232,13 +232,13 @@ foreign wgpu_native {
     render_pass_encoder_multi_draw_indexed_indirect_count :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: c.uint64_t, count_buffer: Buffer, count_buffer_offset, max_count: c.uint32_t) ---
 }
 
-ARRAY_LAYER_COUNT_UNDEFINED: c.ulong : 0xffffffff
-COPY_STRIDE_UNDEFINED: c.ulong : 0xffffffff
-LIMIT_U32_UNDEFINED: c.ulong : 0xffffffff
-LIMIT_U64_UNDEFINED: c.ulonglong : 0xffffffffffffffff
-MIP_LEVEL_COUNT_UNDEFINED: c.ulong : 0xffffffff
-WHOLE_MAP_SIZE :: c.SIZE_MAX
-WHOLE_SIZE: c.ulonglong : 0xffffffffffffffff
+Array_Layer_Count_Undefined: c.ulong : 0xffffffff
+Copy_Stride_Undefined: c.ulong : 0xffffffff
+Limit_U32_Undefined: c.ulong : 0xffffffff
+Limit_U64_Undefined: c.ulonglong : 0xffffffffffffffff
+Mip_Level_Count_Undefined: c.ulong : 0xffffffff
+Whole_Map_Si :: c.SIZE_MAX
+Whole_Size: c.ulonglong : 0xffffffffffffffff
 
 Flags :: c.uint32_t
 
