@@ -158,6 +158,9 @@ command_encoder_begin_render_pass :: proc(
         next_in_chain = nil,
     }
 
+    color_attachments_slice: []wgpu.Render_Pass_Color_Attachment
+    defer delete(color_attachments_slice)
+
     if descriptor != nil {
         desc.label = descriptor.label
 
@@ -185,11 +188,10 @@ command_encoder_begin_render_pass :: proc(
                         color_attachment.resolve_target.ptr
                 }
             } else {
-                color_attachments_slice := make(
+                color_attachments_slice = make(
                     []wgpu.Render_Pass_Color_Attachment,
                     color_attachment_count,
                 )
-                defer delete(color_attachments_slice)
 
                 for v, i in descriptor.color_attachments {
                     color_attachment := wgpu.Render_Pass_Color_Attachment {

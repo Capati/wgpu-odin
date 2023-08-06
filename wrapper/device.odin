@@ -452,6 +452,9 @@ device_create_pipeline_layout :: proc(
         next_in_chain = nil,
     }
 
+    bind_group_layouts_ptrs: []WGPU_Bind_Group_Layout
+    defer delete(bind_group_layouts_ptrs)
+
     if descriptor != nil {
         desc.label = descriptor.label
 
@@ -463,11 +466,10 @@ device_create_pipeline_layout :: proc(
             if bind_group_layout_count == 1 {
                 desc.bind_group_layouts = &descriptor.bind_group_layouts[0].ptr
             } else {
-                bind_group_layouts_ptrs := make(
+                bind_group_layouts_ptrs = make(
                     []WGPU_Bind_Group_Layout,
                     bind_group_layout_count,
                 )
-                defer delete(bind_group_layouts_ptrs)
 
                 for b, i in descriptor.bind_group_layouts {
                     bind_group_layouts_ptrs[i] = b.ptr
@@ -650,109 +652,121 @@ device_create_render_pipeline :: proc(
     // Initial pipeline descriptor
     desc := wgpu.Render_Pipeline_Descriptor {
         next_in_chain = nil,
-        label = descriptor.label,
-        layout = nil,
-        vertex = {module = nil, buffer_count = 0, buffers = nil},
-        depth_stencil = nil,
-        fragment = &{module = nil, target_count = 0, targets = nil},
     }
 
-    if descriptor.layout != nil {
-        desc.layout = descriptor.layout.ptr
-    }
+    buffers_slice: []wgpu.Vertex_Buffer_Layout
+    defer delete(buffers_slice)
+    targets: []Color_Target_State
+    defer delete(targets)
 
-    if descriptor.vertex.module != nil {
-        desc.vertex.module = descriptor.vertex.module.ptr
-    }
+    if descriptor != nil {
+        desc.label = descriptor.label
 
-    desc.vertex.entry_point = descriptor.vertex.entry_point
-
-    buffer_count := cast(uint)len(descriptor.vertex.buffers)
-
-    if buffer_count > 0 {
-        buffers_slice := make([]wgpu.Vertex_Buffer_Layout, buffer_count)
-        defer delete(buffers_slice)
-
-        for v, i in descriptor.vertex.buffers {
-            buffer := wgpu.Vertex_Buffer_Layout {
-                array_stride = v.array_stride,
-                step_mode    = v.step_mode,
-            }
-
-            attribute_count := cast(uint)len(v.attributes)
-
-            if attribute_count > 0 {
-                buffer.attribute_count = attribute_count
-                buffer.attributes = raw_data(v.attributes)
-            }
-
-            buffers_slice[i] = buffer
+        if descriptor.layout != nil {
+            desc.layout = descriptor.layout.ptr
         }
 
-        desc.vertex.buffer_count = buffer_count
-        desc.vertex.buffers = raw_data(buffers_slice)
-    }
+        vertex := descriptor.vertex
+        vert := wgpu.Vertex_State{}
 
-    desc.primitive = {
-        strip_index_format = descriptor.primitive.strip_index_format,
-        front_face         = descriptor.primitive.front_face,
-        cull_mode          = descriptor.primitive.cull_mode,
-    }
-
-    // Because everything in Odin by default is set to 0, the default Primitive_Topology
-    // enum value is `Point_List`. We make `Triangle_List` default value by creating a
-    // new enum, but here we set the correct/expected wgpu value:
-    switch descriptor.primitive.topology {
-    case .Triangle_List:
-        desc.primitive.topology = wgpu.Primitive_Topology.Triangle_List
-    case .Point_List:
-        desc.primitive.topology = wgpu.Primitive_Topology.Point_List
-    case .Line_List:
-        desc.primitive.topology = wgpu.Primitive_Topology.Line_List
-    case .Line_Strip:
-        desc.primitive.topology = wgpu.Primitive_Topology.Line_Strip
-    case .Triangle_Strip:
-        desc.primitive.topology = wgpu.Primitive_Topology.Triangle_Strip
-    }
-
-    if descriptor.depth_stencil != nil {
-        desc.depth_stencil = descriptor.depth_stencil
-    }
-
-    desc.multisample = descriptor.multisample
-
-    // Multisample count cannot be 0, defaulting to 1
-    if desc.multisample.count == 0 {
-        desc.multisample.count = 1
-    }
-
-    if descriptor.fragment != nil {
-        target_count := cast(uint)len(descriptor.fragment.targets)
-
-        if descriptor.fragment.module != nil {
-            desc.fragment.module = descriptor.fragment.module.ptr
+        if vertex.module != nil {
+            vert.module = vertex.module.ptr
         }
 
-        if target_count > 0 {
-            targets := make([]Color_Target_State, target_count)
-            defer delete(targets)
+        vert.entry_point = vertex.entry_point
 
-            for v, i in descriptor.fragment.targets {
-                target := Color_Target_State {
-                    format     = v.format,
-                    write_mask = v.write_mask,
-                    blend      = v.blend,
+        buffer_count := cast(uint)len(vertex.buffers)
+
+        if buffer_count > 0 {
+            buffers_slice = make([]wgpu.Vertex_Buffer_Layout, buffer_count)
+
+            for v, i in vertex.buffers {
+                buffer := wgpu.Vertex_Buffer_Layout {
+                    array_stride = v.array_stride,
+                    step_mode    = v.step_mode,
                 }
 
-                targets[i] = target
+                attribute_count := cast(uint)len(v.attributes)
+
+                if attribute_count > 0 {
+                    buffer.attribute_count = attribute_count
+                    buffer.attributes = raw_data(v.attributes)
+                }
+
+                buffers_slice[i] = buffer
             }
 
-            desc.fragment.entry_point = descriptor.fragment.entry_point
-            desc.fragment.target_count = target_count
-            desc.fragment.targets = raw_data(targets)
-        } else {
-            desc.fragment.target_count = 0
-            desc.fragment.targets = nil
+            vert.buffer_count = buffer_count
+            vert.buffers = raw_data(buffers_slice)
+        }
+
+        desc.vertex = vert
+
+        desc.primitive = {
+            strip_index_format = descriptor.primitive.strip_index_format,
+            front_face         = descriptor.primitive.front_face,
+            cull_mode          = descriptor.primitive.cull_mode,
+        }
+
+        // Because everything in Odin by default is set to 0, the default Primitive_Topology
+        // enum value is `Point_List`. We make `Triangle_List` default value by creating a
+        // new enum, but here we set the correct/expected wgpu value:
+        switch descriptor.primitive.topology {
+        case .Triangle_List:
+            desc.primitive.topology = wgpu.Primitive_Topology.Triangle_List
+        case .Point_List:
+            desc.primitive.topology = wgpu.Primitive_Topology.Point_List
+        case .Line_List:
+            desc.primitive.topology = wgpu.Primitive_Topology.Line_List
+        case .Line_Strip:
+            desc.primitive.topology = wgpu.Primitive_Topology.Line_Strip
+        case .Triangle_Strip:
+            desc.primitive.topology = wgpu.Primitive_Topology.Triangle_Strip
+        }
+
+        if descriptor.depth_stencil != nil {
+            desc.depth_stencil = descriptor.depth_stencil
+        }
+
+        desc.multisample = descriptor.multisample
+
+        // Multisample count cannot be 0, defaulting to 1
+        if desc.multisample.count == 0 {
+            desc.multisample.count = 1
+        }
+
+        if descriptor.fragment != nil {
+            fragment := wgpu.Fragment_State{}
+
+            fragment.entry_point = descriptor.fragment.entry_point
+
+            target_count := cast(uint)len(descriptor.fragment.targets)
+
+            if descriptor.fragment.module != nil {
+                fragment.module = descriptor.fragment.module.ptr
+            }
+
+            if target_count > 0 {
+                targets = make([]Color_Target_State, target_count)
+
+                for v, i in descriptor.fragment.targets {
+                    target := Color_Target_State {
+                        format     = v.format,
+                        write_mask = v.write_mask,
+                        blend      = v.blend,
+                    }
+
+                    targets[i] = target
+                }
+
+                fragment.target_count = target_count
+                fragment.targets = raw_data(targets)
+            } else {
+                fragment.target_count = 0
+                fragment.targets = nil
+            }
+
+            desc.fragment = &fragment
         }
     }
 
@@ -923,6 +937,9 @@ device_create_swap_chain :: proc(
         if view_format_count > 0 {
             extras.view_format_count = view_format_count
             extras.view_formats = raw_data(descriptor.view_formats)
+        } else {
+            extras.view_format_count = 0
+            extras.view_formats = nil
         }
 
         desc.next_in_chain = cast(^Chained_Struct)&extras
