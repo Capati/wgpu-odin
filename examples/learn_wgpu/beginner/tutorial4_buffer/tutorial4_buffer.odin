@@ -268,6 +268,7 @@ main :: proc() {
     if state_err != .No_Error do return
     defer {
         state.render_pipeline->release()
+        state.index_buffer->release()
         state.vertex_buffer->release()
         state.device->release()
         state.surface->release()
