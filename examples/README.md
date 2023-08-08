@@ -21,7 +21,7 @@ WGPU version: 0.17.0.2
 
 Selected device:
 
-AMD Radeon (TM) RX 6650 XT
+NVIDIA GeForce RTX 3060
         Driver: 23.7.2
         Type: Discrete GPU with separate CPU/GPU memory
         Backend: Vulkan API
@@ -50,3 +50,7 @@ odin build ./triangle -define:TRIANGLE_MSAA_EXAMPLE=true -out:./build/<executabl
 ```
 
 ![Triangle 4x MSAA](./triangle/triangle_msaa.png)
+
+### [Learn WGPU Tutorial](./learn_wgpu)
+
+This is a great Rust tutorial you can read from [Learn Wgpu](https://sotrh.github.io/learn-wgpu/#what-is-wgpu). The challenges are included.
