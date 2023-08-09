@@ -905,10 +905,16 @@ device_create_swap_chain :: proc(
 
         desc.next_in_chain = cast(^Chained_Struct)&extras
     }
+    err_scope.info = #procedure
 
     swap_chain_ptr := wgpu.device_create_swap_chain(ptr, surface, &desc)
 
-    wgpu.device_reference(ptr)
+    if err_scope.type != .No_Error {
+        if swap_chain_ptr != nil {
+            wgpu.swap_chain_release(swap_chain_ptr)
+        }
+        return {}, err_scope.type
+    }
 
     swap_chain := default_swap_chain
     swap_chain.err_scope = err_scope
@@ -935,11 +941,9 @@ device_create_texture :: proc(
         return {}, err_scope.type
     }
 
-    wgpu.device_reference(ptr)
-
     texture := default_texture
     texture.ptr = texture_ptr
-    texture.device_ptr = ptr
+    texture.err_scope = err_scope
 
     return texture, .No_Error
 }
@@ -968,10 +972,9 @@ device_get_limits :: proc(using self: ^Device) -> Limits {
 device_get_queue :: proc(using self: ^Device) -> Queue {
     gpu_queue := Queue {
         ptr    = wgpu.device_get_queue(ptr),
+        err_scope = err_scope,
         vtable = &default_queue_vtable,
     }
-
-    wgpu.device_reference(ptr)
 
     return gpu_queue
 }
