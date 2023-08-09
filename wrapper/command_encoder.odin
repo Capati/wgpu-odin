@@ -9,7 +9,7 @@ import wgpu "../bindings"
 // Encodes a series of GPU operations.
 Command_Encoder :: struct {
     ptr:          WGPU_Command_Encoder,
-    device_ptr:   WGPU_Device,
+    err_scope: ^Error_Scope,
     using vtable: ^Command_Encoder_VTable,
 }
 
@@ -123,11 +123,10 @@ command_encoder_begin_compute_pass :: proc(
         fmt.panicf("Failed to acquire Compute_Pass_Encoder")
     }
 
-    wgpu.device_reference(device_ptr)
 
     compute_pass := default_compute_pass_encoder
     compute_pass.ptr = compute_pass_ptr
-    compute_pass.device_ptr = device_ptr
+    compute_pass.err_scope = err_scope
 
     return compute_pass
 }
@@ -223,11 +222,9 @@ command_encoder_begin_render_pass :: proc(
 
     render_pass_encoder_ptr := wgpu.command_encoder_begin_render_pass(ptr, &desc)
 
-    wgpu.device_reference(device_ptr)
 
     render_pass := default_render_pass_encoder
     render_pass.ptr = render_pass_encoder_ptr
-    render_pass.device_ptr = device_ptr
 
     return render_pass
 }
@@ -251,13 +248,9 @@ command_encoder_clear_buffer :: proc(
     assert(size % 4 == 0, "size must be a multiple of 4")
     assert(offset + size <= buffer.size, "buffer size out of range")
 
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(device_ptr, .Validation)
     wgpu.command_encoder_clear_buffer(ptr, buffer.ptr, offset, size)
-    wgpu.device_pop_error_scope(device_ptr, error_scope_callback, &err_scope)
 
     return err_scope.type
 }
@@ -275,11 +268,8 @@ command_encoder_copy_buffer_to_buffer :: proc(
     assert(destination_offset % 4 == 0, "'destination_offset' must be a multiple of 4")
     assert(size % 4 == 0, "'size' must be a multiple of 4")
 
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(device_ptr, .Validation)
     wgpu.command_encoder_copy_buffer_to_buffer(
         ptr,
         source.ptr,
@@ -288,7 +278,6 @@ command_encoder_copy_buffer_to_buffer :: proc(
         destination_offset,
         size,
     )
-    wgpu.device_pop_error_scope(device_ptr, error_scope_callback, &err_scope)
 
     return err_scope.type
 }
@@ -312,13 +301,9 @@ command_encoder_copy_buffer_to_texture :: proc(
         }
     }
 
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(device_ptr, .Validation)
     wgpu.command_encoder_copy_buffer_to_texture(ptr, source, destination, copy_size)
-    wgpu.device_pop_error_scope(device_ptr, error_scope_callback, &err_scope)
 
     return err_scope.type
 }
@@ -342,13 +327,9 @@ command_encoder_copy_texture_to_buffer :: proc(
         }
     }
 
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(device_ptr, .Validation)
     wgpu.command_encoder_copy_texture_to_buffer(ptr, source, destination, copy_size)
-    wgpu.device_pop_error_scope(device_ptr, error_scope_callback, &err_scope)
 
     return err_scope.type
 }
@@ -360,13 +341,9 @@ command_encoder_copy_texture_to_texture :: proc(
     destination: ^Image_Copy_Texture,
     copy_size: ^Extent_3D,
 ) -> Error_Type {
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(device_ptr, .Validation)
     wgpu.command_encoder_copy_texture_to_texture(ptr, source, destination, copy_size)
-    wgpu.device_pop_error_scope(device_ptr, error_scope_callback, &err_scope)
 
     return err_scope.type
 }
@@ -379,16 +356,12 @@ command_encoder_finish :: proc(
     Command_Buffer,
     Error_Type,
 ) {
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(device_ptr, .Validation)
     command_buffer_ptr := wgpu.command_encoder_finish(
         ptr,
         &Command_Buffer_Descriptor{label = label},
     )
-    wgpu.device_pop_error_scope(device_ptr, error_scope_callback, &err_scope)
 
     if err_scope.type != .No_Error {
         if command_buffer_ptr != nil {
@@ -407,25 +380,17 @@ command_encoder_insert_debug_marker :: proc(
     using self: ^Command_Encoder,
     marker_label: cstring,
 ) -> Error_Type {
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(device_ptr, .Validation)
     wgpu.command_encoder_insert_debug_marker(ptr, marker_label)
-    wgpu.device_pop_error_scope(device_ptr, error_scope_callback, &err_scope)
 
     return err_scope.type
 }
 
 command_encoder_pop_debug_group :: proc(using self: ^Command_Encoder) -> Error_Type {
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(device_ptr, .Validation)
     wgpu.command_encoder_pop_debug_group(ptr)
-    wgpu.device_pop_error_scope(device_ptr, error_scope_callback, &err_scope)
 
     return err_scope.type
 }
@@ -434,13 +399,9 @@ command_encoder_push_debug_group :: proc(
     using self: ^Command_Encoder,
     group_label: cstring,
 ) -> Error_Type {
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(device_ptr, .Validation)
     wgpu.command_encoder_push_debug_group(ptr, group_label)
-    wgpu.device_pop_error_scope(device_ptr, error_scope_callback, &err_scope)
 
     return err_scope.type
 }
@@ -453,11 +414,8 @@ command_encoder_resolve_query_set :: proc(
     destination: Buffer,
     destination_offset: u64,
 ) -> Error_Type {
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(device_ptr, .Validation)
     wgpu.command_encoder_resolve_query_set(
         ptr,
         query_set.ptr,
@@ -466,7 +424,6 @@ command_encoder_resolve_query_set :: proc(
         destination.ptr,
         destination_offset,
     )
-    wgpu.device_pop_error_scope(device_ptr, error_scope_callback, &err_scope)
 
     return err_scope.type
 }
@@ -480,13 +437,9 @@ command_encoder_write_timestamp :: proc(
     query_set: Query_Set,
     query_index: u32,
 ) -> Error_Type {
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(device_ptr, .Validation)
     wgpu.command_encoder_write_timestamp(ptr, query_set.ptr, query_index)
-    wgpu.device_pop_error_scope(device_ptr, error_scope_callback, &err_scope)
 
     return err_scope.type
 }
@@ -497,6 +450,5 @@ command_encoder_reference :: proc(using self: ^Command_Encoder) {
 
 // Release the `Command_Encoder`.
 command_encoder_release :: proc(using self: ^Command_Encoder) {
-    wgpu.device_release(device_ptr)
     wgpu.command_encoder_release(ptr)
 }

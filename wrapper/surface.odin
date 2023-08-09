@@ -205,7 +205,7 @@ surface_get_current_texture :: proc(
     frame.view = chain->get_current_texture_view() or_return
     frame.chain = {
         ptr        = chain.ptr,
-        device_ptr = device_ptr,
+        err_scope  = chain.err_scope,
         vtable     = &default_swap_chain_vtable,
     }
 
