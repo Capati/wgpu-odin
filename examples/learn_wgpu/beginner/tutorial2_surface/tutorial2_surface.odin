@@ -12,9 +12,10 @@ import wgpu "../../../../wrapper"
 import wgpu_sdl "../../../../utils/sdl"
 
 State :: struct {
-    surface: wgpu.Surface,
-    device:  wgpu.Device,
-    config:  wgpu.Surface_Configuration,
+    minimized: bool,
+    surface:   wgpu.Surface,
+    device:    wgpu.Device,
+    config:    wgpu.Surface_Configuration,
 }
 
 Physical_Size :: struct {
@@ -185,12 +186,20 @@ main :: proc() {
                         {cast(u32)e.window.data1, cast(u32)e.window.data2},
                     )
                     if err != .No_Error do break main_loop
+
+                case .MINIMIZED:
+                    state.minimized = true
+
+                case .RESTORED:
+                    state.minimized = false
                 }
             }
         }
 
-        err = render(&state)
-        if err != .No_Error do break main_loop
+        if !state.minimized {
+            err = render(&state)
+            if err != .No_Error do break main_loop
+        }
     }
 
     if err != .No_Error {
