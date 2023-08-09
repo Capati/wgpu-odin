@@ -20,5 +20,5 @@ error_scope_callback := proc "c" (
     context = runtime.default_context()
     error := cast(^Error_Scope)user_data
     fmt.eprintf("ERROR - %s [%v]:\n\t%s\n", error.info, type, message)
-    error.type = .Validation
+    error.type = type
 }

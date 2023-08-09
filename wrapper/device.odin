@@ -12,6 +12,7 @@ Device :: struct {
     features:     []Feature_Name,
     limits:       Limits,
     queue:        Queue,
+    err_scope:    ^Error_Scope,
     using vtable: ^Device_VTable,
 }
 
@@ -232,13 +233,9 @@ device_create_bind_group :: proc(
         }
     }
 
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(ptr, .Validation)
     bind_group_ptr := wgpu.device_create_bind_group(ptr, &desc)
-    wgpu.device_pop_error_scope(ptr, error_scope_callback, &err_scope)
 
     if err_scope.type != .No_Error {
         if bind_group_ptr != nil {
@@ -279,13 +276,9 @@ device_create_bind_group_layout :: proc(
         }
     }
 
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(ptr, .Validation)
     bind_group_layout_ptr := wgpu.device_create_bind_group_layout(ptr, &desc)
-    wgpu.device_pop_error_scope(ptr, error_scope_callback, &err_scope)
 
     if err_scope.type != .No_Error {
         if bind_group_layout_ptr != nil {
@@ -308,13 +301,10 @@ device_create_buffer :: proc(
     Buffer,
     Error_Type,
 ) {
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
 
-    wgpu.device_push_error_scope(ptr, .Validation)
+    err_scope.info = #procedure
+
     buffer_ptr := wgpu.device_create_buffer(ptr, descriptor)
-    wgpu.device_pop_error_scope(ptr, error_scope_callback, &err_scope)
 
     if err_scope.type != .No_Error {
         if buffer_ptr != nil {
@@ -328,6 +318,7 @@ device_create_buffer :: proc(
     buffer := default_buffer
     buffer.ptr = buffer_ptr
     buffer.device_ptr = self.ptr
+    buffer.err_scope = err_scope
     buffer.size = descriptor.size
     buffer.usage = descriptor.usage
 
@@ -344,11 +335,8 @@ device_create_command_encoder :: proc(
 ) {
     command_encoder := default_gpu_command_encoder
 
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(ptr, .Validation)
     if descriptor != nil {
         command_encoder.ptr = wgpu.device_create_command_encoder(ptr, descriptor)
     } else {
@@ -357,7 +345,6 @@ device_create_command_encoder :: proc(
             &Command_Encoder_Descriptor{label = "Default command encoder"},
         )
     }
-    wgpu.device_pop_error_scope(ptr, error_scope_callback, &err_scope)
 
     if err_scope.type != .No_Error {
         if command_encoder.ptr != nil {
@@ -366,9 +353,7 @@ device_create_command_encoder :: proc(
         return {}, err_scope.type
     }
 
-    wgpu.device_reference(ptr)
-
-    command_encoder.device_ptr = self.ptr
+    command_encoder.err_scope = err_scope
 
     return command_encoder, .No_Error
 }
@@ -414,13 +399,9 @@ device_create_compute_pipeline :: proc(
         desc.compute = compute
     }
 
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(ptr, .Validation)
     compute_pipeline_ptr := wgpu.device_create_compute_pipeline(ptr, &desc)
-    wgpu.device_pop_error_scope(ptr, error_scope_callback, &err_scope)
 
     if err_scope.type != .No_Error {
         if compute_pipeline_ptr != nil {
@@ -482,13 +463,9 @@ device_create_pipeline_layout :: proc(
         }
     }
 
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(ptr, .Validation)
     pipeline_layout_ptr := wgpu.device_create_pipeline_layout(ptr, &desc)
-    wgpu.device_pop_error_scope(ptr, error_scope_callback, &err_scope)
 
     if err_scope.type != .No_Error {
         if pipeline_layout_ptr != nil {
@@ -532,13 +509,9 @@ device_create_query_set :: proc(
         }
     }
 
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(ptr, .Validation)
     query_set_ptr := wgpu.device_create_query_set(ptr, &desc)
-    wgpu.device_pop_error_scope(ptr, error_scope_callback, &err_scope)
 
     if err_scope.type != .No_Error {
         if query_set_ptr != nil {
@@ -770,13 +743,9 @@ device_create_render_pipeline :: proc(
         }
     }
 
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(ptr, .Validation)
     render_pipeline_ptr := wgpu.device_create_render_pipeline(ptr, &desc)
-    wgpu.device_pop_error_scope(ptr, error_scope_callback, &err_scope)
 
     if err_scope.type != .No_Error {
         if render_pipeline_ptr != nil {
@@ -798,13 +767,9 @@ device_create_sampler :: proc(
     Sampler,
     Error_Type,
 ) {
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(ptr, .Validation)
     sampler_ptr := wgpu.device_create_sampler(ptr, descriptor)
-    wgpu.device_pop_error_scope(ptr, error_scope_callback, &err_scope)
 
     if err_scope.type != .No_Error {
         if sampler_ptr != nil {
@@ -872,13 +837,9 @@ device_create_shader_module :: proc(
         }
     }
 
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(ptr, .Validation)
     shader_module_ptr := wgpu.device_create_shader_module(ptr, &desc)
-    wgpu.device_pop_error_scope(ptr, error_scope_callback, &err_scope)
 
     if err_scope.type != .No_Error {
         if shader_module_ptr != nil {
@@ -950,8 +911,8 @@ device_create_swap_chain :: proc(
     wgpu.device_reference(ptr)
 
     swap_chain := default_swap_chain
+    swap_chain.err_scope = err_scope
     swap_chain.ptr = swap_chain_ptr
-    swap_chain.device_ptr = ptr
 
     return swap_chain, .No_Error
 }
@@ -963,13 +924,9 @@ device_create_texture :: proc(
     Texture,
     Error_Type,
 ) {
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(ptr, .Validation)
     texture_ptr := wgpu.device_create_texture(ptr, descriptor)
-    wgpu.device_pop_error_scope(ptr, error_scope_callback, &err_scope)
 
     if err_scope.type != .No_Error {
         if texture_ptr != nil {
@@ -1057,6 +1014,7 @@ device_reference :: proc(using self: ^Device) {
 device_release :: proc(using self: ^Device) {
     if ptr != nil {
         delete(features)
+        free(err_scope)
         wgpu.device_release(ptr)
     }
 }
