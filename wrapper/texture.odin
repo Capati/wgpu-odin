@@ -5,7 +5,7 @@ import wgpu "../bindings"
 
 Texture :: struct {
     ptr:          WGPU_Texture,
-    device_ptr:   WGPU_Device,
+    err_scope:    ^Error_Scope,
     using vtable: ^Texture_VTable,
 }
 
@@ -63,13 +63,9 @@ texture_create_view :: proc(
     Texture_View,
     Error_Type,
 ) {
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(device_ptr, .Validation)
     texture_view_ptr := wgpu.texture_create_view(ptr, descriptor)
-    wgpu.device_pop_error_scope(device_ptr, error_scope_callback, &err_scope)
 
     if err_scope.type != .No_Error {
         if texture_view_ptr != nil {
@@ -140,6 +136,5 @@ texture_reference :: proc(using texture: ^Texture) {
 
 // Release the `Texture`.
 texture_release :: proc(using texture: ^Texture) {
-    wgpu.device_release(device_ptr)
     wgpu.texture_release(ptr)
 }
