@@ -26,8 +26,7 @@ get_surface_descriptor :: proc(
     native_window->contentView()->setLayer(metal_layer)
 
     // Setup surface information
-    descriptor = default_surface_descriptor
-    descriptor.metal_layer = &{layer = metal_layer}
+    descriptor.target = wgpu.Surface_Descriptor_From_Metal_Layer{layer = metal_layer}
 
     return
 }
