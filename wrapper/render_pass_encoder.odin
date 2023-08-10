@@ -5,7 +5,6 @@ import wgpu "../bindings"
 
 Render_Pass_Encoder :: struct {
     ptr:          WGPU_Render_Pass_Encoder,
-    device_ptr:   WGPU_Device,
     using vtable: ^GPU_Render_Pass_VTable,
 }
 
@@ -203,6 +202,5 @@ render_pass_set_vertex_buffer :: proc(
 }
 
 render_pass_release :: proc(using self: ^Render_Pass_Encoder) {
-    wgpu.device_release(device_ptr)
     wgpu.render_pass_encoder_release(ptr)
 }

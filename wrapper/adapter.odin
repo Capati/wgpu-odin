@@ -136,8 +136,8 @@ adapter_request_device :: proc(
     options: ^Device_Options = nil,
     trace_path: cstring = nil,
 ) -> (
-    Device,
-    Error_Type,
+    device: Device,
+    err: Error_Type,
 ) {
     device_options := Device_Options{}
 
@@ -241,14 +241,16 @@ adapter_request_device :: proc(
         return {}, .Internal
     }
 
-    device := default_device
+    device = default_device
     device.ptr = res.device
     device.features = device->get_features()
     device.limits = device->get_limits()
+    device.err_scope = new(Error_Scope) // Heap allocate to avoid stack fuckery
+    wgpu.device_set_uncaptured_error_callback(device.ptr, error_scope_callback, device.err_scope)
 
     queue := default_queue
     queue.ptr = wgpu.device_get_queue(res.device)
-    queue.device_ptr = device.ptr
+    queue.err_scope = device.err_scope
 
     device.queue = queue
 

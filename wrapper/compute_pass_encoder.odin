@@ -5,7 +5,7 @@ import wgpu "../bindings"
 
 Compute_Pass_Encoder :: struct {
     ptr:          WGPU_Compute_Pass_Encoder,
-    device_ptr:   WGPU_Device,
+    err_scope: ^Error_Scope,
     using vtable: ^Compute_Pass_Encoder_VTable,
 }
 
@@ -115,13 +115,9 @@ compute_pass_encoder_dispatch_workgroups_indirect :: proc(
 }
 
 compute_pass_encoder_end :: proc(using self: ^Compute_Pass_Encoder) -> Error_Type {
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(device_ptr, .Validation)
     wgpu.compute_pass_encoder_end(ptr)
-    wgpu.device_pop_error_scope(device_ptr, error_scope_callback, &err_scope)
 
     return err_scope.type
 }
@@ -190,6 +186,5 @@ compute_pass_encoder_reference :: proc(using self: ^Compute_Pass_Encoder) {
 }
 
 compute_pass_encoder_release :: proc(using self: ^Compute_Pass_Encoder) {
-    wgpu.device_release(device_ptr)
     wgpu.compute_pass_encoder_release(ptr)
 }
