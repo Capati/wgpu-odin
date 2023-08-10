@@ -105,13 +105,15 @@ create_instance :: proc(descriptor: ^Instance_Descriptor) -> Instance {
 
 Surface_Descriptor :: struct {
     label:                 cstring,
-    Android_Native_Window: ^Surface_Descriptor_From_Android_Native_Window,
-    Html_Selector:         ^Surface_Descriptor_From_Canvas_Html_Selector,
-    Metal_Layer:           ^Surface_Descriptor_From_Metal_Layer,
-    Wayland_Surface:       ^Surface_Descriptor_From_Wayland_Surface,
-    Windows_HWND:          ^Surface_Descriptor_From_Windows_HWND,
-    Xcb_Window:            ^Surface_Descriptor_From_Xcb_Window,
-    Xlib_Window:           ^Surface_Descriptor_From_Xlib_Window,
+    target: union {
+        Surface_Descriptor_From_Android_Native_Window,
+        Surface_Descriptor_From_Canvas_Html_Selector,
+        Surface_Descriptor_From_Metal_Layer,
+        Surface_Descriptor_From_Wayland_Surface,
+        Surface_Descriptor_From_Windows_HWND,
+        Surface_Descriptor_From_Xcb_Window,
+        Surface_Descriptor_From_Xlib_Window,
+    },
 }
 
 // Creates a surface from a window handle.
@@ -126,8 +128,8 @@ instance_create_surface :: proc(
 
     if descriptor != nil {
         desc.label = descriptor.label
-
-        if descriptor.Windows_HWND != nil {
+        switch t in descriptor.target {
+        case Surface_Descriptor_From_Windows_HWND:
             if desc.label == nil || desc.label == "" {
                 desc.label = "Windows HWND"
             }
@@ -138,10 +140,10 @@ instance_create_surface :: proc(
                     next = nil,
                     stype = .Surface_Descriptor_From_Windows_HWND,
                 },
-                hinstance = descriptor.Windows_HWND.hinstance,
-                hwnd = descriptor.Windows_HWND.hwnd,
+                hinstance = t.hinstance,
+                hwnd = t.hwnd,
             }
-        } else if descriptor.Xcb_Window != nil {
+        case Surface_Descriptor_From_Xcb_Window:
             if desc.label == nil || desc.label == "" {
                 desc.label = "XCB Window"
             }
@@ -152,10 +154,10 @@ instance_create_surface :: proc(
                     next = nil,
                     stype = .Surface_Descriptor_From_Xcb_Window,
                 },
-                connection = descriptor.Xcb_Window.connection,
-                window = descriptor.Xcb_Window.window,
+                connection = t.connection,
+                window = t.window,
             }
-        } else if descriptor.Xlib_Window != nil {
+        case Surface_Descriptor_From_Xlib_Window:
             if desc.label == nil || desc.label == "" {
                 desc.label = "X11 Window"
             }
@@ -166,10 +168,10 @@ instance_create_surface :: proc(
                     next = nil,
                     stype = .Surface_Descriptor_From_Xlib_Window,
                 },
-                display = descriptor.Xlib_Window.display,
-                window = descriptor.Xlib_Window.window,
+                display = t.display,
+                window = t.window,
             }
-        } else if descriptor.Metal_Layer != nil {
+        case Surface_Descriptor_From_Metal_Layer:
             if desc.label == nil || desc.label == "" {
                 desc.label = "Metal Layer"
             }
@@ -180,9 +182,9 @@ instance_create_surface :: proc(
                     next = nil,
                     stype = .Surface_Descriptor_From_Metal_Layer,
                 },
-                layer = descriptor.Metal_Layer.layer,
+                layer = t.layer,
             }
-        } else if descriptor.Wayland_Surface != nil {
+        case Surface_Descriptor_From_Wayland_Surface:
             if desc.label == nil || desc.label == "" {
                 desc.label = "Wayland Surface"
             }
@@ -193,10 +195,10 @@ instance_create_surface :: proc(
                     next = nil,
                     stype = .Surface_Descriptor_From_Wayland_Surface,
                 },
-                display = descriptor.Wayland_Surface.display,
-                surface = descriptor.Wayland_Surface.surface,
+                display = t.display,
+                surface = t.surface,
             }
-        } else if descriptor.Android_Native_Window != nil {
+        case Surface_Descriptor_From_Android_Native_Window:
             if desc.label == nil || desc.label == "" {
                 desc.label = "Android Native Window"
             }
@@ -207,12 +209,21 @@ instance_create_surface :: proc(
                     next = nil,
                     stype = .Surface_Descriptor_From_Android_Native_Window,
                 },
-                window = descriptor.Android_Native_Window.window,
+                window = t.window,
             }
-        } else {
-            fmt.eprintf("Cannot get surface id: unsupported WGPU surface type.\n")
-            return {}, .Unknown
+        case Surface_Descriptor_From_Canvas_Html_Selector:
+            if desc.label == nil || desc.label == "" {
+                desc.label = "Canvas Html Selector"
+            }
+            desc.next_in_chain =
+                cast(^Chained_Struct)&Surface_Descriptor_From_Canvas_Html_Selector{
+                    chain = {
+                        stype = .Surface_Descriptor_From_Canvas_Html_Selector,
+                    },
+                    selector = t.selector,
+                }
         }
+
     }
 
     surface_ptr := wgpu.instance_create_surface(ptr, &desc)
