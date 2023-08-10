@@ -12,6 +12,7 @@ import wgpu "../bindings"
 Buffer :: struct {
     ptr:          WGPU_Buffer,
     device_ptr:   WGPU_Device,
+    err_scope:    ^Error_Scope,
     size:         Buffer_Size,
     map_state:    Buffer_Map_State,
     usage:        Buffer_Usage_Flags,
@@ -140,6 +141,7 @@ buffer_map_write :: proc(using self: ^Buffer, data: []byte) -> Buffer_Map_Async_
     return .Success
 }
 
+//TODO(JopStro): Why is this syncronous? It has ASYNC in the bloody name!
 // Maps the given range of the buffer.
 buffer_map_async :: proc(
     self: ^Buffer,
@@ -150,18 +152,13 @@ buffer_map_async :: proc(
         status = .Unknown,
     }
 
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    self.err_scope.info = #procedure
 
     self.map_state = .Pending
 
-    wgpu.device_push_error_scope(self.device_ptr, .Validation)
     wgpu.buffer_map_async(self.ptr, mode, offset, size, _buffer_map_callback, &res)
-    wgpu.device_pop_error_scope(self.device_ptr, error_scope_callback, &err_scope)
 
-    if err_scope.type != .No_Error {
-        fmt.eprintf("ERROR: Failed to map buffer: %v\n", err_scope.type)
+    if self.err_scope.type != .No_Error {
         return .Validation_Error
     }
 
@@ -185,13 +182,9 @@ buffer_set_label :: proc(using self: ^Buffer, label: cstring) {
 // Unmaps the mapped range of the `Buffer` and makes it's contents available for use
 // by the GPU again.
 buffer_unmap :: proc(using self: ^Buffer) -> Error_Type {
-    err_scope := Error_Scope {
-        info = #procedure,
-    }
+    err_scope.info = #procedure
 
-    wgpu.device_push_error_scope(device_ptr, .Validation)
     wgpu.buffer_unmap(ptr)
-    wgpu.device_pop_error_scope(device_ptr, error_scope_callback, &err_scope)
 
     map_state = .Unmapped
 

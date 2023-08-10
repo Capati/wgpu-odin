@@ -1,8 +1,6 @@
 package wgpu
 
 // Core
-import "core:fmt"
-import "core:runtime"
 
 // Package
 import wgpu "../bindings"
@@ -10,7 +8,7 @@ import wgpu "../bindings"
 // Handle to a command queue on a device.
 Queue :: struct {
     ptr:          WGPU_Queue,
-    device_ptr:   WGPU_Device,
+    err_scope: ^Error_Scope,
     using vtable: ^Queue_VTable,
 }
 
@@ -31,14 +29,14 @@ Queue_VTable :: struct {
         buffer: ^Buffer,
         offset: Buffer_Address,
         data: []byte,
-    ) -> Queue_Error,
+    ) -> Error_Type,
     write_texture:          proc(
         self: ^Queue,
         destination: ^Image_Copy_Texture,
         data: []byte,
         data_layout: ^Texture_Data_Layout,
         write_size: ^Extent_3D,
-    ) -> Queue_Error,
+    ) -> Error_Type,
     reference:              proc(self: ^Queue),
     release:                proc(self: ^Queue),
 }
@@ -58,12 +56,6 @@ default_queue_vtable := Queue_VTable {
 default_queue := Queue {
     ptr    = nil,
     vtable = &default_queue_vtable,
-}
-
-Queue_Error :: enum {
-    No_Error,
-    Write_Buffer_Error,
-    Write_Texture_Error,
 }
 
 queue_on_submitted_work_done :: proc(
@@ -109,21 +101,12 @@ queue_write_buffer :: proc(
     offset: Buffer_Address,
     data: []byte,
 ) -> (
-    err: Queue_Error,
+    err: Error_Type,
 ) {
-    error_callback := proc "c" (type: Error_Type, message: cstring, user_data: rawptr) {
-        if type == .No_Error {
-            return
-        }
-        context = runtime.default_context()
-        fmt.eprintf("ERROR: queue->write_buffer(): %s", message)
-        error := cast(^Queue_Error)user_data
-        error^ = .Write_Buffer_Error
-    }
+    err_scope.info = #procedure
 
     data_size := cast(uint)len(data)
 
-    wgpu.device_push_error_scope(device_ptr, .Validation)
 
     if data_size == 0 {
         wgpu.queue_write_buffer(ptr, buffer.ptr, offset, nil, 0)
@@ -131,9 +114,8 @@ queue_write_buffer :: proc(
         wgpu.queue_write_buffer(ptr, buffer.ptr, offset, raw_data(data), data_size)
     }
 
-    wgpu.device_pop_error_scope(device_ptr, error_callback, &err)
 
-    return
+    return err_scope.type
 }
 
 // Schedule a write of some data into a texture.
@@ -144,21 +126,12 @@ queue_write_texture :: proc(
     data_layout: ^Texture_Data_Layout,
     size: ^Extent_3D,
 ) -> (
-    err: Queue_Error,
+    err: Error_Type,
 ) {
-    error_callback := proc "c" (type: Error_Type, message: cstring, user_data: rawptr) {
-        if type == .No_Error {
-            return
-        }
-        context = runtime.default_context()
-        fmt.eprintf("ERROR: queue->write_texture(): %s", message)
-        error := cast(^Queue_Error)user_data
-        error^ = .Write_Texture_Error
-    }
+    err_scope.info = #procedure
 
     data_size := cast(uint)len(data)
 
-    wgpu.device_push_error_scope(device_ptr, .Validation)
 
     if data_size == 0 {
         wgpu.queue_write_texture(ptr, texture, nil, 0, data_layout, size)
@@ -173,9 +146,8 @@ queue_write_texture :: proc(
         )
     }
 
-    wgpu.device_pop_error_scope(device_ptr, error_callback, &err)
 
-    return
+    return err_scope.type
 }
 
 queue_reference :: proc(using self: ^Queue) {
@@ -183,6 +155,5 @@ queue_reference :: proc(using self: ^Queue) {
 }
 
 queue_release :: proc(using self: ^Queue) {
-    wgpu.device_release(device_ptr)
     wgpu.queue_release(ptr)
 }
