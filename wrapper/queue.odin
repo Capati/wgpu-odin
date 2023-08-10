@@ -1,6 +1,7 @@
 package wgpu
 
 // Core
+import "core:runtime"
 
 // Package
 import wgpu "../bindings"
@@ -84,8 +85,8 @@ queue_submit :: proc(
         return wgpu.queue_submit_for_index(ptr, 1, &commands[0].ptr)
     }
 
-    commands_ptrs := make([]WGPU_Command_Buffer, command_count)
-    defer delete(commands_ptrs)
+    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+    commands_ptrs := make([]WGPU_Command_Buffer, command_count, context.temp_allocator)
 
     for c, i in commands {
         commands_ptrs[i] = c.ptr

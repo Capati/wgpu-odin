@@ -3,6 +3,9 @@ package wgpu
 // Core
 import "core:fmt"
 import "core:os"
+import "core:slice"
+import "core:strings"
+import "core:runtime"
 
 // Package
 import wgpu "../bindings"
@@ -57,13 +60,12 @@ device_load_wgsl_shader_module :: proc(
     using self: ^Device,
     path: cstring,
     label: cstring = nil,
-    allocator := context.allocator,
 ) -> (
     shader_module: Shader_Module,
     err: Error_Type,
 ) {
-    data, data_ok := os.read_entire_file(string(path), allocator)
-    defer delete(data)
+    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+    data, data_ok := os.read_entire_file(string(path), context.temp_allocator)
 
     if !data_ok {
         fmt.eprintf("Failed to load WGSL shader file: [%s]\n", path)
@@ -75,7 +77,7 @@ device_load_wgsl_shader_module :: proc(
 
     descriptor := Shader_Module_Descriptor {
         label           = current_label,
-        wgsl_descriptor = &{code = cstring(raw_data(data))},
+        wgsl_descriptor = &{code = strings.clone_to_cstring(string(data), context.temp_allocator)}, // clone to cstring to ensure null termination
     }
 
     shader_module = self->create_shader_module(&descriptor) or_return
@@ -90,13 +92,12 @@ device_load_spirv_shader_module :: proc(
     using self: ^Device,
     path: cstring,
     label: cstring = nil,
-    allocator := context.allocator,
 ) -> (
     shader_module: Shader_Module,
     err: Error_Type,
 ) {
-    data, data_ok := os.read_entire_file(string(path), allocator)
-    defer delete(data)
+    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+    data, data_ok := os.read_entire_file(string(path), context.temp_allocator)
 
     if !data_ok {
         fmt.eprintf("Failed to load SPIRV shader file: [%s]\n", path)
@@ -108,7 +109,7 @@ device_load_spirv_shader_module :: proc(
 
     descriptor := Shader_Module_Descriptor {
         label            = current_label,
-        spirv_descriptor = &{code = data},
+        spirv_descriptor = &{code = slice.reinterpret([]u32, data)},
     }
 
     shader_module = self->create_shader_module(&descriptor) or_return

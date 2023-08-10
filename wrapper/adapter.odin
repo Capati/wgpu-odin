@@ -70,7 +70,7 @@ adapter_get_features :: proc(
     adapter_features := make([]Feature_Name, features_count, allocator)
     wgpu.adapter_enumerate_features(ptr, raw_data(adapter_features))
 
-    return adapter_features[:]
+    return adapter_features
 }
 
 Limits_Extras :: struct {
