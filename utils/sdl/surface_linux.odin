@@ -3,7 +3,6 @@
 package wgpu_utils_sdl
 
 // Core
-import "core:c"
 
 // Vendor
 import sdl "vendor:sdl2"
@@ -20,16 +19,17 @@ get_surface_descriptor :: proc(
     wm_info := get_sys_info(window) or_return
 
     // Setup surface information
-    descriptor = default_surface_descriptor
 
     if wm_info.subsystem == .WAYLAND {
-        descriptor.Wayland_Surface =
-        &{display = wm_info.info.wl.display, surface = wm_info.info.wl.surface}
+        descriptor.target = wgpu.Surface_Descriptor_From_Wayland_Surface{
+            display = wm_info.info.wl.display,
+            surface = wm_info.info.wl.surface,
+        }
     } else if wm_info.subsystem == .X11 {
-        descriptor.Xlib_Window =
-        &{
+        descriptor.target =
+        wgpu.Surface_Descriptor_From_Xlib_Window{
             display = wm_info.info.x11.display,
-            window = cast(c.uint32_t)wm_info.info.x11.window,
+            window = cast(u32)wm_info.info.x11.window,
         }
     }
 
