@@ -2,6 +2,7 @@ package wgpu
 
 // Core
 import "core:fmt"
+import "core:runtime"
 
 // Package
 import wgpu "../bindings"
@@ -153,12 +154,13 @@ command_encoder_begin_render_pass :: proc(
     using self: ^Command_Encoder,
     descriptor: ^Render_Pass_Descriptor,
 ) -> Render_Pass_Encoder {
+
     desc := wgpu.Render_Pass_Descriptor {
         next_in_chain = nil,
     }
 
-    color_attachments_slice: []wgpu.Render_Pass_Color_Attachment
-    defer delete(color_attachments_slice)
+    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+
 
     if descriptor != nil {
         desc.label = descriptor.label
@@ -187,9 +189,10 @@ command_encoder_begin_render_pass :: proc(
                         color_attachment.resolve_target.ptr
                 }
             } else {
-                color_attachments_slice = make(
+                color_attachments_slice := make(
                     []wgpu.Render_Pass_Color_Attachment,
                     color_attachment_count,
+                    context.temp_allocator,
                 )
 
                 for v, i in descriptor.color_attachments {
