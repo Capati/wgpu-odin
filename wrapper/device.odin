@@ -2,6 +2,7 @@ package wgpu
 
 // Core
 import "core:mem"
+import "core:runtime"
 
 // Package
 import wgpu "../bindings"
@@ -108,7 +109,6 @@ Device_VTable :: struct {
         self: ^Device,
         path: cstring,
         label: cstring = nil,
-        allocator: mem.Allocator = context.allocator,
     ) -> (
         Shader_Module,
         Error_Type,
@@ -117,7 +117,6 @@ Device_VTable :: struct {
         self: ^Device,
         path: cstring,
         label: cstring = nil,
-        allocator: mem.Allocator = context.allocator,
     ) -> (
         Shader_Module,
         Error_Type,
@@ -435,8 +434,7 @@ device_create_pipeline_layout :: proc(
         next_in_chain = nil,
     }
 
-    bind_group_layouts_ptrs: []WGPU_Bind_Group_Layout
-    defer delete(bind_group_layouts_ptrs)
+    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
     if descriptor != nil {
         desc.label = descriptor.label
@@ -449,9 +447,10 @@ device_create_pipeline_layout :: proc(
             if bind_group_layout_count == 1 {
                 desc.bind_group_layouts = &descriptor.bind_group_layouts[0].ptr
             } else {
-                bind_group_layouts_ptrs = make(
+                bind_group_layouts_ptrs := make(
                     []WGPU_Bind_Group_Layout,
                     bind_group_layout_count,
+                    context.temp_allocator,
                 )
 
                 for b, i in descriptor.bind_group_layouts {
@@ -629,10 +628,7 @@ device_create_render_pipeline :: proc(
         next_in_chain = nil,
     }
 
-    buffers_slice: []wgpu.Vertex_Buffer_Layout
-    defer delete(buffers_slice)
-    targets: []Color_Target_State
-    defer delete(targets)
+    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
     if descriptor != nil {
         desc.label = descriptor.label
@@ -653,7 +649,7 @@ device_create_render_pipeline :: proc(
         buffer_count := cast(uint)len(vertex.buffers)
 
         if buffer_count > 0 {
-            buffers_slice = make([]wgpu.Vertex_Buffer_Layout, buffer_count)
+            buffers_slice := make([]wgpu.Vertex_Buffer_Layout, buffer_count, context.temp_allocator)
 
             for v, i in vertex.buffers {
                 buffer := wgpu.Vertex_Buffer_Layout {
@@ -722,7 +718,7 @@ device_create_render_pipeline :: proc(
             }
 
             if target_count > 0 {
-                targets = make([]Color_Target_State, target_count)
+                targets := make([]Color_Target_State, target_count, context.temp_allocator)
 
                 for v, i in descriptor.fragment.targets {
                     target := Color_Target_State {
@@ -787,7 +783,7 @@ device_create_sampler :: proc(
 }
 
 Shader_Module_SPIRV_Descriptor :: struct {
-    code: []byte,
+    code: []u32,
 }
 
 Shader_Module_WGSL_Descriptor :: struct {
@@ -824,7 +820,7 @@ device_create_shader_module :: proc(
 
                 if code_size > 0 {
                     spirv.code_size = code_size
-                    spirv.code = (^u32)(raw_data(descriptor.spirv_descriptor.code))
+                    spirv.code = raw_data(descriptor.spirv_descriptor.code)
                 }
             }
 
@@ -870,7 +866,7 @@ Surface_Configuration :: struct {
 // Creates a `Swap_Chain` with a compatible `Surface`.
 device_create_swap_chain :: proc(
     using self: ^Device,
-    surface: WGPU_Surface,
+    surface: WGPU_Surface, //TODO(JopStro): Change this to take ^Surface?
     descriptor: ^Surface_Configuration,
 ) -> (
     Swap_Chain,
@@ -959,7 +955,7 @@ device_enumerate_features :: proc(
     adapter_features := make([]Feature_Name, count, allocator)
     wgpu.device_enumerate_features(ptr, raw_data(adapter_features))
 
-    return adapter_features[:]
+    return adapter_features
 }
 
 // List all limits that were requested of this device.

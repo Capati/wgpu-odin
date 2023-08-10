@@ -4,6 +4,7 @@ package wgpu
 import "core:fmt"
 import "core:mem"
 import "core:reflect"
+import "core:runtime"
 
 // Package
 import wgpu "../bindings"
@@ -323,8 +324,8 @@ instance_enumerate_adapters :: proc(
         return {}
     }
 
-    wgpu_adapters := make([]WGPU_Adapter, adapter_count, allocator)
-    defer delete(wgpu_adapters)
+    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
+    wgpu_adapters := make([]WGPU_Adapter, adapter_count, context.temp_allocator)
     wgpu.instance_enumerate_adapters(ptr, &options, raw_data(wgpu_adapters))
 
     adapters := make([]Adapter, adapter_count, allocator)
