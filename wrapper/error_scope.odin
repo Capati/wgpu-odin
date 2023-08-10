@@ -24,7 +24,7 @@ error_scope_callback := proc "c" (
     context = runtime.default_context()
     error := cast(^Error_Scope)user_data
     /* fmt.eprintf("ERROR - %s [%v]:\n\t%s\n", error.info, type, message) */
-    error.user_cb(type, message, error.user_data)
+    if error.user_cb != nil do error.user_cb(type, message, error.user_data)
     error.type = type
     delete(error.message)
     error.message = strings.clone_from_cstring(message)
