@@ -1,8 +1,6 @@
 package wgpu
 
 // Core
-import "core:fmt"
-import "core:runtime"
 
 // Package
 import wgpu "../bindings"
