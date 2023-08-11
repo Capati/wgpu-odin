@@ -393,12 +393,13 @@ _on_request_adapter_callback :: proc "c" (
     message: cstring,
     user_data: rawptr,
 ) {
-    context = runtime.default_context()
     response := cast(^Adapter_Response)user_data
     response.status = status
-    update_error_message(string(message))
 
     if status == .Success {
         response.adapter = adapter
+    } else {
+        context = runtime.default_context()
+        update_error_message(string(message))
     }
 }
