@@ -36,7 +36,7 @@ Adapter_VTable :: struct {
         trace_path: cstring = nil,
     ) -> (
         Device,
-        Request_Device_Status,
+        Error_Type,
     ),
     release:        proc(self: ^Adapter),
 }
@@ -126,7 +126,7 @@ adapter_request_device :: proc(
     trace_path: cstring = nil,
 ) -> (
     device: Device,
-    err: Request_Device_Status,
+    err: Error_Type,
 ) {
     device_options: Device_Options
 
@@ -209,7 +209,7 @@ adapter_request_device :: proc(
     wgpu.adapter_request_device(ptr, &descriptor, _on_adapter_request_device, &res)
 
     if res.status != .Success {
-        return {}, res.status
+        return {}, .Unknown
     }
 
     device = default_device
@@ -225,7 +225,7 @@ adapter_request_device :: proc(
 
     device.queue = queue
 
-    return device, .Success
+    return device, .No_Error
 }
 
 // Release the `Adapter`.
