@@ -9,8 +9,6 @@ import "core:runtime"
 // Package
 import wgpu "../bindings"
 
-// Force backend type option
-WGPU_BACKEND_TYPE :: #config(WGPU_BACKEND_TYPE, "Undefined")
 
 // Context for all other wgpu objects.
 Instance :: struct {
@@ -241,7 +239,6 @@ instance_create_surface :: proc(
 
 Adapter_Response :: struct {
     status:  Request_Adapter_Status,
-    message: cstring,
     adapter: WGPU_Adapter,
 }
 
@@ -271,42 +268,14 @@ instance_request_adapter :: proc(
 
         opts.power_preference = options.power_preference
         opts.force_fallback_adapter = options.force_fallback_adapter
-        opts.backend_type = .Undefined
-
-        // Try to read WGPU_BACKEND_TYPE config to see if a backend type should be forced
-        if WGPU_BACKEND_TYPE != "" &&
-           WGPU_BACKEND_TYPE != "Undefined" &&
-           WGPU_BACKEND_TYPE != "Null" {
-            // Try to get the backend type from the string configuration
-            backend, backend_ok := reflect.enum_from_name(
-                Backend_Type,
-                WGPU_BACKEND_TYPE,
-            )
-
-            if backend_ok {
-                opts.backend_type = backend
-            } else {
-                fmt.eprintf(
-                    "Backend type [%v] is invalid, possible values are (case sensitive): \n\tWebGPU\n\tD3D11\n\tD3D12\n\tMetal\n\tVulkan\n\tOpenGL\n\tOpenGLES\n\n",
-                    WGPU_BACKEND_TYPE,
-                )
-
-                return {}, .Validation
-            }
-        } else {
-            // By default force Vulkan on Windows if none is given
-            when ODIN_OS == .Windows {
-                opts.backend_type = .Vulkan
-            }
-        }
+        opts.backend_type = options.backend_type
     }
 
     res := Adapter_Response{}
     wgpu.instance_request_adapter(ptr, &opts, _on_request_adapter_callback, &res)
 
     if res.status != .Success {
-        fmt.eprintf("Failed to request adapter: [%v] - %s\n", res.status, res.message)
-        return {}, .Internal
+        return {}, .Unknown
     }
 
     adapter := default_adapter
@@ -426,9 +395,11 @@ _on_request_adapter_callback :: proc "c" (
 ) {
     response := cast(^Adapter_Response)user_data
     response.status = status
-    response.message = message
 
     if status == .Success {
         response.adapter = adapter
+    } else {
+        context = runtime.default_context()
+        update_error_message(string(message))
     }
 }
