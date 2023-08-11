@@ -115,7 +115,7 @@ compute_pass_encoder_dispatch_workgroups_indirect :: proc(
 }
 
 compute_pass_encoder_end :: proc(using self: ^Compute_Pass_Encoder) -> Error_Type {
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     wgpu.compute_pass_encoder_end(ptr)
 

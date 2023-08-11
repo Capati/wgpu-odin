@@ -152,7 +152,7 @@ buffer_map_async :: proc(
         status = .Unknown,
     }
 
-    self.err_scope.info = #procedure
+    self.err_scope.type = .No_Error
 
     self.map_state = .Pending
 
@@ -182,7 +182,7 @@ buffer_set_label :: proc(using self: ^Buffer, label: cstring) {
 // Unmaps the mapped range of the `Buffer` and makes it's contents available for use
 // by the GPU again.
 buffer_unmap :: proc(using self: ^Buffer) -> Error_Type {
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     wgpu.buffer_unmap(ptr)
 

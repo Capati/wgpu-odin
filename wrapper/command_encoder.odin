@@ -251,7 +251,7 @@ command_encoder_clear_buffer :: proc(
     assert(size % 4 == 0, "size must be a multiple of 4")
     assert(offset + size <= buffer.size, "buffer size out of range")
 
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     wgpu.command_encoder_clear_buffer(ptr, buffer.ptr, offset, size)
 
@@ -271,7 +271,7 @@ command_encoder_copy_buffer_to_buffer :: proc(
     assert(destination_offset % 4 == 0, "'destination_offset' must be a multiple of 4")
     assert(size % 4 == 0, "'size' must be a multiple of 4")
 
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     wgpu.command_encoder_copy_buffer_to_buffer(
         ptr,
@@ -304,7 +304,7 @@ command_encoder_copy_buffer_to_texture :: proc(
         }
     }
 
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     wgpu.command_encoder_copy_buffer_to_texture(ptr, source, destination, copy_size)
 
@@ -330,7 +330,7 @@ command_encoder_copy_texture_to_buffer :: proc(
         }
     }
 
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     wgpu.command_encoder_copy_texture_to_buffer(ptr, source, destination, copy_size)
 
@@ -344,7 +344,7 @@ command_encoder_copy_texture_to_texture :: proc(
     destination: ^Image_Copy_Texture,
     copy_size: ^Extent_3D,
 ) -> Error_Type {
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     wgpu.command_encoder_copy_texture_to_texture(ptr, source, destination, copy_size)
 
@@ -359,7 +359,7 @@ command_encoder_finish :: proc(
     Command_Buffer,
     Error_Type,
 ) {
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     command_buffer_ptr := wgpu.command_encoder_finish(
         ptr,
@@ -383,7 +383,7 @@ command_encoder_insert_debug_marker :: proc(
     using self: ^Command_Encoder,
     marker_label: cstring,
 ) -> Error_Type {
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     wgpu.command_encoder_insert_debug_marker(ptr, marker_label)
 
@@ -391,7 +391,7 @@ command_encoder_insert_debug_marker :: proc(
 }
 
 command_encoder_pop_debug_group :: proc(using self: ^Command_Encoder) -> Error_Type {
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     wgpu.command_encoder_pop_debug_group(ptr)
 
@@ -402,7 +402,7 @@ command_encoder_push_debug_group :: proc(
     using self: ^Command_Encoder,
     group_label: cstring,
 ) -> Error_Type {
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     wgpu.command_encoder_push_debug_group(ptr, group_label)
 
@@ -417,7 +417,7 @@ command_encoder_resolve_query_set :: proc(
     destination: Buffer,
     destination_offset: u64,
 ) -> Error_Type {
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     wgpu.command_encoder_resolve_query_set(
         ptr,
@@ -440,7 +440,7 @@ command_encoder_write_timestamp :: proc(
     query_set: Query_Set,
     query_index: u32,
 ) -> Error_Type {
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     wgpu.command_encoder_write_timestamp(ptr, query_set.ptr, query_index)
 
