@@ -182,10 +182,6 @@ surface_get_capabilities :: proc(
         ret.present_modes = caps.present_modes[:caps.present_mode_count]
     }
 
-    if caps.alpha_mode_count > 0 {
-        ret.alpha_modes = caps.alpha_modes[:caps.alpha_mode_count]
-    }
-
     return ret
 }
 
@@ -204,9 +200,9 @@ surface_get_current_texture :: proc(
     frame := default_surface_texture
     frame.view = chain->get_current_texture_view() or_return
     frame.chain = {
-        ptr        = chain.ptr,
-        err_scope  = chain.err_scope,
-        vtable     = &default_swap_chain_vtable,
+        ptr       = chain.ptr,
+        err_scope = chain.err_scope,
+        vtable    = &default_swap_chain_vtable,
     }
 
     current_view_ptr = frame.view.ptr
