@@ -9,7 +9,7 @@ import wgpu "../bindings"
 // Handle to a command queue on a device.
 Queue :: struct {
     ptr:          WGPU_Queue,
-    err_scope: ^Error_Scope,
+    err_data: ^Error_Data,
     using vtable: ^Queue_VTable,
 }
 
@@ -104,7 +104,7 @@ queue_write_buffer :: proc(
 ) -> (
     err: Error_Type,
 ) {
-    err_scope.info = #procedure
+    err_data.type = .No_Error
 
     data_size := cast(uint)len(data)
 
@@ -116,7 +116,7 @@ queue_write_buffer :: proc(
     }
 
 
-    return err_scope.type
+    return err_data.type
 }
 
 // Schedule a write of some data into a texture.
@@ -129,7 +129,7 @@ queue_write_texture :: proc(
 ) -> (
     err: Error_Type,
 ) {
-    err_scope.info = #procedure
+    err_data.type = .No_Error
 
     data_size := cast(uint)len(data)
 
@@ -148,7 +148,7 @@ queue_write_texture :: proc(
     }
 
 
-    return err_scope.type
+    return err_data.type
 }
 
 queue_reference :: proc(using self: ^Queue) {
