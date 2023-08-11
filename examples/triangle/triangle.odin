@@ -54,7 +54,7 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
 
     // Adapter
     adapter := state.instance->request_adapter(
-        &{compatible_surface = &state.surface, power_preference = .High_Performance},
+            &{compatible_surface = &state.surface, power_preference = .High_Performance},
     ) or_return
     defer adapter->release()
 
@@ -266,7 +266,15 @@ main :: proc() {
     }
 
     state, state_err := init_state(sdl_window)
-    if state_err != .No_Error do return
+    if state_err != .No_Error {
+        message := wgpu.get_error_message()
+        if message != "" {
+            fmt.eprintln("ERROR: Failed to initilize program:", message)
+        } else {
+            fmt.eprintln("ERROR: Failed to initilize program")
+        }
+        return
+    }
     defer {
         when TRIANGLE_MSAA_EXAMPLE {
             state.multisampled_framebuffer->release()
@@ -278,7 +286,7 @@ main :: proc() {
         state.instance->release()
     }
 
-    err := wgpu.Error_Type{}
+    err: wgpu.Error_Type
 
     main_loop: for {
         e: sdl.Event
@@ -315,7 +323,7 @@ main :: proc() {
     }
 
     if err != .No_Error {
-        fmt.eprintf("Error occurred while rendering: %v\n", err)
+        fmt.eprintf("Error occurred while rendering: %v\n", wgpu.get_error_message())
     }
 
     fmt.println("Exiting...")
