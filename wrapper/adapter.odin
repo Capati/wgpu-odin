@@ -1,9 +1,7 @@
 package wgpu
 
 // Core
-import "core:fmt"
 import "core:mem"
-import "core:os"
 import "core:runtime"
 
 // Package
@@ -115,8 +113,8 @@ Device_Options :: struct {
 }
 
 Device_Response :: struct {
-    status:  Request_Device_Status,
-    device:  WGPU_Device,
+    status: Request_Device_Status,
+    device: WGPU_Device,
 }
 
 // Requests a connection to a physical device, creating a logical device.
@@ -152,9 +150,16 @@ adapter_request_device :: proc(
 
     // TODO(JopStro): Merge Feature Enums in bindings to remove need for memory allocation?
     runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-    required_features := make([]Feature_Name, len(device_options.features) + len(device_options.native_features))
+    required_features := make(
+        []Feature_Name,
+        len(device_options.features) + len(device_options.native_features),
+        context.temp_allocator,
+    )
     copy(required_features, device_options.features)
-    copy(required_features[len(device_options.features):], transmute([]Feature_Name)device_options.native_features)
+    copy(
+        required_features[len(device_options.features):],
+        transmute([]Feature_Name)device_options.native_features,
+    )
 
     if len(required_features) > 0 {
         descriptor.required_features_count = len(required_features)
@@ -217,7 +222,11 @@ adapter_request_device :: proc(
     device.features = device->get_features()
     device.limits = device->get_limits()
     device.err_data = new(Error_Data) // Heap allocate to avoid stack fuckery
-    wgpu.device_set_uncaptured_error_callback(device.ptr, uncaptured_error_callback, device.err_data)
+    wgpu.device_set_uncaptured_error_callback(
+        device.ptr,
+        uncaptured_error_callback,
+        device.err_data,
+    )
 
     queue := default_queue
     queue.ptr = wgpu.device_get_queue(res.device)

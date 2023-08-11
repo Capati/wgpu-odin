@@ -3,7 +3,6 @@ package wgpu
 // Core
 import "core:fmt"
 import "core:mem"
-import "core:reflect"
 import "core:runtime"
 
 // Package
