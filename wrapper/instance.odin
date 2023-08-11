@@ -30,7 +30,7 @@ Instance_VTable :: struct {
         options: ^Request_Adapter_Options,
     ) -> (
         Adapter,
-        Error_Type,
+        Request_Adapter_Status,
     ),
     enumerate_adapters: proc(
         self: ^Instance,
@@ -239,7 +239,6 @@ instance_create_surface :: proc(
 
 Adapter_Response :: struct {
     status:  Request_Adapter_Status,
-    message: cstring,
     adapter: WGPU_Adapter,
 }
 
@@ -258,7 +257,7 @@ instance_request_adapter :: proc(
     options: ^Request_Adapter_Options,
 ) -> (
     Adapter,
-    Error_Type,
+    Request_Adapter_Status,
 ) {
     opts := wgpu.Request_Adapter_Options{}
 
@@ -276,8 +275,7 @@ instance_request_adapter :: proc(
     wgpu.instance_request_adapter(ptr, &opts, _on_request_adapter_callback, &res)
 
     if res.status != .Success {
-        fmt.eprintf("Failed to request adapter: [%v] - %s\n", res.status, res.message)
-        return {}, .Internal
+        return {}, res.status
     }
 
     adapter := default_adapter
@@ -286,7 +284,7 @@ instance_request_adapter :: proc(
     adapter.limits, adapter.limits_extras = adapter->get_limits()
     adapter.info = adapter->request_info()
 
-    return adapter, .No_Error
+    return adapter, res.status
 }
 
 // Retrieves all available `Adapters` that match the given options.
@@ -395,9 +393,10 @@ _on_request_adapter_callback :: proc "c" (
     message: cstring,
     user_data: rawptr,
 ) {
+    context = runtime.default_context()
     response := cast(^Adapter_Response)user_data
     response.status = status
-    response.message = message
+    update_error_message(string(message))
 
     if status == .Success {
         response.adapter = adapter
