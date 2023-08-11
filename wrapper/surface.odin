@@ -3,7 +3,7 @@ package wgpu
 // Core
 import "core:fmt"
 import "core:mem"
-import "core:runtime"
+// import "core:runtime"
 
 // Package
 import wgpu "../bindings"
