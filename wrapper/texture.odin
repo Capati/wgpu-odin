@@ -63,7 +63,7 @@ texture_create_view :: proc(
     Texture_View,
     Error_Type,
 ) {
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     texture_view_ptr := wgpu.texture_create_view(ptr, descriptor)
 

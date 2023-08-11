@@ -7,7 +7,6 @@ import "core:strings"
 
 Error_Scope :: struct {
     type: Error_Type,
-    info: cstring,
     message: string,
     user_cb: Error_Callback,
     user_data: rawptr,

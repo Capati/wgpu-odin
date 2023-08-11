@@ -37,7 +37,7 @@ swap_chain_get_current_texture_view :: proc(
     Texture_View,
     Error_Type,
 ) {
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     texture_view_ptr := wgpu.swap_chain_get_current_texture_view(ptr)
 

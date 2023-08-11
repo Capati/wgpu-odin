@@ -234,7 +234,7 @@ device_create_bind_group :: proc(
         }
     }
 
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     bind_group_ptr := wgpu.device_create_bind_group(ptr, &desc)
 
@@ -277,7 +277,7 @@ device_create_bind_group_layout :: proc(
         }
     }
 
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     bind_group_layout_ptr := wgpu.device_create_bind_group_layout(ptr, &desc)
 
@@ -303,7 +303,7 @@ device_create_buffer :: proc(
     Error_Type,
 ) {
 
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     buffer_ptr := wgpu.device_create_buffer(ptr, descriptor)
 
@@ -336,7 +336,7 @@ device_create_command_encoder :: proc(
 ) {
     command_encoder := default_gpu_command_encoder
 
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     if descriptor != nil {
         command_encoder.ptr = wgpu.device_create_command_encoder(ptr, descriptor)
@@ -400,7 +400,7 @@ device_create_compute_pipeline :: proc(
         desc.compute = compute
     }
 
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     compute_pipeline_ptr := wgpu.device_create_compute_pipeline(ptr, &desc)
 
@@ -464,7 +464,7 @@ device_create_pipeline_layout :: proc(
         }
     }
 
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     pipeline_layout_ptr := wgpu.device_create_pipeline_layout(ptr, &desc)
 
@@ -510,7 +510,7 @@ device_create_query_set :: proc(
         }
     }
 
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     query_set_ptr := wgpu.device_create_query_set(ptr, &desc)
 
@@ -749,7 +749,7 @@ device_create_render_pipeline :: proc(
         }
     }
 
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     render_pipeline_ptr := wgpu.device_create_render_pipeline(ptr, &desc)
 
@@ -773,7 +773,7 @@ device_create_sampler :: proc(
     Sampler,
     Error_Type,
 ) {
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     sampler_ptr := wgpu.device_create_sampler(ptr, descriptor)
 
@@ -843,7 +843,7 @@ device_create_shader_module :: proc(
         }
     }
 
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     shader_module_ptr := wgpu.device_create_shader_module(ptr, &desc)
 
@@ -911,7 +911,7 @@ device_create_swap_chain :: proc(
 
         desc.next_in_chain = cast(^Chained_Struct)&extras
     }
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     swap_chain_ptr := wgpu.device_create_swap_chain(ptr, surface.ptr, &desc)
 
@@ -936,7 +936,7 @@ device_create_texture :: proc(
     Texture,
     Error_Type,
 ) {
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     texture_ptr := wgpu.device_create_texture(ptr, descriptor)
 

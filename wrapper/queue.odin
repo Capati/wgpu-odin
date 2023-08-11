@@ -104,7 +104,7 @@ queue_write_buffer :: proc(
 ) -> (
     err: Error_Type,
 ) {
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     data_size := cast(uint)len(data)
 
@@ -129,7 +129,7 @@ queue_write_texture :: proc(
 ) -> (
     err: Error_Type,
 ) {
-    err_scope.info = #procedure
+    err_scope.type = .No_Error
 
     data_size := cast(uint)len(data)
 
