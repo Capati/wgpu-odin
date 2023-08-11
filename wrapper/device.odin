@@ -1012,7 +1012,8 @@ device_push_error_scope :: proc(using self: ^Device, filter: Error_Filter) {
     wgpu.device_push_error_scope(ptr, filter)
 }
 
-// Get last error message. Ownership not transfered. String valid until next error or until device is released
+// Get last error message. Ownership not transferred. String valid until next error or 
+// until device is released
 device_get_error_message :: proc(using self: ^Device) -> string {
     return err_scope.message
 }
@@ -1031,6 +1032,7 @@ device_release :: proc(using self: ^Device) {
         delete(features)
         delete(err_scope.message)
         free(err_scope)
+        queue->release()
         wgpu.device_release(ptr)
     }
 }
