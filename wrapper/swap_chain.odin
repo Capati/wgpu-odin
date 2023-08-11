@@ -5,7 +5,7 @@ import wgpu "../bindings"
 
 Swap_Chain :: struct {
     ptr:          WGPU_Swap_Chain,
-    err_scope: ^Error_Scope,
+    err_data: ^Error_Data,
     using vtable: ^Swap_Chain_VTable,
 }
 
@@ -37,15 +37,15 @@ swap_chain_get_current_texture_view :: proc(
     Texture_View,
     Error_Type,
 ) {
-    err_scope.type = .No_Error
+    err_data.type = .No_Error
 
     texture_view_ptr := wgpu.swap_chain_get_current_texture_view(ptr)
 
-    if err_scope.type != .No_Error {
+    if err_data.type != .No_Error {
         if texture_view_ptr != nil {
             wgpu.texture_view_release(texture_view_ptr)
         }
-        return {}, err_scope.type
+        return {}, err_data.type
     }
 
     texture_view := default_texture_view

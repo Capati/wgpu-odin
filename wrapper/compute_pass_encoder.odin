@@ -5,7 +5,7 @@ import wgpu "../bindings"
 
 Compute_Pass_Encoder :: struct {
     ptr:          WGPU_Compute_Pass_Encoder,
-    err_scope: ^Error_Scope,
+    err_data: ^Error_Data,
     using vtable: ^Compute_Pass_Encoder_VTable,
 }
 
@@ -115,11 +115,11 @@ compute_pass_encoder_dispatch_workgroups_indirect :: proc(
 }
 
 compute_pass_encoder_end :: proc(using self: ^Compute_Pass_Encoder) -> Error_Type {
-    err_scope.type = .No_Error
+    err_data.type = .No_Error
 
     wgpu.compute_pass_encoder_end(ptr)
 
-    return err_scope.type
+    return err_data.type
 }
 
 compute_pass_encoder_end_pipeline_statistics_query :: proc(
