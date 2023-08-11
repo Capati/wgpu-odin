@@ -190,7 +190,6 @@ default_device_vtable := Device_VTable {
     set_uncaptured_error_callback = device_set_uncaptured_error_callback,
     pop_error_scope               = device_pop_error_scope,
     push_error_scope              = device_push_error_scope,
-    get_error_message             = device_get_error_message,
     set_label                     = device_set_label,
     reference                     = device_reference,
     release                       = device_release,
@@ -1012,12 +1011,6 @@ device_push_error_scope :: proc(using self: ^Device, filter: Error_Filter) {
     wgpu.device_push_error_scope(ptr, filter)
 }
 
-// Get last error message. Ownership not transferred. String valid until next error or 
-// until device is released
-device_get_error_message :: proc(using self: ^Device) -> string {
-    return err_data.message
-}
-
 device_set_label :: proc(using self: ^Device, label: cstring) {
     wgpu.device_set_label(ptr, label)
 }
@@ -1030,7 +1023,6 @@ device_reference :: proc(using self: ^Device) {
 device_release :: proc(using self: ^Device) {
     if ptr != nil {
         delete(features)
-        delete(err_data.message)
         free(err_data)
         queue->release()
         wgpu.device_release(ptr)

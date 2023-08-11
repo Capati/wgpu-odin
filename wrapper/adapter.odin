@@ -4,6 +4,7 @@ package wgpu
 import "core:fmt"
 import "core:mem"
 import "core:os"
+import "core:runtime"
 
 // Package
 import wgpu "../bindings"
@@ -113,37 +114,23 @@ Device_Options :: struct {
     device_lost_userdata: rawptr,
 }
 
-default_device_options := Device_Options {
-    label = "",
-    features = nil,
-    native_features = nil,
-    limits = {},
-    limits_extra = {},
-    trace_path = nil,
-    device_lost_callback = nil,
-    device_lost_userdata = nil,
-}
-
 Device_Response :: struct {
     status:  Request_Device_Status,
-    message: cstring,
     device:  WGPU_Device,
 }
 
 // Requests a connection to a physical device, creating a logical device.
 adapter_request_device :: proc(
     using self: ^Adapter,
-    options: ^Device_Options = nil,
+    options: ^Device_Options = nil, // TODO(JopStro): this should probably not be a pointer, since a copy is being made anyway
     trace_path: cstring = nil,
 ) -> (
     device: Device,
     err: Error_Type,
 ) {
-    device_options := Device_Options{}
+    device_options: Device_Options
 
-    if options == nil {
-        device_options = default_device_options
-    } else {
+    if options != nil {
         device_options.label = options.label
         device_options.features = options.features
         device_options.native_features = options.native_features
@@ -163,30 +150,11 @@ adapter_request_device :: proc(
         descriptor.device_lost_userdata = device_options.device_lost_userdata
     }
 
-    required_features: [dynamic]Feature_Name
-    defer delete(required_features)
-
-    if device_options.features != nil && len(device_options.features) > 0 {
-        for f in device_options.features {
-            if !wgpu.adapter_has_feature(ptr, f) {
-                fmt.eprintf("Feature [%v] is not supported by this adapter.\n", f)
-                return {}, .Validation
-            }
-
-            append(&required_features, f)
-        }
-    }
-
-    if device_options.native_features != nil && len(device_options.native_features) > 0 {
-        for f in device_options.native_features {
-            if !wgpu.adapter_has_feature(ptr, transmute(Feature_Name)f) {
-                fmt.eprintf("Native feature [%v] is not supported by this adapter.\n", f)
-                return {}, .Validation
-            }
-
-            append(&required_features, transmute(Feature_Name)f)
-        }
-    }
+    // TODO(JopStro): Merge Feature Enums in bindings to remove need for memory allocation?
+    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+    required_features := make([]Feature_Name, len(device_options.features) + len(device_options.native_features))
+    copy(required_features, device_options.features)
+    copy(required_features[len(device_options.features):], transmute([]Feature_Name)device_options.native_features)
 
     if len(required_features) > 0 {
         descriptor.required_features_count = len(required_features)
@@ -201,6 +169,9 @@ adapter_request_device :: proc(
 
     if device_options.limits_extra != {} {
         required_limits_extras := Required_Limits_Extras {
+            chain = {
+                stype = SType(Native_SType.Required_Limits_Extras),
+            },
             max_push_constant_size = device_options.limits_extra.max_push_constant_size,
         }
         required_limits.next_in_chain = cast(^Chained_Struct)&required_limits_extras
@@ -224,21 +195,21 @@ adapter_request_device :: proc(
             trace_path = trace_path,
         }
 
-        dir := string(trace_path)
-        if res := os.is_dir(dir); !res {
-            if res := os.make_directory(dir); res != 0 {
-                fmt.eprintf("Failed to make trace path directory: [%v]\n", res)
-                return {}, .Unknown
-            }
-        }
+        // NOTE: I don't belive this is needed, also it looks incorrect, directory normaly means folder
+        /* dir := string(trace_path) */
+        /* if res := os.is_dir(dir); !res { */
+        /*     if res := os.make_directory(dir); res != 0 { */
+        /*         fmt.eprintf("Failed to make trace path directory: [%v]\n", res) */
+        /*         return {}, .Unknown */
+        /*     } */
+        /* } */
     }
 
     res := Device_Response{}
     wgpu.adapter_request_device(ptr, &descriptor, _on_adapter_request_device, &res)
 
     if res.status != .Success {
-        fmt.eprintf("Failed to request a device: [%v] - %s\n", res.status, res.message)
-        return {}, .Internal
+        return {}, .Unknown
     }
 
     device = default_device
@@ -272,9 +243,11 @@ _on_adapter_request_device :: proc "c" (
 ) {
     response := cast(^Device_Response)user_data
     response.status = status
-    response.message = message
 
     if status == .Success {
         response.device = device
+    } else {
+        context = runtime.default_context()
+        update_error_message(string(message))
     }
 }
