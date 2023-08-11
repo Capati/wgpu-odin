@@ -10,7 +10,7 @@ import wgpu "../bindings"
 // Encodes a series of GPU operations.
 Command_Encoder :: struct {
     ptr:          WGPU_Command_Encoder,
-    err_scope: ^Error_Scope,
+    err_data: ^Error_Data,
     using vtable: ^Command_Encoder_VTable,
 }
 
@@ -127,7 +127,7 @@ command_encoder_begin_compute_pass :: proc(
 
     compute_pass := default_compute_pass_encoder
     compute_pass.ptr = compute_pass_ptr
-    compute_pass.err_scope = err_scope
+    compute_pass.err_data = err_data
 
     return compute_pass
 }
@@ -251,11 +251,11 @@ command_encoder_clear_buffer :: proc(
     assert(size % 4 == 0, "size must be a multiple of 4")
     assert(offset + size <= buffer.size, "buffer size out of range")
 
-    err_scope.type = .No_Error
+    err_data.type = .No_Error
 
     wgpu.command_encoder_clear_buffer(ptr, buffer.ptr, offset, size)
 
-    return err_scope.type
+    return err_data.type
 }
 
 // Copy data from one buffer to another.
@@ -271,7 +271,7 @@ command_encoder_copy_buffer_to_buffer :: proc(
     assert(destination_offset % 4 == 0, "'destination_offset' must be a multiple of 4")
     assert(size % 4 == 0, "'size' must be a multiple of 4")
 
-    err_scope.type = .No_Error
+    err_data.type = .No_Error
 
     wgpu.command_encoder_copy_buffer_to_buffer(
         ptr,
@@ -282,7 +282,7 @@ command_encoder_copy_buffer_to_buffer :: proc(
         size,
     )
 
-    return err_scope.type
+    return err_data.type
 }
 
 // Copy data from a buffer to a texture.
@@ -304,11 +304,11 @@ command_encoder_copy_buffer_to_texture :: proc(
         }
     }
 
-    err_scope.type = .No_Error
+    err_data.type = .No_Error
 
     wgpu.command_encoder_copy_buffer_to_texture(ptr, source, destination, copy_size)
 
-    return err_scope.type
+    return err_data.type
 }
 
 // Copy data from a texture to a buffer.
@@ -330,11 +330,11 @@ command_encoder_copy_texture_to_buffer :: proc(
         }
     }
 
-    err_scope.type = .No_Error
+    err_data.type = .No_Error
 
     wgpu.command_encoder_copy_texture_to_buffer(ptr, source, destination, copy_size)
 
-    return err_scope.type
+    return err_data.type
 }
 
 // Copy data from one texture to another.
@@ -344,11 +344,11 @@ command_encoder_copy_texture_to_texture :: proc(
     destination: ^Image_Copy_Texture,
     copy_size: ^Extent_3D,
 ) -> Error_Type {
-    err_scope.type = .No_Error
+    err_data.type = .No_Error
 
     wgpu.command_encoder_copy_texture_to_texture(ptr, source, destination, copy_size)
 
-    return err_scope.type
+    return err_data.type
 }
 
 // Finish recording. Returns a `Command_Buffer` to submit to `Queue`.
@@ -359,18 +359,18 @@ command_encoder_finish :: proc(
     Command_Buffer,
     Error_Type,
 ) {
-    err_scope.type = .No_Error
+    err_data.type = .No_Error
 
     command_buffer_ptr := wgpu.command_encoder_finish(
         ptr,
         &Command_Buffer_Descriptor{label = label},
     )
 
-    if err_scope.type != .No_Error {
+    if err_data.type != .No_Error {
         if command_buffer_ptr != nil {
             wgpu.command_buffer_release(command_buffer_ptr)
         }
-        return {}, err_scope.type
+        return {}, err_data.type
     }
 
     command_buffer := default_command_buffer
@@ -383,30 +383,30 @@ command_encoder_insert_debug_marker :: proc(
     using self: ^Command_Encoder,
     marker_label: cstring,
 ) -> Error_Type {
-    err_scope.type = .No_Error
+    err_data.type = .No_Error
 
     wgpu.command_encoder_insert_debug_marker(ptr, marker_label)
 
-    return err_scope.type
+    return err_data.type
 }
 
 command_encoder_pop_debug_group :: proc(using self: ^Command_Encoder) -> Error_Type {
-    err_scope.type = .No_Error
+    err_data.type = .No_Error
 
     wgpu.command_encoder_pop_debug_group(ptr)
 
-    return err_scope.type
+    return err_data.type
 }
 
 command_encoder_push_debug_group :: proc(
     using self: ^Command_Encoder,
     group_label: cstring,
 ) -> Error_Type {
-    err_scope.type = .No_Error
+    err_data.type = .No_Error
 
     wgpu.command_encoder_push_debug_group(ptr, group_label)
 
-    return err_scope.type
+    return err_data.type
 }
 
 command_encoder_resolve_query_set :: proc(
@@ -417,7 +417,7 @@ command_encoder_resolve_query_set :: proc(
     destination: Buffer,
     destination_offset: u64,
 ) -> Error_Type {
-    err_scope.type = .No_Error
+    err_data.type = .No_Error
 
     wgpu.command_encoder_resolve_query_set(
         ptr,
@@ -428,7 +428,7 @@ command_encoder_resolve_query_set :: proc(
         destination_offset,
     )
 
-    return err_scope.type
+    return err_data.type
 }
 
 command_encoder_set_label :: proc(using self: ^Command_Encoder, label: cstring) {
@@ -440,11 +440,11 @@ command_encoder_write_timestamp :: proc(
     query_set: Query_Set,
     query_index: u32,
 ) -> Error_Type {
-    err_scope.type = .No_Error
+    err_data.type = .No_Error
 
     wgpu.command_encoder_write_timestamp(ptr, query_set.ptr, query_index)
 
-    return err_scope.type
+    return err_data.type
 }
 
 command_encoder_reference :: proc(using self: ^Command_Encoder) {
