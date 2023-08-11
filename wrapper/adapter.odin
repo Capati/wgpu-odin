@@ -245,12 +245,12 @@ adapter_request_device :: proc(
     device.ptr = res.device
     device.features = device->get_features()
     device.limits = device->get_limits()
-    device.err_scope = new(Error_Scope) // Heap allocate to avoid stack fuckery
-    wgpu.device_set_uncaptured_error_callback(device.ptr, error_scope_callback, device.err_scope)
+    device.err_data = new(Error_Data) // Heap allocate to avoid stack fuckery
+    wgpu.device_set_uncaptured_error_callback(device.ptr, uncaptured_error_callback, device.err_data)
 
     queue := default_queue
     queue.ptr = wgpu.device_get_queue(res.device)
-    queue.err_scope = device.err_scope
+    queue.err_data = device.err_data
 
     device.queue = queue
 

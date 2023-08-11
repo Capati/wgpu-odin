@@ -12,7 +12,7 @@ import wgpu "../bindings"
 Buffer :: struct {
     ptr:          WGPU_Buffer,
     device_ptr:   WGPU_Device,
-    err_scope:    ^Error_Scope,
+    err_data:    ^Error_Data,
     size:         Buffer_Size,
     map_state:    Buffer_Map_State,
     usage:        Buffer_Usage_Flags,
@@ -152,13 +152,13 @@ buffer_map_async :: proc(
         status = .Unknown,
     }
 
-    self.err_scope.info = #procedure
+    self.err_data.type = .No_Error
 
     self.map_state = .Pending
 
     wgpu.buffer_map_async(self.ptr, mode, offset, size, _buffer_map_callback, &res)
 
-    if self.err_scope.type != .No_Error {
+    if self.err_data.type != .No_Error {
         return .Validation_Error
     }
 
@@ -182,13 +182,13 @@ buffer_set_label :: proc(using self: ^Buffer, label: cstring) {
 // Unmaps the mapped range of the `Buffer` and makes it's contents available for use
 // by the GPU again.
 buffer_unmap :: proc(using self: ^Buffer) -> Error_Type {
-    err_scope.info = #procedure
+    err_data.type = .No_Error
 
     wgpu.buffer_unmap(ptr)
 
     map_state = .Unmapped
 
-    return err_scope.type
+    return err_data.type
 }
 
 // Release the `Buffer`.

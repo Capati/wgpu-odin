@@ -13,7 +13,7 @@ Device :: struct {
     features:     []Feature_Name,
     limits:       Limits,
     queue:        Queue,
-    err_scope:    ^Error_Scope,
+    err_data:    ^Error_Data,
     using vtable: ^Device_VTable,
 }
 
@@ -234,15 +234,15 @@ device_create_bind_group :: proc(
         }
     }
 
-    err_scope.info = #procedure
+    err_data.type = .No_Error
 
     bind_group_ptr := wgpu.device_create_bind_group(ptr, &desc)
 
-    if err_scope.type != .No_Error {
+    if err_data.type != .No_Error {
         if bind_group_ptr != nil {
             wgpu.bind_group_release(bind_group_ptr)
         }
-        return {}, err_scope.type
+        return {}, err_data.type
     }
 
     bind_group := default_bind_group
@@ -277,15 +277,15 @@ device_create_bind_group_layout :: proc(
         }
     }
 
-    err_scope.info = #procedure
+    err_data.type = .No_Error
 
     bind_group_layout_ptr := wgpu.device_create_bind_group_layout(ptr, &desc)
 
-    if err_scope.type != .No_Error {
+    if err_data.type != .No_Error {
         if bind_group_layout_ptr != nil {
             wgpu.bind_group_layout_release(bind_group_layout_ptr)
         }
-        return {}, err_scope.type
+        return {}, err_data.type
     }
 
     bind_group_layout := default_bind_group_layout
@@ -303,15 +303,15 @@ device_create_buffer :: proc(
     Error_Type,
 ) {
 
-    err_scope.info = #procedure
+    err_data.type = .No_Error
 
     buffer_ptr := wgpu.device_create_buffer(ptr, descriptor)
 
-    if err_scope.type != .No_Error {
+    if err_data.type != .No_Error {
         if buffer_ptr != nil {
             wgpu.buffer_release(buffer_ptr)
         }
-        return {}, err_scope.type
+        return {}, err_data.type
     }
 
     wgpu.device_reference(ptr)
@@ -319,7 +319,7 @@ device_create_buffer :: proc(
     buffer := default_buffer
     buffer.ptr = buffer_ptr
     buffer.device_ptr = self.ptr
-    buffer.err_scope = err_scope
+    buffer.err_data = err_data
     buffer.size = descriptor.size
     buffer.usage = descriptor.usage
 
@@ -336,7 +336,7 @@ device_create_command_encoder :: proc(
 ) {
     command_encoder := default_gpu_command_encoder
 
-    err_scope.info = #procedure
+    err_data.type = .No_Error
 
     if descriptor != nil {
         command_encoder.ptr = wgpu.device_create_command_encoder(ptr, descriptor)
@@ -347,14 +347,14 @@ device_create_command_encoder :: proc(
         )
     }
 
-    if err_scope.type != .No_Error {
+    if err_data.type != .No_Error {
         if command_encoder.ptr != nil {
             wgpu.command_encoder_release(command_encoder.ptr)
         }
-        return {}, err_scope.type
+        return {}, err_data.type
     }
 
-    command_encoder.err_scope = err_scope
+    command_encoder.err_data = err_data
 
     return command_encoder, .No_Error
 }
@@ -400,15 +400,15 @@ device_create_compute_pipeline :: proc(
         desc.compute = compute
     }
 
-    err_scope.info = #procedure
+    err_data.type = .No_Error
 
     compute_pipeline_ptr := wgpu.device_create_compute_pipeline(ptr, &desc)
 
-    if err_scope.type != .No_Error {
+    if err_data.type != .No_Error {
         if compute_pipeline_ptr != nil {
             wgpu.compute_pipeline_release(compute_pipeline_ptr)
         }
-        return {}, err_scope.type
+        return {}, err_data.type
     }
 
     compute_pipeline := default_compute_pipeline
@@ -464,15 +464,15 @@ device_create_pipeline_layout :: proc(
         }
     }
 
-    err_scope.info = #procedure
+    err_data.type = .No_Error
 
     pipeline_layout_ptr := wgpu.device_create_pipeline_layout(ptr, &desc)
 
-    if err_scope.type != .No_Error {
+    if err_data.type != .No_Error {
         if pipeline_layout_ptr != nil {
             wgpu.pipeline_layout_release(pipeline_layout_ptr)
         }
-        return {}, err_scope.type
+        return {}, err_data.type
     }
 
     pipeline_layout := default_pipeline_layout
@@ -510,15 +510,15 @@ device_create_query_set :: proc(
         }
     }
 
-    err_scope.info = #procedure
+    err_data.type = .No_Error
 
     query_set_ptr := wgpu.device_create_query_set(ptr, &desc)
 
-    if err_scope.type != .No_Error {
+    if err_data.type != .No_Error {
         if query_set_ptr != nil {
             wgpu.query_set_release(query_set_ptr)
         }
-        return {}, err_scope.type
+        return {}, err_data.type
     }
 
     query_set := default_query_set
@@ -749,15 +749,15 @@ device_create_render_pipeline :: proc(
         }
     }
 
-    err_scope.info = #procedure
+    err_data.type = .No_Error
 
     render_pipeline_ptr := wgpu.device_create_render_pipeline(ptr, &desc)
 
-    if err_scope.type != .No_Error {
+    if err_data.type != .No_Error {
         if render_pipeline_ptr != nil {
             wgpu.render_pipeline_release(render_pipeline_ptr)
         }
-        return {}, err_scope.type
+        return {}, err_data.type
     }
 
     render_pipeline := default_render_pipeline
@@ -773,15 +773,15 @@ device_create_sampler :: proc(
     Sampler,
     Error_Type,
 ) {
-    err_scope.info = #procedure
+    err_data.type = .No_Error
 
     sampler_ptr := wgpu.device_create_sampler(ptr, descriptor)
 
-    if err_scope.type != .No_Error {
+    if err_data.type != .No_Error {
         if sampler_ptr != nil {
             wgpu.sampler_release(sampler_ptr)
         }
-        return {}, err_scope.type
+        return {}, err_data.type
     }
 
     sampler := default_sampler
@@ -843,15 +843,15 @@ device_create_shader_module :: proc(
         }
     }
 
-    err_scope.info = #procedure
+    err_data.type = .No_Error
 
     shader_module_ptr := wgpu.device_create_shader_module(ptr, &desc)
 
-    if err_scope.type != .No_Error {
+    if err_data.type != .No_Error {
         if shader_module_ptr != nil {
             wgpu.shader_module_release(shader_module_ptr)
         }
-        return {}, err_scope.type
+        return {}, err_data.type
     }
 
     shader_module := default_shader_module
@@ -911,19 +911,19 @@ device_create_swap_chain :: proc(
 
         desc.next_in_chain = cast(^Chained_Struct)&extras
     }
-    err_scope.info = #procedure
+    err_data.type = .No_Error
 
     swap_chain_ptr := wgpu.device_create_swap_chain(ptr, surface.ptr, &desc)
 
-    if err_scope.type != .No_Error {
+    if err_data.type != .No_Error {
         if swap_chain_ptr != nil {
             wgpu.swap_chain_release(swap_chain_ptr)
         }
-        return {}, err_scope.type
+        return {}, err_data.type
     }
 
     swap_chain := default_swap_chain
-    swap_chain.err_scope = err_scope
+    swap_chain.err_data = err_data
     swap_chain.ptr = swap_chain_ptr
 
     return swap_chain, .No_Error
@@ -936,20 +936,20 @@ device_create_texture :: proc(
     Texture,
     Error_Type,
 ) {
-    err_scope.info = #procedure
+    err_data.type = .No_Error
 
     texture_ptr := wgpu.device_create_texture(ptr, descriptor)
 
-    if err_scope.type != .No_Error {
+    if err_data.type != .No_Error {
         if texture_ptr != nil {
             wgpu.texture_release(texture_ptr)
         }
-        return {}, err_scope.type
+        return {}, err_data.type
     }
 
     texture := default_texture
     texture.ptr = texture_ptr
-    texture.err_scope = err_scope
+    texture.err_data = err_data
 
     return texture, .No_Error
 }
@@ -978,7 +978,7 @@ device_get_limits :: proc(using self: ^Device) -> Limits {
 device_get_queue :: proc(using self: ^Device) -> Queue {
     gpu_queue := Queue {
         ptr       = wgpu.device_get_queue(ptr),
-        err_scope = err_scope,
+        err_data = err_data,
         vtable    = &default_queue_vtable,
     }
 
@@ -996,8 +996,8 @@ device_set_uncaptured_error_callback :: proc(
     callback: Error_Callback,
     user_data: rawptr,
 ) {
-    err_scope.user_cb = callback
-    err_scope.user_data = user_data
+    err_data.user_cb = callback
+    err_data.user_data = user_data
 }
 
 device_pop_error_scope :: proc(
@@ -1015,7 +1015,7 @@ device_push_error_scope :: proc(using self: ^Device, filter: Error_Filter) {
 // Get last error message. Ownership not transferred. String valid until next error or 
 // until device is released
 device_get_error_message :: proc(using self: ^Device) -> string {
-    return err_scope.message
+    return err_data.message
 }
 
 device_set_label :: proc(using self: ^Device, label: cstring) {
@@ -1030,8 +1030,8 @@ device_reference :: proc(using self: ^Device) {
 device_release :: proc(using self: ^Device) {
     if ptr != nil {
         delete(features)
-        delete(err_scope.message)
-        free(err_scope)
+        delete(err_data.message)
+        free(err_data)
         queue->release()
         wgpu.device_release(ptr)
     }
