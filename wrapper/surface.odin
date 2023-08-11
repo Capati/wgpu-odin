@@ -10,28 +10,18 @@ import wgpu "../bindings"
 
 // Handle to a presentable surface.
 Surface :: struct {
-    ptr:              WGPU_Surface,
-    chain:            Swap_Chain,
-    device_ptr:       WGPU_Device,
-    current_view_ptr: WGPU_Texture_View,
-    config:           Surface_Configuration,
-    using vtable:     ^Surface_VTable,
+    ptr:          WGPU_Surface,
+    using vtable: ^Surface_VTable,
 }
 
 @(private)
 Surface_VTable :: struct {
-    configure:            proc(
-        self: ^Surface,
-        device: ^Device,
-        descriptor: ^Surface_Configuration,
-    ) -> Error_Type,
+    get_preferred_format: proc(self: ^Surface, adapter: ^Adapter) -> Texture_Format,
     get_capabilities:     proc(
         self: ^Surface,
         adapter: Adapter,
         allocator: mem.Allocator = context.allocator,
     ) -> Surface_Capabilities,
-    get_preferred_format: proc(self: ^Surface, adapter: ^Adapter) -> Texture_Format,
-    get_current_texture:  proc(self: ^Surface) -> (Surface_Texture, Error_Type),
     get_default_config:   proc(
         self: ^Surface,
         adapter: Adapter,
@@ -43,18 +33,15 @@ Surface_VTable :: struct {
 
 default_surface_vtable := Surface_VTable {
     get_preferred_format = surface_get_preferred_format,
-    configure            = surface_configure,
     get_capabilities     = surface_get_capabilities,
-    get_current_texture  = surface_get_current_texture,
     get_default_config   = surface_get_default_config,
     reference            = surface_reference,
     release              = surface_release,
 }
 
 default_surface := Surface {
-    ptr        = nil,
-    device_ptr = nil,
-    vtable     = &default_surface_vtable,
+    ptr    = nil,
+    vtable = &default_surface_vtable,
 }
 
 // Returns the best format for the provided surface and adapter.
@@ -63,38 +50,6 @@ surface_get_preferred_format :: proc(
     adapter: ^Adapter,
 ) -> Texture_Format {
     return wgpu.surface_get_preferred_format(ptr, adapter.ptr)
-}
-
-// Initializes `Surface` for presentation.
-surface_configure :: proc(
-    using self: ^Surface,
-    device: ^Device,
-    descriptor: ^Surface_Configuration,
-) -> Error_Type {
-    device_ptr = device.ptr
-    config = {
-        label        = descriptor.label,
-        usage        = descriptor.usage,
-        format       = descriptor.format,
-        width        = descriptor.width,
-        height       = descriptor.height,
-        present_mode = descriptor.present_mode,
-        alpha_mode   = descriptor.alpha_mode,
-        view_formats = descriptor.view_formats,
-    }
-
-    if chain.ptr != nil {
-        chain->release()
-    }
-
-    if current_view_ptr != nil {
-        wgpu.texture_view_release(current_view_ptr)
-        current_view_ptr = nil
-    }
-
-    chain = device->create_swap_chain(ptr, &config) or_return
-
-    return .No_Error
 }
 
 Surface_Capabilities :: struct {
@@ -190,26 +145,6 @@ Get_Current_Texture_Error :: enum {
     Failed_To_Acquire_Current_Texture,
 }
 
-// Returns the next texture to be presented by the swapchain for drawing.
-surface_get_current_texture :: proc(
-    using self: ^Surface,
-) -> (
-    s: Surface_Texture,
-    err: Error_Type,
-) {
-    frame := default_surface_texture
-    frame.view = chain->get_current_texture_view() or_return
-    frame.chain = {
-        ptr       = chain.ptr,
-        err_scope = chain.err_scope,
-        vtable    = &default_swap_chain_vtable,
-    }
-
-    current_view_ptr = frame.view.ptr
-
-    return frame, .No_Error
-}
-
 // Return a default `Surface_Configuration` from `width` and `height` to use for the
 // `Surface` with this adapter.
 surface_get_default_config :: proc(
@@ -243,26 +178,23 @@ surface_reference :: proc(using self: ^Surface) {
 
 // Release the surface and swapchain.
 surface_release :: proc(using self: ^Surface) {
-    if chain.ptr != nil {
-        chain->release()
-    }
     wgpu.surface_release(ptr)
 }
 
-@(private)
-_handle_current_texture_error :: proc "c" (
-    type: Error_Type,
-    message: cstring,
-    user_data: rawptr,
-) {
-    if type == .No_Error {
-        return
-    }
+// @(private)
+// _handle_current_texture_error :: proc "c" (
+//     type: Error_Type,
+//     message: cstring,
+//     user_data: rawptr,
+// ) {
+//     if type == .No_Error {
+//         return
+//     }
 
-    context = runtime.default_context()
+//     context = runtime.default_context()
 
-    fmt.eprintf("Failed to get current texture [%v]: %s\n", type, message)
+//     fmt.eprintf("Failed to get current texture [%v]: %s\n", type, message)
 
-    error := cast(^Get_Current_Texture_Error)user_data
-    error^ = .Failed_To_Acquire_Current_Texture
-}
+//     error := cast(^Get_Current_Texture_Error)user_data
+//     error^ = .Failed_To_Acquire_Current_Texture
+// }

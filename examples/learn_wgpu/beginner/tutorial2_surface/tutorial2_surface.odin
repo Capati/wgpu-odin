@@ -12,10 +12,11 @@ import wgpu "../../../../wrapper"
 import wgpu_sdl "../../../../utils/sdl"
 
 State :: struct {
-    minimized: bool,
-    surface:   wgpu.Surface,
-    device:    wgpu.Device,
-    config:    wgpu.Surface_Configuration,
+    minimized:  bool,
+    surface:    wgpu.Surface,
+    swap_chain: wgpu.Swap_Chain,
+    device:     wgpu.Device,
+    config:     wgpu.Surface_Configuration,
 }
 
 Physical_Size :: struct {
@@ -85,22 +86,37 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
         alpha_mode = caps.alpha_modes[0],
     }
 
-    state.surface->configure(&state.device, &state.config) or_return
+    state.swap_chain = state.device->create_swap_chain(
+        &state.surface,
+        &state.config,
+    ) or_return
 
     return state, .No_Error
 }
 
 resize_window :: proc(state: ^State, size: Physical_Size) -> wgpu.Error_Type {
-    if size.width > 0 && size.height > 0 {
-        state.config.width = size.width
-        state.config.height = size.height
-        state.surface->configure(&state.device, &state.config) or_return
+    if size.width == 0 && size.height == 0 {
+        return .No_Error
     }
+
+    state.config.width = size.width
+    state.config.height = size.height
+
+    if state.swap_chain.ptr != nil {
+        state.swap_chain->release()
+    }
+
+    state.swap_chain = state.device->create_swap_chain(
+        &state.surface,
+        &state.config,
+    ) or_return
+
     return .No_Error
 }
 
 render :: proc(state: ^State) -> wgpu.Error_Type {
-    frame := state.surface->get_current_texture() or_return
+    next_texture := state.swap_chain->get_current_texture_view() or_return
+    defer next_texture->release()
 
     encoder := state.device->create_command_encoder(
         &wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
@@ -112,7 +128,7 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
             label = "Render Pass",
             color_attachments = []wgpu.Render_Pass_Color_Attachment{
                 {
-                    view = &frame.view,
+                    view = &next_texture,
                     resolve_target = nil,
                     load_op = .Clear,
                     store_op = .Store,
@@ -129,7 +145,7 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
     defer command_buffer->release()
 
     state.device.queue->submit(command_buffer)
-    frame->present()
+    state.swap_chain->present()
 
     return .No_Error
 }

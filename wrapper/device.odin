@@ -123,7 +123,7 @@ Device_VTable :: struct {
     ),
     create_swap_chain:             proc(
         self: ^Device,
-        surface: WGPU_Surface,
+        surface: ^Surface,
         descriptor: ^Surface_Configuration,
     ) -> (
         Swap_Chain,
@@ -649,7 +649,11 @@ device_create_render_pipeline :: proc(
         buffer_count := cast(uint)len(vertex.buffers)
 
         if buffer_count > 0 {
-            buffers_slice := make([]wgpu.Vertex_Buffer_Layout, buffer_count, context.temp_allocator)
+            buffers_slice := make(
+                []wgpu.Vertex_Buffer_Layout,
+                buffer_count,
+                context.temp_allocator,
+            )
 
             for v, i in vertex.buffers {
                 buffer := wgpu.Vertex_Buffer_Layout {
@@ -718,7 +722,11 @@ device_create_render_pipeline :: proc(
             }
 
             if target_count > 0 {
-                targets := make([]Color_Target_State, target_count, context.temp_allocator)
+                targets := make(
+                    []Color_Target_State,
+                    target_count,
+                    context.temp_allocator,
+                )
 
                 for v, i in descriptor.fragment.targets {
                     target := Color_Target_State {
@@ -866,7 +874,7 @@ Surface_Configuration :: struct {
 // Creates a `Swap_Chain` with a compatible `Surface`.
 device_create_swap_chain :: proc(
     using self: ^Device,
-    surface: WGPU_Surface, //TODO(JopStro): Change this to take ^Surface?
+    surface: ^Surface,
     descriptor: ^Surface_Configuration,
 ) -> (
     Swap_Chain,
@@ -905,7 +913,7 @@ device_create_swap_chain :: proc(
     }
     err_scope.info = #procedure
 
-    swap_chain_ptr := wgpu.device_create_swap_chain(ptr, surface, &desc)
+    swap_chain_ptr := wgpu.device_create_swap_chain(ptr, surface.ptr, &desc)
 
     if err_scope.type != .No_Error {
         if swap_chain_ptr != nil {
@@ -969,9 +977,9 @@ device_get_limits :: proc(using self: ^Device) -> Limits {
 // Get a handle to a command queue on the device
 device_get_queue :: proc(using self: ^Device) -> Queue {
     gpu_queue := Queue {
-        ptr    = wgpu.device_get_queue(ptr),
+        ptr       = wgpu.device_get_queue(ptr),
         err_scope = err_scope,
-        vtable = &default_queue_vtable,
+        vtable    = &default_queue_vtable,
     }
 
     return gpu_queue
