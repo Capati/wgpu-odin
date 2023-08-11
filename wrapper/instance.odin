@@ -30,7 +30,7 @@ Instance_VTable :: struct {
         options: ^Request_Adapter_Options,
     ) -> (
         Adapter,
-        Request_Adapter_Status,
+        Error_Type,
     ),
     enumerate_adapters: proc(
         self: ^Instance,
@@ -257,7 +257,7 @@ instance_request_adapter :: proc(
     options: ^Request_Adapter_Options,
 ) -> (
     Adapter,
-    Request_Adapter_Status,
+    Error_Type,
 ) {
     opts := wgpu.Request_Adapter_Options{}
 
@@ -275,7 +275,7 @@ instance_request_adapter :: proc(
     wgpu.instance_request_adapter(ptr, &opts, _on_request_adapter_callback, &res)
 
     if res.status != .Success {
-        return {}, res.status
+        return {}, .Unknown
     }
 
     adapter := default_adapter
@@ -284,7 +284,7 @@ instance_request_adapter :: proc(
     adapter.limits, adapter.limits_extras = adapter->get_limits()
     adapter.info = adapter->request_info()
 
-    return adapter, res.status
+    return adapter, .No_Error
 }
 
 // Retrieves all available `Adapters` that match the given options.
