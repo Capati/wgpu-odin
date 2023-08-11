@@ -14,8 +14,10 @@ import wgpu_sdl "../../utils/sdl"
 TRIANGLE_MSAA_EXAMPLE :: #config(TRIANGLE_MSAA_EXAMPLE, false)
 
 State :: struct {
+    minimized:                bool,
     instance:                 wgpu.Instance,
     surface:                  wgpu.Surface,
+    swap_chain:               wgpu.Swap_Chain,
     device:                   wgpu.Device,
     config:                   wgpu.Surface_Configuration,
     pipeline:                 wgpu.Render_Pipeline,
@@ -84,7 +86,10 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
         alpha_mode = caps.alpha_modes[0],
     }
 
-    state.surface->configure(&state.device, &state.config) or_return
+    state.swap_chain = state.device->create_swap_chain(
+        &state.surface,
+        &state.config,
+    ) or_return
 
     // Shader module
     shader := state.device->load_wgsl_shader_module(
@@ -170,7 +175,14 @@ resize_window :: proc(state: ^State, width, height: u32) -> wgpu.Error_Type {
     state.config.width = width
     state.config.height = height
 
-    state.surface->configure(&state.device, &state.config) or_return
+    if state.swap_chain.ptr != nil {
+        state.swap_chain->release()
+    }
+
+    state.swap_chain = state.device->create_swap_chain(
+        &state.surface,
+        &state.config,
+    ) or_return
 
     when TRIANGLE_MSAA_EXAMPLE {
         state.multisampled_framebuffer->release()
@@ -187,7 +199,8 @@ resize_window :: proc(state: ^State, width, height: u32) -> wgpu.Error_Type {
 }
 
 render :: proc(state: ^State) -> wgpu.Error_Type {
-    frame := state.surface->get_current_texture() or_return
+    next_texture := state.swap_chain->get_current_texture_view() or_return
+    defer next_texture->release()
 
     encoder := state.device->create_command_encoder(
         &wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
@@ -200,7 +213,7 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
         }
     } else {
         colors: []wgpu.Render_Pass_Color_Attachment = {
-            {view = &frame.view, resolve_target = nil},
+            {view = &next_texture, resolve_target = nil},
         }
     }
 
@@ -221,7 +234,7 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
     defer command_buffer->release()
 
     state.device.queue->submit(command_buffer)
-    frame->present()
+    state.swap_chain->present()
 
     return .No_Error
 }
@@ -285,12 +298,20 @@ main :: proc() {
                         cast(u32)e.window.data2,
                     )
                     if err != .No_Error do break main_loop
+
+                case .MINIMIZED:
+                    state.minimized = true
+
+                case .RESTORED:
+                    state.minimized = false
                 }
             }
         }
 
-        err = render(&state)
-        if err != .No_Error do break main_loop
+        if !state.minimized {
+            err = render(&state)
+            if err != .No_Error do break main_loop
+        }
     }
 
     if err != .No_Error {
