@@ -177,7 +177,15 @@ main :: proc() {
     }
 
     state, state_err := init_state(sdl_window)
-    if state_err != .No_Error do return
+    if state_err != .No_Error {
+        message := wgpu.get_error_message()
+        if message != "" {
+            fmt.eprintln("ERROR: Failed to initilize program:", message)
+        } else {
+            fmt.eprintln("ERROR: Failed to initilize program")
+        }
+        return
+    }
     defer {
         state.device->release()
         state.surface->release()
@@ -219,7 +227,7 @@ main :: proc() {
     }
 
     if err != .No_Error {
-        fmt.eprintf("Error occurred while rendering: %v\n", err)
+        fmt.eprintf("Error occurred while rendering: %v\n", wgpu.get_error_message())
     }
 
     fmt.println("Exiting...")
