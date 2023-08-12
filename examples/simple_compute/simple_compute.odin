@@ -31,7 +31,10 @@ main :: proc() {
     adapter, adapter_err := instance->request_adapter(
         &{compatible_surface = nil, power_preference = .High_Performance},
     )
-    if adapter_err != .No_Error do return
+    if adapter_err != .No_Error {
+        fmt.eprintln("ERROR Couldn't Request Adapter:", wgpu.get_error_message())
+        return
+    }
     defer adapter->release()
 
     // Device
@@ -40,8 +43,16 @@ main :: proc() {
     }
 
     device, device_err := adapter->request_device(&device_options)
-    if device_err != .No_Error do return
+    if device_err != .No_Error {
+        fmt.eprintln("ERROR Couldn't Request Adapter:", wgpu.get_error_message())
+        return
+    }
     defer device->release()
+
+    device->set_uncaptured_error_callback(proc "c" (type: wgpu.Error_Type, message: cstring, user_data: rawptr) {
+        context = runtime.default_context()
+        fmt.eprintln("ERROR:", message)
+    }, nil)
 
     // Shader module
     module, module_err := device->load_wgsl_shader_module(
