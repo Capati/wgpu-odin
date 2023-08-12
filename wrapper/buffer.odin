@@ -1,7 +1,6 @@
 package wgpu
 
 // Core
-import "core:fmt"
 import "core:mem"
 import "core:slice"
 
@@ -12,7 +11,7 @@ import wgpu "../bindings"
 Buffer :: struct {
     ptr:          WGPU_Buffer,
     device_ptr:   WGPU_Device,
-    err_data:    ^Error_Data,
+    err_data:     ^Error_Data,
     size:         Buffer_Size,
     map_state:    Buffer_Map_State,
     usage:        Buffer_Usage_Flags,
@@ -31,13 +30,28 @@ Buffer_VTable :: struct {
     get_map_state:          proc(self: ^Buffer) -> Buffer_Map_State,
     get_size:               proc(self: ^Buffer) -> u64,
     get_usage:              proc(self: ^Buffer) -> Buffer_Usage_Flags,
-    map_read:               proc(self: ^Buffer) -> ([]byte, Buffer_Map_Async_Status),
-    map_write:              proc(self: ^Buffer, data: []byte) -> Buffer_Map_Async_Status,
+    map_read:               proc(
+        self: ^Buffer,
+        offset: uint = 0,
+        size: uint = 0,
+    ) -> (
+        []byte,
+        Buffer_Map_Async_Status,
+    ),
+    map_write:              proc(
+        self: ^Buffer,
+        data: []byte,
+        offset: uint = 0,
+        size: uint = 0,
+    ) -> Buffer_Map_Async_Status,
     map_async:              proc(
         self: ^Buffer,
         mode: Map_Mode_Flags,
-        offset, size: uint,
-    ) -> Buffer_Map_Async_Status,
+        callback: Buffer_Map_Callback,
+        user_data: rawptr,
+        offset: uint = 0,
+        size: uint = 0,
+    ) -> Error_Type,
     set_label:              proc(self: ^Buffer, label: cstring),
     unmap:                  proc(self: ^Buffer) -> Error_Type,
     release:                proc(self: ^Buffer),
@@ -113,50 +127,69 @@ _buffer_map_callback :: proc "c" (status: Buffer_Map_Async_Status, user_data: ra
     response.status = status
 }
 
-buffer_map_read :: proc(using self: ^Buffer) -> ([]byte, Buffer_Map_Async_Status) {
-    if self->map_async({.Read}, 0, cast(uint)size) != .Success {
-        return {}, .Validation_Error
-    }
-
-    data := slice.bytes_from_ptr(
-        wgpu.buffer_get_mapped_range(ptr, 0, cast(uint)size),
-        cast(int)size,
-    )
-
-    wgpu.buffer_unmap(ptr)
-
-    return data, .Success
-}
-
-buffer_map_write :: proc(using self: ^Buffer, data: []byte) -> Buffer_Map_Async_Status {
-    if self->map_async({.Write}, 0, cast(uint)size) != .Success {
-        return .Validation_Error
-    }
-
-    src_ptr := wgpu.buffer_get_mapped_range(ptr, 0, cast(uint)size)
-    mem.copy(src_ptr, raw_data(data), cast(int)size)
-
-    wgpu.buffer_unmap(ptr)
-
-    return .Success
-}
-
-//TODO(JopStro): Why is this syncronous? It has ASYNC in the bloody name!
-// Maps the given range of the buffer.
-buffer_map_async :: proc(
+buffer_map_read :: proc(
     self: ^Buffer,
-    mode: Map_Mode_Flags,
-    offset, size: uint,
-) -> Buffer_Map_Async_Status {
+    offset: uint = 0,
+    size: uint = 0,
+) -> (
+    []byte,
+    Buffer_Map_Async_Status,
+) {
+    self.err_data.type = .No_Error
+    self.map_state = .Pending
+
     res := Buffer_Map_Async_Response {
         status = .Unknown,
     }
 
-    self.err_data.type = .No_Error
+    size := size
+    if size == 0 {
+        size = cast(uint)self.size
+    }
 
+    wgpu.buffer_map_async(self.ptr, {.Read}, offset, size, _buffer_map_callback, &res)
+
+    if self.err_data.type != .No_Error {
+        return {}, .Validation_Error
+    }
+
+    wgpu.device_poll(self.device_ptr, true, nil)
+
+    if res.status != .Success {
+        update_error_message("Could not read buffer data")
+        return {}, res.status
+    }
+
+    self.map_state = .Mapped
+
+    data := self->get_mapped_range(offset, size)
+
+    if self->unmap() != .No_Error {
+        return {}, .Error
+    }
+
+    return data, .Success
+}
+
+buffer_map_write :: proc(
+    self: ^Buffer,
+    data: []byte,
+    offset: uint = 0,
+    size: uint = 0,
+) -> Buffer_Map_Async_Status {
+    self.err_data.type = .No_Error
     self.map_state = .Pending
 
-    wgpu.buffer_map_async(self.ptr, mode, offset, size, _buffer_map_callback, &res)
+    res := Buffer_Map_Async_Response {
+        status = .Unknown,
+    }
+
+    size := size
+    if size == 0 {
+        size = cast(uint)self.size
+    }
+
+    wgpu.buffer_map_async(self.ptr, {.Write}, offset, size, _buffer_map_callback, &res)
 
     if self.err_data.type != .No_Error {
         return .Validation_Error
@@ -165,13 +198,40 @@ buffer_map_async :: proc(
     wgpu.device_poll(self.device_ptr, true, nil)
 
     if res.status != .Success {
-        fmt.eprintf("ERROR: Could not read buffer data: %v\n", res.status)
+        update_error_message("Could not write buffer data")
         return res.status
     }
 
     self.map_state = .Mapped
 
-    return res.status
+    src_ptr := wgpu.buffer_get_mapped_range(self.ptr, offset, size)
+    mem.copy(src_ptr, raw_data(data), cast(int)size)
+
+    if self->unmap() != .No_Error {
+        return .Error
+    }
+
+    return .Success
+}
+
+// Maps the given range of the buffer.
+buffer_map_async :: proc(
+    self: ^Buffer,
+    mode: Map_Mode_Flags,
+    callback: Buffer_Map_Callback,
+    user_data: rawptr,
+    offset: uint = 0,
+    size: uint = 0,
+) -> Error_Type {
+    size := size
+    if size == 0 {
+        size = cast(uint)self.size
+    }
+
+    self.err_data.type = .No_Error
+    wgpu.buffer_map_async(self.ptr, mode, offset, size, callback, user_data)
+
+    return self.err_data.type
 }
 
 // Set debug label.
