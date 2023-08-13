@@ -156,10 +156,9 @@ adapter_request_device :: proc(
     err: Error_Type,
 ) {
     // Default descriptor can be NULL...
-    desc: ^wgpu.Device_Descriptor = nil
+    desc: ^wgpu.Device_Descriptor = nil if descriptor == nil else &{}
 
     if descriptor != nil {
-        desc = &wgpu.Device_Descriptor{}
 
         if descriptor.label != nil && descriptor.label != "" {
             desc.label = descriptor.label
