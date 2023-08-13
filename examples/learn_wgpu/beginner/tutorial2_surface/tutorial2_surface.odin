@@ -59,12 +59,12 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
     adapter := instance->request_adapter(&adapter_options) or_return
     defer adapter->release()
 
-    device_options := wgpu.Device_Options {
+    device_descriptor := wgpu.Device_Descriptor {
         label  = adapter.info.name,
         limits = wgpu.Default_Limits,
     }
 
-    state.device = adapter->request_device(&device_options) or_return
+    state.device = adapter->request_device(&device_descriptor) or_return
     defer if err != .No_Error do state.device->release()
 
     caps := state.surface->get_capabilities(adapter)

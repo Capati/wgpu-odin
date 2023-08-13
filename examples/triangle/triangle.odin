@@ -54,16 +54,16 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
 
     // Adapter
     adapter := state.instance->request_adapter(
-            &{compatible_surface = &state.surface, power_preference = .High_Performance},
+        &{compatible_surface = &state.surface, power_preference = .High_Performance},
     ) or_return
     defer adapter->release()
 
     // Device
-    device_options := wgpu.Device_Options {
+    device_descriptor := wgpu.Device_Descriptor {
         label = adapter.info.name,
     }
 
-    state.device = adapter->request_device(&device_options) or_return
+    state.device = adapter->request_device(&device_descriptor) or_return
     defer if err != .No_Error do state.device->release()
 
     // Configure presentation

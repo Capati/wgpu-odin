@@ -38,21 +38,24 @@ main :: proc() {
     defer adapter->release()
 
     // Device
-    device_options := wgpu.Device_Options {
+    device_descriptor := wgpu.Device_Descriptor {
         label = adapter.info.name,
     }
 
-    device, device_err := adapter->request_device(&device_options)
+    device, device_err := adapter->request_device(&device_descriptor)
     if device_err != .No_Error {
         fmt.eprintln("ERROR Couldn't Request Adapter:", wgpu.get_error_message())
         return
     }
     defer device->release()
 
-    device->set_uncaptured_error_callback(proc "c" (type: wgpu.Error_Type, message: cstring, user_data: rawptr) {
-        context = runtime.default_context()
-        fmt.eprintln("ERROR:", message)
-    }, nil)
+    device->set_uncaptured_error_callback(
+        proc "c" (type: wgpu.Error_Type, message: cstring, user_data: rawptr) {
+            context = runtime.default_context()
+            fmt.eprintln("ERROR:", message)
+        },
+        nil,
+    )
 
     // Shader module
     module, module_err := device->load_wgsl_shader_module(

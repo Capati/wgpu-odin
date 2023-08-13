@@ -30,8 +30,7 @@ Adapter_VTable :: struct {
     has_feature:    proc(self: ^Adapter, feature: Feature_Name) -> bool,
     request_device: proc(
         self: ^Adapter,
-        options: ^Device_Options = nil,
-        trace_path: cstring = nil,
+        descriptor: ^Device_Descriptor = nil,
     ) -> (
         Device,
         Error_Type,
@@ -101,7 +100,7 @@ adapter_has_feature :: proc(using self: ^Adapter, feature: Feature_Name) -> bool
     return wgpu.adapter_has_feature(ptr, feature)
 }
 
-Device_Options :: struct {
+Device_Descriptor :: struct {
     label:                cstring,
     features:             []Feature_Name,
     native_features:      []Native_Feature,
@@ -120,8 +119,7 @@ Device_Response :: struct {
 // Requests a connection to a physical device, creating a logical device.
 adapter_request_device :: proc(
     using self: ^Adapter,
-    options: ^Device_Options = nil, // TODO(JopStro): this should probably not be a pointer, since a copy is being made anyway
-    trace_path: cstring = nil,
+    descriptor: ^Device_Descriptor = nil,
 ) -> (
     device: Device,
     err: Error_Type,
