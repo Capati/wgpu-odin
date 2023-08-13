@@ -94,7 +94,7 @@ create_instance :: proc(descriptor: ^Instance_Descriptor) -> Instance {
     instance.ptr = wgpu.create_instance(&desc)
 
     if instance.ptr == nil {
-        panic("Failed to acquire Instance")
+        panic("Failed to acquire Instance") // NOTE(JopStro): Should we return an error instead?
     }
 
     return instance
@@ -125,98 +125,49 @@ instance_create_surface :: proc(
 
     if descriptor != nil {
         desc.label = descriptor.label
-        switch t in descriptor.target {
+        switch &t in descriptor.target {
         case Surface_Descriptor_From_Windows_HWND:
             if desc.label == nil || desc.label == "" {
                 desc.label = "Windows HWND"
             }
-
-            desc.next_in_chain =
-            cast(^Chained_Struct)&Surface_Descriptor_From_Windows_HWND{
-                chain = Chained_Struct{
-                    next = nil,
-                    stype = .Surface_Descriptor_From_Windows_HWND,
-                },
-                hinstance = t.hinstance,
-                hwnd = t.hwnd,
-            }
+            t.chain.stype = .Surface_Descriptor_From_Windows_HWND
+            desc.next_in_chain = cast(^Chained_Struct)&t
         case Surface_Descriptor_From_Xcb_Window:
             if desc.label == nil || desc.label == "" {
                 desc.label = "XCB Window"
             }
-
-            desc.next_in_chain =
-            cast(^Chained_Struct)&Surface_Descriptor_From_Xcb_Window{
-                chain = Chained_Struct{
-                    next = nil,
-                    stype = .Surface_Descriptor_From_Xcb_Window,
-                },
-                connection = t.connection,
-                window = t.window,
-            }
+            t.chain.stype = .Surface_Descriptor_From_Xcb_Window
+            desc.next_in_chain = cast(^Chained_Struct)&t
         case Surface_Descriptor_From_Xlib_Window:
             if desc.label == nil || desc.label == "" {
                 desc.label = "X11 Window"
             }
-
-            desc.next_in_chain =
-            cast(^Chained_Struct)&Surface_Descriptor_From_Xlib_Window{
-                chain = Chained_Struct{
-                    next = nil,
-                    stype = .Surface_Descriptor_From_Xlib_Window,
-                },
-                display = t.display,
-                window = t.window,
-            }
+            t.chain.stype = .Surface_Descriptor_From_Xlib_Window
+            desc.next_in_chain = cast(^Chained_Struct)&t
         case Surface_Descriptor_From_Metal_Layer:
             if desc.label == nil || desc.label == "" {
                 desc.label = "Metal Layer"
             }
-
-            desc.next_in_chain =
-            cast(^Chained_Struct)&Surface_Descriptor_From_Metal_Layer{
-                chain = Chained_Struct{
-                    next = nil,
-                    stype = .Surface_Descriptor_From_Metal_Layer,
-                },
-                layer = t.layer,
-            }
+            t.chain.stype = .Surface_Descriptor_From_Metal_Layer
+            desc.next_in_chain = cast(^Chained_Struct)&t
         case Surface_Descriptor_From_Wayland_Surface:
             if desc.label == nil || desc.label == "" {
                 desc.label = "Wayland Surface"
             }
-
-            desc.next_in_chain =
-            cast(^Chained_Struct)&Surface_Descriptor_From_Wayland_Surface{
-                chain = Chained_Struct{
-                    next = nil,
-                    stype = .Surface_Descriptor_From_Wayland_Surface,
-                },
-                display = t.display,
-                surface = t.surface,
-            }
+            t.chain.stype = .Surface_Descriptor_From_Wayland_Surface
+            desc.next_in_chain = cast(^Chained_Struct)&t
         case Surface_Descriptor_From_Android_Native_Window:
             if desc.label == nil || desc.label == "" {
                 desc.label = "Android Native Window"
             }
-
-            desc.next_in_chain =
-            cast(^Chained_Struct)&Surface_Descriptor_From_Android_Native_Window{
-                chain = Chained_Struct{
-                    next = nil,
-                    stype = .Surface_Descriptor_From_Android_Native_Window,
-                },
-                window = t.window,
-            }
+            t.chain.stype = .Surface_Descriptor_From_Android_Native_Window
+            desc.next_in_chain = cast(^Chained_Struct)&t
         case Surface_Descriptor_From_Canvas_Html_Selector:
             if desc.label == nil || desc.label == "" {
                 desc.label = "Canvas Html Selector"
             }
-            desc.next_in_chain =
-            cast(^Chained_Struct)&Surface_Descriptor_From_Canvas_Html_Selector{
-                chain = {stype = .Surface_Descriptor_From_Canvas_Html_Selector},
-                selector = t.selector,
-            }
+            t.chain.stype = .Surface_Descriptor_From_Canvas_Html_Selector
+            desc.next_in_chain = cast(^Chained_Struct)&t
         }
 
     }
@@ -224,7 +175,7 @@ instance_create_surface :: proc(
     surface_ptr := wgpu.instance_create_surface(ptr, &desc)
 
     if surface_ptr == nil {
-        fmt.eprintf("Failed to acquire surface\n")
+        update_error_message("Failed to acquire surface")
         return {}, .Internal
     }
 
