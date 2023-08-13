@@ -157,6 +157,7 @@ adapter_request_device :: proc(
 ) {
     // Default descriptor can be NULL...
     desc: ^wgpu.Device_Descriptor = nil if descriptor == nil else &{}
+    res: Device_Response
 
     if descriptor != nil {
 
@@ -250,10 +251,13 @@ adapter_request_device :: proc(
                 trace_path = descriptor.trace_path,
             }
         }
+
+        // NOTE(JopStro): Quick and dirty fix to avoid scope issues, more elegant solutions welcome
+        wgpu.adapter_request_device(ptr, desc, _on_adapter_request_device, &res)
+    } else {
+        wgpu.adapter_request_device(ptr, desc, _on_adapter_request_device, &res)
     }
 
-    res := Device_Response{}
-    wgpu.adapter_request_device(ptr, desc, _on_adapter_request_device, &res)
 
     if res.status != .Success {
         return {}, .Unknown
