@@ -158,8 +158,9 @@ adapter_request_device :: proc(
     // Default descriptor can be NULL...
     desc: ^wgpu.Device_Descriptor = nil
 
+    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
     if descriptor != nil {
-        desc = &wgpu.Device_Descriptor{}
+        desc = &{}
 
         if descriptor.label != nil && descriptor.label != "" {
             desc.label = descriptor.label
@@ -168,7 +169,6 @@ adapter_request_device :: proc(
         }
 
         // TODO(JopStro): Merge Feature Enums in bindings to remove need for memory allocation?
-        runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
         required_features := make(
             []Feature_Name,
             len(descriptor.features) + len(descriptor.native_features),
