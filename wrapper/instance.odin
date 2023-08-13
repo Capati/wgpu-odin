@@ -101,7 +101,7 @@ create_instance :: proc(descriptor: ^Instance_Descriptor) -> Instance {
 }
 
 Surface_Descriptor :: struct {
-    label:                 cstring,
+    label:  cstring,
     target: union {
         Surface_Descriptor_From_Android_Native_Window,
         Surface_Descriptor_From_Canvas_Html_Selector,
@@ -213,12 +213,10 @@ instance_create_surface :: proc(
                 desc.label = "Canvas Html Selector"
             }
             desc.next_in_chain =
-                cast(^Chained_Struct)&Surface_Descriptor_From_Canvas_Html_Selector{
-                    chain = {
-                        stype = .Surface_Descriptor_From_Canvas_Html_Selector,
-                    },
-                    selector = t.selector,
-                }
+            cast(^Chained_Struct)&Surface_Descriptor_From_Canvas_Html_Selector{
+                chain = {stype = .Surface_Descriptor_From_Canvas_Html_Selector},
+                selector = t.selector,
+            }
         }
 
     }
@@ -280,7 +278,7 @@ instance_request_adapter :: proc(
     adapter := default_adapter
     adapter.ptr = res.adapter
     adapter.features = adapter->get_features()
-    adapter.limits, adapter.limits_extras = adapter->get_limits()
+    adapter.limits = adapter->get_limits()
     adapter.info = adapter->request_info()
 
     return adapter, .No_Error
@@ -303,7 +301,9 @@ instance_enumerate_adapters :: proc(
         return {}
     }
 
-    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
+    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(
+        ignore = allocator == context.temp_allocator,
+    )
     wgpu_adapters := make([]WGPU_Adapter, adapter_count, context.temp_allocator)
     wgpu.instance_enumerate_adapters(ptr, &options, raw_data(wgpu_adapters))
 
@@ -316,7 +316,7 @@ instance_enumerate_adapters :: proc(
         }
 
         adapters[i].features = adapters[i]->get_features()
-        adapters[i].limits, adapters[i].limits_extras = adapters[i]->get_limits()
+        adapters[i].limits = adapters[i]->get_limits()
         adapters[i].info = adapters[i]->request_info()
     }
 

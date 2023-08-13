@@ -36,6 +36,8 @@ Default_Limits :: Limits {
     max_compute_workgroup_size_y                    = 256,
     max_compute_workgroup_size_z                    = 64,
     max_compute_workgroups_per_dimension            = 65535,
+    // Extras
+    max_push_constant_size                          = 0,
 }
 
 // This is a set of limits that is guaranteed to work on almost all backends, including
@@ -74,6 +76,8 @@ Downlevel_Limits :: Limits {
     max_compute_workgroup_size_y                    = 256,
     max_compute_workgroup_size_z                    = 64,
     max_compute_workgroups_per_dimension            = 65535,
+    // Extras
+    max_push_constant_size                          = 0,
 }
 
 // This is a set of limits that is lower even than the `Downlevel_Limits`, configured
@@ -110,4 +114,6 @@ Downlevel_Webgl2_D_Limits :: Limits {
     max_compute_workgroup_size_y                    = 0,
     max_compute_workgroup_size_z                    = 0,
     max_compute_workgroups_per_dimension            = 0,
+    // Extras
+    max_push_constant_size                          = 0,
 }

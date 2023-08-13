@@ -9,12 +9,11 @@ import wgpu "../bindings"
 
 // Handle to a physical graphics and/or compute device.
 Adapter :: struct {
-    ptr:           WGPU_Adapter,
-    features:      []Feature_Name,
-    limits:        Limits,
-    limits_extras: Limits_Extras,
-    info:          Adapter_Info,
-    using vtable:  ^Adapter_VTable,
+    ptr:          WGPU_Adapter,
+    features:     []Feature_Name,
+    limits:       Limits,
+    info:         Adapter_Info,
+    using vtable: ^Adapter_VTable,
 }
 
 Adapter_Info :: wgpu.Adapter_Properties
@@ -25,7 +24,7 @@ Adapter_VTable :: struct {
         self: ^Adapter,
         allocator: mem.Allocator = context.allocator,
     ) -> []Feature_Name,
-    get_limits:     proc(self: ^Adapter) -> (Limits, Limits_Extras),
+    get_limits:     proc(self: ^Adapter) -> Limits,
     request_info:   proc(self: ^Adapter) -> Adapter_Info,
     has_feature:    proc(self: ^Adapter, feature: Feature_Name) -> bool,
     request_device: proc(
@@ -71,20 +70,53 @@ adapter_get_features :: proc(
     return adapter_features
 }
 
-Limits_Extras :: struct {
-    max_push_constant_size: u32,
-}
-
 // List the “best” limits that are supported by this adapter.
-adapter_get_limits :: proc(using self: ^Adapter) -> (Limits, Limits_Extras) {
+adapter_get_limits :: proc(self: ^Adapter) -> Limits {
     extras := Supported_Limits_Extras{}
     supported_limits := Supported_Limits {
         next_in_chain = cast(^Chained_Struct_Out)&extras,
     }
-    wgpu.adapter_get_limits(ptr, &supported_limits)
+    wgpu.adapter_get_limits(self.ptr, &supported_limits)
 
-    return supported_limits.limits,
-        {max_push_constant_size = extras.max_push_constant_size}
+    limits := supported_limits.limits
+
+    all_limits: Limits = {
+        max_texture_dimension_1d                        = limits.max_texture_dimension_1d,
+        max_texture_dimension_2d                        = limits.max_texture_dimension_2d,
+        max_texture_dimension_3d                        = limits.max_texture_dimension_3d,
+        max_texture_array_layers                        = limits.max_texture_array_layers,
+        max_bind_groups                                 = limits.max_bind_groups,
+        max_bindings_per_bind_group                     = limits.max_bindings_per_bind_group,
+        max_dynamic_uniform_buffers_per_pipeline_layout = limits.max_dynamic_uniform_buffers_per_pipeline_layout,
+        max_dynamic_storage_buffers_per_pipeline_layout = limits.max_dynamic_storage_buffers_per_pipeline_layout,
+        max_sampled_textures_per_shader_stage           = limits.max_sampled_textures_per_shader_stage,
+        max_samplers_per_shader_stage                   = limits.max_samplers_per_shader_stage,
+        max_storage_buffers_per_shader_stage            = limits.max_storage_buffers_per_shader_stage,
+        max_storage_textures_per_shader_stage           = limits.max_storage_textures_per_shader_stage,
+        max_uniform_buffers_per_shader_stage            = limits.max_uniform_buffers_per_shader_stage,
+        max_uniform_buffer_binding_size                 = limits.max_uniform_buffer_binding_size,
+        max_storage_buffer_binding_size                 = limits.max_storage_buffer_binding_size,
+        min_uniform_buffer_offset_alignment             = limits.min_uniform_buffer_offset_alignment,
+        min_storage_buffer_offset_alignment             = limits.min_storage_buffer_offset_alignment,
+        max_vertex_buffers                              = limits.max_vertex_buffers,
+        max_buffer_size                                 = limits.max_buffer_size,
+        max_vertex_attributes                           = limits.max_vertex_attributes,
+        max_vertex_buffer_array_stride                  = limits.max_vertex_buffer_array_stride,
+        max_inter_stage_shader_components               = limits.max_inter_stage_shader_components,
+        max_inter_stage_shader_variables                = limits.max_inter_stage_shader_variables,
+        max_color_attachments                           = limits.max_color_attachments,
+        max_color_attachment_bytes_per_sample           = limits.max_color_attachment_bytes_per_sample,
+        max_compute_workgroup_storage_size              = limits.max_compute_workgroup_storage_size,
+        max_compute_invocations_per_workgroup           = limits.max_compute_invocations_per_workgroup,
+        max_compute_workgroup_size_x                    = limits.max_compute_workgroup_size_x,
+        max_compute_workgroup_size_y                    = limits.max_compute_workgroup_size_y,
+        max_compute_workgroup_size_z                    = limits.max_compute_workgroup_size_z,
+        max_compute_workgroups_per_dimension            = limits.max_compute_workgroups_per_dimension,
+        // Limits extras
+        max_push_constant_size                          = extras.max_push_constant_size,
+    }
+
+    return all_limits
 }
 
 // Get info about the adapter itself.
@@ -105,7 +137,6 @@ Device_Descriptor :: struct {
     features:             []Feature_Name,
     native_features:      []Native_Feature,
     limits:               Limits,
-    limits_extra:         Limits_Extras,
     trace_path:           cstring,
     device_lost_callback: Device_Lost_Callback,
     device_lost_userdata: rawptr,
@@ -124,92 +155,106 @@ adapter_request_device :: proc(
     device: Device,
     err: Error_Type,
 ) {
-    device_options: Device_Options
+    // Default descriptor can be NULL...
+    desc: ^wgpu.Device_Descriptor = nil
 
-    if options != nil {
-        device_options.label = options.label
-        device_options.features = options.features
-        device_options.native_features = options.native_features
-        device_options.limits = options.limits
-        device_options.limits_extra = options.limits_extra
-        device_options.trace_path = options.trace_path
-        device_options.device_lost_callback = options.device_lost_callback
-        device_options.device_lost_userdata = options.device_lost_userdata
-    }
+    if descriptor != nil {
+        desc = &wgpu.Device_Descriptor{}
 
-    descriptor := Device_Descriptor {
-        label = device_options.label if device_options.label != nil else info.name,
-    }
+        if descriptor.label != nil && descriptor.label != "" {
+            desc.label = descriptor.label
+        } else {
+            desc.label = info.name
+        }
 
-    if device_options.device_lost_callback != nil {
-        descriptor.device_lost_callback = device_options.device_lost_callback
-        descriptor.device_lost_userdata = device_options.device_lost_userdata
-    }
+        // TODO(JopStro): Merge Feature Enums in bindings to remove need for memory allocation?
+        runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+        required_features := make(
+            []Feature_Name,
+            len(descriptor.features) + len(descriptor.native_features),
+            context.temp_allocator,
+        )
+        copy(required_features, descriptor.features)
+        copy(
+            required_features[len(descriptor.features):],
+            transmute([]Feature_Name)descriptor.native_features,
+        )
 
-    // TODO(JopStro): Merge Feature Enums in bindings to remove need for memory allocation?
-    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-    required_features := make(
-        []Feature_Name,
-        len(device_options.features) + len(device_options.native_features),
-        context.temp_allocator,
-    )
-    copy(required_features, device_options.features)
-    copy(
-        required_features[len(device_options.features):],
-        transmute([]Feature_Name)device_options.native_features,
-    )
+        if len(required_features) > 0 {
+            desc.required_features_count = len(required_features)
+            desc.required_features = raw_data(required_features)
+        }
 
-    if len(required_features) > 0 {
-        descriptor.required_features_count = len(required_features)
-        descriptor.required_features = raw_data(required_features)
-    }
+        // Set limits
+        required_limits := Required_Limits {
+            next_in_chain = nil,
+        }
 
-    // Set default limits
-    required_limits := Required_Limits {
-        next_in_chain = nil,
-        limits        = Default_Limits,
-    }
+        limits := descriptor.limits if descriptor.limits != {} else Default_Limits
 
-    if device_options.limits_extra != {} {
+        required_limits.limits = {
+            max_texture_dimension_1d                        = limits.max_texture_dimension_1d,
+            max_texture_dimension_2d                        = limits.max_texture_dimension_2d,
+            max_texture_dimension_3d                        = limits.max_texture_dimension_3d,
+            max_texture_array_layers                        = limits.max_texture_array_layers,
+            max_bind_groups                                 = limits.max_bind_groups,
+            max_bindings_per_bind_group                     = limits.max_bindings_per_bind_group,
+            max_dynamic_uniform_buffers_per_pipeline_layout = limits.max_dynamic_uniform_buffers_per_pipeline_layout,
+            max_dynamic_storage_buffers_per_pipeline_layout = limits.max_dynamic_storage_buffers_per_pipeline_layout,
+            max_sampled_textures_per_shader_stage           = limits.max_sampled_textures_per_shader_stage,
+            max_samplers_per_shader_stage                   = limits.max_samplers_per_shader_stage,
+            max_storage_buffers_per_shader_stage            = limits.max_storage_buffers_per_shader_stage,
+            max_storage_textures_per_shader_stage           = limits.max_storage_textures_per_shader_stage,
+            max_uniform_buffers_per_shader_stage            = limits.max_uniform_buffers_per_shader_stage,
+            max_uniform_buffer_binding_size                 = limits.max_uniform_buffer_binding_size,
+            max_storage_buffer_binding_size                 = limits.max_storage_buffer_binding_size,
+            min_uniform_buffer_offset_alignment             = limits.min_uniform_buffer_offset_alignment,
+            min_storage_buffer_offset_alignment             = limits.min_storage_buffer_offset_alignment,
+            max_vertex_buffers                              = limits.max_vertex_buffers,
+            max_buffer_size                                 = limits.max_buffer_size,
+            max_vertex_attributes                           = limits.max_vertex_attributes,
+            max_vertex_buffer_array_stride                  = limits.max_vertex_buffer_array_stride,
+            max_inter_stage_shader_components               = limits.max_inter_stage_shader_components,
+            max_inter_stage_shader_variables                = limits.max_inter_stage_shader_variables,
+            max_color_attachments                           = limits.max_color_attachments,
+            max_color_attachment_bytes_per_sample           = limits.max_color_attachment_bytes_per_sample,
+            max_compute_workgroup_storage_size              = limits.max_compute_workgroup_storage_size,
+            max_compute_invocations_per_workgroup           = limits.max_compute_invocations_per_workgroup,
+            max_compute_workgroup_size_x                    = limits.max_compute_workgroup_size_x,
+            max_compute_workgroup_size_y                    = limits.max_compute_workgroup_size_y,
+            max_compute_workgroup_size_z                    = limits.max_compute_workgroup_size_z,
+            max_compute_workgroups_per_dimension            = limits.max_compute_workgroups_per_dimension,
+        }
+
         required_limits_extras := Required_Limits_Extras {
-            chain = {
-                stype = SType(Native_SType.Required_Limits_Extras),
-            },
-            max_push_constant_size = device_options.limits_extra.max_push_constant_size,
+            chain = {stype = SType(Native_SType.Required_Limits_Extras)},
+            max_push_constant_size = limits.max_push_constant_size,
         }
         required_limits.next_in_chain = cast(^Chained_Struct)&required_limits_extras
-    }
 
-    if device_options.limits != {} {
-        required_limits.limits = device_options.limits
-    }
+        desc.required_limits = &required_limits
 
-    descriptor.required_limits = &required_limits
-
-    // Write a trace of all commands to a file so it can be reproduced
-    // elsewhere. The trace is cross-platform.
-    if trace_path != nil {
-        descriptor.next_in_chain =
-        cast(^Chained_Struct)&Device_Extras{
-            chain = Chained_Struct{
-                next = nil,
-                stype = SType(Native_SType.Device_Extras),
-            },
-            trace_path = trace_path,
+        if descriptor.device_lost_callback != nil {
+            descriptor.device_lost_callback = descriptor.device_lost_callback
+            descriptor.device_lost_userdata = descriptor.device_lost_userdata
         }
 
-        // NOTE: I don't belive this is needed, also it looks incorrect, directory normaly means folder
-        /* dir := string(trace_path) */
-        /* if res := os.is_dir(dir); !res { */
-        /*     if res := os.make_directory(dir); res != 0 { */
-        /*         fmt.eprintf("Failed to make trace path directory: [%v]\n", res) */
-        /*         return {}, .Unknown */
-        /*     } */
-        /* } */
+        // Write a trace of all commands to a file so it can be reproduced
+        // elsewhere. The trace is cross-platform.
+        if descriptor.trace_path != nil && descriptor.trace_path != "" {
+            desc.next_in_chain =
+            cast(^Chained_Struct)&Device_Extras{
+                chain = Chained_Struct{
+                    next = nil,
+                    stype = SType(Native_SType.Device_Extras),
+                },
+                trace_path = descriptor.trace_path,
+            }
+        }
     }
 
     res := Device_Response{}
-    wgpu.adapter_request_device(ptr, &descriptor, _on_adapter_request_device, &res)
+    wgpu.adapter_request_device(ptr, desc, _on_adapter_request_device, &res)
 
     if res.status != .Success {
         return {}, .Unknown
