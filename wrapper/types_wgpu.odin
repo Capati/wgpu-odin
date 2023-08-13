@@ -149,7 +149,7 @@ Compilation_Message :: wgpu.Compilation_Message
 Compute_Pass_Timestamp_Write :: wgpu.Compute_Pass_Timestamp_Write
 Constant_Entry :: wgpu.Constant_Entry
 Extent_3D :: wgpu.Extent_3D
-Limits :: wgpu.Limits
+// Limits :: wgpu.Limits
 Multisample_State :: wgpu.Multisample_State
 Origin3D :: wgpu.Origin3D
 Primitive_Depth_Clip_Control :: wgpu.Primitive_Depth_Clip_Control
@@ -188,4 +188,4 @@ Required_Limits :: wgpu.Required_Limits
 Supported_Limits :: wgpu.Supported_Limits
 Texture_Descriptor :: wgpu.Texture_Descriptor
 Color_Target_State :: wgpu.Color_Target_State
-Device_Descriptor :: wgpu.Device_Descriptor
+// Device_Descriptor :: wgpu.Device_Descriptor

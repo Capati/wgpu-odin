@@ -13,7 +13,7 @@ Device :: struct {
     features:     []Feature_Name,
     limits:       Limits,
     queue:        Queue,
-    err_data:    ^Error_Data,
+    err_data:     ^Error_Data,
     using vtable: ^Device_VTable,
 }
 
@@ -966,19 +966,60 @@ device_enumerate_features :: proc(
 }
 
 // List all limits that were requested of this device.
-device_get_limits :: proc(using self: ^Device) -> Limits {
-    supported_limits: Supported_Limits
-    wgpu.device_get_limits(ptr, &supported_limits)
+device_get_limits :: proc(self: ^Device) -> Limits {
+    extras := Supported_Limits_Extras{}
+    supported_limits := Supported_Limits {
+        next_in_chain = cast(^Chained_Struct_Out)&extras,
+    }
+    wgpu.device_get_limits(self.ptr, &supported_limits)
 
-    return supported_limits.limits
+    limits := supported_limits.limits
+
+    all_limits: Limits = {
+        max_texture_dimension_1d                        = limits.max_texture_dimension_1d,
+        max_texture_dimension_2d                        = limits.max_texture_dimension_2d,
+        max_texture_dimension_3d                        = limits.max_texture_dimension_3d,
+        max_texture_array_layers                        = limits.max_texture_array_layers,
+        max_bind_groups                                 = limits.max_bind_groups,
+        max_bindings_per_bind_group                     = limits.max_bindings_per_bind_group,
+        max_dynamic_uniform_buffers_per_pipeline_layout = limits.max_dynamic_uniform_buffers_per_pipeline_layout,
+        max_dynamic_storage_buffers_per_pipeline_layout = limits.max_dynamic_storage_buffers_per_pipeline_layout,
+        max_sampled_textures_per_shader_stage           = limits.max_sampled_textures_per_shader_stage,
+        max_samplers_per_shader_stage                   = limits.max_samplers_per_shader_stage,
+        max_storage_buffers_per_shader_stage            = limits.max_storage_buffers_per_shader_stage,
+        max_storage_textures_per_shader_stage           = limits.max_storage_textures_per_shader_stage,
+        max_uniform_buffers_per_shader_stage            = limits.max_uniform_buffers_per_shader_stage,
+        max_uniform_buffer_binding_size                 = limits.max_uniform_buffer_binding_size,
+        max_storage_buffer_binding_size                 = limits.max_storage_buffer_binding_size,
+        min_uniform_buffer_offset_alignment             = limits.min_uniform_buffer_offset_alignment,
+        min_storage_buffer_offset_alignment             = limits.min_storage_buffer_offset_alignment,
+        max_vertex_buffers                              = limits.max_vertex_buffers,
+        max_buffer_size                                 = limits.max_buffer_size,
+        max_vertex_attributes                           = limits.max_vertex_attributes,
+        max_vertex_buffer_array_stride                  = limits.max_vertex_buffer_array_stride,
+        max_inter_stage_shader_components               = limits.max_inter_stage_shader_components,
+        max_inter_stage_shader_variables                = limits.max_inter_stage_shader_variables,
+        max_color_attachments                           = limits.max_color_attachments,
+        max_color_attachment_bytes_per_sample           = limits.max_color_attachment_bytes_per_sample,
+        max_compute_workgroup_storage_size              = limits.max_compute_workgroup_storage_size,
+        max_compute_invocations_per_workgroup           = limits.max_compute_invocations_per_workgroup,
+        max_compute_workgroup_size_x                    = limits.max_compute_workgroup_size_x,
+        max_compute_workgroup_size_y                    = limits.max_compute_workgroup_size_y,
+        max_compute_workgroup_size_z                    = limits.max_compute_workgroup_size_z,
+        max_compute_workgroups_per_dimension            = limits.max_compute_workgroups_per_dimension,
+        // Limits extras
+        max_push_constant_size                          = extras.max_push_constant_size,
+    }
+
+    return all_limits
 }
 
 // Get a handle to a command queue on the device
 device_get_queue :: proc(using self: ^Device) -> Queue {
     gpu_queue := Queue {
-        ptr       = wgpu.device_get_queue(ptr),
+        ptr      = wgpu.device_get_queue(ptr),
         err_data = err_data,
-        vtable    = &default_queue_vtable,
+        vtable   = &default_queue_vtable,
     }
 
     return gpu_queue
