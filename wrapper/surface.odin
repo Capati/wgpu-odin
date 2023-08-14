@@ -1,9 +1,7 @@
 package wgpu
 
 // Core
-import "core:fmt"
 import "core:mem"
-// import "core:runtime"
 
 // Package
 import wgpu "../bindings"
@@ -21,12 +19,18 @@ Surface_VTable :: struct {
         self: ^Surface,
         adapter: Adapter,
         allocator: mem.Allocator = context.allocator,
-    ) -> Surface_Capabilities,
+    ) -> (
+        Surface_Capabilities,
+        Error_Type,
+    ),
     get_default_config:   proc(
         self: ^Surface,
         adapter: Adapter,
         width, height: u32,
-    ) -> Surface_Configuration,
+    ) -> (
+        Surface_Configuration,
+        Error_Type,
+    ),
     reference:            proc(self: ^Surface),
     release:              proc(self: ^Surface),
 }
@@ -63,14 +67,18 @@ surface_get_capabilities :: proc(
     using self: ^Surface,
     adapter: Adapter,
     allocator := context.allocator,
-) -> Surface_Capabilities {
+) -> (
+    Surface_Capabilities,
+    Error_Type,
+) {
     caps: wgpu.Surface_Capabilities = {}
     wgpu.surface_get_capabilities(ptr, adapter.ptr, &caps)
 
     if caps.format_count == 0 &&
        caps.present_mode_count == 0 &&
        caps.alpha_mode_count == 0 {
-        return {}
+        update_error_message("No compatible capabilities found with the given adapter")
+        return {}, .Unknown
     }
 
     if caps.format_count > 0 {
@@ -80,10 +88,11 @@ surface_get_capabilities :: proc(
         )
 
         if formats_alloc_err != .None {
-            fmt.panicf(
-                "Failed to allocate memory for formats array: [%v]\n",
-                formats_alloc_err,
-            )
+            update_error_message("Failed to allocate memory for formats array")
+            if formats_alloc_err == .Out_Of_Memory {
+                return {}, .Out_Of_Memory
+            }
+            return {}, .Internal
         }
 
         caps.formats = transmute(^Texture_Format)formats
@@ -96,10 +105,11 @@ surface_get_capabilities :: proc(
         )
 
         if present_modes_alloc_err != .None {
-            fmt.panicf(
-                "Failed to allocate memory for present modes array: [%v]\n",
-                present_modes_alloc_err,
-            )
+            update_error_message("Failed to allocate memory for present modes array")
+            if present_modes_alloc_err == .Out_Of_Memory {
+                return {}, .Out_Of_Memory
+            }
+            return {}, .Internal
         }
 
         caps.present_modes = transmute(^Present_Mode)present_modes
@@ -112,10 +122,11 @@ surface_get_capabilities :: proc(
         )
 
         if alpha_modes_alloc_err != .None {
-            fmt.panicf(
-                "Failed to allocate memory for alpha modes array: [%v]\n",
-                alpha_modes_alloc_err,
-            )
+            update_error_message("Failed to allocate memory for alpha modes array")
+            if alpha_modes_alloc_err == .Out_Of_Memory {
+                return {}, .Out_Of_Memory
+            }
+            return {}, .Internal
         }
 
         caps.alpha_modes = transmute(^Composite_Alpha_Mode)alpha_modes
@@ -137,7 +148,7 @@ surface_get_capabilities :: proc(
         ret.present_modes = caps.present_modes[:caps.present_mode_count]
     }
 
-    return ret
+    return ret, .No_Error
 }
 
 Get_Current_Texture_Error :: enum {
@@ -151,8 +162,11 @@ surface_get_default_config :: proc(
     using self: ^Surface,
     adapter: Adapter,
     width, height: u32,
-) -> Surface_Configuration {
-    caps := self->get_capabilities(adapter)
+) -> (
+    config: Surface_Configuration,
+    err: Error_Type,
+) {
+    caps := self->get_capabilities(adapter) or_return
 
     defer {
         delete(caps.formats)
@@ -160,7 +174,7 @@ surface_get_default_config :: proc(
         delete(caps.alpha_modes)
     }
 
-    default_config: Surface_Configuration = {
+    config = {
         label = "Default SwapChain",
         usage = {.Render_Attachment},
         format = caps.formats[0],
@@ -169,7 +183,7 @@ surface_get_default_config :: proc(
         present_mode = caps.present_modes[0],
     }
 
-    return default_config
+    return
 }
 
 surface_reference :: proc(using self: ^Surface) {
@@ -180,21 +194,3 @@ surface_reference :: proc(using self: ^Surface) {
 surface_release :: proc(using self: ^Surface) {
     wgpu.surface_release(ptr)
 }
-
-// @(private)
-// _handle_current_texture_error :: proc "c" (
-//     type: Error_Type,
-//     message: cstring,
-//     user_data: rawptr,
-// ) {
-//     if type == .No_Error {
-//         return
-//     }
-
-//     context = runtime.default_context()
-
-//     fmt.eprintf("Failed to get current texture [%v]: %s\n", type, message)
-
-//     error := cast(^Get_Current_Texture_Error)user_data
-//     error^ = .Failed_To_Acquire_Current_Texture
-// }

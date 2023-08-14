@@ -67,7 +67,7 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
     state.device = adapter->request_device(&device_descriptor) or_return
     defer if err != .No_Error do state.device->release()
 
-    caps := state.surface->get_capabilities(adapter)
+    caps := state.surface->get_capabilities(adapter) or_return
     defer {
         delete(caps.formats)
         delete(caps.present_modes)
