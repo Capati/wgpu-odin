@@ -44,7 +44,7 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
         dx12_shader_compiler = wgpu.Dx12_Compiler_Default,
     }
 
-    instance := wgpu.create_instance(&instance_descriptor)
+    instance := wgpu.create_instance(&instance_descriptor) or_return
     defer instance->release()
 
     surface_descriptor := wgpu_sdl.get_surface_descriptor(window) or_return

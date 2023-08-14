@@ -24,7 +24,11 @@ main :: proc() {
         backends = wgpu.Instance_Backend_Primary,
     }
 
-    instance := wgpu.create_instance(&instance_descriptor)
+    instance, instance_err := wgpu.create_instance(&instance_descriptor)
+    if instance_err != .No_Error {
+        fmt.eprintln("ERROR Creating Instance:", wgpu.get_error_message())
+        return
+    }
     defer instance->release()
 
     // Adapter
