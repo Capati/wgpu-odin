@@ -409,19 +409,19 @@ Error_Type :: enum c.int {
 }
 
 Feature_Name :: enum c.int {
-    Undefined,
-    Depth_Clip_Control,
-    Depth32_Float_Stencil8,
-    Timestamp_Query,
-    Pipeline_Statistics_Query,
-    Texture_Compression_Bc,
-    Texture_Compression_Etc2,
-    Texture_Compression_Astc,
-    Indirect_First_Instance,
-    Shader_F16,
-    Rg11_B10_Ufloat_Renderable,
-    Bgra8_Unorm_Storage,
-    Float32_Filterable,
+    Undefined                  = 0x00000000,
+    Depth_Clip_Control         = 0x00000001,
+    Depth32_Float_Stencil8     = 0x00000002,
+    Timestamp_Query            = 0x00000003,
+    Pipeline_Statistics_Query  = 0x00000004,
+    Texture_Compression_Bc     = 0x00000005,
+    Texture_Compression_Etc2   = 0x00000006,
+    Texture_Compression_Astc   = 0x00000007,
+    Indirect_First_Instance    = 0x00000008,
+    Shader_F16                 = 0x00000009,
+    Rg11_B10_Ufloat_Renderable = 0x0000000A,
+    Bgra8_Unorm_Storage        = 0x0000000B,
+    Float32_Filterable         = 0x0000000C,
 }
 
 Filter_Mode :: enum c.int {

@@ -81,7 +81,7 @@ Cull_Mode :: wgpu.Cull_Mode
 Device_Lost_Reason :: wgpu.Device_Lost_Reason
 Error_Filter :: wgpu.Error_Filter
 Error_Type :: wgpu.Error_Type
-Feature_Name :: wgpu.Feature_Name
+// Feature_Name :: wgpu.Feature_Name
 Filter_Mode :: wgpu.Filter_Mode
 Front_Face :: wgpu.Front_Face
 Index_Format :: wgpu.Index_Format

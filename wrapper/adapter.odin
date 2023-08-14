@@ -10,7 +10,7 @@ import wgpu "../bindings"
 // Handle to a physical graphics and/or compute device.
 Adapter :: struct {
     ptr:          WGPU_Adapter,
-    features:     []Feature_Name,
+    features:     []Features,
     limits:       Limits,
     info:         Adapter_Info,
     using vtable: ^Adapter_VTable,
@@ -23,10 +23,10 @@ Adapter_VTable :: struct {
     get_features:   proc(
         self: ^Adapter,
         allocator: mem.Allocator = context.allocator,
-    ) -> []Feature_Name,
+    ) -> []Features,
     get_limits:     proc(self: ^Adapter) -> Limits,
     request_info:   proc(self: ^Adapter) -> Adapter_Info,
-    has_feature:    proc(self: ^Adapter, feature: Feature_Name) -> bool,
+    has_feature:    proc(self: ^Adapter, feature: Features) -> bool,
     request_device: proc(
         self: ^Adapter,
         descriptor: ^Device_Descriptor = nil,
@@ -57,17 +57,17 @@ default_adapter := Adapter {
 adapter_get_features :: proc(
     using self: ^Adapter,
     allocator := context.allocator,
-) -> []Feature_Name {
+) -> []Features {
     features_count := wgpu.adapter_enumerate_features(ptr, nil)
 
     if features_count == 0 {
         return {}
     }
 
-    adapter_features := make([]Feature_Name, features_count, allocator)
+    adapter_features := make([]wgpu.Feature_Name, features_count, allocator)
     wgpu.adapter_enumerate_features(ptr, raw_data(adapter_features))
 
-    return adapter_features
+    return transmute([]Features)adapter_features
 }
 
 // List the “best” limits that are supported by this adapter.
@@ -128,20 +128,21 @@ adapter_request_info :: proc(using self: ^Adapter) -> Adapter_Info {
 }
 
 // Check if adapter support a feature.
-adapter_has_feature :: proc(using self: ^Adapter, feature: Feature_Name) -> bool {
-    return wgpu.adapter_has_feature(ptr, feature)
+adapter_has_feature :: proc(using self: ^Adapter, feature: Features) -> bool {
+    return wgpu.adapter_has_feature(ptr, cast(wgpu.Feature_Name)feature)
 }
 
+// Describes a `Device` for use with `adapter->request_device`.
 Device_Descriptor :: struct {
     label:                cstring,
-    features:             []Feature_Name,
-    native_features:      []Native_Feature,
+    features:             []Features,
     limits:               Limits,
     trace_path:           cstring,
     device_lost_callback: Device_Lost_Callback,
     device_lost_userdata: rawptr,
 }
 
+@(private)
 Device_Response :: struct {
     status: Request_Device_Status,
     device: WGPU_Device,
@@ -158,7 +159,6 @@ adapter_request_device :: proc(
     // Default descriptor can be NULL...
     desc: ^wgpu.Device_Descriptor = nil
 
-    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
     if descriptor != nil {
         desc = &{}
 
@@ -168,21 +168,10 @@ adapter_request_device :: proc(
             desc.label = info.name
         }
 
-        // TODO(JopStro): Merge Feature Enums in bindings to remove need for memory allocation?
-        required_features := make(
-            []Feature_Name,
-            len(descriptor.features) + len(descriptor.native_features),
-            context.temp_allocator,
-        )
-        copy(required_features, descriptor.features)
-        copy(
-            required_features[len(descriptor.features):],
-            transmute([]Feature_Name)descriptor.native_features,
-        )
-
-        if len(required_features) > 0 {
-            desc.required_features_count = len(required_features)
-            desc.required_features = raw_data(required_features)
+        if len(descriptor.features) > 0 {
+            desc.required_features_count = len(descriptor.features)
+            desc.required_features =
+            transmute(^wgpu.Feature_Name)raw_data(descriptor.features)
         }
 
         // Set limits

@@ -10,7 +10,7 @@ import wgpu "../bindings"
 // Open connection to a graphics and/or compute device.
 Device :: struct {
     ptr:          WGPU_Device,
-    features:     []Feature_Name,
+    features:     []Features,
     limits:       Limits,
     queue:        Queue,
     err_data:     ^Error_Data,
@@ -139,10 +139,10 @@ Device_VTable :: struct {
     get_features:                  proc(
         self: ^Device,
         allocator: mem.Allocator = context.allocator,
-    ) -> []Feature_Name,
+    ) -> []Features,
     get_limits:                    proc(self: ^Device) -> Limits,
     get_queue:                     proc(self: ^Device) -> Queue,
-    has_feature:                   proc(self: ^Device, feature: Feature_Name) -> bool,
+    has_feature:                   proc(self: ^Device, feature: Features) -> bool,
     set_uncaptured_error_callback: proc(
         self: ^Device,
         callback: Error_Callback,
@@ -957,12 +957,12 @@ device_create_texture :: proc(
 device_enumerate_features :: proc(
     using self: ^Device,
     allocator := context.allocator,
-) -> []Feature_Name {
+) -> []Features {
     count := wgpu.device_enumerate_features(ptr, nil)
-    adapter_features := make([]Feature_Name, count, allocator)
+    adapter_features := make([]wgpu.Feature_Name, count, allocator)
     wgpu.device_enumerate_features(ptr, raw_data(adapter_features))
 
-    return adapter_features
+    return transmute([]Features)adapter_features
 }
 
 // List all limits that were requested of this device.
@@ -1026,9 +1026,8 @@ device_get_queue :: proc(using self: ^Device) -> Queue {
 }
 
 // Check if device support the given feature name.
-device_has_feature :: proc(using self: ^Device, feature: Feature_Name) -> bool {
-    if feature == .Undefined do return false
-    return wgpu.device_has_feature(ptr, feature)
+device_has_feature :: proc(using self: ^Device, feature: Features) -> bool {
+    return wgpu.device_has_feature(ptr, cast(wgpu.Feature_Name)feature)
 }
 
 device_set_uncaptured_error_callback :: proc(

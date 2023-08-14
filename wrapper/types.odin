@@ -1,5 +1,7 @@
 package wgpu
 
+import "core:c"
+
 // Integral type used for buffer offsets.
 Buffer_Address :: u64
 // Integral type used for buffer slice sizes.
@@ -95,4 +97,27 @@ Limits :: struct {
     max_compute_workgroups_per_dimension:            u32,
     // Limits extras
     max_push_constant_size:                          u32,
+}
+
+// Features that are part of the webgpu standard and extension features supported by
+// wgpu when targeting native.
+Features :: enum c.int {
+    Depth_Clip_Control                       = 0x00000001,
+    Depth32_Float_Stencil8                   = 0x00000002,
+    Timestamp_Query                          = 0x00000003,
+    Pipeline_Statistics_Query                = 0x00000004,
+    Texture_Compression_Bc                   = 0x00000005,
+    Texture_Compression_Etc2                 = 0x00000006,
+    Texture_Compression_Astc                 = 0x00000007,
+    Indirect_First_Instance                  = 0x00000008,
+    Shader_F16                               = 0x00000009,
+    Rg11_B10_Ufloat_Renderable               = 0x0000000A,
+    Bgra8_Unorm_Storage                      = 0x0000000B,
+    Float32_Filterable                       = 0x0000000C,
+    // Native features
+    Push_Constants                           = 0x60000001,
+    Texture_Adapter_Specific_Format_Features = 0x60000002,
+    Multi_Draw_Indirect                      = 0x60000003,
+    Multi_Draw_Indirect_Count                = 0x60000004,
+    Vertex_Writable_Storage                  = 0x60000005,
 }
