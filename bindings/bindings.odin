@@ -12,7 +12,7 @@ when ODIN_OS == .Windows {
     when #config(WGPU_USE_SYSTEM_LIBRARIES, false) {
         foreign import wgpu_native "system:wgpu_native"
     } else {
-        foreign import wgpu_native "/libs/wgpu/bindings/lib/libwgpu_native.so"
+        foreign import wgpu_native "lib/libwgpu_native.a"
     }
 } else {
     foreign import wgpu_native "system:wgpu_native"
