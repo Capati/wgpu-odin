@@ -5,7 +5,7 @@ when ODIN_OS == .Windows {
 } else when ODIN_OS == .Darwin {
     when #config(WGPU_USE_SYSTEM_LIBRARIES, false) {
         foreign import wgpu_native "system:wgpu_native"
-    } else when #config(MACOS_ARM64) {
+    } else when ODIN_ARCH == .arm64 {
         foreign import wgpu_native "lib/darwin/arm64/libwgpu_native.a"
     } else {
         foreign import wgpu_native "lib/darwin/x86_64/libwgpu_native.a"
