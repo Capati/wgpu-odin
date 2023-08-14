@@ -73,7 +73,12 @@ Instance_Descriptor_Default :: Instance_Descriptor {
 Dx12_Compiler_Default :: Dx12_Compiler.Fxc
 
 // Create an new instance of wgpu.
-create_instance :: proc(descriptor: ^Instance_Descriptor) -> Instance {
+create_instance :: proc(
+    descriptor: ^Instance_Descriptor,
+) -> (
+    instance: Instance,
+    err: Error_Type,
+) {
     desc := wgpu.Instance_Descriptor {
         next_in_chain = nil,
     }
@@ -90,14 +95,17 @@ create_instance :: proc(descriptor: ^Instance_Descriptor) -> Instance {
         desc.next_in_chain = cast(^Chained_Struct)&instance_extras
     }
 
-    instance := default_instance
-    instance.ptr = wgpu.create_instance(&desc)
+    instance_ptr := wgpu.create_instance(&desc)
 
-    if instance.ptr == nil {
-        panic("Failed to acquire Instance") // NOTE(JopStro): Should we return an error instead?
+    if instance_ptr == nil {
+        update_error_message("Failed to acquire instance")
+        return {}, .Unknown
     }
 
-    return instance
+    instance = default_instance
+    instance.ptr = instance_ptr
+
+    return
 }
 
 Surface_Descriptor :: struct {

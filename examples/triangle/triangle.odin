@@ -15,7 +15,6 @@ TRIANGLE_MSAA_EXAMPLE :: #config(TRIANGLE_MSAA_EXAMPLE, false)
 
 State :: struct {
     minimized:                bool,
-    instance:                 wgpu.Instance,
     surface:                  wgpu.Surface,
     swap_chain:               wgpu.Swap_Chain,
     device:                   wgpu.Device,
@@ -43,17 +42,17 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
         backends = wgpu.Instance_Backend_Primary,
     }
 
-    state.instance = wgpu.create_instance(&instance_descriptor)
-    defer if err != .No_Error do state.instance->release()
+    instance := wgpu.create_instance(&instance_descriptor) or_return
+    defer if err != .No_Error do instance->release()
 
     // Surface
     surface_descriptor := wgpu_sdl.get_surface_descriptor(window) or_return
 
-    state.surface = state.instance->create_surface(&surface_descriptor) or_return
+    state.surface = instance->create_surface(&surface_descriptor) or_return
     defer if err != .No_Error do state.surface->release()
 
     // Adapter
-    adapter := state.instance->request_adapter(
+    adapter := instance->request_adapter(
         &{compatible_surface = &state.surface, power_preference = .High_Performance},
     ) or_return
     defer adapter->release()
@@ -283,7 +282,6 @@ main :: proc() {
         state.pipeline->release()
         state.device->release()
         state.surface->release()
-        state.instance->release()
     }
 
     err: wgpu.Error_Type
