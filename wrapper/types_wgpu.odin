@@ -151,7 +151,7 @@ Constant_Entry :: wgpu.Constant_Entry
 Extent_3D :: wgpu.Extent_3D
 // Limits :: wgpu.Limits
 Multisample_State :: wgpu.Multisample_State
-Origin3D :: wgpu.Origin3D
+Origin_3D :: wgpu.Origin_3D
 Primitive_Depth_Clip_Control :: wgpu.Primitive_Depth_Clip_Control
 // Primitive_State :: wgpu.Primitive_State
 Queue_Descriptor :: wgpu.Queue_Descriptor
