@@ -9,7 +9,7 @@ import wgpu "../bindings"
 // Handle to a command queue on a device.
 Queue :: struct {
     ptr:          WGPU_Queue,
-    err_data: ^Error_Data,
+    err_data:     ^Error_Data,
     using vtable: ^Queue_VTable,
 }
 
@@ -108,13 +108,11 @@ queue_write_buffer :: proc(
 
     data_size := cast(uint)len(data)
 
-
     if data_size == 0 {
         wgpu.queue_write_buffer(ptr, buffer.ptr, offset, nil, 0)
     } else {
         wgpu.queue_write_buffer(ptr, buffer.ptr, offset, raw_data(data), data_size)
     }
-
 
     return err_data.type
 }
@@ -122,7 +120,7 @@ queue_write_buffer :: proc(
 // Schedule a write of some data into a texture.
 queue_write_texture :: proc(
     using self: ^Queue,
-    texture: ^Image_Copy_Texture,
+    destination: ^Image_Copy_Texture,
     data: []byte,
     data_layout: ^Texture_Data_Layout,
     size: ^Extent_3D,
@@ -131,22 +129,27 @@ queue_write_texture :: proc(
 ) {
     err_data.type = .No_Error
 
-    data_size := cast(uint)len(data)
+    dst: wgpu.Image_Copy_Texture
 
+    if destination != nil {
+        dst = {
+            mip_level = destination.mip_level,
+            origin    = destination.origin,
+            aspect    = destination.aspect,
+        }
 
-    if data_size == 0 {
-        wgpu.queue_write_texture(ptr, texture, nil, 0, data_layout, size)
-    } else {
-        wgpu.queue_write_texture(
-            ptr,
-            texture,
-            raw_data(data),
-            data_size,
-            data_layout,
-            size,
-        )
+        if destination.texture != nil {
+            dst.texture = destination.texture.ptr
+        }
     }
 
+    data_size := cast(uint)len(data)
+
+    if data_size == 0 {
+        wgpu.queue_write_texture(ptr, &dst, nil, 0, data_layout, size)
+    } else {
+        wgpu.queue_write_texture(ptr, &dst, raw_data(data), data_size, data_layout, size)
+    }
 
     return err_data.type
 }

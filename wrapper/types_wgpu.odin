@@ -138,7 +138,7 @@ Request_Device_Callback :: wgpu.Request_Device_Callback
 
 Chained_Struct :: wgpu.Chained_Struct
 Chained_Struct_Out :: wgpu.Chained_Struct_Out
-Bind_Group_Entry :: wgpu.Bind_Group_Entry
+// Bind_Group_Entry :: wgpu.Bind_Group_Entry
 Blend_Component :: wgpu.Blend_Component
 Buffer_Binding_Layout :: wgpu.Buffer_Binding_Layout
 Buffer_Descriptor :: wgpu.Buffer_Descriptor
@@ -182,8 +182,8 @@ Blend_State :: wgpu.Blend_State
 Compilation_Info :: wgpu.Compilation_Info
 Compute_Pass_Descriptor :: wgpu.Compute_Pass_Descriptor
 Depth_Stencil_State :: wgpu.Depth_Stencil_State
-Image_Copy_Buffer :: wgpu.Image_Copy_Buffer
-Image_Copy_Texture :: wgpu.Image_Copy_Texture
+// Image_Copy_Buffer :: wgpu.Image_Copy_Buffer
+// Image_Copy_Texture :: wgpu.Image_Copy_Texture
 Required_Limits :: wgpu.Required_Limits
 Supported_Limits :: wgpu.Supported_Limits
 Texture_Descriptor :: wgpu.Texture_Descriptor

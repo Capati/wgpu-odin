@@ -280,6 +280,12 @@ command_encoder_copy_buffer_to_buffer :: proc(
     return err_data.type
 }
 
+// View of a buffer which can be used to copy to/from a texture.
+Image_Copy_Buffer :: struct {
+    layout: Texture_Data_Layout,
+    buffer: ^Buffer,
+}
+
 // Copy data from a buffer to a texture.
 command_encoder_copy_buffer_to_texture :: proc(
     using self: ^Command_Encoder,
@@ -289,19 +295,38 @@ command_encoder_copy_buffer_to_texture :: proc(
 ) -> Error_Type {
     if source != nil {
         if source.layout.bytes_per_row % Copy_Bytes_Per_Row_Alignment != 0 {
-            fmt.eprintf(
-                "%s: 'bytes_per_row' [%d] must be a multiple of [%d]\n",
-                #procedure,
-                source.layout.bytes_per_row,
-                Copy_Bytes_Per_Row_Alignment,
-            )
+            update_error_message("bytes_per_row must be a multiple of 256")
             return .Validation
         }
     }
 
     err_data.type = .No_Error
 
-    wgpu.command_encoder_copy_buffer_to_texture(ptr, source, destination, copy_size)
+    src: wgpu.Image_Copy_Buffer
+
+    if source != nil {
+        if source.buffer != nil {
+            src.buffer = source.buffer.ptr
+        }
+
+        src.layout = source.layout
+    }
+
+    dst: wgpu.Image_Copy_Texture
+
+    if destination != nil {
+        dst = {
+            mip_level = destination.mip_level,
+            origin    = destination.origin,
+            aspect    = destination.aspect,
+        }
+
+        if destination.texture != nil {
+            dst.texture = destination.texture.ptr
+        }
+    }
+
+    wgpu.command_encoder_copy_buffer_to_texture(ptr, &src, &dst, copy_size)
 
     return err_data.type
 }
@@ -315,19 +340,38 @@ command_encoder_copy_texture_to_buffer :: proc(
 ) -> Error_Type {
     if destination != nil {
         if destination.layout.bytes_per_row % Copy_Bytes_Per_Row_Alignment != 0 {
-            fmt.eprintf(
-                "%s: 'bytes_per_row' [%d] must be a multiple of [%d]\n",
-                #procedure,
-                destination.layout.bytes_per_row,
-                Copy_Bytes_Per_Row_Alignment,
-            )
+            update_error_message("bytes_per_row must be a multiple of 256")
             return .Validation
         }
     }
 
     err_data.type = .No_Error
 
-    wgpu.command_encoder_copy_texture_to_buffer(ptr, source, destination, copy_size)
+    src: wgpu.Image_Copy_Texture
+
+    if source != nil {
+        src = {
+            mip_level = source.mip_level,
+            origin    = source.origin,
+            aspect    = source.aspect,
+        }
+
+        if source.texture != nil {
+            src.texture = source.texture.ptr
+        }
+    }
+
+    dst: wgpu.Image_Copy_Buffer
+
+    if destination != nil {
+        if destination.buffer != nil {
+            dst.buffer = destination.buffer.ptr
+        }
+
+        dst.layout = destination.layout
+    }
+
+    wgpu.command_encoder_copy_texture_to_buffer(ptr, &src, &dst, copy_size)
 
     return err_data.type
 }
@@ -341,7 +385,35 @@ command_encoder_copy_texture_to_texture :: proc(
 ) -> Error_Type {
     err_data.type = .No_Error
 
-    wgpu.command_encoder_copy_texture_to_texture(ptr, source, destination, copy_size)
+    src: wgpu.Image_Copy_Texture
+
+    if source != nil {
+        src = {
+            mip_level = source.mip_level,
+            origin    = source.origin,
+            aspect    = source.aspect,
+        }
+
+        if source.texture != nil {
+            src.texture = source.texture.ptr
+        }
+    }
+
+    dst: wgpu.Image_Copy_Texture
+
+    if destination != nil {
+        dst = {
+            mip_level = destination.mip_level,
+            origin    = destination.origin,
+            aspect    = destination.aspect,
+        }
+
+        if destination.texture != nil {
+            dst.texture = destination.texture.ptr
+        }
+    }
+
+    wgpu.command_encoder_copy_texture_to_texture(ptr, &src, &dst, copy_size)
 
     return err_data.type
 }

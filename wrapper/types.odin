@@ -121,3 +121,11 @@ Features :: enum c.int {
     Multi_Draw_Indirect_Count                = 0x60000004,
     Vertex_Writable_Storage                  = 0x60000005,
 }
+
+// View of a texture which can be used to copy to/from a buffer/texture.
+Image_Copy_Texture :: struct {
+    texture:   ^Texture,
+    mip_level: u32,
+    origin:    Origin_3D,
+    aspect:    Texture_Aspect,
+}
