@@ -1,7 +1,6 @@
 package tutorial5_textures
 
 // Core
-import "core:bytes"
 import "core:fmt"
 import "core:runtime"
 
@@ -104,6 +103,7 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
         &state.surface,
         &state.config,
     ) or_return
+    defer if err != .No_Error do state.swap_chain->release()
 
     // Load our tree image to texture
     state.diffuse_texture = texture_from_image(
