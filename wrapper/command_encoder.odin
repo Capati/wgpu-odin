@@ -10,7 +10,7 @@ import wgpu "../bindings"
 // Encodes a series of GPU operations.
 Command_Encoder :: struct {
     ptr:          WGPU_Command_Encoder,
-    err_data: ^Error_Data,
+    err_data:     ^Error_Data,
     using vtable: ^Command_Encoder_VTable,
 }
 
@@ -119,11 +119,6 @@ command_encoder_begin_compute_pass :: proc(
     descriptor: ^Compute_Pass_Descriptor,
 ) -> Compute_Pass_Encoder {
     compute_pass_ptr := wgpu.command_encoder_begin_compute_pass(ptr, descriptor)
-
-    if compute_pass_ptr == nil {
-        fmt.panicf("Failed to acquire Compute_Pass_Encoder")
-    }
-
 
     compute_pass := default_compute_pass_encoder
     compute_pass.ptr = compute_pass_ptr
