@@ -89,6 +89,7 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
         &state.surface,
         &state.config,
     ) or_return
+    defer if err != .No_Error do state.swap_chain->release()
 
     // Shader module
     shader := state.device->load_wgsl_shader_module(
@@ -280,6 +281,7 @@ main :: proc() {
         }
 
         state.pipeline->release()
+        state.swap_chain->release()
         state.device->release()
         state.surface->release()
     }

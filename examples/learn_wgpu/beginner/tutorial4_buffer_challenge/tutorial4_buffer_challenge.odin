@@ -106,6 +106,7 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
         &state.surface,
         &state.config,
     ) or_return
+    defer if err != .No_Error do state.swap_chain->release()
 
     shader := state.device->load_wgsl_shader_module(
         "assets/learn_wgpu/tutorial4/shader.wgsl",
@@ -358,6 +359,7 @@ main :: proc() {
         state.index_buffer->release()
         state.vertex_buffer->release()
         state.render_pipeline->release()
+        state.swap_chain->release()
         state.device->release()
         state.surface->release()
     }
