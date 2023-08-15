@@ -117,3 +117,17 @@ Downlevel_Webgl2_D_Limits :: Limits {
     // Extras
     max_push_constant_size                          = 0,
 }
+
+Sampler_Descriptor_Default :: Sampler_Descriptor {
+    label          = nil,
+    address_mode_u = .Clamp_To_Edge,
+    address_mode_v = .Clamp_To_Edge,
+    address_mode_w = .Clamp_To_Edge,
+    mag_filter     = .Nearest,
+    min_filter     = .Nearest,
+    mipmap_filter  = .Nearest,
+    lod_min_clamp  = 0.0,
+    lod_max_clamp  = 32.0,
+    compare        = .Undefined,
+    max_anisotropy = 1,
+}
