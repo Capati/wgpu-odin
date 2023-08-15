@@ -1,8 +1,5 @@
 package wgpu
 
-// Core
-import "core:fmt"
-
 // Package
 import wgpu "../bindings"
 
@@ -41,17 +38,8 @@ compute_pipeline_get_bind_group_layout :: proc(
     using self: ^Compute_Pipeline,
     group_index: u32,
 ) -> Bind_Group_Layout {
-    bind_group_layout_ptr := wgpu.compute_pipeline_get_bind_group_layout(
-        ptr,
-        group_index,
-    )
-
-    if bind_group_layout_ptr == nil {
-        fmt.panicf("Failed to acquire Bind_Group_Layout")
-    }
-
     bind_group_layout := default_bind_group_layout
-    bind_group_layout.ptr = bind_group_layout_ptr
+    bind_group_layout.ptr = wgpu.compute_pipeline_get_bind_group_layout(ptr, group_index)
 
     return bind_group_layout
 }
