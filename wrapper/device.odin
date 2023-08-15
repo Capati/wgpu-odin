@@ -202,6 +202,15 @@ default_device := Device {
     vtable = &default_device_vtable,
 }
 
+Bind_Group_Entry :: struct {
+    binding:      u32,
+    buffer:       ^Buffer,
+    offset:       u64,
+    size:         u64,
+    sampler:      ^Sampler,
+    texture_view: ^Texture_View,
+}
+
 Bind_Group_Descriptor :: struct {
     label:   cstring,
     layout:  ^Bind_Group_Layout,
@@ -216,7 +225,9 @@ device_create_bind_group :: proc(
     Bind_Group,
     Error_Type,
 ) {
-    desc := wgpu.Bind_Group_Descriptor{}
+    desc: wgpu.Bind_Group_Descriptor
+
+    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
     if descriptor != nil {
         desc.label = descriptor.label
@@ -228,8 +239,36 @@ device_create_bind_group :: proc(
         entry_count := cast(uint)len(descriptor.entries)
 
         if entry_count > 0 {
+            bind_group_entry_ptrs := make(
+                []wgpu.Bind_Group_Entry,
+                entry_count,
+                context.temp_allocator,
+            )
+
+            for v, i in descriptor.entries {
+                entry := wgpu.Bind_Group_Entry {
+                    binding = v.binding,
+                    offset  = v.offset,
+                    size    = v.size,
+                }
+
+                if v.buffer != nil {
+                    entry.buffer = v.buffer.ptr
+                }
+
+                if v.sampler != nil {
+                    entry.sampler = v.sampler.ptr
+                }
+
+                if v.texture_view != nil {
+                    entry.texture_view = v.texture_view.ptr
+                }
+
+                bind_group_entry_ptrs[i] = entry
+            }
+
             desc.entry_count = entry_count
-            desc.entries = raw_data(descriptor.entries)
+            desc.entries = raw_data(bind_group_entry_ptrs)
         }
     }
 
