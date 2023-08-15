@@ -188,6 +188,7 @@ main :: proc() {
     }
     defer {
         state.device->release()
+        state.swap_chain->release()
         state.surface->release()
     }
 
