@@ -279,8 +279,8 @@ Adapter_Type :: enum c.int {
 
 Address_Mode :: enum c.int {
     Repeat,
-    MirrorRepeat,
-    ClampToEdge,
+    Mirror_Repeat,
+    Clamp_To_Edge,
 }
 
 Backend_Type :: enum c.int {
@@ -927,7 +927,7 @@ Multisample_State :: struct {
     alpha_to_coverage_enabled: bool,
 }
 
-Origin3D :: struct {
+Origin_3D :: struct {
     x: c.uint32_t,
     y: c.uint32_t,
     z: c.uint32_t,
@@ -1211,7 +1211,7 @@ Image_Copy_Texture :: struct {
     next_in_chain: ^Chained_Struct,
     texture:       Texture,
     mip_level:     c.uint32_t,
-    origin:        Origin3D,
+    origin:        Origin_3D,
     aspect:        Texture_Aspect,
 }
 
