@@ -43,8 +43,7 @@ GPU_Render_Pass_VTable :: struct {
         self: ^Render_Pass_Encoder,
         group_index: u32,
         group: ^Bind_Group,
-        dynamic_offset_count: uint = 0,
-        dynamic_offsets: ^u32 = nil,
+        dynamic_offsets: []u32 = {},
     ),
     set_blend_constant:              proc(self: ^Render_Pass_Encoder, color: ^Color),
     set_index_buffer:                proc(
@@ -141,16 +140,21 @@ render_pass_set_bind_group :: proc(
     using self: ^Render_Pass_Encoder,
     group_index: u32,
     group: ^Bind_Group,
-    dynamic_offset_count: uint = 0,
-    dynamic_offsets: ^u32 = nil,
+    dynamic_offsets: []u32 = {},
 ) {
-    wgpu.render_pass_encoder_set_bind_group(
-        ptr,
-        group_index,
-        group.ptr,
-        dynamic_offset_count,
-        dynamic_offsets,
-    )
+    dynamic_offset_count := cast(uint)len(dynamic_offsets)
+
+    if dynamic_offset_count == 0 {
+        wgpu.render_pass_encoder_set_bind_group(ptr, group_index, group.ptr, 0, nil)
+    } else {
+        wgpu.render_pass_encoder_set_bind_group(
+            ptr,
+            group_index,
+            group.ptr,
+            dynamic_offset_count,
+            raw_data(dynamic_offsets),
+        )
+    }
 }
 
 render_pass_set_blend_constant :: proc(using self: ^Render_Pass_Encoder, color: ^Color) {
