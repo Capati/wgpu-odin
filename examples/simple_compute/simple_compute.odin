@@ -113,7 +113,7 @@ main :: proc() {
             entries = {
                 {
                     binding = 0,
-                    buffer = work_buffer.ptr,
+                    buffer = &work_buffer,
                     offset = 0,
                     size = work_buffer.size,
                 },
