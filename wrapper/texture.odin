@@ -3,9 +3,11 @@ package wgpu
 // Package
 import wgpu "../bindings"
 
+// Handle to a texture on the GPU.
 Texture :: struct {
     ptr:          WGPU_Texture,
-    err_data:    ^Error_Data,
+    descriptor:   Texture_Descriptor,
+    err_data:     ^Error_Data,
     using vtable: ^Texture_VTable,
 }
 
@@ -57,21 +59,21 @@ default_texture := Texture {
 
 // Creates a view of this texture.
 texture_create_view :: proc(
-    using texture: ^Texture,
+    self: ^Texture,
     descriptor: ^Texture_View_Descriptor,
 ) -> (
     Texture_View,
     Error_Type,
 ) {
-    err_data.type = .No_Error
+    self.err_data.type = .No_Error
 
-    texture_view_ptr := wgpu.texture_create_view(ptr, descriptor)
+    texture_view_ptr := wgpu.texture_create_view(self.ptr, descriptor)
 
-    if err_data.type != .No_Error {
+    if self.err_data.type != .No_Error {
         if texture_view_ptr != nil {
             wgpu.texture_view_release(texture_view_ptr)
         }
-        return {}, err_data.type
+        return {}, self.err_data.type
     }
 
     texture_view := default_texture_view
@@ -81,60 +83,60 @@ texture_create_view :: proc(
 }
 
 // Destroy the associated native resources as soon as possible.
-texture_destroy :: proc(using texture: ^Texture) {
+texture_destroy :: proc(using self: ^Texture) {
     wgpu.texture_destroy(ptr)
 }
 
 // Returns the depth or layer count of this `Texture`.
-texture_get_depth_or_array_layers :: proc(using texture: ^Texture) -> u32 {
+texture_get_depth_or_array_layers :: proc(using self: ^Texture) -> u32 {
     return wgpu.texture_get_depth_or_array_layers(ptr)
 }
 
 // Returns the dimension of this `Texture`.
-texture_get_dimension :: proc(using texture: ^Texture) -> Texture_Dimension {
+texture_get_dimension :: proc(using self: ^Texture) -> Texture_Dimension {
     return wgpu.texture_get_dimension(ptr)
 }
 
 // Returns the format of this `Texture`.
-texture_get_format :: proc(using texture: ^Texture) -> Texture_Format {
+texture_get_format :: proc(using self: ^Texture) -> Texture_Format {
     return wgpu.texture_get_format(ptr)
 }
 
 // Returns the height of this `Texture`.
-texture_get_height :: proc(using texture: ^Texture) -> u32 {
+texture_get_height :: proc(using self: ^Texture) -> u32 {
     return wgpu.texture_get_height(ptr)
 }
 
 // Returns the `mip_level_count` of this `Texture`.
-texture_get_mip_level_count :: proc(using texture: ^Texture) -> u32 {
+texture_get_mip_level_count :: proc(using self: ^Texture) -> u32 {
     return wgpu.texture_get_mip_level_count(ptr)
 }
 
 // Returns the sample_count of this `Texture`.
-texture_get_sample_count :: proc(using texture: ^Texture) -> u32 {
+texture_get_sample_count :: proc(using self: ^Texture) -> u32 {
     return wgpu.texture_get_sample_count(ptr)
 }
 
 // Returns the allowed usages of this `Texture`.
-texture_get_usage :: proc(using texture: ^Texture) -> Texture_Usage {
+texture_get_usage :: proc(using self: ^Texture) -> Texture_Usage {
     return wgpu.texture_get_usage(ptr)
 }
 
 // Returns the width of this `Texture`.
-texture_get_width :: proc(using texture: ^Texture) -> u32 {
+texture_get_width :: proc(using self: ^Texture) -> u32 {
     return wgpu.texture_get_width(ptr)
 }
 
 // Set a debug label for this `Texture`.
-texture_set_label :: proc(using texture: ^Texture, label: cstring) {
+texture_set_label :: proc(using self: ^Texture, label: cstring) {
     wgpu.texture_set_label(ptr, label)
 }
 
-texture_reference :: proc(using texture: ^Texture) {
+texture_reference :: proc(using self: ^Texture) {
     wgpu.texture_reference(ptr)
 }
 
 // Release the `Texture`.
-texture_release :: proc(using texture: ^Texture) {
+texture_release :: proc(using self: ^Texture) {
     wgpu.texture_release(ptr)
 }
