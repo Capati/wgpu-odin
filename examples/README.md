@@ -22,7 +22,7 @@ WGPU version: 0.17.0.2
 Selected device:
 
 NVIDIA GeForce RTX 3060
-        Driver: 23.7.2
+        Driver: 536.99
         Type: Discrete GPU with separate CPU/GPU memory
         Backend: Vulkan API
 ```
@@ -49,7 +49,25 @@ This uses the same triangle example but with 4x MSAA.
 odin build ./triangle -define:TRIANGLE_MSAA_EXAMPLE=true -out:./build/<executable-name>
 ```
 
+#### Screenshots
+
 ![Triangle 4x MSAA](./triangle/triangle_msaa.png)
+
+### [Capture](./capture/capture.odin)
+
+This example shows how to capture an image by rendering it to a texture, copying the texture to a buffer, and retrieving it from the buffer.
+
+This create ./red.png with all pixels red and size 100x200.
+
+```shell
+odin build ./capture -out:./build/<executable-name>
+```
+
+**Note**: If you get `write_png` reference errors, try to run the Makefile on `/vendor/stb/src`.
+
+#### Screenshots
+
+![Capture](./capture/red.png)
 
 ### [Learn WGPU Tutorial](./learn_wgpu)
 
