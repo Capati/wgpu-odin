@@ -18,7 +18,10 @@ Command_Encoder_VTable :: struct {
     begin_compute_pass:      proc(
         self: ^Command_Encoder,
         descriptor: ^Compute_Pass_Descriptor,
-    ) -> Compute_Pass_Encoder,
+    ) -> (
+        Compute_Pass_Encoder,
+        Error_Type,
+    ),
     begin_render_pass:       proc(
         self: ^Command_Encoder,
         descriptor: ^Render_Pass_Descriptor,
@@ -116,14 +119,22 @@ default_gpu_command_encoder := Command_Encoder {
 command_encoder_begin_compute_pass :: proc(
     using self: ^Command_Encoder,
     descriptor: ^Compute_Pass_Descriptor,
-) -> Compute_Pass_Encoder {
+) -> (
+    compute_pass: Compute_Pass_Encoder,
+    err: Error_Type,
+) {
     compute_pass_ptr := wgpu.command_encoder_begin_compute_pass(ptr, descriptor)
 
-    compute_pass := default_compute_pass_encoder
+    if compute_pass_ptr == nil {
+        update_error_message("Failed to acquire Compute_Pass_Encoder")
+        return {}, .Unknown
+    }
+
+    compute_pass = default_compute_pass_encoder
     compute_pass.ptr = compute_pass_ptr
     compute_pass.err_data = err_data
 
-    return compute_pass
+    return
 }
 
 // Describes a color attachment to a `Render_Pass`.
