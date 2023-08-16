@@ -20,6 +20,10 @@ if "%1" == "simple_compute" (
     call :simple_compute & goto :end
 )
 
+if "%1" == "capture" (
+    call :capture & goto :end
+)
+
 if "%1" == "learn_wgpu" (
     call :learn_wgpu & goto :end
 )
@@ -31,6 +35,7 @@ goto :end
 call :info
 call :triangle
 call :simple_compute
+call :capture
 call :learn_wgpu
 goto :eof
 
@@ -44,6 +49,11 @@ goto :eof
 
 :simple_compute
 odin build .\simple_compute %ARGS% %OUT%\simple_compute.exe
+goto :eof
+
+
+:capture
+odin build .\capture %ARGS% %OUT%\capture.exe
 goto :eof
 
 :learn_wgpu
