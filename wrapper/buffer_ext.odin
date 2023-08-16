@@ -6,7 +6,7 @@ import "core:fmt"
 
 from_bytes :: slice.reinterpret
 
-CHECK_TO_BYTES :: #config(WGPU_CHECK_TO_BYTES, true)
+CHECK_TO_BYTES :: #config(WGPU_CHECK_TO_BYTES,true)
 
 @(private="file")
 can_be_bytes :: proc(T: typeid) -> bool {
@@ -19,13 +19,13 @@ can_be_bytes :: proc(T: typeid) -> bool {
     case .Struct:
         res := false
         for ti in reflect.struct_field_types(id) {
-            res ||= can_be_bytes(ti.id)
+            res &&= can_be_bytes(ti.id)
         }
         return res
     case .Union:
         res := false
         for ti in type_info_of(id).variant.(reflect.Type_Info_Union).variants {
-            res ||= can_be_bytes(ti.id)
+            res &&= can_be_bytes(ti.id)
         }
         return res
     case .Slice,
