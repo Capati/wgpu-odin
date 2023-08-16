@@ -21,13 +21,17 @@ Buffer :: struct {
 @(private)
 Buffer_VTable :: struct {
     destroy:                proc(self: ^Buffer),
-    get_const_mapped_range: proc(self: ^Buffer),
-    get_mapped_range:       proc(
+    get_const_mapped_range: proc(
         self: ^Buffer,
         byte_count: uint = 0,
         offset: uint = 0,
     ) -> []byte,
     get_map_state:          proc(self: ^Buffer) -> Buffer_Map_State,
+    get_mapped_range:       proc(
+        self: ^Buffer,
+        byte_count: uint = 0,
+        offset: uint = 0,
+    ) -> []byte,
     get_size:               proc(self: ^Buffer) -> u64,
     get_usage:              proc(self: ^Buffer) -> Buffer_Usage_Flags,
     map_read:               proc(
@@ -59,17 +63,18 @@ Buffer_VTable :: struct {
 
 @(private)
 default_buffer_vtable := Buffer_VTable {
-    destroy          = buffer_destroy,
-    get_mapped_range = buffer_get_mapped_range,
-    get_map_state    = buffer_get_map_state,
-    get_size         = buffer_get_size,
-    get_usage        = buffer_get_usage,
-    map_read         = buffer_map_read,
-    map_write        = buffer_map_write,
-    map_async        = buffer_map_async,
-    set_label        = buffer_set_label,
-    unmap            = buffer_unmap,
-    release          = buffer_release,
+    destroy                = buffer_destroy,
+    get_const_mapped_range = buffer_get_const_mapped_range,
+    get_mapped_range       = buffer_get_mapped_range,
+    get_map_state          = buffer_get_map_state,
+    get_size               = buffer_get_size,
+    get_usage              = buffer_get_usage,
+    map_read               = buffer_map_read,
+    map_write              = buffer_map_write,
+    map_async              = buffer_map_async,
+    set_label              = buffer_set_label,
+    unmap                  = buffer_unmap,
+    release                = buffer_release,
 }
 
 @(private)
@@ -81,6 +86,30 @@ default_buffer := Buffer {
 // Destroys the `Buffer`.
 buffer_destroy :: proc(using self: ^Buffer) {
     wgpu.buffer_destroy(ptr)
+}
+
+// Returns a `slice` of `bytes` with the contents of the `Buffer` in the given mapped
+// range. Cannot modify the buffer's data.
+buffer_get_const_mapped_range :: proc(
+    self: ^Buffer,
+    offset: uint = 0,
+    size: uint = 0,
+) -> []byte {
+    size := size
+
+    if size == 0 {
+        size = cast(uint)self.size
+    }
+
+    return slice.bytes_from_ptr(
+        wgpu.buffer_get_const_mapped_range(self.ptr, offset, size),
+        cast(int)size,
+    )
+}
+
+// Get current `Buffer_Map_State` state.
+buffer_get_map_state :: proc(using self: ^Buffer) -> Buffer_Map_State {
+    return wgpu.buffer_get_map_state(ptr)
 }
 
 // Returns a `slice` of `bytes` with the contents of the `Buffer` in the given mapped
@@ -100,11 +129,6 @@ buffer_get_mapped_range :: proc(
         wgpu.buffer_get_mapped_range(self.ptr, offset, size),
         cast(int)size,
     )
-}
-
-// Get current `Buffer_Map_State` state.
-buffer_get_map_state :: proc(using self: ^Buffer) -> Buffer_Map_State {
-    return wgpu.buffer_get_map_state(ptr)
 }
 
 // Returns the length of the buffer allocation in bytes.
