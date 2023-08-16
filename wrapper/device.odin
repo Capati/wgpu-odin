@@ -967,6 +967,18 @@ device_create_swap_chain :: proc(
     return swap_chain, .No_Error
 }
 
+// Describes a `Texture`.
+Texture_Descriptor :: struct {
+    label:           cstring,
+    usage:           Texture_Usage_Flags,
+    dimension:       Texture_Dimension,
+    size:            Extent_3D,
+    format:          Texture_Format,
+    mip_level_count: u32,
+    sample_count:    u32,
+    view_formats:    []Texture_Format,
+}
+
 device_create_texture :: proc(
     using self: ^Device,
     descriptor: ^Texture_Descriptor,
@@ -974,9 +986,30 @@ device_create_texture :: proc(
     Texture,
     Error_Type,
 ) {
+    desc: wgpu.Texture_Descriptor
+
+    if descriptor != nil {
+        desc = {
+            label           = descriptor.label,
+            usage           = descriptor.usage,
+            dimension       = descriptor.dimension,
+            size            = descriptor.size,
+            format          = descriptor.format,
+            mip_level_count = descriptor.mip_level_count,
+            sample_count    = descriptor.sample_count,
+        }
+
+        view_format_count := cast(uint)len(descriptor.view_formats)
+
+        if view_format_count > 0 {
+            desc.view_format_count = view_format_count
+            desc.view_formats = raw_data(descriptor.view_formats)
+        }
+    }
+
     err_data.type = .No_Error
 
-    texture_ptr := wgpu.device_create_texture(ptr, descriptor)
+    texture_ptr := wgpu.device_create_texture(ptr, &desc)
 
     if err_data.type != .No_Error {
         if texture_ptr != nil {
@@ -987,6 +1020,7 @@ device_create_texture :: proc(
 
     texture := default_texture
     texture.ptr = texture_ptr
+    texture.descriptor = descriptor^
     texture.err_data = err_data
 
     return texture, .No_Error

@@ -186,6 +186,6 @@ Depth_Stencil_State :: wgpu.Depth_Stencil_State
 // Image_Copy_Texture :: wgpu.Image_Copy_Texture
 Required_Limits :: wgpu.Required_Limits
 Supported_Limits :: wgpu.Supported_Limits
-Texture_Descriptor :: wgpu.Texture_Descriptor
+// Texture_Descriptor :: wgpu.Texture_Descriptor
 Color_Target_State :: wgpu.Color_Target_State
 // Device_Descriptor :: wgpu.Device_Descriptor
