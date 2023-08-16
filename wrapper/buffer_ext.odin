@@ -11,11 +11,13 @@ CHECK_TO_BYTES :: #config(WGPU_CHECK_TO_BYTES,true)
 @(private="file")
 can_be_bytes :: proc(T: typeid) -> bool {
     id := reflect.typeid_core(T)
-    for reflect.type_kind(id) == .Array || reflect.type_kind(id) == .Enumerated_Array {
+    kind := reflect.type_kind(id)
+    for kind == .Array || kind == .Enumerated_Array {
         id = reflect.typeid_elem(id)
         id = reflect.typeid_core(id)
+        kind = reflect.type_kind(id)
     }
-    #partial switch reflect.type_kind(id) {
+    #partial switch kind {
     case .Struct:
         res := true
         for ti in reflect.struct_field_types(id) {
