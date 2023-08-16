@@ -17,13 +17,13 @@ can_be_bytes :: proc(T: typeid) -> bool {
     }
     #partial switch reflect.type_kind(id) {
     case .Struct:
-        res := false
+        res := true
         for ti in reflect.struct_field_types(id) {
             res &&= can_be_bytes(ti.id)
         }
         return res
     case .Union:
-        res := false
+        res := true
         for ti in type_info_of(id).variant.(reflect.Type_Info_Union).variants {
             res &&= can_be_bytes(ti.id)
         }
