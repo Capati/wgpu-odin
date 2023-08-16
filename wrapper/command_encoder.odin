@@ -222,6 +222,7 @@ command_encoder_begin_render_pass :: proc(
 
     render_pass := default_render_pass_encoder
     render_pass.ptr = render_pass_encoder_ptr
+    render_pass.err_data = err_data
 
     return render_pass
 }
