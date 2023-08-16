@@ -102,7 +102,11 @@ main :: proc() {
     if result_buffer_err != .No_Error do return
     defer result_buffer->release()
 
-    bind_group_layout := pipeline->get_bind_group_layout(0)
+    bind_group_layout, bind_group_layout_err := pipeline->get_bind_group_layout(0)
+    if bind_group_layout_err != .No_Error {
+        fmt.eprintln("ERROR Couldn't Get Bind Group Layout: ", wgpu.get_error_message())
+        return
+    }
     defer bind_group_layout->release()
 
     // Setup a bindGroup to tell the shader which
@@ -130,7 +134,13 @@ main :: proc() {
     if encoder_err != .No_Error do return
     defer encoder->release()
 
-    compute_pass := encoder->begin_compute_pass(&{label = "doubling compute pass"})
+    compute_pass, compute_pass_err := encoder->begin_compute_pass(
+        &{label = "doubling compute pass"},
+    )
+    if compute_pass_err != .No_Error {
+        fmt.eprintln("ERROR Couldn't Begin Compute Pass: ", wgpu.get_error_message())
+        return
+    }
     defer compute_pass->release()
 
     compute_pass->set_pipeline(&pipeline)
