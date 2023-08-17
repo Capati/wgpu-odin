@@ -3,13 +3,16 @@ OUT = -out:./build
 
 .PHONY: all
 
-all: info_example triangle_example simple_compute_example capture_example learn_wgpu_examples
+all: info_example triangle_example cube_example simple_compute_example capture_example learn_wgpu_examples
 
 info_example:
 	odin build ./info $(ARGS) $(OUT)/info
 
 triangle_example:
 	odin build ./triangle $(ARGS) $(OUT)/triangle
+
+cube_example:
+	odin build ./cube $(ARGS) $(OUT)/cube
 
 simple_compute_example:
 	odin build ./simple_compute $(ARGS) $(OUT)/simple_compute

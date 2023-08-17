@@ -16,6 +16,10 @@ if "%1" == "triangle" (
     call :triangle & goto :end
 )
 
+if "%1" == "cube" (
+    call :cube & goto :end
+)
+
 if "%1" == "simple_compute" (
     call :simple_compute & goto :end
 )
@@ -34,6 +38,7 @@ goto :end
 :all
 call :info
 call :triangle
+call :cube
 call :simple_compute
 call :capture
 call :learn_wgpu
@@ -47,10 +52,13 @@ goto :eof
 odin build .\triangle %ARGS% %OUT%\triangle.exe
 goto :eof
 
+:cube
+odin build .\cube %ARGS% %OUT%\cube.exe
+goto :eof
+
 :simple_compute
 odin build .\simple_compute %ARGS% %OUT%\simple_compute.exe
 goto :eof
-
 
 :capture
 odin build .\capture %ARGS% %OUT%\capture.exe
