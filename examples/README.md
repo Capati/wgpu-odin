@@ -53,6 +53,18 @@ odin build ./triangle -define:TRIANGLE_MSAA_EXAMPLE=true -out:./build/<executabl
 
 ![Triangle 4x MSAA](./triangle/triangle_msaa.png)
 
+### [Cube](./cube/cube.odin)
+
+This example renders a textured cube.
+
+```shell
+odin build ./cube -out:./build/<executable-name>
+```
+
+#### Screenshots
+
+![Textured Cube](./cube/cube.png)
+
 ### [Capture](./capture/capture.odin)
 
 This example shows how to capture an image by rendering it to a texture, copying the texture to a buffer, and retrieving it from the buffer.
