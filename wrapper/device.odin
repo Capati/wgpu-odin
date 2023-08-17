@@ -646,13 +646,6 @@ Render_Pipeline_Descriptor :: struct {
     fragment:      ^Fragment_State,
 }
 
-Multisample_State_Default := Multisample_State {
-    next_in_chain             = nil,
-    count                     = 1,
-    mask                      = ~u32(0), // 0xFFFFFFFF
-    alpha_to_coverage_enabled = false,
-}
-
 // Creates a `Render_Pipeline`.
 device_create_render_pipeline :: proc(
     using self: ^Device,
