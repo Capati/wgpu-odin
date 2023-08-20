@@ -16,6 +16,10 @@ if "%1" == "triangle" (
     call :triangle & goto :end
 )
 
+if "%1" == "triangle_msaa" (
+    call :triangle_msaa & goto :end
+)
+
 if "%1" == "cube" (
     call :cube & goto :end
 )
@@ -38,6 +42,7 @@ goto :end
 :all
 call :info
 call :triangle
+call :triangle_msaa
 call :cube
 call :simple_compute
 call :capture
@@ -50,6 +55,10 @@ goto :eof
 
 :triangle
 odin build .\triangle %ARGS% %OUT%\triangle.exe
+goto :eof
+
+:triangle_msaa
+odin build .\triangle_msaa %ARGS% %OUT%\triangle_msaa.exe
 goto :eof
 
 :cube
