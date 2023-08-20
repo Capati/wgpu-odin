@@ -5,21 +5,15 @@ import "core:fmt"
 import "core:math"
 import la "core:math/linalg"
 // import "core:math/linalg/glsl"
-import "core:runtime"
-
-// Vendor
-import sdl "vendor:sdl2"
 
 // Package
+import "../framework"
 import wgpu "../../wrapper"
-import wgpu_sdl "../../utils/sdl"
 
-State :: struct {
-    minimized:      bool,
-    surface:        wgpu.Surface,
-    swap_chain:     wgpu.Swap_Chain,
-    device:         wgpu.Device,
-    config:         wgpu.Surface_Configuration,
+State :: framework.State
+Physical_Size :: framework.Physical_Size
+
+Example :: struct {
     vertex_buffer:  wgpu.Buffer,
     index_buffer:   wgpu.Buffer,
     uniform_buffer: wgpu.Buffer,
@@ -27,21 +21,7 @@ State :: struct {
     bind_group:     wgpu.Bind_Group,
 }
 
-Physical_Size :: struct {
-    width:  u32,
-    height: u32,
-}
-
-_log_callback :: proc "c" (level: wgpu.Log_Level, message: cstring, user_data: rawptr) {
-    context = runtime.default_context()
-    fmt.eprintf("[wgpu] [%v] %s\n\n", level, message)
-}
-
-@(init)
-init :: proc() {
-    wgpu.set_log_callback(_log_callback, nil)
-    wgpu.set_log_level(.Warn)
-}
+ctx := Example{}
 
 Texel_Size :: 256
 
@@ -78,80 +58,24 @@ generate_matrix :: proc(aspect_ratio: f32) -> la.Matrix4f32 {
 //     return projection * view
 // }
 
-init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
-    state := State{}
-
-    instance_descriptor := wgpu.Instance_Descriptor {
-        backends             = wgpu.Instance_Backend_Primary,
-        dx12_shader_compiler = wgpu.Dx12_Compiler_Default,
-    }
-
-    instance := wgpu.create_instance(&instance_descriptor) or_return
-    defer instance->release()
-
-    surface_descriptor := wgpu_sdl.get_surface_descriptor(window) or_return
-    state.surface = instance->create_surface(&surface_descriptor) or_return
-    defer if err != .No_Error do state.surface->release()
-
-    adapter_options := wgpu.Request_Adapter_Options {
-        power_preference       = .High_Performance,
-        compatible_surface     = &state.surface,
-        force_fallback_adapter = false,
-    }
-
-    adapter := instance->request_adapter(&adapter_options) or_return
-    defer adapter->release()
-
-    device_descriptor := wgpu.Device_Descriptor {
-        label  = adapter.info.name,
-        limits = wgpu.Default_Limits,
-    }
-
-    state.device = adapter->request_device(&device_descriptor) or_return
-    defer if err != .No_Error do state.device->release()
-
-    caps := state.surface->get_capabilities(adapter) or_return
-    defer {
-        delete(caps.formats)
-        delete(caps.present_modes)
-        delete(caps.alpha_modes)
-    }
-
-    width, height: i32
-    sdl.GetWindowSize(window, &width, &height)
-
-    state.config = {
-        usage = {.Render_Attachment},
-        format = state.surface->get_preferred_format(&adapter),
-        width = cast(u32)width,
-        height = cast(u32)height,
-        present_mode = .Fifo,
-        alpha_mode = caps.alpha_modes[0],
-    }
-
-    state.swap_chain = state.device->create_swap_chain(
-        &state.surface,
-        &state.config,
-    ) or_return
-    defer if err != .No_Error do state.swap_chain->release()
-
-    state.vertex_buffer = state.device->create_buffer_with_data(
+init_example := proc(using state: ^State) -> (err: wgpu.Error_Type) {
+    ctx.vertex_buffer = state.device->create_buffer_with_data(
         &{
             label = "Vertex Buffer",
             contents = wgpu.to_bytes(vertex_data),
             usage = {.Vertex},
         },
     ) or_return
-    defer if err != .No_Error do state.vertex_buffer->release()
+    defer if err != .No_Error do ctx.vertex_buffer->release()
 
-    state.index_buffer = state.device->create_buffer_with_data(
+    ctx.index_buffer = state.device->create_buffer_with_data(
         &{
             label = "Index Buffer",
             contents = wgpu.to_bytes(index_data),
             usage = {.Index},
         },
     ) or_return
-    defer if err != .No_Error do state.index_buffer->release()
+    defer if err != .No_Error do ctx.index_buffer->release()
 
     texels := create_texels()
     texture_extent := wgpu.Extent_3D {
@@ -191,14 +115,14 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
 
     fmt.printf("%#v\n", mx_total)
 
-    state.uniform_buffer = state.device->create_buffer_with_data(
+    ctx.uniform_buffer = state.device->create_buffer_with_data(
         &{
             label = "Uniform Buffer",
             contents = wgpu.to_bytes(mx_total),
             usage = {.Uniform, .Copy_Dst},
         },
     ) or_return
-    defer if err != .No_Error do state.uniform_buffer->release()
+    defer if err != .No_Error do ctx.uniform_buffer->release()
 
     shader := state.device->load_wgsl_shader_module(
         "assets/cube.wgsl",
@@ -219,7 +143,7 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
         },
     }
 
-    state.pipeline = state.device->create_render_pipeline(
+    ctx.pipeline = state.device->create_render_pipeline(
         &{
             vertex = {
                 module = &shader,
@@ -246,57 +170,36 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
             multisample = wgpu.Multisample_State_Default,
         },
     ) or_return
-    defer if err != .No_Error do state.pipeline->release()
+    defer if err != .No_Error do ctx.pipeline->release()
 
-    bind_group_layout := state.pipeline->get_bind_group_layout(0) or_return
+    bind_group_layout := ctx.pipeline->get_bind_group_layout(0) or_return
     defer bind_group_layout->release()
 
-    state.bind_group = state.device->create_bind_group(
+    ctx.bind_group = state.device->create_bind_group(
         &{
             layout = &bind_group_layout,
             entries = {
-                {binding = 0, buffer = &state.uniform_buffer, size = wgpu.Whole_Size},
+                {binding = 0, buffer = &ctx.uniform_buffer, size = wgpu.Whole_Size},
                 {binding = 1, texture_view = &texture_view, size = wgpu.Whole_Size},
             },
         },
     ) or_return
 
-    return state, .No_Error
+    return .No_Error
 }
 
-resize_window :: proc(state: ^State, size: Physical_Size) -> wgpu.Error_Type {
-    if size.width == 0 && size.height == 0 {
-        return .No_Error
-    }
-
-    state.config.width = size.width
-    state.config.height = size.height
-
-    mx_total := generate_matrix(
-        cast(f32)state.config.width / cast(f32)state.config.height,
-    )
+resized :: proc(using state: ^State, size: Physical_Size) -> wgpu.Error_Type {
+    mx_total := generate_matrix(cast(f32)size.width / cast(f32)size.height)
     state.device.queue->write_buffer(
-        &state.uniform_buffer,
+        &ctx.uniform_buffer,
         0,
         wgpu.to_bytes(mx_total),
-    ) or_return
-
-    if state.swap_chain.ptr != nil {
-        state.swap_chain->release()
-    }
-
-    state.swap_chain = state.device->create_swap_chain(
-        &state.surface,
-        &state.config,
     ) or_return
 
     return .No_Error
 }
 
 render :: proc(state: ^State) -> wgpu.Error_Type {
-    next_texture := state.swap_chain->get_current_texture_view() or_return
-    defer next_texture->release()
-
     encoder := state.device->create_command_encoder(
         &wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
     ) or_return
@@ -307,7 +210,7 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
             label = "Render Pass",
             color_attachments = []wgpu.Render_Pass_Color_Attachment{
                 {
-                    view = &next_texture,
+                    view = &state.frame,
                     resolve_target = nil,
                     load_op = .Clear,
                     store_op = .Store,
@@ -319,10 +222,10 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
     )
     defer render_pass->release()
 
-    render_pass->set_pipeline(&state.pipeline)
-    render_pass->set_bind_group(0, &state.bind_group, nil)
-    render_pass->set_index_buffer(state.index_buffer, .Uint16, 0, wgpu.Whole_Size)
-    render_pass->set_vertex_buffer(0, state.vertex_buffer, 0, wgpu.Whole_Size)
+    render_pass->set_pipeline(&ctx.pipeline)
+    render_pass->set_bind_group(0, &ctx.bind_group, nil)
+    render_pass->set_index_buffer(ctx.index_buffer, .Uint16, 0, wgpu.Whole_Size)
+    render_pass->set_vertex_buffer(0, ctx.vertex_buffer, 0, wgpu.Whole_Size)
     render_pass->draw_indexed(cast(u32)len(index_data), 1, 0, 0, 0)
     render_pass->end() or_return
 
@@ -336,90 +239,33 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
 }
 
 main :: proc() {
-    sdl_flags := sdl.InitFlags{.VIDEO, .JOYSTICK, .GAMECONTROLLER, .EVENTS}
+    title: cstring = "Textured Cube"
+    properties := framework.default_properties
+    properties.title = title
 
-    if res := sdl.Init(sdl_flags); res != 0 {
-        fmt.eprintf("ERROR: Failed to initialize SDL: [%s]\n", sdl.GetError())
-        return
-    }
-    defer sdl.Quit()
-
-    window_flags: sdl.WindowFlags = {.SHOWN, .ALLOW_HIGHDPI, .RESIZABLE}
-
-    sdl_window := sdl.CreateWindow(
-        "Cube",
-        sdl.WINDOWPOS_CENTERED,
-        sdl.WINDOWPOS_CENTERED,
-        800,
-        600,
-        window_flags,
-    )
-    defer sdl.DestroyWindow(sdl_window)
-
-    if sdl_window == nil {
-        fmt.eprintf("ERROR: Failed to create the SDL Window: [%s]\n", sdl.GetError())
-        return
-    }
-
-    state, state_err := init_state(sdl_window)
+    state, state_err := framework.init(properties)
     if state_err != .No_Error {
         message := wgpu.get_error_message()
         if message != "" {
-            fmt.eprintln("ERROR: Failed to initialize program:", message)
+            fmt.eprintf("Failed to initialize [%s]: %s", title, message)
         } else {
-            fmt.eprintln("ERROR: Failed to initialize program")
+            fmt.eprintf("Failed to initialize [%s]", title)
         }
         return
     }
+    defer framework.deinit()
+
+    if init_example(state) != .No_Error do return
     defer {
-        state.bind_group->release()
-        state.pipeline->release()
-        state.uniform_buffer->release()
-        state.index_buffer->release()
-        state.vertex_buffer->release()
-        state.device->release()
-        state.swap_chain->release()
-        state.surface->release()
+        ctx.bind_group->release()
+        ctx.pipeline->release()
+        ctx.uniform_buffer->release()
+        ctx.index_buffer->release()
+        ctx.vertex_buffer->release()
     }
 
-    err := wgpu.Error_Type{}
+    state.render_proc = render
+    state.resized_proc = resized
 
-    main_loop: for {
-        e: sdl.Event
-
-        for sdl.PollEvent(&e) {
-            #partial switch (e.type) {
-            case .QUIT:
-                break main_loop
-
-            case .WINDOWEVENT:
-                #partial switch (e.window.event) {
-                case .SIZE_CHANGED:
-                case .RESIZED:
-                    err = resize_window(
-                        &state,
-                        {cast(u32)e.window.data1, cast(u32)e.window.data2},
-                    )
-                    if err != .No_Error do break main_loop
-
-                case .MINIMIZED:
-                    state.minimized = true
-
-                case .RESTORED:
-                    state.minimized = false
-                }
-            }
-        }
-
-        if !state.minimized {
-            err = render(&state)
-            if err != .No_Error do break main_loop
-        }
-    }
-
-    if err != .No_Error {
-        fmt.eprintf("Error occurred while rendering: %v\n", wgpu.get_error_message())
-    }
-
-    fmt.println("Exiting...")
+    framework.begin_run()
 }

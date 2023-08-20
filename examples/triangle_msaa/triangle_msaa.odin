@@ -1,4 +1,4 @@
-package triangle
+package triangle_msaa
 
 // Core
 import "core:fmt"
@@ -11,10 +11,13 @@ State :: framework.State
 Physical_Size :: framework.Physical_Size
 
 Example :: struct {
-    pipeline: wgpu.Render_Pipeline,
+    pipeline:                 wgpu.Render_Pipeline,
+    multisampled_framebuffer: wgpu.Texture_View,
 }
 
 ctx := Example{}
+
+Msaa_Count :: 4
 
 init_example := proc(using state: ^State) -> (err: wgpu.Error_Type) {
     shader := device->load_wgsl_shader_module(
@@ -23,25 +26,63 @@ init_example := proc(using state: ^State) -> (err: wgpu.Error_Type) {
     ) or_return
     defer shader->release()
 
-    ctx.pipeline = device->create_render_pipeline(
-        &{
-            label = "Render Pipeline",
-            vertex = {module = &shader, entry_point = "vs"},
-            fragment = &{
-                module = &shader,
-                entry_point = "fs",
-                targets = {
-                    {
-                        format = config.format,
-                        blend = &wgpu.Blend_State_Replace,
-                        write_mask = wgpu.Color_Write_Mask_All,
-                    },
+    pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
+        label = "Render Pipeline",
+        vertex = {module = &shader, entry_point = "vs"},
+        fragment = &{
+            module = &shader,
+            entry_point = "fs",
+            targets = {
+                {
+                    format = config.format,
+                    blend = &wgpu.Blend_State_Replace,
+                    write_mask = wgpu.Color_Write_Mask_All,
                 },
             },
-            multisample = wgpu.Multisample_State_Default,
         },
+        multisample = {
+            count = Msaa_Count,
+            mask = ~u32(0),
+            alpha_to_coverage_enabled = false,
+        },
+    }
+
+    ctx.pipeline = device->create_render_pipeline(&pipeline_descriptor) or_return
+    defer if err != .No_Error do ctx.pipeline->release()
+
+    ctx.multisampled_framebuffer = get_multisampled_framebuffer(
+        state,
+        {config.width, config.height},
     ) or_return
 
+    return .No_Error
+}
+
+get_multisampled_framebuffer :: proc(
+    using state: ^State,
+    size: Physical_Size,
+) -> (
+    view: wgpu.Texture_View,
+    err: wgpu.Error_Type,
+) {
+    texture := device->create_texture(
+        &{
+            usage = {.Render_Attachment},
+            dimension = ._2D,
+            size = {width = size.width, height = size.height, depth_or_array_layers = 1},
+            format = config.format,
+            mip_level_count = 1,
+            sample_count = Msaa_Count,
+        },
+    ) or_return
+    defer texture->release()
+
+    return texture->create_view(nil)
+}
+
+resized :: proc(using state: ^State, size: Physical_Size) -> wgpu.Error_Type {
+    ctx.multisampled_framebuffer->release()
+    ctx.multisampled_framebuffer = get_multisampled_framebuffer(state, size) or_return
     return .No_Error
 }
 
@@ -56,8 +97,8 @@ render :: proc(using state: ^State) -> wgpu.Error_Type {
             label = "Render Pass",
             color_attachments = []wgpu.Render_Pass_Color_Attachment{
                 {
-                    view = &frame,
-                    resolve_target = nil,
+                    view = &ctx.multisampled_framebuffer,
+                    resolve_target = &frame,
                     load_op = .Clear,
                     store_op = .Store,
                     clear_value = wgpu.Color_Green,
@@ -82,7 +123,7 @@ render :: proc(using state: ^State) -> wgpu.Error_Type {
 }
 
 main :: proc() {
-    title: cstring = "Triangle"
+    title: cstring = "Triangle 4x MSAA"
     properties := framework.default_properties
     properties.title = title
 
@@ -100,10 +141,12 @@ main :: proc() {
 
     if init_example(state) != .No_Error do return
     defer {
+        ctx.multisampled_framebuffer->release()
         ctx.pipeline->release()
     }
 
     state.render_proc = render
+    state.resized_proc = resized
 
     framework.begin_run()
 }
