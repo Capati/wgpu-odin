@@ -6,9 +6,10 @@ import "core:fmt"
 // Package
 import "../../../framework"
 import wgpu "../../../../wrapper"
-import "texture"
+import "../tutorial5_textures/texture"
 
 State :: framework.State
+Keyboard_Event :: framework.Keyboard_Event
 Physical_Size :: framework.Physical_Size
 Texture :: texture.Texture
 
@@ -24,6 +25,9 @@ Example :: struct {
     num_indices:        u32,
     diffuse_texture:    Texture,
     diffuse_bind_group: wgpu.Bind_Group,
+    cartoon_texture:    Texture,
+    cartoon_bind_group: wgpu.Bind_Group,
+    is_space_pressed:   bool,
 }
 
 ctx := Example{}
@@ -66,6 +70,24 @@ init_example :: proc(using state: ^State) -> (err: wgpu.Error_Type) {
         },
     ) or_return
     defer if err != .No_Error do ctx.diffuse_bind_group->release()
+
+    ctx.cartoon_texture = texture.texture_from_image(
+        &state.device,
+        "assets/learn_wgpu/tutorial5/happy-tree-cartoon.png",
+    ) or_return
+    defer if err != .No_Error do texture.texture_destroy(&ctx.cartoon_texture)
+
+    ctx.cartoon_bind_group = state.device->create_bind_group(
+        &wgpu.Bind_Group_Descriptor{
+            label = "cartoon_bind_group",
+            layout = &texture_bind_group_layout,
+            entries = {
+                {binding = 0, texture_view = &ctx.cartoon_texture.view},
+                {binding = 1, sampler = &ctx.cartoon_texture.sampler},
+            },
+        },
+    ) or_return
+    defer if err != .No_Error do ctx.cartoon_bind_group->release()
 
     render_pipeline_layout := state.device->create_pipeline_layout(
         &{
@@ -162,6 +184,18 @@ init_example :: proc(using state: ^State) -> (err: wgpu.Error_Type) {
     return .No_Error
 }
 
+on_key_down :: proc(state: ^State, event: Keyboard_Event) {
+    if event.keysym.sym == .SPACE {
+        ctx.is_space_pressed = true
+    }
+}
+
+on_key_up :: proc(state: ^State, event: Keyboard_Event) {
+    if event.keysym.sym == .SPACE {
+        ctx.is_space_pressed = false
+    }
+}
+
 render :: proc(state: ^State) -> wgpu.Error_Type {
     encoder := state.device->create_command_encoder(
         &wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
@@ -186,7 +220,11 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
     defer render_pass->release()
 
     render_pass->set_pipeline(&ctx.render_pipeline)
-    render_pass->set_bind_group(0, &ctx.diffuse_bind_group)
+    if ctx.is_space_pressed {
+        render_pass->set_bind_group(0, &ctx.cartoon_bind_group)
+    } else {
+        render_pass->set_bind_group(0, &ctx.diffuse_bind_group)
+    }
     render_pass->set_vertex_buffer(0, ctx.vertex_buffer)
     render_pass->set_index_buffer(ctx.index_buffer, .Uint16, 0, wgpu.Whole_Size)
     render_pass->draw_indexed(ctx.num_indices)
@@ -203,7 +241,7 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
 
 main :: proc() {
     properties := framework.default_properties
-    properties.title = "Tutorial 5 - Textures"
+    properties.title = "Tutorial 5 - Textures Challenge"
 
     state, state_err := framework.init(properties)
     if state_err != .No_Error {
@@ -218,10 +256,14 @@ main :: proc() {
         ctx.index_buffer->release()
         ctx.vertex_buffer->release()
         ctx.diffuse_bind_group->release()
+        ctx.cartoon_bind_group->release()
         texture.texture_destroy(&ctx.diffuse_texture)
+        texture.texture_destroy(&ctx.cartoon_texture)
     }
 
     state.render_proc = render
+    state.on_key_down_proc = on_key_down
+    state.on_key_up_proc = on_key_up
 
     framework.begin_run()
 }

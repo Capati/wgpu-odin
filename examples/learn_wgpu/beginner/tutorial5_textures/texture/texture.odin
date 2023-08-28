@@ -1,4 +1,4 @@
-package tutorial5_textures
+package tutorial5_textures_texture
 
 // Core
 import "core:bytes"
@@ -6,7 +6,7 @@ import "core:fmt"
 import "core:image/png"
 
 // Package
-import wgpu "../../../../wrapper"
+import wgpu "../../../../../wrapper"
 
 Texture :: struct {
     handle:  wgpu.Texture,
