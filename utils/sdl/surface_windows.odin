@@ -17,7 +17,10 @@ get_surface_descriptor :: proc(
     wm_info := get_sys_info(window) or_return
 
     // Setup surface information
-    descriptor.target = wgpu.Surface_Descriptor_From_Windows_HWND{hinstance = wm_info.info.win.hinstance, hwnd = wm_info.info.win.window}
+    descriptor.target = wgpu.Surface_Descriptor_From_Windows_HWND {
+        hinstance = wm_info.info.win.hinstance,
+        hwnd      = wm_info.info.win.window,
+    }
 
     return
 }
