@@ -114,7 +114,7 @@ main :: proc() {
             size = texture_extent,
             mip_level_count = 1,
             sample_count = 1,
-            dimension = ._2D,
+            dimension = .D2,
             format = .Rgba8_Unorm_Srgb,
             usage = {.Render_Attachment, .Copy_Src},
         },

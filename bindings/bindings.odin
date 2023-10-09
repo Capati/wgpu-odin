@@ -570,9 +570,9 @@ Texture_Component_Type :: enum c.int {
 }
 
 Texture_Dimension :: enum c.int {
-    _1D,
-    _2D,
-    _3D,
+    D1,
+    D2,
+    D3,
 }
 
 Texture_Format :: enum c.int {

@@ -40,7 +40,7 @@ texture_from_image :: proc(
             size = size,
             mip_level_count = 1,
             sample_count = 1,
-            dimension = ._2D,
+            dimension = .D2,
             format = .Rgba8_Unorm_Srgb,
             usage = {.Texture_Binding, .Copy_Dst},
         },
