@@ -88,7 +88,7 @@ init_example := proc(using state: ^State) -> (err: wgpu.Error_Type) {
             size = texture_extent,
             mip_level_count = 1,
             sample_count = 1,
-            dimension = ._2D,
+            dimension = .D2,
             format = .R8_Uint,
             usage = {.Texture_Binding, .Copy_Dst},
         },

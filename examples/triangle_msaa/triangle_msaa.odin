@@ -68,7 +68,7 @@ get_multisampled_framebuffer :: proc(
     texture := device->create_texture(
         &{
             usage = {.Render_Attachment},
-            dimension = ._2D,
+            dimension = .D2,
             size = {width = size.width, height = size.height, depth_or_array_layers = 1},
             format = config.format,
             mip_level_count = 1,

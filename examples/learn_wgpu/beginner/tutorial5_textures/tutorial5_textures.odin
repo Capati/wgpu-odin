@@ -45,7 +45,7 @@ init_example :: proc(using state: ^State) -> (err: wgpu.Error_Type) {
                     visibility = {.Fragment},
                     texture = {
                         multisampled = false,
-                        view_dimension = ._2D,
+                        view_dimension = .D2,
                         sample_type = .Float,
                     },
                 },
