@@ -2,6 +2,8 @@ package wgpu
 
 // Core
 import "core:mem"
+import "core:runtime"
+import "core:slice"
 
 // Package
 import wgpu "../bindings"
@@ -81,55 +83,45 @@ surface_get_capabilities :: proc(
         return {}, .Unknown
     }
 
+    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+
     if caps.format_count > 0 {
-        formats, formats_alloc_err := mem.alloc(
+        caps.formats =
+        cast(^Texture_Format)(mem.alloc(
             cast(int)caps.format_count * size_of(Texture_Format),
-            allocator = allocator,
-        )
+                allocator = context.temp_allocator,
+            ) or_else nil)
 
-        if formats_alloc_err != .None {
+        if caps.formats == nil {
             update_error_message("Failed to allocate memory for formats array")
-            if formats_alloc_err == .Out_Of_Memory {
                 return {}, .Out_Of_Memory
-            }
-            return {}, .Internal
         }
-
-        caps.formats = transmute(^Texture_Format)formats
     }
 
     if caps.present_mode_count > 0 {
-        present_modes, present_modes_alloc_err := mem.alloc(
+        caps.present_modes =
+        cast(^Present_Mode)(mem.alloc(
             cast(int)caps.present_mode_count * size_of(Present_Mode),
-            allocator = allocator,
-        )
+                allocator = context.temp_allocator,
+            ) or_else nil)
 
-        if present_modes_alloc_err != .None {
+        if caps.present_modes == nil {
             update_error_message("Failed to allocate memory for present modes array")
-            if present_modes_alloc_err == .Out_Of_Memory {
                 return {}, .Out_Of_Memory
-            }
-            return {}, .Internal
         }
-
-        caps.present_modes = transmute(^Present_Mode)present_modes
     }
 
     if caps.alpha_mode_count > 0 {
-        alpha_modes, alpha_modes_alloc_err := mem.alloc(
+        caps.alpha_modes =
+        cast(^Composite_Alpha_Mode)(mem.alloc(
             cast(int)caps.alpha_mode_count * size_of(Composite_Alpha_Mode),
-            allocator = allocator,
-        )
+                allocator = context.temp_allocator,
+            ) or_else nil)
 
-        if alpha_modes_alloc_err != .None {
+        if caps.alpha_modes == nil {
             update_error_message("Failed to allocate memory for alpha modes array")
-            if alpha_modes_alloc_err == .Out_Of_Memory {
                 return {}, .Out_Of_Memory
-            }
-            return {}, .Internal
         }
-
-        caps.alpha_modes = transmute(^Composite_Alpha_Mode)alpha_modes
     }
 
     wgpu.surface_get_capabilities(ptr, adapter.ptr, &caps)
@@ -137,15 +129,24 @@ surface_get_capabilities :: proc(
     ret := Surface_Capabilities{}
 
     if caps.format_count > 0 {
-        ret.formats = caps.formats[:caps.format_count]
-    }
-
-    if caps.alpha_mode_count > 0 {
-        ret.alpha_modes = caps.alpha_modes[:caps.alpha_mode_count]
+        formats_tmp := slice.from_ptr(caps.formats, int(caps.format_count))
+        ret.formats = make([]Texture_Format, caps.format_count, allocator)
+        copy(ret.formats, formats_tmp)
     }
 
     if caps.present_mode_count > 0 {
-        ret.present_modes = caps.present_modes[:caps.present_mode_count]
+        present_modes_tmp := slice.from_ptr(
+            caps.present_modes,
+            int(caps.present_mode_count),
+        )
+        ret.present_modes = make([]Present_Mode, caps.present_mode_count, allocator)
+        copy(ret.present_modes, present_modes_tmp)
+    }
+
+    if caps.alpha_mode_count > 0 {
+        alpha_modes_tmp := slice.from_ptr(caps.alpha_modes, int(caps.alpha_mode_count))
+        ret.alpha_modes = make([]Composite_Alpha_Mode, caps.alpha_mode_count, allocator)
+        copy(ret.alpha_modes, alpha_modes_tmp)
     }
 
     return ret, .No_Error
