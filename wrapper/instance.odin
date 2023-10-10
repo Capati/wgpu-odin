@@ -8,7 +8,6 @@ import "core:runtime"
 // Package
 import wgpu "../bindings"
 
-
 // Context for all other wgpu objects.
 Instance :: struct {
     ptr:          WGPU_Instance,
@@ -64,13 +63,6 @@ Instance_Descriptor :: struct {
     dxil_path:            cstring,
     dxc_path:             cstring,
 }
-
-// Backends are set to `Primary`, and `FXC` is chosen as the `dx12_shader_compiler`.
-Instance_Descriptor_Default :: Instance_Descriptor {
-    backends             = wgpu.Instance_Backend_Primary,
-    dx12_shader_compiler = .Fxc,
-}
-Dx12_Compiler_Default :: Dx12_Compiler.Fxc
 
 // Create an new instance of wgpu.
 create_instance :: proc(
@@ -177,7 +169,6 @@ instance_create_surface :: proc(
             t.chain.stype = .Surface_Descriptor_From_Canvas_Html_Selector
             desc.next_in_chain = cast(^Chained_Struct)&t
         }
-
     }
 
     surface_ptr := wgpu.instance_create_surface(ptr, &desc)
@@ -197,8 +188,6 @@ Adapter_Response :: struct {
     status:  Request_Adapter_Status,
     adapter: WGPU_Adapter,
 }
-
-Power_Preference_Default: Power_Preference = .High_Performance
 
 Request_Adapter_Options :: struct {
     compatible_surface:     ^Surface,
