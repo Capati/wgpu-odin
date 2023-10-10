@@ -5,7 +5,7 @@ import wgpu "../bindings"
 
 Compute_Pass_Encoder :: struct {
     ptr:          WGPU_Compute_Pass_Encoder,
-    err_data: ^Error_Data,
+    err_data:     ^Error_Data,
     using vtable: ^Compute_Pass_Encoder_VTable,
 }
 

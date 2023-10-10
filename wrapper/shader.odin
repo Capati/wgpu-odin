@@ -3,9 +3,9 @@ package wgpu
 // Core
 import "core:fmt"
 import "core:os"
+import "core:runtime"
 import "core:slice"
 import "core:strings"
-import "core:runtime"
 
 // Package
 import wgpu "../bindings"
@@ -77,7 +77,10 @@ device_load_wgsl_shader_module :: proc(
 
     descriptor := Shader_Module_Descriptor {
         label           = current_label,
-        wgsl_descriptor = &{code = strings.clone_to_cstring(string(data), context.temp_allocator)}, // clone to cstring to ensure null termination
+        // clone to cstring to ensure null termination
+        wgsl_descriptor = &{
+            code = strings.clone_to_cstring(string(data), context.temp_allocator),
+        },
     }
 
     shader_module = self->create_shader_module(&descriptor) or_return
