@@ -6,15 +6,15 @@ import "core:runtime"
 import "core:strings"
 
 Error_Data :: struct {
-    type: Error_Type,
-    user_cb: Error_Callback,
+    type:      Error_Type,
+    user_cb:   Error_Callback,
     user_data: rawptr,
 }
 
-@(private="file")
+@(private = "file")
 last_error_message: string
 
-@(fini, private="file")
+@(fini, private = "file")
 cleanup :: proc() {
     delete(last_error_message)
 }
@@ -45,4 +45,3 @@ uncaptured_error_callback := proc "c" (
     error.type = type
     update_error_message(string(message))
 }
-
