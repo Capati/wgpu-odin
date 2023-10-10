@@ -66,16 +66,16 @@ Instance_Descriptor :: struct {
 
 // Create an new instance of wgpu.
 create_instance :: proc(
-    descriptor: ^Instance_Descriptor,
+    descriptor: ^Instance_Descriptor = nil,
 ) -> (
     instance: Instance,
     err: Error_Type,
 ) {
-    desc := wgpu.Instance_Descriptor {
-        next_in_chain = nil,
-    }
+    desc: ^wgpu.Instance_Descriptor = nil
 
     if descriptor != nil {
+        desc = &{}
+
         instance_extras := Instance_Extras {
             chain = {next = nil, stype = cast(SType)Native_SType.Instance_Extras},
             backends = descriptor.backends,
@@ -87,7 +87,7 @@ create_instance :: proc(
         desc.next_in_chain = cast(^Chained_Struct)&instance_extras
     }
 
-    instance_ptr := wgpu.create_instance(&desc)
+    instance_ptr := wgpu.create_instance(desc)
 
     if instance_ptr == nil {
         update_error_message("Failed to acquire instance")
