@@ -1,5 +1,6 @@
 package wgpu
 
+import "core:fmt"
 // Package
 import wgpu "../bindings"
 
@@ -15,7 +16,7 @@ Texture :: struct {
 Texture_VTable :: struct {
     create_view:               proc(
         self: ^Texture,
-        descriptor: ^Texture_View_Descriptor,
+        descriptor: ^Texture_View_Descriptor = nil,
     ) -> (
         Texture_View,
         Error_Type,
@@ -60,7 +61,7 @@ default_texture := Texture {
 // Creates a view of this texture.
 texture_create_view :: proc(
     self: ^Texture,
-    descriptor: ^Texture_View_Descriptor,
+    descriptor: ^Texture_View_Descriptor = nil,
 ) -> (
     Texture_View,
     Error_Type,
