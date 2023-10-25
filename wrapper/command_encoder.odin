@@ -146,6 +146,19 @@ Render_Pass_Color_Attachment :: struct {
     clear_value:    Color,
 }
 
+// Describes a depth/stencil attachment to a `Render_Pass`.
+Render_Pass_Depth_Stencil_Attachment :: struct {
+    view:                ^Texture_View,
+    depth_load_op:       Load_Op,
+    depth_store_op:      Store_Op,
+    depth_clear_value:   f32,
+    depth_read_only:     bool,
+    stencil_load_op:     Load_Op,
+    stencil_store_op:    Store_Op,
+    stencil_clear_value: u32,
+    stencil_read_only:   bool,
+}
+
 Render_Pass_Descriptor :: struct {
     label:                    cstring,
     color_attachments:        []Render_Pass_Color_Attachment,
@@ -224,7 +237,22 @@ command_encoder_begin_render_pass :: proc(
         }
 
         if descriptor.depth_stencil_attachment != nil {
-            desc.depth_stencil_attachment = descriptor.depth_stencil_attachment
+            desc.depth_stencil_attachment =
+            &{
+                depth_load_op = descriptor.depth_stencil_attachment.depth_load_op,
+                depth_store_op = descriptor.depth_stencil_attachment.depth_store_op,
+                depth_clear_value = descriptor.depth_stencil_attachment.depth_clear_value,
+                depth_read_only = descriptor.depth_stencil_attachment.depth_read_only,
+                stencil_load_op = descriptor.depth_stencil_attachment.stencil_load_op,
+                stencil_store_op = descriptor.depth_stencil_attachment.stencil_store_op,
+                stencil_clear_value = descriptor.depth_stencil_attachment.stencil_clear_value,
+                stencil_read_only = descriptor.depth_stencil_attachment.stencil_read_only,
+            }
+
+            if descriptor.depth_stencil_attachment.view != nil {
+                desc.depth_stencil_attachment.view =
+                    descriptor.depth_stencil_attachment.view.ptr
+            }
         }
     }
 
