@@ -1033,13 +1033,16 @@ device_enumerate_features :: proc(
 
 // List all limits that were requested of this device.
 device_get_limits :: proc(self: ^Device) -> Limits {
-    extras := Supported_Limits_Extras{}
+    supported_extras := Supported_Limits_Extras {
+        chain = {stype = SType(Native_SType.Supported_Limits_Extras)},
+    }
     supported_limits := Supported_Limits {
-        next_in_chain = cast(^Chained_Struct_Out)&extras,
+        next_in_chain = cast(^Chained_Struct_Out)&supported_extras,
     }
     wgpu.device_get_limits(self.ptr, &supported_limits)
 
     limits := supported_limits.limits
+    extras := supported_extras.limits
 
     all_limits: Limits = {
         max_texture_dimension_1d                        = limits.max_texture_dimension_1d,
