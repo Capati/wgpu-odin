@@ -179,7 +179,8 @@ adapter_request_device :: proc(
             next_in_chain = nil,
         }
 
-        limits := descriptor.limits if descriptor.limits != {} else Default_Limits
+        // If no limits is provided, default to adapter best limits
+        limits := descriptor.limits if descriptor.limits != {} else limits
 
         required_limits.limits = {
             max_texture_dimension_1d                        = limits.max_texture_dimension_1d,
