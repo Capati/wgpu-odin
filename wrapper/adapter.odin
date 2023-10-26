@@ -26,6 +26,7 @@ Adapter_VTable :: struct {
     ) -> []Features,
     get_limits:     proc(self: ^Adapter) -> Limits,
     request_info:   proc(self: ^Adapter) -> Adapter_Info,
+    print_info:     proc(self: ^Adapter),
     has_feature:    proc(self: ^Adapter, feature: Features) -> bool,
     request_device: proc(
         self: ^Adapter,
@@ -42,6 +43,7 @@ default_adapter_vtable := Adapter_VTable {
     get_features   = adapter_get_features,
     get_limits     = adapter_get_limits,
     request_info   = adapter_request_info,
+    print_info     = adapter_print_information,
     has_feature    = adapter_has_feature,
     request_device = adapter_request_device,
     release        = adapter_release,
