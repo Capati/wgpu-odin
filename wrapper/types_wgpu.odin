@@ -3,6 +3,9 @@ package wgpu
 // Package
 import wgpu "../bindings"
 
+// NOTE: Commented lines are wrapped types.
+
+
 Array_Layer_Count_Undefined :: wgpu.Array_Layer_Count_Undefined
 Copy_Stride_Undefined :: wgpu.Copy_Stride_Undefined
 Limit_U32_Undefined :: wgpu.Limit_U32_Undefined
