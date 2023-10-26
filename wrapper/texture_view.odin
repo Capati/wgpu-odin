@@ -1,7 +1,6 @@
 package wgpu
 
 // Package
-
 import wgpu "../bindings"
 
 Texture_View :: struct {

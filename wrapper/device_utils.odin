@@ -1,7 +1,5 @@
 package wgpu
 
-// Core
-
 // Describes `Buffer` when allocating.
 Buffer_Data_Descriptor :: struct {
     // Debug label of a buffer. This will show up in graphics debuggers for easy
@@ -74,5 +72,4 @@ device_create_texture_with_data :: proc(
     descriptor: ^Texture_Descriptor,
     data: []byte,
 ) {
-
 }
