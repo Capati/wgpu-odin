@@ -23,22 +23,24 @@ when ODIN_OS == .Windows {
 import "core:c"
 
 Native_SType :: enum c.int {
-    Device_Extras                 = 0x60000001,
-    Adapter_Extras                = 0x60000002,
-    Required_Limits_Extras        = 0x60000003,
-    Pipeline_Layout_Extras        = 0x60000004,
-    Shader_Module_Glsl_Descriptor = 0x60000005,
-    Supported_Limits_Extras       = 0x60000003,
-    Instance_Extras               = 0x60000006,
-    Swap_Chain_Descriptor_Extras  = 0x60000007,
+    Device_Extras                  = 0x00030001,
+    Required_Limits_Extras         = 0x00030002,
+    Pipeline_Layout_Extras         = 0x00030003,
+    Shader_Module_Glsl_Descriptor  = 0x00030004,
+    Supported_Limits_Extras        = 0x00030005,
+    Instance_Extras                = 0x00030006,
+    Bind_Group_Entry_Extras        = 0x00030007,
+    Bind_Group_Layout_Entry_Extras = 0x00030008,
 }
 
 Native_Feature :: enum c.int {
-    Push_Constants                           = 0x60000001,
-    Texture_Adapter_Specific_Format_Features = 0x60000002,
-    Multi_Draw_Indirect                      = 0x60000003,
-    Multi_Draw_Indirect_Count                = 0x60000004,
-    Vertex_Writable_Storage                  = 0x60000005,
+    Push_Constants                                                = 0x00030001,
+    Texture_Adapter_Specific_Format_Features                      = 0x00030002,
+    Multi_Draw_Indirect                                           = 0x00030003,
+    Multi_Draw_Indirect_Count                                     = 0x00030004,
+    Vertex_Writable_Storage                                       = 0x00030005,
+    Texture_Binding_Array                                         = 0x00030006,
+    Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing = 0x00030007,
 }
 
 Log_Level :: enum c.int {
@@ -51,12 +53,12 @@ Log_Level :: enum c.int {
 }
 
 Instance_Backend :: enum c.int {
-    Vulkan         = 1,
-    GL             = 2,
-    Metal          = 3,
-    DX12           = 4,
-    DX11           = 5,
-    Browser_WebGPU = 6,
+    Vulkan,
+    GL,
+    Metal,
+    DX12,
+    DX11,
+    Browser_WebGPU,
 }
 Instance_Backend_Flags :: bit_set[Instance_Backend;Flags]
 Instance_Backend_Primary :: Instance_Backend_Flags{
@@ -66,7 +68,23 @@ Instance_Backend_Primary :: Instance_Backend_Flags{
     .Browser_WebGPU,
 }
 Instance_Backend_Secondary :: Instance_Backend_Flags{.GL, .DX11}
-Instance_Backend_None :: Instance_Backend_Flags{}
+Instance_Backend_All :: Instance_Backend_Flags{
+    .Vulkan,
+    .GL,
+    .Metal,
+    .DX12,
+    .DX11,
+    .Browser_WebGPU,
+}
+// Instance_Backend_None :: Instance_Backend_Flags{}
+
+Instance_Flag :: enum c.int {
+    Default,
+    Debug,
+    Validation,
+    Discard_Hal_Labels,
+}
+Instance_Flags :: bit_set[Instance_Flag;Flags]
 
 Dx12_Compiler :: enum c.int {
     Undefined,
@@ -74,18 +92,19 @@ Dx12_Compiler :: enum c.int {
     Dxc,
 }
 
-Composite_Alpha_Mode :: enum c.int {
-    Auto,
-    Opaque,
-    Pre_Multiplied,
-    Pos_tMultiplied,
-    Inherit,
+Gles3_Minor_Version :: enum c.int {
+    Automatic,
+    Version_0,
+    Version_1,
+    Version_2,
 }
 
 Instance_Extras :: struct {
     chain:                Chained_Struct,
     backends:             Instance_Backend_Flags,
+    flags:                Instance_Flags,
     dx12_shader_compiler: Dx12_Compiler,
+    gles3_minor_version:  Gles3_Minor_Version,
     dxil_path:            cstring,
     dxc_path:             cstring,
 }
@@ -95,14 +114,19 @@ Device_Extras :: struct {
     trace_path: cstring,
 }
 
+Native_Limits :: struct {
+    max_push_constant_size:   c.uint32_t,
+    max_non_sampler_bindings: c.uint32_t,
+}
+
 Required_Limits_Extras :: struct {
-    chain:                  Chained_Struct,
-    max_push_constant_size: c.uint32_t,
+    chain:  Chained_Struct,
+    limits: Native_Limits,
 }
 
 Supported_Limits_Extras :: struct {
-    chain:                  Chained_Struct_Out,
-    max_push_constant_size: c.uint32_t,
+    chain:  Chained_Struct_Out,
+    limits: Native_Limits,
 }
 
 Push_Constant_Range :: struct {
@@ -172,25 +196,24 @@ Global_Report :: struct {
     gl:           Hub_Report,
 }
 
-Surface_Capabilities :: struct {
-    format_count:       c.size_t,
-    formats:            [^]Texture_Format,
-    present_mode_count: c.size_t,
-    present_modes:      [^]Present_Mode,
-    alpha_mode_count:   c.size_t,
-    alpha_modes:        [^]Composite_Alpha_Mode,
-}
-
-Swap_Chain_Descriptor_Extras :: struct {
-    chain:             Chained_Struct,
-    alpha_mode:        Composite_Alpha_Mode,
-    view_format_count: c.size_t,
-    view_formats:      ^Texture_Format,
-}
-
 Instance_Enumerate_Adapter_Options :: struct {
-    chain:    Chained_Struct,
-    backends: Instance_Backend_Flags,
+    next_int_chain: ^Chained_Struct,
+    backends:       Instance_Backend_Flags,
+}
+
+Bind_Group_Entry_Extras :: struct {
+    chain:              Chained_Struct,
+    buffers:            ^Buffer,
+    buffer_count:       c.size_t,
+    samplers:           ^Sampler,
+    sampler_count:      c.size_t,
+    texture_views:      ^Texture_View,
+    texture_view_count: c.size_t,
+}
+
+Bind_Group_Layout_Entry_Extras :: struct {
+    chain: Chained_Struct,
+    count: c.uint32_t,
 }
 
 Log_Callback :: #type proc "c" (level: Log_Level, message: cstring, user_data: rawptr)
@@ -217,9 +240,6 @@ foreign wgpu_native {
     @(link_name = "wgpuGetVersion")
     get_version :: proc() -> c.uint32_t ---
 
-    @(link_name = "wgpuSurfaceGetCapabilities")
-    surface_get_capabilities :: proc(surface: Surface, adapter: Adapter, capabilities: ^Surface_Capabilities) ---
-
     @(link_name = "wgpuRenderPassEncoderSetPushConstants")
     render_pass_encoder_set_push_constants :: proc(encoder: Render_Pass_Encoder, stages: Shader_Stage_Flags, offset: c.uint32_t, size_bytes: c.uint32_t, data: rawptr) ---
 
@@ -239,6 +259,7 @@ Copy_Stride_Undefined: c.ulong : 0xffffffff
 Limit_U32_Undefined: c.ulong : 0xffffffff
 Limit_U64_Undefined: c.ulonglong : 0xffffffffffffffff
 Mip_Level_Count_Undefined: c.ulong : 0xffffffff
+Wgpu_Query_Set_Index_Undefined: c.ulong : 0xffffffff
 Whole_Map_Si :: c.SIZE_MAX
 Whole_Size: c.ulonglong : 0xffffffffffffffff
 
@@ -370,9 +391,12 @@ Compilation_Message_Type :: enum c.int {
     Info,
 }
 
-Compute_Pass_Timestamp_Location :: enum c.int {
-    Beginning,
-    End,
+Composite_Alpha_Mode :: enum c.int {
+    Auto,
+    Opaque,
+    Premultiplied,
+    Unpremultiplied,
+    Inherit,
 }
 
 Create_Pipeline_Async_Status :: enum c.int {
@@ -468,9 +492,10 @@ Power_Preference :: enum c.int {
 }
 
 Present_Mode :: enum c.int {
+    Fifo,
+    Fifo_Relaxed,
     Immediate,
     Mailbox,
-    Fifo,
 }
 
 Primitive_Topology :: enum c.int {
@@ -492,11 +517,6 @@ Queue_Work_Done_Status :: enum c.int {
     Error,
     Unknown,
     Device_Lost,
-}
-
-Render_Pass_Timestamp_Location :: enum c.int {
-    Beginning,
-    End,
 }
 
 Request_Adapter_Status :: enum c.int {
@@ -554,6 +574,15 @@ Store_Op :: enum c.int {
     Undefined,
     Store,
     Discard,
+}
+
+Surface_Get_Current_Texture_Status :: enum c.int {
+    Success,
+    Timeout,
+    Outdated,
+    Lost,
+    Out_Of_Memory,
+    Device_Lost,
 }
 
 Texture_Aspect :: enum c.int {
@@ -684,12 +713,12 @@ Texture_Sample_Type :: enum c.int {
 
 Texture_View_Dimension :: enum c.int {
     Undefined,
-    _1D,
-    _2D,
+    D1,
+    D2,
     _2DArray,
     Cube,
     CubeArray,
-    _3D,
+    D3,
 }
 
 Vertex_Format :: enum c.int {
@@ -864,10 +893,10 @@ Compilation_Message :: struct {
     utf16_length:   c.uint64_t,
 }
 
-Compute_Pass_Timestamp_Write :: struct {
-    query_set:   Query_Set,
-    query_index: c.uint32_t,
-    location:    Compute_Pass_Timestamp_Location,
+Compute_Pass_Timestamp_Writes :: struct {
+    query_set:                     Query_Set,
+    beginning_of_pass_write_index: c.uint32_t,
+    end_of_pass_write_index:       c.uint32_t,
 }
 
 Constant_Entry :: struct {
@@ -892,6 +921,7 @@ Limits :: struct {
     max_texture_dimension_3d:                        c.uint32_t,
     max_texture_array_layers:                        c.uint32_t,
     max_bind_groups:                                 c.uint32_t,
+    max_bind_groups_plus_vertex_buffers:             c.uint32_t,
     max_bindings_per_bind_group:                     c.uint32_t,
     max_dynamic_uniform_buffers_per_pipeline_layout: c.uint32_t,
     max_dynamic_storage_buffers_per_pipeline_layout: c.uint32_t,
@@ -954,12 +984,12 @@ Primitive_State :: struct {
 }
 
 Query_Set_Descriptor :: struct {
-    next_in_chain:             ^Chained_Struct,
-    label:                     cstring,
-    type:                      Query_Type,
-    count:                     c.uint32_t,
-    pipeline_statistics:       ^Pipeline_Statistic_Name,
-    pipeline_statistics_count: c.size_t,
+    next_in_chain:            ^Chained_Struct,
+    label:                    cstring,
+    type:                     Query_Type,
+    count:                    c.uint32_t,
+    pipeline_statistics:      ^Pipeline_Statistic_Name,
+    pipeline_statistic_count: c.size_t,
 }
 
 Queue_Descriptor :: struct {
@@ -975,7 +1005,7 @@ Render_Bundle_Descriptor :: struct {
 Render_Bundle_Encoder_Descriptor :: struct {
     next_in_chain:        ^Chained_Struct,
     label:                cstring,
-    color_formats_count:  c.size_t,
+    color_format_count:   c.size_t,
     color_formats:        ^Texture_Format,
     depth_stencil_format: Texture_Format,
     sample_count:         c.uint32_t,
@@ -1000,10 +1030,10 @@ Render_Pass_Descriptor_Max_Draw_Count :: struct {
     max_draw_count: c.uint64_t,
 }
 
-Render_Pass_Timestamp_Write :: struct {
-    query_set:   Query_Set,
-    query_index: c.uint32_t,
-    location:    Render_Pass_Timestamp_Location,
+Render_Pass_Timestamp_Writes :: struct {
+    query_set:                     Query_Set,
+    beginning_of_pass_write_index: c.uint32_t,
+    end_of_pass_write_index:       c.uint32_t,
 }
 
 Request_Adapter_Options :: struct {
@@ -1065,6 +1095,29 @@ Storage_Texture_Binding_Layout :: struct {
     view_dimension: Texture_View_Dimension,
 }
 
+Surface_Capabilities :: struct {
+    next_in_chain:      ^Chained_Struct_Out,
+    format_count:       c.size_t,
+    formats:            ^Texture_Format,
+    present_mode_count: c.size_t,
+    present_modes:      ^Present_Mode,
+    alpha_mode_count:   c.size_t,
+    alpha_modes:        ^Composite_Alpha_Mode,
+}
+
+Surface_Configuration :: struct {
+    next_in_chain:     ^Chained_Struct,
+    device:            Device,
+    format:            Texture_Format,
+    usage:             Texture_Usage_Flags,
+    view_format_count: c.size_t,
+    view_formats:      ^Texture_Format,
+    alpha_mode:        Composite_Alpha_Mode,
+    width:             c.uint32_t,
+    height:            c.uint32_t,
+    present_mode:      Present_Mode,
+}
+
 Surface_Descriptor :: struct {
     next_in_chain: ^Chained_Struct,
     label:         cstring,
@@ -1117,6 +1170,12 @@ Swap_Chain_Descriptor :: struct {
     width:         c.uint32_t,
     height:        c.uint32_t,
     present_mode:  Present_Mode,
+}
+
+Surface_Texture :: struct {
+    texture:    Texture,
+    suboptimal: bool,
+    status:     Surface_Get_Current_Texture_Status,
 }
 
 Texture_Binding_Layout :: struct {
@@ -1181,10 +1240,9 @@ Compilation_Info :: struct {
 }
 
 Compute_Pass_Descriptor :: struct {
-    next_in_chain:         ^Chained_Struct,
-    label:                 cstring,
-    timestamp_write_count: c.size_t,
-    timestamp_writes:      ^Compute_Pass_Timestamp_Write,
+    next_in_chain:    ^Chained_Struct,
+    label:            cstring,
+    timestamp_writes: ^Compute_Pass_Timestamp_Writes,
 }
 
 Depth_Stencil_State :: struct {
@@ -1224,6 +1282,7 @@ Programmable_Stage_Descriptor :: struct {
 }
 
 Render_Pass_Color_Attachment :: struct {
+    next_in_chain:  ^Chained_Struct,
     view:           Texture_View,
     resolve_target: Texture_View,
     load_op:        Load_Op,
@@ -1290,14 +1349,14 @@ Compute_Pipeline_Descriptor :: struct {
 }
 
 Device_Descriptor :: struct {
-    next_in_chain:           ^Chained_Struct,
-    label:                   cstring,
-    required_features_count: c.size_t,
-    required_features:       [^]Feature_Name,
-    required_limits:         ^Required_Limits,
-    default_queue:           Queue_Descriptor,
-    device_lost_callback:    Device_Lost_Callback,
-    device_lost_userdata:    rawptr,
+    next_in_chain:          ^Chained_Struct,
+    label:                  cstring,
+    required_feature_count: c.size_t,
+    required_features:      [^]Feature_Name,
+    required_limits:        ^Required_Limits,
+    default_queue:          Queue_Descriptor,
+    device_lost_callback:   Device_Lost_Callback,
+    device_lost_userdata:   rawptr,
 }
 
 Render_Pass_Descriptor :: struct {
@@ -1307,8 +1366,7 @@ Render_Pass_Descriptor :: struct {
     color_attachments:        ^Render_Pass_Color_Attachment,
     depth_stencil_attachment: ^Render_Pass_Depth_Stencil_Attachment,
     occlusion_query_set:      Query_Set,
-    timestamp_write_count:    c.size_t,
-    timestamp_writes:         ^Render_Pass_Timestamp_Write,
+    timestamp_writes:         ^Render_Pass_Timestamp_Writes,
 }
 
 Vertex_State :: struct {
@@ -1395,7 +1453,6 @@ Request_Device_Callback :: #type proc "c" (
     message: cstring,
     user_data: rawptr,
 )
-
 
 foreign wgpu_native {
     @(link_name = "wgpuCreateInstance")
@@ -1585,8 +1642,6 @@ foreign wgpu_native {
     device_create_sampler :: proc(device: Device, descriptor: ^Sampler_Descriptor) -> Sampler ---
     @(link_name = "wgpuDeviceCreateShaderModule")
     device_create_shader_module :: proc(device: Device, descriptor: ^Shader_Module_Descriptor) -> Shader_Module ---
-    @(link_name = "wgpuDeviceCreateSwapChain")
-    device_create_swap_chain :: proc(device: Device, surface: Surface, descriptor: ^Swap_Chain_Descriptor) -> Swap_Chain ---
     @(link_name = "wgpuDeviceCreateTexture")
     device_create_texture :: proc(device: Device, descriptor: ^Texture_Descriptor) -> Texture ---
     @(link_name = "wgpuDeviceDestroy")
@@ -1719,6 +1774,7 @@ foreign wgpu_native {
 
     // Methods of RenderPassEncoder
 
+
     @(link_name = "wgpuRenderPassEncoderBeginOcclusionQuery")
     render_pass_encoder_begin_occlusion_query :: proc(render_pass_encoder: Render_Pass_Encoder, query_index: c.uint32_t) ---
     @(link_name = "wgpuRenderPassEncoderBeginPipelineStatisticsQuery")
@@ -1805,24 +1861,28 @@ foreign wgpu_native {
     // Methods of Surface
 
 
+    @(link_name = "wgpuSurfaceConfigure")
+    surface_configure :: proc(surface: Surface, config: ^Surface_Configuration) ---
+    @(link_name = "wgpuSurfaceGetCapabilities")
+    surface_get_capabilities :: proc(surface: Surface, adapter: Adapter, capabilities: ^Surface_Capabilities) ---
+    @(link_name = "wgpuSurfaceGetCurrentTexture")
+    surface_get_current_texture :: proc(surface: Surface, surface_texture: ^Surface_Texture) ---
     @(link_name = "wgpuSurfaceGetPreferredFormat")
     surface_get_preferred_format :: proc(surface: Surface, adapter: Adapter) -> Texture_Format ---
+    @(link_name = "wgpuSurfacePresent")
+    surface_present :: proc(surface: Surface) ---
+    @(link_name = "wgpuSurfaceUnconfigure")
+    surface_unconfigure :: proc(surface: Surface) ---
     @(link_name = "wgpuSurfaceReference")
     surface_reference :: proc(surface: Surface) ---
     @(link_name = "wgpuSurfaceRelease")
     surface_release :: proc(surface: Surface) ---
 
-    // Methods of SwapChain
+    // Methods of SurfaceCapabilities
 
 
-    @(link_name = "wgpuSwapChainGetCurrentTextureView")
-    swap_chain_get_current_texture_view :: proc(swap_chain: Swap_Chain) -> Texture_View ---
-    @(link_name = "wgpuSwapChainPresent")
-    swap_chain_present :: proc(swap_chain: Swap_Chain) ---
-    @(link_name = "wgpuSwapChainReference")
-    swap_chain_reference :: proc(swap_chain: Swap_Chain) ---
-    @(link_name = "wgpuSwapChainRelease")
-    swap_chain_release :: proc(swap_chain: Swap_Chain) ---
+    @(link_name = "wgpuSurfaceCapabilitiesFreeMembers")
+    surface_capabilities_free_members :: proc(capabilities: Surface_Capabilities) ---
 
     // Methods of Texture
 

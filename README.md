@@ -1,6 +1,6 @@
 # WGPU Odin Bindings
 
-Bindings to [wgpu-native](https://github.com/gfx-rs/wgpu-native) **0.17.0.2** in the [Odin programming language](https://odin-lang.org/).
+Bindings to [wgpu-native](https://github.com/gfx-rs/wgpu-native) **0.18.1** in the [Odin programming language](https://odin-lang.org/).
 
 See [examples here](./examples).
 
