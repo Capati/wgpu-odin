@@ -2,7 +2,7 @@
 
 All examples uses the wrapper package.
 
-Tested in odin: `dev-2023-08:61858f58`.
+Tested in Odin: `dev-2023-10:0a492aca`.
 
 ## Examples
 

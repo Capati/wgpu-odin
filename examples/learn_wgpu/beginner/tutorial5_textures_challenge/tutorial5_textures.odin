@@ -4,43 +4,38 @@ package tutorial5_textures
 import "core:fmt"
 
 // Package
-import "../../../framework"
 import wgpu "../../../../wrapper"
 import "../tutorial5_textures/texture"
 
-State :: framework.State
-Keyboard_Event :: framework.Keyboard_Event
-Physical_Size :: framework.Physical_Size
-Texture :: texture.Texture
+// Framework
+import app "../../../framework/application"
+import "../../../framework/application/events"
+import "../../../framework/renderer"
 
 Vertex :: struct {
     position:   [3]f32,
     tex_coords: [2]f32,
 }
 
-Example :: struct {
-    render_pipeline:    wgpu.Render_Pipeline,
-    vertex_buffer:      wgpu.Buffer,
-    index_buffer:       wgpu.Buffer,
-    num_indices:        u32,
-    diffuse_texture:    Texture,
-    diffuse_bind_group: wgpu.Bind_Group,
-    cartoon_texture:    Texture,
-    cartoon_bind_group: wgpu.Bind_Group,
-    is_space_pressed:   bool,
-}
+main :: proc() {
+    app_properties := app.Default_Properties
+    app_properties.title = "Tutorial 5 - Textures Challenge"
+    if app.init(app_properties) != .No_Error do return
+    defer app.deinit()
 
-ctx := Example{}
+    gpu, gpu_err := renderer.init()
+    if gpu_err != .No_Error do return
+    defer renderer.deinit(gpu)
 
-init_example :: proc(using state: ^State) -> (err: wgpu.Error_Type) {
     // Load our tree image to texture
-    ctx.diffuse_texture = texture.texture_from_image(
-        &state.device,
+    diffuse_texture, diffuse_texture_err := texture.texture_from_image(
+        &gpu.device,
         "assets/learn_wgpu/tutorial5/happy-tree.png",
-    ) or_return
-    defer if err != .No_Error do texture.texture_destroy(&ctx.diffuse_texture)
+    )
+    if diffuse_texture_err != .No_Error do return
+    defer texture.texture_destroy(&diffuse_texture)
 
-    texture_bind_group_layout := state.device->create_bind_group_layout(
+    texture_bind_group_layout, texture_bind_group_layout_err := gpu.device->create_bind_group_layout(
         &{
             label = "TextureBindGroupLayout",
             entries = {
@@ -56,45 +51,50 @@ init_example :: proc(using state: ^State) -> (err: wgpu.Error_Type) {
                 {binding = 1, visibility = {.Fragment}, sampler = {type = .Filtering}},
             },
         },
-    ) or_return
+    )
+    if texture_bind_group_layout_err != .No_Error do return
     defer texture_bind_group_layout->release()
 
-    ctx.diffuse_bind_group = state.device->create_bind_group(
+    diffuse_bind_group, diffuse_bind_group_err := gpu.device->create_bind_group(
         &wgpu.Bind_Group_Descriptor{
             label = "diffuse_bind_group",
             layout = &texture_bind_group_layout,
             entries = {
-                {binding = 0, texture_view = &ctx.diffuse_texture.view},
-                {binding = 1, sampler = &ctx.diffuse_texture.sampler},
+                {binding = 0, texture_view = &diffuse_texture.view},
+                {binding = 1, sampler = &diffuse_texture.sampler},
             },
         },
-    ) or_return
-    defer if err != .No_Error do ctx.diffuse_bind_group->release()
+    )
+    if diffuse_bind_group_err != .No_Error do return
+    defer diffuse_bind_group->release()
 
-    ctx.cartoon_texture = texture.texture_from_image(
-        &state.device,
+    cartoon_texture, cartoon_texture_err := texture.texture_from_image(
+        &gpu.device,
         "assets/learn_wgpu/tutorial5/happy-tree-cartoon.png",
-    ) or_return
-    defer if err != .No_Error do texture.texture_destroy(&ctx.cartoon_texture)
+    )
+    if cartoon_texture_err != .No_Error do return
+    defer texture.texture_destroy(&cartoon_texture)
 
-    ctx.cartoon_bind_group = state.device->create_bind_group(
+    cartoon_bind_group, cartoon_bind_group_err := gpu.device->create_bind_group(
         &wgpu.Bind_Group_Descriptor{
             label = "cartoon_bind_group",
             layout = &texture_bind_group_layout,
             entries = {
-                {binding = 0, texture_view = &ctx.cartoon_texture.view},
-                {binding = 1, sampler = &ctx.cartoon_texture.sampler},
+                {binding = 0, texture_view = &cartoon_texture.view},
+                {binding = 1, sampler = &cartoon_texture.sampler},
             },
         },
-    ) or_return
-    defer if err != .No_Error do ctx.cartoon_bind_group->release()
+    )
+    if cartoon_bind_group_err != .No_Error do return
+    defer cartoon_bind_group->release()
 
-    render_pipeline_layout := state.device->create_pipeline_layout(
+    render_pipeline_layout, render_pipeline_layout_err := gpu.device->create_pipeline_layout(
         &{
             label = "Render Pipeline Layout",
             bind_group_layouts = {texture_bind_group_layout},
         },
-    ) or_return
+    )
+    if render_pipeline_layout_err != .No_Error do return
     defer render_pipeline_layout->release()
 
     vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
@@ -110,10 +110,11 @@ init_example :: proc(using state: ^State) -> (err: wgpu.Error_Type) {
         },
     }
 
-    shader := state.device->load_wgsl_shader_module(
+    shader, shader_err := gpu.device->load_wgsl_shader_module(
         "assets/learn_wgpu/tutorial5/shader.wgsl",
         "shader.wgsl",
-    ) or_return
+    )
+    if shader_err != .No_Error do return
     defer shader->release()
 
     render_pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
@@ -129,7 +130,7 @@ init_example :: proc(using state: ^State) -> (err: wgpu.Error_Type) {
             entry_point = "fs_main",
             targets = {
                 {
-                    format = state.config.format,
+                    format = gpu.config.format,
                     blend = &wgpu.Blend_State_Replace,
                     write_mask = wgpu.Color_Write_Mask_All,
                 },
@@ -140,9 +141,11 @@ init_example :: proc(using state: ^State) -> (err: wgpu.Error_Type) {
         multisample = {count = 1, mask = ~u32(0), alpha_to_coverage_enabled = false},
     }
 
-    ctx.render_pipeline = state.device->create_render_pipeline(
+    render_pipeline, render_pipeline_err := gpu.device->create_render_pipeline(
         &render_pipeline_descriptor,
-    ) or_return
+    )
+    if render_pipeline_err != .No_Error do return
+    defer render_pipeline->release()
 
     vertices := []Vertex {
         {
@@ -163,107 +166,104 @@ init_example :: proc(using state: ^State) -> (err: wgpu.Error_Type) {
 
     indices: []u16 = {0, 1, 4, 1, 2, 4, 2, 3, 4}
 
-    ctx.num_indices = cast(u32)len(indices)
+    num_indices := cast(u32)len(indices)
 
-    ctx.vertex_buffer = state.device->create_buffer_with_data(
+    vertex_buffer, vertex_buffer_err := gpu.device->create_buffer_with_data(
         &wgpu.Buffer_Data_Descriptor{
             label = "Vertex Buffer",
             contents = wgpu.to_bytes(vertices),
             usage = {.Vertex},
         },
-    ) or_return
+    )
+    if vertex_buffer_err != .No_Error do return
+    defer vertex_buffer->release()
 
-    ctx.index_buffer = state.device->create_buffer_with_data(
+    index_buffer, index_buffer_err := gpu.device->create_buffer_with_data(
         &wgpu.Buffer_Data_Descriptor{
             label = "Index Buffer",
             contents = wgpu.to_bytes(indices),
             usage = {.Index},
         },
-    ) or_return
-
-    return .No_Error
-}
-
-on_key_down :: proc(state: ^State, event: Keyboard_Event) {
-    if event.keysym.sym == .SPACE {
-        ctx.is_space_pressed = true
-    }
-}
-
-on_key_up :: proc(state: ^State, event: Keyboard_Event) {
-    if event.keysym.sym == .SPACE {
-        ctx.is_space_pressed = false
-    }
-}
-
-render :: proc(state: ^State) -> wgpu.Error_Type {
-    encoder := state.device->create_command_encoder(
-        &wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
-    ) or_return
-    defer encoder->release()
-
-    render_pass := encoder->begin_render_pass(
-        &{
-            label = "Render Pass",
-            color_attachments = []wgpu.Render_Pass_Color_Attachment{
-                {
-                    view = &state.frame,
-                    resolve_target = nil,
-                    load_op = .Clear,
-                    store_op = .Store,
-                    clear_value = {0.1, 0.2, 0.3, 1.0},
-                },
-            },
-            depth_stencil_attachment = nil,
-        },
     )
-    defer render_pass->release()
+    if index_buffer_err != .No_Error do return
+    defer index_buffer->release()
 
-    render_pass->set_pipeline(&ctx.render_pipeline)
-    if ctx.is_space_pressed {
-        render_pass->set_bind_group(0, &ctx.cartoon_bind_group)
-    } else {
-        render_pass->set_bind_group(0, &ctx.diffuse_bind_group)
+    is_space_pressed := false
+
+    fmt.printf("Entering main loop...\n\n")
+
+    main_loop: for {
+        iter := app.process_events()
+
+        for iter->has_next() {
+            #partial switch event in iter->next() {
+            case events.Quit_Event:
+                break main_loop
+            case events.Key_Press_Event:
+                if event.key == .Space do is_space_pressed = true
+            case events.Key_Release_Event:
+                if event.key == .Space do is_space_pressed = false
+            case events.Mouse_Press_Event:
+            case events.Mouse_Motion_Event:
+            case events.Mouse_Scroll_Event:
+            case events.Framebuffer_Resize_Event:
+                resize_err := renderer.resize_surface(gpu, {event.width, event.height})
+                if resize_err != .No_Error do break main_loop
+            }
+        }
+
+        frame, frame_err := renderer.get_current_texture_frame(gpu)
+        if frame_err != .No_Error do break main_loop
+        defer frame->release()
+        if gpu.skip_frame do continue main_loop
+
+        view, view_err := frame.texture->create_view(nil)
+        if view_err != .No_Error do break main_loop
+        defer view->release()
+
+        encoder, encoder_err := gpu.device->create_command_encoder(
+            &wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
+        )
+        if encoder_err != .No_Error do break main_loop
+        defer encoder->release()
+
+        render_pass := encoder->begin_render_pass(
+            &{
+                label = "Render Pass",
+                color_attachments = []wgpu.Render_Pass_Color_Attachment{
+                    {
+                        view = &view,
+                        resolve_target = nil,
+                        load_op = .Clear,
+                        store_op = .Store,
+                        clear_value = {0.1, 0.2, 0.3, 1.0},
+                    },
+                },
+                depth_stencil_attachment = nil,
+            },
+        )
+        defer render_pass->release()
+
+        render_pass->set_pipeline(&render_pipeline)
+
+        if is_space_pressed {
+            render_pass->set_bind_group(0, &cartoon_bind_group)
+        } else {
+            render_pass->set_bind_group(0, &diffuse_bind_group)
+        }
+
+        render_pass->set_vertex_buffer(0, vertex_buffer)
+        render_pass->set_index_buffer(index_buffer, .Uint16, 0, wgpu.Whole_Size)
+        render_pass->draw_indexed(num_indices)
+        if render_pass->end() != .No_Error do break main_loop
+
+        command_buffer, command_buffer_err := encoder->finish()
+        if command_buffer_err != .No_Error do break main_loop
+        defer command_buffer->release()
+
+        gpu.device.queue->submit(command_buffer)
+        gpu.surface->present()
     }
-    render_pass->set_vertex_buffer(0, ctx.vertex_buffer)
-    render_pass->set_index_buffer(ctx.index_buffer, .Uint16, 0, wgpu.Whole_Size)
-    render_pass->draw_indexed(ctx.num_indices)
-    render_pass->end() or_return
 
-    command_buffer := encoder->finish() or_return
-    defer command_buffer->release()
-
-    state.device.queue->submit(command_buffer)
-    state.swap_chain->present()
-
-    return .No_Error
-}
-
-main :: proc() {
-    properties := framework.default_properties
-    properties.title = "Tutorial 5 - Textures Challenge"
-
-    state, state_err := framework.init(properties)
-    if state_err != .No_Error {
-        fmt.eprintf("Failed to initialize framework")
-        return
-    }
-    defer framework.deinit()
-
-    if init_example(state) != .No_Error do return
-    defer {
-        ctx.render_pipeline->release()
-        ctx.index_buffer->release()
-        ctx.vertex_buffer->release()
-        ctx.diffuse_bind_group->release()
-        ctx.cartoon_bind_group->release()
-        texture.texture_destroy(&ctx.diffuse_texture)
-        texture.texture_destroy(&ctx.cartoon_texture)
-    }
-
-    state.render_proc = render
-    state.on_key_down_proc = on_key_down
-    state.on_key_up_proc = on_key_up
-
-    framework.begin_run()
+    fmt.println("Exiting...")
 }

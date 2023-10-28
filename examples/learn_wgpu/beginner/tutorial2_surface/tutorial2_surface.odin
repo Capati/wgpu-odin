@@ -8,15 +8,14 @@ import "core:runtime"
 import sdl "vendor:sdl2"
 
 // Package
-import wgpu "../../../../wrapper"
 import wgpu_sdl "../../../../utils/sdl"
+import wgpu "../../../../wrapper"
 
 State :: struct {
-    minimized:  bool,
-    surface:    wgpu.Surface,
-    swap_chain: wgpu.Swap_Chain,
-    device:     wgpu.Device,
-    config:     wgpu.Surface_Configuration,
+    minimized: bool,
+    surface:   wgpu.Surface,
+    device:    wgpu.Device,
+    config:    wgpu.Surface_Configuration,
 }
 
 Physical_Size :: struct {
@@ -40,7 +39,7 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
 
     instance_descriptor := wgpu.Instance_Descriptor {
         backends             = wgpu.Instance_Backend_Primary,
-        dx12_shader_compiler = wgpu.Dx12_Compiler_Default,
+        dx12_shader_compiler = wgpu.Default_Dx12_Compiler,
     }
 
     instance := wgpu.create_instance(&instance_descriptor) or_return
@@ -67,6 +66,16 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
     state.device = adapter->request_device(&device_descriptor) or_return
     defer if err != .No_Error do state.device->release()
 
+    defer if err == .No_Error {
+        state.device->set_uncaptured_error_callback(
+            proc "c" (type: wgpu.Error_Type, message: cstring, user_data: rawptr) {
+                context = runtime.default_context()
+                fmt.eprintln("ERROR: ", message)
+            },
+            nil,
+        )
+    }
+
     caps := state.surface->get_capabilities(adapter) or_return
     defer {
         delete(caps.formats)
@@ -86,10 +95,7 @@ init_state := proc(window: ^sdl.Window) -> (s: State, err: wgpu.Error_Type) {
         alpha_mode = caps.alpha_modes[0],
     }
 
-    state.swap_chain = state.device->create_swap_chain(
-        &state.surface,
-        &state.config,
-    ) or_return
+    state.surface->configure(&state.device, &state.config) or_return
 
     return state, .No_Error
 }
@@ -102,23 +108,20 @@ resize_window :: proc(state: ^State, size: Physical_Size) -> wgpu.Error_Type {
     state.config.width = size.width
     state.config.height = size.height
 
-    if state.swap_chain.ptr != nil {
-        state.swap_chain->release()
-    }
-
-    state.swap_chain = state.device->create_swap_chain(
-        &state.surface,
-        &state.config,
-    ) or_return
+    state.surface->unconfigure()
+    state.surface->configure(&state.device, &state.config) or_return
 
     return .No_Error
 }
 
-render :: proc(state: ^State) -> wgpu.Error_Type {
-    next_texture := state.swap_chain->get_current_texture_view() or_return
-    defer next_texture->release()
+render :: proc(using state: ^State) -> wgpu.Error_Type {
+    frame := surface->get_current_texture() or_return
+    defer frame->release()
 
-    encoder := state.device->create_command_encoder(
+    view := frame.texture->create_view() or_return
+    defer view->release()
+
+    encoder := device->create_command_encoder(
         &wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
     ) or_return
     defer encoder->release()
@@ -128,7 +131,7 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
             label = "Render Pass",
             color_attachments = []wgpu.Render_Pass_Color_Attachment{
                 {
-                    view = &next_texture,
+                    view = &view,
                     resolve_target = nil,
                     load_op = .Clear,
                     store_op = .Store,
@@ -139,13 +142,13 @@ render :: proc(state: ^State) -> wgpu.Error_Type {
         },
     )
     defer render_pass->release()
-    render_pass->end()
+    render_pass->end() or_return
 
     command_buffer := encoder->finish() or_return
     defer command_buffer->release()
 
-    state.device.queue->submit(command_buffer)
-    state.swap_chain->present()
+    device.queue->submit(command_buffer)
+    surface->present()
 
     return .No_Error
 }
@@ -177,6 +180,7 @@ main :: proc() {
     }
 
     state, state_err := init_state(sdl_window)
+
     if state_err != .No_Error {
         message := wgpu.get_error_message()
         if message != "" {
@@ -188,7 +192,6 @@ main :: proc() {
     }
     defer {
         state.device->release()
-        state.swap_chain->release()
         state.surface->release()
     }
 

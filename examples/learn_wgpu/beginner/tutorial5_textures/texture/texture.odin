@@ -67,7 +67,7 @@ texture_from_image :: proc(
     view := handle->create_view(nil) or_return
     defer if err != .No_Error do view->release()
 
-    sampler_descriptor := wgpu.Sampler_Descriptor_Default
+    sampler_descriptor := wgpu.Default_Sampler_Descriptor
     sampler_descriptor.mag_filter = .Linear
     sampler := device->create_sampler(&sampler_descriptor) or_return
     defer if err != .No_Error do sampler->release()
