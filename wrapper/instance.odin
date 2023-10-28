@@ -59,7 +59,9 @@ default_instance := Instance {
 // Options for creating an instance.
 Instance_Descriptor :: struct {
     backends:             Instance_Backend_Flags,
+    flags:                Instance_Flags,
     dx12_shader_compiler: Dx12_Compiler,
+    gles3_minor_version:  Gles3_Minor_Version,
     dxil_path:            cstring,
     dxc_path:             cstring,
 }
@@ -79,7 +81,9 @@ create_instance :: proc(
         instance_extras := Instance_Extras {
             chain = {next = nil, stype = cast(SType)Native_SType.Instance_Extras},
             backends = descriptor.backends,
+            flags = descriptor.flags,
             dx12_shader_compiler = descriptor.dx12_shader_compiler,
+            gles3_minor_version = descriptor.gles3_minor_version,
             dxil_path = descriptor.dxil_path,
             dxc_path = descriptor.dxc_path,
         }

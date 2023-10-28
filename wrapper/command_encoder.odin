@@ -164,7 +164,7 @@ Render_Pass_Descriptor :: struct {
     color_attachments:        []Render_Pass_Color_Attachment,
     depth_stencil_attachment: ^Render_Pass_Depth_Stencil_Attachment,
     occlusion_query_set:      Query_Set,
-    timestamp_writes:         []Render_Pass_Timestamp_Write,
+    timestamp_writes:         []Render_Pass_Timestamp_Writes,
 }
 
 // Begins recording of a render pass.
@@ -178,7 +178,6 @@ command_encoder_begin_render_pass :: proc(
     }
 
     runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-
 
     if descriptor != nil {
         desc.label = descriptor.label
@@ -257,7 +256,6 @@ command_encoder_begin_render_pass :: proc(
     }
 
     render_pass_encoder_ptr := wgpu.command_encoder_begin_render_pass(ptr, &desc)
-
 
     render_pass := default_render_pass_encoder
     render_pass.ptr = render_pass_encoder_ptr

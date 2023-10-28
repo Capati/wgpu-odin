@@ -69,6 +69,7 @@ Limits :: struct {
     max_texture_dimension_3d:                        u32,
     max_texture_array_layers:                        u32,
     max_bind_groups:                                 u32,
+    max_bind_groups_plus_vertex_buffers:             u32,
     max_bindings_per_bind_group:                     u32,
     max_dynamic_uniform_buffers_per_pipeline_layout: u32,
     max_dynamic_storage_buffers_per_pipeline_layout: u32,
@@ -97,6 +98,7 @@ Limits :: struct {
     max_compute_workgroups_per_dimension:            u32,
     // Limits extras
     max_push_constant_size:                          u32,
+    max_non_sampler_bindings:                        u32,
 }
 
 // Features that are part of the webgpu standard and extension features supported by

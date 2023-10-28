@@ -121,14 +121,6 @@ Device_VTable :: struct {
         Shader_Module,
         Error_Type,
     ),
-    create_swap_chain:             proc(
-        self: ^Device,
-        surface: ^Surface,
-        descriptor: ^Surface_Configuration,
-    ) -> (
-        Swap_Chain,
-        Error_Type,
-    ),
     create_texture:                proc(
         self: ^Device,
         descriptor: ^Texture_Descriptor,
@@ -181,7 +173,6 @@ default_device_vtable := Device_VTable {
     create_shader_module          = device_create_shader_module,
     load_wgsl_shader_module       = device_load_wgsl_shader_module,
     load_spirv_shader_module      = device_load_spirv_shader_module,
-    create_swap_chain             = device_create_swap_chain,
     create_texture                = device_create_texture,
     get_features                  = device_enumerate_features,
     get_limits                    = device_get_limits,
@@ -520,10 +511,9 @@ device_create_pipeline_layout :: proc(
 }
 
 Query_Set_Descriptor :: struct {
-    label:               cstring,
-    type:                Query_Type,
-    count:               u32,
-    pipeline_statistics: []Pipeline_Statistic_Name,
+    label: cstring,
+    type:  Query_Type,
+    count: u32,
 }
 
 device_create_query_set :: proc(
@@ -539,13 +529,6 @@ device_create_query_set :: proc(
         desc.label = descriptor.label
         desc.type = descriptor.type
         desc.count = descriptor.count
-
-        pipeline_statistics_count := cast(uint)len(descriptor.pipeline_statistics)
-
-        if pipeline_statistics_count > 0 {
-            desc.pipeline_statistics_count = pipeline_statistics_count
-            desc.pipeline_statistics = raw_data(descriptor.pipeline_statistics)
-        }
     }
 
     err_data.type = .No_Error
@@ -585,10 +568,10 @@ device_create_render_bundle_encoder :: proc(
         label = descriptor.label,
     }
 
-    color_formats_count := cast(uint)len(descriptor.color_formats)
+    color_format_count := cast(uint)len(descriptor.color_formats)
 
-    if color_formats_count > 0 {
-        desc.color_formats_count = color_formats_count
+    if color_format_count > 0 {
+        desc.color_format_count = color_format_count
         desc.color_formats = raw_data(descriptor.color_formats)
     }
 
@@ -891,75 +874,6 @@ device_create_shader_module :: proc(
     return shader_module, .No_Error
 }
 
-Surface_Configuration :: struct {
-    label:        cstring,
-    usage:        Texture_Usage_Flags,
-    format:       Texture_Format,
-    width:        u32,
-    height:       u32,
-    present_mode: Present_Mode,
-    alpha_mode:   Composite_Alpha_Mode,
-    view_formats: []Texture_Format,
-}
-
-// Creates a `Swap_Chain` with a compatible `Surface`.
-device_create_swap_chain :: proc(
-    using self: ^Device,
-    surface: ^Surface,
-    descriptor: ^Surface_Configuration,
-) -> (
-    Swap_Chain,
-    Error_Type,
-) {
-    desc := wgpu.Swap_Chain_Descriptor{}
-
-    if descriptor != nil {
-        desc.label = descriptor.label
-        desc.usage = descriptor.usage
-        desc.format = descriptor.format
-        desc.width = descriptor.width
-        desc.height = descriptor.height
-        desc.present_mode = descriptor.present_mode
-
-        extras := Swap_Chain_Descriptor_Extras {
-            chain = {
-                next = nil,
-                stype = cast(SType)Native_SType.Swap_Chain_Descriptor_Extras,
-            },
-        }
-
-        extras.alpha_mode = descriptor.alpha_mode
-
-        view_format_count := cast(uint)len(descriptor.view_formats)
-
-        if view_format_count > 0 {
-            extras.view_format_count = view_format_count
-            extras.view_formats = raw_data(descriptor.view_formats)
-        } else {
-            extras.view_format_count = 0
-            extras.view_formats = nil
-        }
-
-        desc.next_in_chain = cast(^Chained_Struct)&extras
-    }
-    err_data.type = .No_Error
-
-    swap_chain_ptr := wgpu.device_create_swap_chain(ptr, surface.ptr, &desc)
-
-    if err_data.type != .No_Error {
-        if swap_chain_ptr != nil {
-            wgpu.swap_chain_release(swap_chain_ptr)
-        }
-        return {}, err_data.type
-    }
-
-    swap_chain := default_swap_chain
-    swap_chain.err_data = err_data
-    swap_chain.ptr = swap_chain_ptr
-
-    return swap_chain, .No_Error
-}
-
 // Describes a `Texture`.
 Texture_Descriptor :: struct {
     label:           cstring,
@@ -1050,6 +964,7 @@ device_get_limits :: proc(self: ^Device) -> Limits {
         max_texture_dimension_3d                        = limits.max_texture_dimension_3d,
         max_texture_array_layers                        = limits.max_texture_array_layers,
         max_bind_groups                                 = limits.max_bind_groups,
+        max_bind_groups_plus_vertex_buffers             = limits.max_bind_groups_plus_vertex_buffers,
         max_bindings_per_bind_group                     = limits.max_bindings_per_bind_group,
         max_dynamic_uniform_buffers_per_pipeline_layout = limits.max_dynamic_uniform_buffers_per_pipeline_layout,
         max_dynamic_storage_buffers_per_pipeline_layout = limits.max_dynamic_storage_buffers_per_pipeline_layout,
@@ -1078,6 +993,7 @@ device_get_limits :: proc(self: ^Device) -> Limits {
         max_compute_workgroups_per_dimension            = limits.max_compute_workgroups_per_dimension,
         // Limits extras
         max_push_constant_size                          = extras.max_push_constant_size,
+        max_non_sampler_bindings                        = extras.max_non_sampler_bindings,
     }
 
     return all_limits
