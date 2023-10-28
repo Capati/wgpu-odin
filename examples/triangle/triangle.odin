@@ -4,26 +4,31 @@ package triangle
 import "core:fmt"
 
 // Package
-import "../framework"
 import wgpu "../../wrapper"
 
-State :: framework.State
-Physical_Size :: framework.Physical_Size
+// Framework
+import app "../framework/application"
+import "../framework/application/events"
+import "../framework/renderer"
 
-Example :: struct {
-    pipeline: wgpu.Render_Pipeline,
-}
+main :: proc() {
+    app_properties := app.Default_Properties
+    app_properties.title = "Triangle"
+    if app.init(app_properties) != .No_Error do return
+    defer app.deinit()
 
-ctx := Example{}
+    gpu, gpu_err := renderer.init()
+    if gpu_err != .No_Error do return
+    defer renderer.deinit(gpu)
 
-init_example := proc(using state: ^State) -> (err: wgpu.Error_Type) {
-    shader := device->load_wgsl_shader_module(
+    shader, shader_err := gpu.device->load_wgsl_shader_module(
         "assets/triangle.wgsl",
         "Red triangle module",
-    ) or_return
+    )
+    if shader_err != .No_Error do return
     defer shader->release()
 
-    ctx.pipeline = device->create_render_pipeline(
+    pipeline, pipeline_err := gpu.device->create_render_pipeline(
         &{
             label = "Render Pipeline",
             vertex = {module = &shader, entry_point = "vs"},
@@ -32,78 +37,80 @@ init_example := proc(using state: ^State) -> (err: wgpu.Error_Type) {
                 entry_point = "fs",
                 targets = {
                     {
-                        format = config.format,
+                        format = gpu.config.format,
                         blend = &wgpu.Blend_State_Replace,
                         write_mask = wgpu.Color_Write_Mask_All,
                     },
                 },
             },
-            multisample = wgpu.Multisample_State_Default,
-        },
-    ) or_return
-
-    return .No_Error
-}
-
-render :: proc(using state: ^State) -> wgpu.Error_Type {
-    encoder := device->create_command_encoder(
-        &wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
-    ) or_return
-    defer encoder->release()
-
-    render_pass := encoder->begin_render_pass(
-        &{
-            label = "Render Pass",
-            color_attachments = []wgpu.Render_Pass_Color_Attachment{
-                {
-                    view = &frame,
-                    resolve_target = nil,
-                    load_op = .Clear,
-                    store_op = .Store,
-                    clear_value = wgpu.Color_Green,
-                },
-            },
-            depth_stencil_attachment = nil,
+            multisample = wgpu.Default_Multisample_State,
         },
     )
-    defer render_pass->release()
+    if pipeline_err != .No_Error do return
+    defer pipeline->release()
 
-    render_pass->set_pipeline(&ctx.pipeline)
-    render_pass->draw(3)
-    render_pass->end() or_return
+    fmt.printf("Entering main loop...\n\n")
 
-    command_buffer := encoder->finish() or_return
-    defer command_buffer->release()
+    main_loop: for {
+        iter := app.process_events()
 
-    device.queue->submit(command_buffer)
-    swap_chain->present()
-
-    return .No_Error
-}
-
-main :: proc() {
-    title: cstring = "Triangle"
-    properties := framework.default_properties
-    properties.title = title
-
-    state, state_err := framework.init(properties)
-    if state_err != .No_Error {
-        message := wgpu.get_error_message()
-        if message != "" {
-            fmt.eprintf("Failed to initialize [%s]: %s", title, message)
-        } else {
-            fmt.eprintf("Failed to initialize [%s]", title)
+        for iter->has_next() {
+            #partial switch event in iter->next() {
+            case events.Quit_Event:
+                break main_loop
+            case events.Key_Press_Event:
+            case events.Mouse_Press_Event:
+            case events.Mouse_Motion_Event:
+            case events.Mouse_Scroll_Event:
+            case events.Framebuffer_Resize_Event:
+                resize_err := renderer.resize_surface(gpu, {event.width, event.height})
+                if resize_err != .No_Error do break main_loop
+            }
         }
-        return
+
+        frame, frame_err := renderer.get_current_texture_frame(gpu)
+        if frame_err != .No_Error do break main_loop
+        defer frame->release()
+        if gpu.skip_frame do continue main_loop
+
+        view, view_err := frame.texture->create_view(nil)
+        if view_err != .No_Error do break main_loop
+        defer view->release()
+
+        encoder, encoder_err := gpu.device->create_command_encoder(
+            &wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
+        )
+        if encoder_err != .No_Error do break main_loop
+        defer encoder->release()
+
+        render_pass := encoder->begin_render_pass(
+            &{
+                label = "Render Pass",
+                color_attachments = []wgpu.Render_Pass_Color_Attachment{
+                    {
+                        view = &view,
+                        resolve_target = nil,
+                        load_op = .Clear,
+                        store_op = .Store,
+                        clear_value = wgpu.Color_Green,
+                    },
+                },
+                depth_stencil_attachment = nil,
+            },
+        )
+        defer render_pass->release()
+
+        render_pass->set_pipeline(&pipeline)
+        render_pass->draw(3)
+        if render_pass->end() != .No_Error do break main_loop
+
+        command_buffer, command_buffer_err := encoder->finish()
+        if command_buffer_err != .No_Error do break main_loop
+        defer command_buffer->release()
+
+        gpu.device.queue->submit(command_buffer)
+        gpu.surface->present()
     }
-    defer framework.deinit()
 
-    if init_example(state) != .No_Error do return
-    defer {
-        ctx.pipeline->release()
-    }
-
-    state.render_proc = render
-
-    framework.begin_run()
+    fmt.println("Exiting...")
 }

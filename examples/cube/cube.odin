@@ -4,268 +4,248 @@ package cube
 import "core:fmt"
 import "core:math"
 import la "core:math/linalg"
-// import "core:math/linalg/glsl"
 
 // Package
-import "../framework"
 import wgpu "../../wrapper"
+import "../common"
 
-State :: framework.State
-Physical_Size :: framework.Physical_Size
+// Framework
+import app "../framework/application"
+import "../framework/application/events"
+import "../framework/renderer"
 
-Example :: struct {
-    vertex_buffer:  wgpu.Buffer,
-    index_buffer:   wgpu.Buffer,
-    uniform_buffer: wgpu.Buffer,
-    pipeline:       wgpu.Render_Pipeline,
-    bind_group:     wgpu.Bind_Group,
-}
+Depth_Format: wgpu.Texture_Format = .Depth24_Plus
 
-ctx := Example{}
+main :: proc() {
+    app_properties := app.Default_Properties
+    app_properties.title = "Cube"
+    if app.init(app_properties) != .No_Error do return
+    defer app.deinit()
 
-Texel_Size :: 256
+    gpu, gpu_err := renderer.init()
+    if gpu_err != .No_Error do return
+    defer renderer.deinit(gpu)
 
-create_texels :: proc() -> (texels: [Texel_Size * Texel_Size]u8) {
-    for id := 0; id < (Texel_Size * Texel_Size); id += 1 {
-        cx := 3.0 * f32(id % Texel_Size) / f32(Texel_Size - 1) - 2.0
-        cy := 2.0 * f32(id / Texel_Size) / f32(Texel_Size - 1) - 1.0
-        x, y, count := f32(cx), f32(cy), u8(0)
-        for count < 0xFF && x * x + y * y < 4.0 {
-            old_x := x
-            x = x * x - y * y + cx
-            y = 2.0 * old_x * y + cy
-            count += 1
-        }
-        texels[id] = count
-    }
-
-    return
-}
-
-generate_matrix :: proc(aspect_ratio: f32) -> la.Matrix4f32 {
-    projection := la.matrix4_perspective_f32(math.PI / 4, aspect_ratio, 1.0, 10.0)
-    view := la.matrix4_look_at_f32(
-        eye = {1.5, -5.0, 3.0},
-        centre = {0.0, 0.0, 0.0},
-        up = {0.0, 0.0, 1.0},
+    shader, shader_err := gpu.device->load_wgsl_shader_module(
+        "assets/cube.wgsl",
+        "Cube shader",
     )
-    return la.mul(projection, view)
-}
+    if shader_err != .No_Error do return
+    defer shader->release()
 
-// generate_matrix :: proc(aspect_ratio: f32) -> glsl.mat4 {
-//     projection := glsl.mat4Perspective(math.PI / 4, aspect_ratio, 1.0, 10.0)
-//     view := glsl.mat4LookAt({1.5, -5.0, 3.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 1.0})
-//     return projection * view
-// }
-
-init_example := proc(using state: ^State) -> (err: wgpu.Error_Type) {
-    ctx.vertex_buffer = state.device->create_buffer_with_data(
+    vertex_buffer, vertex_buffer_err := gpu.device->create_buffer_with_data(
         &{
-            label = "Vertex Buffer",
+            label = "Cube Vertex Buffer",
             contents = wgpu.to_bytes(vertex_data),
             usage = {.Vertex},
         },
-    ) or_return
-    defer if err != .No_Error do ctx.vertex_buffer->release()
-
-    ctx.index_buffer = state.device->create_buffer_with_data(
-        &{
-            label = "Index Buffer",
-            contents = wgpu.to_bytes(index_data),
-            usage = {.Index},
-        },
-    ) or_return
-    defer if err != .No_Error do ctx.index_buffer->release()
-
-    texels := create_texels()
-    texture_extent := wgpu.Extent_3D {
-        width                 = Texel_Size,
-        height                = Texel_Size,
-        depth_or_array_layers = 1,
-    }
-    texture := state.device->create_texture(
-        &{
-            size = texture_extent,
-            mip_level_count = 1,
-            sample_count = 1,
-            dimension = .D2,
-            format = .R8_Uint,
-            usage = {.Texture_Binding, .Copy_Dst},
-        },
-    ) or_return
-    defer texture->release()
-
-    texture_view := texture->create_view(nil) or_return
-    defer texture_view->release()
-
-    state.device.queue->write_texture(
-        &{texture = &texture, mip_level = 0, origin = {}, aspect = .All},
-        wgpu.to_bytes(texels),
-        &{
-            offset = 0,
-            bytes_per_row = Texel_Size,
-            rows_per_image = cast(u32)wgpu.Copy_Stride_Undefined,
-        },
-        &texture_extent,
-    ) or_return
-
-    mx_total := generate_matrix(
-        cast(f32)state.config.width / cast(f32)state.config.height,
     )
-
-    fmt.printf("%#v\n", mx_total)
-
-    ctx.uniform_buffer = state.device->create_buffer_with_data(
-        &{
-            label = "Uniform Buffer",
-            contents = wgpu.to_bytes(mx_total),
-            usage = {.Uniform, .Copy_Dst},
-        },
-    ) or_return
-    defer if err != .No_Error do ctx.uniform_buffer->release()
-
-    shader := state.device->load_wgsl_shader_module(
-        "assets/cube.wgsl",
-        "shader.wgsl",
-    ) or_return
-    defer shader->release()
+    if vertex_buffer_err != .No_Error do return
+    defer vertex_buffer->release()
 
     vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
         array_stride = size_of(Vertex),
         step_mode = .Vertex,
         attributes = {
-            {format = .Float32x4, offset = 0, shader_location = 0},
+            {format = .Float32x3, offset = 0, shader_location = 0},
             {
-                format = .Float32x2,
-                offset = cast(u64)offset_of(Vertex, tex_coords),
+                format = .Float32x3,
+                offset = cast(u64)offset_of(Vertex, color),
                 shader_location = 1,
             },
         },
     }
 
-    ctx.pipeline = state.device->create_render_pipeline(
-        &{
-            vertex = {
-                module = &shader,
-                entry_point = "vs_main",
-                buffers = {vertex_buffer_layout},
-            },
-            fragment = &{
-                module = &shader,
-                entry_point = "fs_main",
-                targets = {
-                    {
-                        format = state.config.format,
-                        blend = nil,
-                        write_mask = wgpu.Color_Write_Mask_All,
-                    },
-                },
-            },
-            primitive = {
-                topology = .Triangle_List,
-                front_face = .CCW,
-                cull_mode = .Back,
-            },
-            depth_stencil = nil,
-            multisample = wgpu.Multisample_State_Default,
+    pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
+        label = "Render Pipeline",
+        vertex = {
+            module = &shader,
+            entry_point = "vertex_main",
+            buffers = {vertex_buffer_layout},
         },
-    ) or_return
-    defer if err != .No_Error do ctx.pipeline->release()
-
-    bind_group_layout := ctx.pipeline->get_bind_group_layout(0) or_return
-    defer bind_group_layout->release()
-
-    ctx.bind_group = state.device->create_bind_group(
-        &{
-            layout = &bind_group_layout,
-            entries = {
-                {binding = 0, buffer = &ctx.uniform_buffer, size = wgpu.Whole_Size},
-                {binding = 1, texture_view = &texture_view, size = wgpu.Whole_Size},
-            },
-        },
-    ) or_return
-
-    return .No_Error
-}
-
-resized :: proc(using state: ^State, size: Physical_Size) -> wgpu.Error_Type {
-    mx_total := generate_matrix(cast(f32)size.width / cast(f32)size.height)
-    state.device.queue->write_buffer(
-        &ctx.uniform_buffer,
-        0,
-        wgpu.to_bytes(mx_total),
-    ) or_return
-
-    return .No_Error
-}
-
-render :: proc(state: ^State) -> wgpu.Error_Type {
-    encoder := state.device->create_command_encoder(
-        &wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
-    ) or_return
-    defer encoder->release()
-
-    render_pass := encoder->begin_render_pass(
-        &{
-            label = "Render Pass",
-            color_attachments = []wgpu.Render_Pass_Color_Attachment{
+        fragment = &{
+            module = &shader,
+            entry_point = "fragment_main",
+            targets = {
                 {
-                    view = &state.frame,
-                    resolve_target = nil,
-                    load_op = .Clear,
-                    store_op = .Store,
-                    clear_value = {0.1, 0.2, 0.3, 1.0},
+                    format = gpu.config.format,
+                    blend = &wgpu.Blend_State_Replace,
+                    write_mask = wgpu.Color_Write_Mask_All,
                 },
             },
-            depth_stencil_attachment = nil,
+        },
+        primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .None},
+        // Enable depth testing so that the fragment closest to the camera
+        // is rendered in front.
+        depth_stencil = &{
+            depth_write_enabled = true,
+            depth_compare = .Less,
+            format = Depth_Format,
+            stencil_front = {compare = .Always},
+            stencil_back = {compare = .Always},
+            stencil_read_mask = 0xFFFFFFFF,
+            stencil_write_mask = 0xFFFFFFFF,
+        },
+        multisample = wgpu.Default_Multisample_State,
+    }
+
+    pipeline, pipeline_err := gpu.device->create_render_pipeline(&pipeline_descriptor)
+    if pipeline_err != .No_Error do return
+    defer pipeline->release()
+
+    depth_stencil_view, depth_stencil_view_err := get_depth_framebuffer(
+        gpu,
+        {gpu.config.width, gpu.config.height},
+    )
+    if depth_stencil_view_err != .No_Error do return
+    defer depth_stencil_view->release()
+
+    aspect := cast(f32)gpu.config.width / cast(f32)gpu.config.height
+    mvp_mat := generate_matrix(aspect)
+
+    uniform_buffer, uniform_buffer_err := gpu.device->create_buffer_with_data(
+        &{
+            label = "Uniform Buffer",
+            contents = wgpu.to_bytes(mvp_mat),
+            usage = {.Uniform, .Copy_Dst},
         },
     )
-    defer render_pass->release()
+    if uniform_buffer_err != .No_Error do return
+    defer uniform_buffer->release()
 
-    render_pass->set_pipeline(&ctx.pipeline)
-    render_pass->set_bind_group(0, &ctx.bind_group, nil)
-    render_pass->set_index_buffer(ctx.index_buffer, .Uint16, 0, wgpu.Whole_Size)
-    render_pass->set_vertex_buffer(0, ctx.vertex_buffer, 0, wgpu.Whole_Size)
-    render_pass->draw_indexed(cast(u32)len(index_data), 1, 0, 0, 0)
-    render_pass->end() or_return
+    bind_group_layout, bind_group_layout_err := pipeline->get_bind_group_layout(0)
+    if bind_group_layout_err != .No_Error do return
+    defer bind_group_layout->release()
 
-    command_buffer := encoder->finish() or_return
-    defer command_buffer->release()
+    bind_group, bind_group_err := gpu.device->create_bind_group(
+        &{
+            layout = &bind_group_layout,
+            entries = {{binding = 0, buffer = &uniform_buffer, size = wgpu.Whole_Size}},
+        },
+    )
+    if bind_group_err != .No_Error do return
+    defer bind_group->release()
 
-    state.device.queue->submit(command_buffer)
-    state.swap_chain->present()
+    fmt.printf("Entering main loop...\n\n")
 
-    return .No_Error
+    main_loop: for {
+        iter := app.process_events()
+
+        for iter->has_next() {
+            #partial switch event in iter->next() {
+            case events.Quit_Event:
+                break main_loop
+            case events.Key_Press_Event:
+            case events.Mouse_Press_Event:
+            case events.Mouse_Motion_Event:
+            case events.Mouse_Scroll_Event:
+            case events.Framebuffer_Resize_Event:
+                size: app.Physical_Size = {event.width, event.height}
+
+                depth_stencil_view->release()
+                depth_stencil_view, depth_stencil_view_err = get_depth_framebuffer(
+                    gpu,
+                    size,
+                )
+                if depth_stencil_view_err != .No_Error do return
+
+                write_buffer_err := gpu.device.queue->write_buffer(
+                    &uniform_buffer,
+                    0,
+                    wgpu.to_bytes(
+                        generate_matrix(cast(f32)size.width / cast(f32)size.height),
+                    ),
+                )
+                if write_buffer_err != .No_Error do break main_loop
+
+                resize_err := renderer.resize_surface(gpu, size)
+                if resize_err != .No_Error do break main_loop
+            }
+        }
+
+        frame, frame_err := renderer.get_current_texture_frame(gpu)
+        if frame_err != .No_Error do break main_loop
+        defer frame->release()
+        if gpu.skip_frame do continue main_loop
+
+        view, view_err := frame.texture->create_view(nil)
+        if view_err != .No_Error do break main_loop
+        defer view->release()
+
+        encoder, encoder_err := gpu.device->create_command_encoder(
+            &wgpu.Command_Encoder_Descriptor{label = "Cube Encoder"},
+        )
+        if encoder_err != .No_Error do break main_loop
+        defer encoder->release()
+
+        render_pass := encoder->begin_render_pass(
+            &{
+                label = "Render Pass",
+                color_attachments = []wgpu.Render_Pass_Color_Attachment{
+                    {
+                        view = &view,
+                        resolve_target = nil,
+                        load_op = .Clear,
+                        store_op = .Store,
+                        clear_value = {0.2, 0.2, 0.2, 1.0},
+                    },
+                },
+                depth_stencil_attachment = &{
+                    view = &depth_stencil_view,
+                    depth_clear_value = 1.0,
+                    depth_load_op = .Clear,
+                    depth_store_op = .Store,
+                },
+            },
+        )
+        defer render_pass->release()
+
+        render_pass->set_pipeline(&pipeline)
+        render_pass->set_bind_group(0, &bind_group, nil)
+        render_pass->set_vertex_buffer(0, vertex_buffer, 0, wgpu.Whole_Size)
+        render_pass->draw(cast(u32)len(vertex_data))
+        if render_pass->end() != .No_Error do break main_loop
+
+        command_buffer, command_buffer_err := encoder->finish()
+        if command_buffer_err != .No_Error do break main_loop
+        defer command_buffer->release()
+
+        gpu.device.queue->submit(command_buffer)
+        gpu.surface->present()
+    }
+
+    fmt.println("Exiting...")
 }
 
-main :: proc() {
-    title: cstring = "Textured Cube"
-    properties := framework.default_properties
-    properties.title = title
+get_depth_framebuffer :: proc(
+    gpu: ^renderer.Renderer,
+    size: app.Physical_Size,
+) -> (
+    view: wgpu.Texture_View,
+    err: wgpu.Error_Type,
+) {
+    texture := gpu.device->create_texture(
+        &{
+            size = {width = size.width, height = size.height, depth_or_array_layers = 1},
+            mip_level_count = 1,
+            sample_count = 1,
+            dimension = .D2,
+            format = Depth_Format,
+            usage = {.Render_Attachment},
+        },
+    ) or_return
+    defer texture->release()
 
-    state, state_err := framework.init(properties)
-    if state_err != .No_Error {
-        message := wgpu.get_error_message()
-        if message != "" {
-            fmt.eprintf("Failed to initialize [%s]: %s", title, message)
-        } else {
-            fmt.eprintf("Failed to initialize [%s]", title)
-        }
-        return
-    }
-    defer framework.deinit()
+    return texture->create_view(nil)
+}
 
-    if init_example(state) != .No_Error do return
-    defer {
-        ctx.bind_group->release()
-        ctx.pipeline->release()
-        ctx.uniform_buffer->release()
-        ctx.index_buffer->release()
-        ctx.vertex_buffer->release()
-    }
-
-    state.render_proc = render
-    state.resized_proc = resized
-
-    framework.begin_run()
+generate_matrix :: proc(aspect: f32) -> la.Matrix4f32 {
+    // 72 deg FOV
+    projection := la.matrix4_perspective_f32((2 * math.PI) / 5, aspect, 1.0, 10.0)
+    view := la.matrix4_look_at_f32(
+        eye = {1.1, 1.1, 1.1},
+        centre = {0.0, 0.0, 0.0},
+        up = {0.0, 1.0, 0.0},
+    )
+    return common.Open_Gl_To_Wgpu_Matrix * projection * view
 }

@@ -24,6 +24,9 @@ if "%1" == "cube" (
     call :cube & goto :end
 )
 
+if "%1" == "cube_textured" (
+    call :cube_textured & goto :end
+)
 
 if "%1" == "compute" (
     call :compute & goto :end
@@ -45,6 +48,7 @@ call :info
 call :triangle
 call :triangle_msaa
 call :cube
+call :cube_textured
 call :compute
 call :capture
 call :learn_wgpu
@@ -66,6 +70,9 @@ goto :eof
 odin build .\cube %ARGS% %OUT%\cube.exe
 goto :eof
 
+:cube_textured
+odin build .\cube_textured %ARGS% %OUT%\cube_textured.exe
+goto :eof
 
 :compute
 odin build .\compute %ARGS% %OUT%\compute.exe
