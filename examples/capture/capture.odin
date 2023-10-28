@@ -144,7 +144,7 @@ main :: proc() {
     render_pass_encoder := command_encoder->begin_render_pass(
         &{label = "render_pass_encoder", color_attachments = colors},
     )
-    render_pass_encoder->end()
+    if render_pass_encoder->end() != .No_Error do return
     render_pass_encoder->release()
 
     command_encoder->copy_texture_to_buffer(
