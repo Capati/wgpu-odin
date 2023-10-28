@@ -10,6 +10,7 @@ Default_Limits :: Limits {
     max_texture_dimension_3d                        = 2048,
     max_texture_array_layers                        = 256,
     max_bind_groups                                 = 4,
+    max_bind_groups_plus_vertex_buffers             = 24,
     max_bindings_per_bind_group                     = 640,
     max_dynamic_uniform_buffers_per_pipeline_layout = 8,
     max_dynamic_storage_buffers_per_pipeline_layout = 4,
@@ -38,6 +39,7 @@ Default_Limits :: Limits {
     max_compute_workgroups_per_dimension            = 65535,
     // Extras
     max_push_constant_size                          = 0,
+    max_non_sampler_bindings                        = 1_000_000,
 }
 
 // This is a set of limits that is guaranteed to work on almost all backends, including
@@ -50,6 +52,7 @@ Downlevel_Limits :: Limits {
     max_texture_dimension_3d                        = 256,
     max_texture_array_layers                        = 256,
     max_bind_groups                                 = 4,
+    max_bind_groups_plus_vertex_buffers             = 24,
     max_bindings_per_bind_group                     = 640,
     max_dynamic_uniform_buffers_per_pipeline_layout = 8,
     max_dynamic_storage_buffers_per_pipeline_layout = 4,
@@ -78,6 +81,7 @@ Downlevel_Limits :: Limits {
     max_compute_workgroups_per_dimension            = 65535,
     // Extras
     max_push_constant_size                          = 0,
+    max_non_sampler_bindings                        = 1_000_000,
 }
 
 // This is a set of limits that is lower even than the `Downlevel_Limits`, configured
@@ -88,6 +92,7 @@ Downlevel_Webgl2_D_Limits :: Limits {
     max_texture_dimension_3d                        = 256,
     max_texture_array_layers                        = 256,
     max_bind_groups                                 = 4,
+    max_bind_groups_plus_vertex_buffers             = 24,
     max_bindings_per_bind_group                     = 640,
     max_dynamic_uniform_buffers_per_pipeline_layout = 8,
     max_dynamic_storage_buffers_per_pipeline_layout = 0,
@@ -116,4 +121,5 @@ Downlevel_Webgl2_D_Limits :: Limits {
     max_compute_workgroups_per_dimension            = 0,
     // Extras
     max_push_constant_size                          = 0,
+    max_non_sampler_bindings                        = 1_000_000,
 }

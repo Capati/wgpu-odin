@@ -11,6 +11,7 @@ Copy_Stride_Undefined :: wgpu.Copy_Stride_Undefined
 Limit_U32_Undefined :: wgpu.Limit_U32_Undefined
 Limit_U64_Undefined :: wgpu.Limit_U64_Undefined
 Mip_Level_Count_Undefined :: wgpu.Mip_Level_Count_Undefined
+Wgpu_Query_Set_Index_Undefined :: wgpu.Wgpu_Query_Set_Index_Undefined
 Whole_Map_Si :: wgpu.Whole_Map_Si
 Whole_Size :: wgpu.Whole_Size
 
@@ -43,10 +44,12 @@ Native_Feature :: wgpu.Native_Feature
 Log_Level :: wgpu.Log_Level
 Instance_Backend :: wgpu.Instance_Backend
 Instance_Backend_Flags :: wgpu.Instance_Backend_Flags
+Instance_Flags :: wgpu.Instance_Flags
 Instance_Backend_Primary :: wgpu.Instance_Backend_Primary
 Instance_Backend_Secondary :: wgpu.Instance_Backend_Secondary
-Instance_Backend_None :: wgpu.Instance_Backend_None
+// Instance_Backend_None :: wgpu.Instance_Backend_None
 Dx12_Compiler :: wgpu.Dx12_Compiler
+Gles3_Minor_Version :: wgpu.Gles3_Minor_Version
 Composite_Alpha_Mode :: wgpu.Composite_Alpha_Mode
 
 Instance_Extras :: wgpu.Instance_Extras
@@ -62,7 +65,6 @@ Shader_Module_Glsl_Descriptor :: wgpu.Shader_Module_Glsl_Descriptor
 Storage_Report :: wgpu.Storage_Report
 Hub_Report :: wgpu.Hub_Report
 Global_Report :: wgpu.Global_Report
-Swap_Chain_Descriptor_Extras :: wgpu.Swap_Chain_Descriptor_Extras
 Instance_Enumerate_Adapter_Options :: wgpu.Instance_Enumerate_Adapter_Options
 
 Log_Callback :: wgpu.Log_Callback
@@ -78,7 +80,6 @@ Buffer_Map_State :: wgpu.Buffer_Map_State
 Compare_Function :: wgpu.Compare_Function
 Compilation_Info_Request_Status :: wgpu.Compilation_Info_Request_Status
 Compilation_Message_Type :: wgpu.Compilation_Message_Type
-Compute_Pass_Timestamp_Location :: wgpu.Compute_Pass_Timestamp_Location
 Create_Pipeline_Async_Status :: wgpu.Create_Pipeline_Async_Status
 Cull_Mode :: wgpu.Cull_Mode
 Device_Lost_Reason :: wgpu.Device_Lost_Reason
@@ -90,13 +91,11 @@ Front_Face :: wgpu.Front_Face
 Index_Format :: wgpu.Index_Format
 Load_Op :: wgpu.Load_Op
 Mipmap_Filter_Mode :: wgpu.Mipmap_Filter_Mode
-Pipeline_Statistic_Name :: wgpu.Pipeline_Statistic_Name
 Power_Preference :: wgpu.Power_Preference
 Present_Mode :: wgpu.Present_Mode
 // Primitive_Topology :: wgpu.Primitive_Topology
 Query_Type :: wgpu.Query_Type
 Queue_Work_Done_Status :: wgpu.Queue_Work_Done_Status
-Render_Pass_Timestamp_Location :: wgpu.Render_Pass_Timestamp_Location
 Request_Adapter_Status :: wgpu.Request_Adapter_Status
 Request_Device_Status :: wgpu.Request_Device_Status
 SType :: wgpu.SType
@@ -149,7 +148,7 @@ Color :: wgpu.Color
 Command_Buffer_Descriptor :: wgpu.Command_Buffer_Descriptor
 Command_Encoder_Descriptor :: wgpu.Command_Encoder_Descriptor
 Compilation_Message :: wgpu.Compilation_Message
-Compute_Pass_Timestamp_Write :: wgpu.Compute_Pass_Timestamp_Write
+Compute_Pass_Timestamp_Writes :: wgpu.Compute_Pass_Timestamp_Writes
 Constant_Entry :: wgpu.Constant_Entry
 Extent_3D :: wgpu.Extent_3D
 // Limits :: wgpu.Limits
@@ -159,9 +158,9 @@ Primitive_Depth_Clip_Control :: wgpu.Primitive_Depth_Clip_Control
 // Primitive_State :: wgpu.Primitive_State
 Queue_Descriptor :: wgpu.Queue_Descriptor
 Render_Bundle_Descriptor :: wgpu.Render_Bundle_Descriptor
-Render_Pass_Depth_Stencil_Attachment :: wgpu.Render_Pass_Depth_Stencil_Attachment
+// Render_Pass_Depth_Stencil_Attachment :: wgpu.Render_Pass_Depth_Stencil_Attachment
 Render_Pass_Descriptor_Max_Draw_Count :: wgpu.Render_Pass_Descriptor_Max_Draw_Count
-Render_Pass_Timestamp_Write :: wgpu.Render_Pass_Timestamp_Write
+Render_Pass_Timestamp_Writes :: wgpu.Render_Pass_Timestamp_Writes
 Sampler_Binding_Layout :: wgpu.Sampler_Binding_Layout
 Sampler_Descriptor :: wgpu.Sampler_Descriptor
 Shader_Module_Compilation_Hint :: wgpu.Shader_Module_Compilation_Hint
@@ -177,6 +176,7 @@ Surface_Descriptor_From_Windows_HWND :: wgpu.Surface_Descriptor_From_Windows_HWN
 Surface_Descriptor_From_Xcb_Window :: wgpu.Surface_Descriptor_From_Xcb_Window
 Surface_Descriptor_From_Xlib_Window :: wgpu.Surface_Descriptor_From_Xlib_Window
 Texture_Binding_Layout :: wgpu.Texture_Binding_Layout
+// Surface_Texture :: wgpu.Surface_Texture
 Texture_Data_Layout :: wgpu.Texture_Data_Layout
 Texture_View_Descriptor :: wgpu.Texture_View_Descriptor
 Vertex_Attribute :: wgpu.Vertex_Attribute

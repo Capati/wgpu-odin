@@ -91,6 +91,7 @@ adapter_get_limits :: proc(self: ^Adapter) -> Limits {
         max_texture_dimension_3d                        = limits.max_texture_dimension_3d,
         max_texture_array_layers                        = limits.max_texture_array_layers,
         max_bind_groups                                 = limits.max_bind_groups,
+        max_bind_groups_plus_vertex_buffers             = limits.max_bind_groups_plus_vertex_buffers,
         max_bindings_per_bind_group                     = limits.max_bindings_per_bind_group,
         max_dynamic_uniform_buffers_per_pipeline_layout = limits.max_dynamic_uniform_buffers_per_pipeline_layout,
         max_dynamic_storage_buffers_per_pipeline_layout = limits.max_dynamic_storage_buffers_per_pipeline_layout,
@@ -119,6 +120,7 @@ adapter_get_limits :: proc(self: ^Adapter) -> Limits {
         max_compute_workgroups_per_dimension            = limits.max_compute_workgroups_per_dimension,
         // Limits extras
         max_push_constant_size                          = extras.max_push_constant_size,
+        max_non_sampler_bindings                        = extras.max_non_sampler_bindings,
     }
 
     return all_limits
@@ -174,7 +176,7 @@ adapter_request_device :: proc(
         }
 
         if len(descriptor.features) > 0 {
-            desc.required_features_count = len(descriptor.features)
+            desc.required_feature_count = len(descriptor.features)
             desc.required_features =
             transmute(^wgpu.Feature_Name)raw_data(descriptor.features)
         }
@@ -193,6 +195,7 @@ adapter_request_device :: proc(
             max_texture_dimension_3d                        = limits.max_texture_dimension_3d,
             max_texture_array_layers                        = limits.max_texture_array_layers,
             max_bind_groups                                 = limits.max_bind_groups,
+            max_bind_groups_plus_vertex_buffers             = limits.max_bind_groups_plus_vertex_buffers,
             max_bindings_per_bind_group                     = limits.max_bindings_per_bind_group,
             max_dynamic_uniform_buffers_per_pipeline_layout = limits.max_dynamic_uniform_buffers_per_pipeline_layout,
             max_dynamic_storage_buffers_per_pipeline_layout = limits.max_dynamic_storage_buffers_per_pipeline_layout,
@@ -223,7 +226,10 @@ adapter_request_device :: proc(
 
         required_limits_extras := Required_Limits_Extras {
             chain = {stype = SType(Native_SType.Required_Limits_Extras)},
-            max_push_constant_size = limits.max_push_constant_size,
+            limits = {
+                max_push_constant_size = limits.max_push_constant_size,
+                max_non_sampler_bindings = limits.max_non_sampler_bindings,
+            },
         }
         required_limits.next_in_chain = cast(^Chained_Struct)&required_limits_extras
 
