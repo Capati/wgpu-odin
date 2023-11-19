@@ -31,6 +31,7 @@ Native_SType :: enum c.int {
     Instance_Extras                = 0x00030006,
     Bind_Group_Entry_Extras        = 0x00030007,
     Bind_Group_Layout_Entry_Extras = 0x00030008,
+    Query_Set_Descriptor_Extras    = 0x00030009,
 }
 
 Native_Feature :: enum c.int {
@@ -41,6 +42,7 @@ Native_Feature :: enum c.int {
     Vertex_Writable_Storage                                       = 0x00030005,
     Texture_Binding_Array                                         = 0x00030006,
     Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing = 0x00030007,
+    Pipeline_Statistics_Query                                     = 0x00030008,
 }
 
 Log_Level :: enum c.int {
@@ -97,6 +99,18 @@ Gles3_Minor_Version :: enum c.int {
     Version_0,
     Version_1,
     Version_2,
+}
+
+Pipeline_Statistic_Name :: enum c.int {
+    Vertex_Shader_Invocations,
+    Clipper_Invocations,
+    Clipper_Primitives_Out,
+    Fragment_Shader_Invocations,
+    Compute_Shader_Invocations,
+}
+
+Native_Query_Type :: enum c.int {
+    Pipeline_Statistics = 0x00030000,
 }
 
 Instance_Extras :: struct {
@@ -216,6 +230,12 @@ Bind_Group_Layout_Entry_Extras :: struct {
     count: c.uint32_t,
 }
 
+Query_Set_Descriptor_Extras :: struct {
+    chain:                    Chained_Struct,
+    pipeline_statistics:      ^Pipeline_Statistic_Name,
+    pipeline_statistic_count: c.size_t,
+}
+
 Log_Callback :: #type proc "c" (level: Log_Level, message: cstring, user_data: rawptr)
 
 foreign wgpu_native {
@@ -252,6 +272,15 @@ foreign wgpu_native {
     render_pass_encoder_multi_draw_indirect_count :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: c.uint64_t, count_buffer: Buffer, count_buffer_offset, max_count: c.uint32_t) ---
     @(link_name = "wgpuRenderPassEncoderMultiDrawIndexedIndirectCount")
     render_pass_encoder_multi_draw_indexed_indirect_count :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: c.uint64_t, count_buffer: Buffer, count_buffer_offset, max_count: c.uint32_t) ---
+
+    @(link_name = "wgpuComputePassEncoderBeginPipelineStatisticsQuery")
+    compute_pass_encoder_begin_pipeline_statistics_query :: proc(compute_pass_encoder: Compute_Pass_Encoder, query_set: Query_Set, query_index: c.uint32_t) ---
+    @(link_name = "wgpuComputePassEncoderEndPipelineStatisticsQuery")
+    compute_pass_encoder_end_pipeline_statistics_query :: proc(compute_pass_encoder: Compute_Pass_Encoder) ---
+    @(link_name = "wgpuRenderPassEncoderBeginPipelineStatisticsQuery")
+    render_pass_encoder_begin_pipeline_statistics_query :: proc(render_pass_encoder: Render_Pass_Encoder, query_set: Query_Set, query_index: c.uint32_t) ---
+    @(link_name = "wgpuRenderPassEncoderEndPipelineStatisticsQuery")
+    render_pass_encoder_end_pipeline_statistics_query :: proc(render_pass_encoder: Render_Pass_Encoder) ---
 }
 
 Array_Layer_Count_Undefined: c.ulong : 0xffffffff
@@ -439,15 +468,14 @@ Feature_Name :: enum c.int {
     Depth_Clip_Control         = 0x00000001,
     Depth32_Float_Stencil8     = 0x00000002,
     Timestamp_Query            = 0x00000003,
-    Pipeline_Statistics_Query  = 0x00000004,
-    Texture_Compression_Bc     = 0x00000005,
-    Texture_Compression_Etc2   = 0x00000006,
-    Texture_Compression_Astc   = 0x00000007,
-    Indirect_First_Instance    = 0x00000008,
-    Shader_F16                 = 0x00000009,
-    Rg11_B10_Ufloat_Renderable = 0x0000000A,
-    Bgra8_Unorm_Storage        = 0x0000000B,
-    Float32_Filterable         = 0x0000000C,
+    Texture_Compression_Bc     = 0x00000004,
+    Texture_Compression_Etc2   = 0x00000005,
+    Texture_Compression_Astc   = 0x00000006,
+    Indirect_First_Instance    = 0x00000007,
+    Shader_F16                 = 0x00000008,
+    Rg11_B10_Ufloat_Renderable = 0x00000009,
+    Bgra8_Unorm_Storage        = 0x0000000A,
+    Float32_Filterable         = 0x0000000B,
 }
 
 Filter_Mode :: enum c.int {
@@ -477,14 +505,6 @@ Mipmap_Filter_Mode :: enum c.int {
     Linear,
 }
 
-Pipeline_Statistic_Name :: enum c.int {
-    Vertex_Shader_Invocations,
-    Clipper_Invocations,
-    Clipper_Primitives_Out,
-    Fragment_Shader_Invocations,
-    Compute_Shader_Invocations,
-}
-
 Power_Preference :: enum c.int {
     Undefined,
     Low_Power,
@@ -508,8 +528,7 @@ Primitive_Topology :: enum c.int {
 
 Query_Type :: enum c.int {
     Occlusion,
-    Pipeline_Statistics,
-    Timestamp,
+    Query_Type_Timestamp,
 }
 
 Queue_Work_Done_Status :: enum c.int {
@@ -984,12 +1003,10 @@ Primitive_State :: struct {
 }
 
 Query_Set_Descriptor :: struct {
-    next_in_chain:            ^Chained_Struct,
-    label:                    cstring,
-    type:                     Query_Type,
-    count:                    c.uint32_t,
-    pipeline_statistics:      ^Pipeline_Statistic_Name,
-    pipeline_statistic_count: c.size_t,
+    next_in_chain: ^Chained_Struct,
+    label:         cstring,
+    type:          Query_Type,
+    count:         c.uint32_t,
 }
 
 Queue_Descriptor :: struct {
@@ -1574,16 +1591,12 @@ foreign wgpu_native {
     // Methods of ComputePassEncoder
 
 
-    @(link_name = "wgpuComputePassEncoderBeginPipelineStatisticsQuery")
-    compute_pass_encoder_begin_pipeline_statistics_query :: proc(compute_pass_encoder: Compute_Pass_Encoder, query_set: Query_Set, query_index: c.uint32_t) ---
     @(link_name = "wgpuComputePassEncoderDispatchWorkgroups")
     compute_pass_encoder_dispatch_workgroups :: proc(compute_pass_encoder: Compute_Pass_Encoder, workgroup_count_x, workgroup_count_y, workgroup_count_z: c.uint32_t) ---
     @(link_name = "wgpuComputePassEncoderDispatchWorkgroupsIndirect")
     compute_pass_encoder_dispatch_workgroups_indirect :: proc(compute_pass_encoder: Compute_Pass_Encoder, indirect_buffer: Buffer, indirect_offset: c.uint64_t) ---
     @(link_name = "wgpuComputePassEncoderEnd")
     compute_pass_encoder_end :: proc(compute_pass_encoder: Compute_Pass_Encoder) ---
-    @(link_name = "wgpuComputePassEncoderEndPipelineStatisticsQuery")
-    compute_pass_encoder_end_pipeline_statistics_query :: proc(compute_pass_encoder: Compute_Pass_Encoder) ---
     @(link_name = "wgpuComputePassEncoderInsertDebugMarker")
     compute_pass_encoder_insert_debug_marker :: proc(compute_pass_encoder: Compute_Pass_Encoder, marker_label: cstring) ---
     @(link_name = "wgpuComputePassEncoderPopDebugGroup")
@@ -1777,8 +1790,6 @@ foreign wgpu_native {
 
     @(link_name = "wgpuRenderPassEncoderBeginOcclusionQuery")
     render_pass_encoder_begin_occlusion_query :: proc(render_pass_encoder: Render_Pass_Encoder, query_index: c.uint32_t) ---
-    @(link_name = "wgpuRenderPassEncoderBeginPipelineStatisticsQuery")
-    render_pass_encoder_begin_pipeline_statistics_query :: proc(render_pass_encoder: Render_Pass_Encoder, query_set: Query_Set, query_index: c.uint32_t) ---
     @(link_name = "wgpuRenderPassEncoderDraw")
     render_pass_encoder_draw :: proc(render_pass_encoder: Render_Pass_Encoder, vertex_count, instance_count, first_vertex, firstInstance: c.uint32_t) ---
     @(link_name = "wgpuRenderPassEncoderDrawIndexed")
@@ -1791,8 +1802,6 @@ foreign wgpu_native {
     render_pass_encoder_end :: proc(render_pass_encoder: Render_Pass_Encoder) ---
     @(link_name = "wgpuRenderPassEncoderEndOcclusionQuery")
     render_pass_encoder_end_occlusion_query :: proc(render_pass_encoder: Render_Pass_Encoder) ---
-    @(link_name = "wgpuRenderPassEncoderEndPipelineStatisticsQuery")
-    render_pass_encoder_end_pipeline_statistics_query :: proc(render_pass_encoder: Render_Pass_Encoder) ---
     @(link_name = "wgpuRenderPassEncoderExecuteBundles")
     render_pass_encoder_execute_bundles :: proc(render_pass_encoder: Render_Pass_Encoder, bundle_count: c.size_t, bundles: ^Render_Bundle) ---
     @(link_name = "wgpuRenderPassEncoderInsertDebugMarker")
