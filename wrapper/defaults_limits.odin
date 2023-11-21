@@ -86,7 +86,7 @@ Downlevel_Limits :: Limits {
 
 // This is a set of limits that is lower even than the `Downlevel_Limits`, configured
 // to be low enough to support running in the browser using WebGL2.
-Downlevel_Webgl2_D_Limits :: Limits {
+Downlevel_Webgl2_Limits :: Limits {
     max_texture_dimension_1d                        = 2048,
     max_texture_dimension_2d                        = 2048,
     max_texture_dimension_3d                        = 256,
