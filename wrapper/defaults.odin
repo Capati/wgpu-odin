@@ -47,3 +47,15 @@ Default_Texture_Descriptor :: Texture_Descriptor {
     sample_count    = 1,
     dimension       = .D2,
 }
+
+Default_Primitive_State :: Primitive_State {
+    topology   = .Triangle_List,
+    front_face = .CCW,
+    cull_mode  = .None,
+}
+
+Default_Render_Pipeline_Descriptor: Render_Pipeline_Descriptor :  {
+    primitive = Default_Primitive_State,
+    depth_stencil = nil,
+    multisample = Default_Multisample_State,
+}
