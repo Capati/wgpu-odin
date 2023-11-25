@@ -153,9 +153,15 @@ main :: proc() {
     bind_group, bind_group_err := gpu.device->create_bind_group(
         &{
             layout = &bind_group_layout,
-            entries = {
-                {binding = 0, buffer = &uniform_buffer, size = wgpu.Whole_Size},
-                {binding = 1, texture_view = &texture_view, size = wgpu.Whole_Size},
+            entries =  {
+                 {
+                    binding = 0,
+                    resource = wgpu.Buffer_Binding {
+                        buffer = &uniform_buffer,
+                        size = wgpu.Whole_Size,
+                    },
+                },
+                {binding = 1, resource = &texture_view},
             },
         },
     )

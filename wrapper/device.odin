@@ -194,12 +194,20 @@ default_device := Device {
 }
 
 Bind_Group_Entry :: struct {
-    binding:      u32,
-    buffer:       ^Buffer,
-    offset:       u64,
-    size:         u64,
-    sampler:      ^Sampler,
-    texture_view: ^Texture_View,
+    binding:  u32,
+    resource: Binding_Resource,
+}
+
+Binding_Resource :: union {
+    Buffer_Binding,
+    ^Sampler,
+    ^Texture_View,
+}
+
+Buffer_Binding :: struct {
+    buffer: ^Buffer,
+    offset: u64,
+    size:   u64,
 }
 
 Bind_Group_Descriptor :: struct {
@@ -239,20 +247,17 @@ device_create_bind_group :: proc(
             for v, i in descriptor.entries {
                 entry := wgpu.Bind_Group_Entry {
                     binding = v.binding,
-                    offset  = v.offset,
-                    size    = v.size,
                 }
 
-                if v.buffer != nil {
-                    entry.buffer = v.buffer.ptr
-                }
-
-                if v.sampler != nil {
-                    entry.sampler = v.sampler.ptr
-                }
-
-                if v.texture_view != nil {
-                    entry.texture_view = v.texture_view.ptr
+                switch &res in v.resource {
+                case Buffer_Binding:
+                    entry.buffer = res.buffer.ptr
+                    entry.size = res.size
+                    entry.offset = res.offset
+                case ^Sampler:
+                    entry.sampler = res.ptr
+                case ^Texture_View:
+                    entry.texture_view = res.ptr
                 }
 
                 bind_group_entry_ptrs[i] = entry

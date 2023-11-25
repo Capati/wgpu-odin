@@ -134,9 +134,11 @@ main :: proc() {
             entries = {
                 {
                     binding = 0,
+                    resource = wgpu.Buffer_Binding {
                     buffer = &storage_buffer,
                     offset = 0,
                     size = storage_buffer.size,
+                    },
                 },
             },
             label = "bind_group_layout",
