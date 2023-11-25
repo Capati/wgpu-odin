@@ -64,15 +64,9 @@ Command_Encoder_VTable :: struct {
         Command_Buffer,
         Error_Type,
     ),
-    insert_debug_marker:     proc(
-        self: ^Command_Encoder,
-        marker_label: cstring,
-    ) -> Error_Type,
+    insert_debug_marker:     proc(self: ^Command_Encoder, marker_label: cstring) -> Error_Type,
     pop_debug_group:         proc(self: ^Command_Encoder) -> Error_Type,
-    push_debug_group:        proc(
-        self: ^Command_Encoder,
-        group_label: cstring,
-    ) -> Error_Type,
+    push_debug_group:        proc(self: ^Command_Encoder, group_label: cstring) -> Error_Type,
     resolve_query_set:       proc(
         self: ^Command_Encoder,
         query_set: Query_Set,
@@ -191,7 +185,7 @@ command_encoder_begin_render_pass :: proc(
                 color_attachment := descriptor.color_attachments[0]
 
                 desc.color_attachments =
-                &{
+                & {
                     load_op = color_attachment.load_op,
                     store_op = color_attachment.store_op,
                     clear_value = color_attachment.clear_value,
@@ -202,8 +196,7 @@ command_encoder_begin_render_pass :: proc(
                 }
 
                 if color_attachment.resolve_target != nil {
-                    desc.color_attachments.resolve_target =
-                        color_attachment.resolve_target.ptr
+                    desc.color_attachments.resolve_target = color_attachment.resolve_target.ptr
                 }
             } else {
                 color_attachments_slice := make(
@@ -237,7 +230,7 @@ command_encoder_begin_render_pass :: proc(
 
         if descriptor.depth_stencil_attachment != nil {
             desc.depth_stencil_attachment =
-            &{
+            & {
                 depth_load_op = descriptor.depth_stencil_attachment.depth_load_op,
                 depth_store_op = descriptor.depth_stencil_attachment.depth_store_op,
                 depth_clear_value = descriptor.depth_stencil_attachment.depth_clear_value,
@@ -249,8 +242,7 @@ command_encoder_begin_render_pass :: proc(
             }
 
             if descriptor.depth_stencil_attachment.view != nil {
-                desc.depth_stencil_attachment.view =
-                    descriptor.depth_stencil_attachment.view.ptr
+                desc.depth_stencil_attachment.view = descriptor.depth_stencil_attachment.view.ptr
             }
         }
     }

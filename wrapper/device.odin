@@ -741,11 +741,7 @@ device_create_render_pipeline :: proc(
             }
 
             if target_count > 0 {
-                targets := make(
-                    []Color_Target_State,
-                    target_count,
-                    context.temp_allocator,
-                )
+                targets := make([]Color_Target_State, target_count, context.temp_allocator)
 
                 for v, i in descriptor.fragment.targets {
                     target := Color_Target_State {
@@ -1029,11 +1025,7 @@ device_set_uncaptured_error_callback :: proc(
     err_data.user_data = user_data
 }
 
-device_pop_error_scope :: proc(
-    using self: ^Device,
-    callback: Error_Callback,
-    user_data: rawptr,
-) {
+device_pop_error_scope :: proc(using self: ^Device, callback: Error_Callback, user_data: rawptr) {
     wgpu.device_pop_error_scope(ptr, callback, user_data)
 }
 

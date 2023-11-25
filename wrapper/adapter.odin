@@ -56,10 +56,7 @@ default_adapter := Adapter {
 }
 
 // List all features that are supported with this adapter.
-adapter_get_features :: proc(
-    using self: ^Adapter,
-    allocator := context.allocator,
-) -> []Features {
+adapter_get_features :: proc(using self: ^Adapter, allocator := context.allocator) -> []Features {
     features_count := wgpu.adapter_enumerate_features(ptr, nil)
 
     if features_count == 0 {
@@ -177,8 +174,7 @@ adapter_request_device :: proc(
 
         if len(descriptor.features) > 0 {
             desc.required_feature_count = len(descriptor.features)
-            desc.required_features =
-            transmute(^wgpu.Feature_Name)raw_data(descriptor.features)
+            desc.required_features = transmute(^wgpu.Feature_Name)raw_data(descriptor.features)
         }
 
         // Set limits
@@ -226,7 +222,7 @@ adapter_request_device :: proc(
 
         required_limits_extras := Required_Limits_Extras {
             chain = {stype = SType(Native_SType.Required_Limits_Extras)},
-            limits = {
+            limits =  {
                 max_push_constant_size = limits.max_push_constant_size,
                 max_non_sampler_bindings = limits.max_non_sampler_bindings,
             },
@@ -244,11 +240,8 @@ adapter_request_device :: proc(
         // elsewhere. The trace is cross-platform.
         if descriptor.trace_path != nil && descriptor.trace_path != "" {
             desc.next_in_chain =
-            cast(^Chained_Struct)&Device_Extras{
-                chain = Chained_Struct{
-                    next = nil,
-                    stype = SType(Native_SType.Device_Extras),
-                },
+            cast(^Chained_Struct)&Device_Extras {
+                chain = Chained_Struct{next = nil, stype = SType(Native_SType.Device_Extras)},
                 trace_path = descriptor.trace_path,
             }
         }

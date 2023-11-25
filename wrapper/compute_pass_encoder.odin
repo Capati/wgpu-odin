@@ -29,15 +29,9 @@ Compute_Pass_Encoder_VTable :: struct {
     ),
     end:                             proc(self: ^Compute_Pass_Encoder) -> Error_Type,
     end_pipeline_statistics_query:   proc(self: ^Compute_Pass_Encoder),
-    insert_debug_marker:             proc(
-        self: ^Compute_Pass_Encoder,
-        marker_label: cstring,
-    ),
+    insert_debug_marker:             proc(self: ^Compute_Pass_Encoder, marker_label: cstring),
     pop_debug_group:                 proc(self: ^Compute_Pass_Encoder),
-    push_debug_group:                proc(
-        self: ^Compute_Pass_Encoder,
-        group_label: cstring,
-    ),
+    push_debug_group:                proc(self: ^Compute_Pass_Encoder, group_label: cstring),
     set_bind_group:                  proc(
         self: ^Compute_Pass_Encoder,
         group_index: u32,
@@ -81,11 +75,7 @@ compute_pass_encoder_begin_pipeline_statistics_query :: proc(
     query_set: Query_Set,
     query_index: u32,
 ) {
-    wgpu.compute_pass_encoder_begin_pipeline_statistics_query(
-        ptr,
-        query_set.ptr,
-        query_index,
-    )
+    wgpu.compute_pass_encoder_begin_pipeline_statistics_query(ptr, query_set.ptr, query_index)
 }
 
 compute_pass_encoder_dispatch_workgroups :: proc(
@@ -122,9 +112,7 @@ compute_pass_encoder_end :: proc(using self: ^Compute_Pass_Encoder) -> Error_Typ
     return err_data.type
 }
 
-compute_pass_encoder_end_pipeline_statistics_query :: proc(
-    using self: ^Compute_Pass_Encoder,
-) {
+compute_pass_encoder_end_pipeline_statistics_query :: proc(using self: ^Compute_Pass_Encoder) {
     wgpu.compute_pass_encoder_end_pipeline_statistics_query(ptr)
 }
 
@@ -167,10 +155,7 @@ compute_pass_encoder_set_bind_group :: proc(
     }
 }
 
-compute_pass_encoder_set_label :: proc(
-    using self: ^Compute_Pass_Encoder,
-    label: cstring,
-) {
+compute_pass_encoder_set_label :: proc(using self: ^Compute_Pass_Encoder, label: cstring) {
     wgpu.compute_pass_encoder_set_label(ptr, label)
 }
 

@@ -137,9 +137,7 @@ surface_get_capabilities :: proc(
     caps: wgpu.Surface_Capabilities = {}
     wgpu.surface_get_capabilities(ptr, adapter.ptr, &caps)
 
-    if caps.format_count == 0 &&
-       caps.present_mode_count == 0 &&
-       caps.alpha_mode_count == 0 {
+    if caps.format_count == 0 && caps.present_mode_count == 0 && caps.alpha_mode_count == 0 {
         update_error_message("No compatible capabilities found with the given adapter")
         return {}, .Unknown
     }
@@ -196,10 +194,7 @@ surface_get_capabilities :: proc(
     }
 
     if caps.present_mode_count > 0 {
-        present_modes_tmp := slice.from_ptr(
-            caps.present_modes,
-            int(caps.present_mode_count),
-        )
+        present_modes_tmp := slice.from_ptr(caps.present_modes, int(caps.present_mode_count))
         ret.present_modes = make([]Present_Mode, caps.present_mode_count, allocator)
         copy(ret.present_modes, present_modes_tmp)
     }
@@ -252,10 +247,7 @@ surface_get_current_texture :: proc(
 }
 
 // Returns the best format for the provided surface and adapter.
-surface_get_preferred_format :: proc(
-    using self: ^Surface,
-    adapter: ^Adapter,
-) -> Texture_Format {
+surface_get_preferred_format :: proc(using self: ^Surface, adapter: ^Adapter) -> Texture_Format {
     return wgpu.surface_get_preferred_format(ptr, adapter.ptr)
 }
 

@@ -21,10 +21,7 @@ Queue_VTable :: struct {
         data: rawptr = nil,
     ),
     set_label:              proc(self: ^Queue, label: cstring),
-    submit:                 proc(
-        self: ^Queue,
-        commands: ..Command_Buffer,
-    ) -> Submission_Index,
+    submit:                 proc(self: ^Queue, commands: ..Command_Buffer) -> Submission_Index,
     write_buffer:           proc(
         self: ^Queue,
         buffer: ^Buffer,
@@ -73,10 +70,7 @@ queue_set_label :: proc(using self: ^Queue, label: cstring) {
 }
 
 // Submits a series of finished command buffers for execution.
-queue_submit :: proc(
-    using self: ^Queue,
-    commands: ..Command_Buffer,
-) -> Submission_Index {
+queue_submit :: proc(using self: ^Queue, commands: ..Command_Buffer) -> Submission_Index {
     command_count := cast(u32)len(commands)
 
     if command_count == 0 {

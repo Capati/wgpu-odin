@@ -48,19 +48,10 @@ GPU_Render_Pass_VTable :: struct {
     end:                             proc(self: ^Render_Pass_Encoder) -> Error_Type,
     end_occlusion_query:             proc(self: ^Render_Pass_Encoder),
     end_pipeline_statistics_query:   proc(self: ^Render_Pass_Encoder),
-    execute_bundles:                 proc(
-        self: ^Render_Pass_Encoder,
-        bundles: ..Render_Bundle,
-    ),
-    insert_debug_marker:             proc(
-        self: ^Render_Pass_Encoder,
-        marker_label: cstring,
-    ),
+    execute_bundles:                 proc(self: ^Render_Pass_Encoder, bundles: ..Render_Bundle),
+    insert_debug_marker:             proc(self: ^Render_Pass_Encoder, marker_label: cstring),
     pop_debug_group:                 proc(self: ^Render_Pass_Encoder),
-    push_debug_group:                proc(
-        self: ^Render_Pass_Encoder,
-        group_label: cstring,
-    ),
+    push_debug_group:                proc(self: ^Render_Pass_Encoder, group_label: cstring),
     set_bind_group:                  proc(
         self: ^Render_Pass_Encoder,
         group_index: u32,
@@ -76,14 +67,8 @@ GPU_Render_Pass_VTable :: struct {
         size: Buffer_Size,
     ),
     set_label:                       proc(self: ^Render_Pass_Encoder, label: cstring),
-    set_pipeline:                    proc(
-        self: ^Render_Pass_Encoder,
-        pipeline: ^Render_Pipeline,
-    ),
-    set_scissor_rect:                proc(
-        self: ^Render_Pass_Encoder,
-        x, y, width, height: u32,
-    ),
+    set_pipeline:                    proc(self: ^Render_Pass_Encoder, pipeline: ^Render_Pipeline),
+    set_scissor_rect:                proc(self: ^Render_Pass_Encoder, x, y, width, height: u32),
     set_stencil_reference:           proc(self: ^Render_Pass_Encoder, reference: u32),
     set_vertex_buffer:               proc(
         self: ^Render_Pass_Encoder,
@@ -147,11 +132,7 @@ render_pass_encoder_begin_pipeline_statistics_query :: proc(
     query_set: Query_Set,
     query_index: u32,
 ) {
-    wgpu.render_pass_encoder_begin_pipeline_statistics_query(
-        ptr,
-        query_set.ptr,
-        query_index,
-    )
+    wgpu.render_pass_encoder_begin_pipeline_statistics_query(ptr, query_set.ptr, query_index)
 }
 
 // Draws primitives from the active vertex buffer(s).
@@ -162,13 +143,7 @@ render_pass_encoder_draw :: proc(
     first_vertex: u32 = 0,
     first_instance: u32 = 0,
 ) {
-    wgpu.render_pass_encoder_draw(
-        ptr,
-        vertex_count,
-        instance_count,
-        first_vertex,
-        first_instance,
-    )
+    wgpu.render_pass_encoder_draw(ptr, vertex_count, instance_count, first_vertex, first_instance)
 }
 
 // Draws indexed primitives using the active index buffer and the active vertex buffers.
@@ -197,11 +172,7 @@ render_pass_encoder_draw_indexed_indirect :: proc(
     indirect_buffer: Buffer,
     indirect_offset: u64 = 0,
 ) {
-    wgpu.render_pass_encoder_draw_indexed_indirect(
-        ptr,
-        indirect_buffer.ptr,
-        indirect_offset,
-    )
+    wgpu.render_pass_encoder_draw_indexed_indirect(ptr, indirect_buffer.ptr, indirect_offset)
 }
 
 // Draws primitives from the active vertex buffer(s) based on the contents of the
@@ -228,9 +199,7 @@ render_pass_encoder_end_occlusion_query :: proc(using self: ^Render_Pass_Encoder
 
 // End the pipeline statistics query on this render pass. It can be started with
 // `begin_pipeline_statistics_query`. Pipeline statistics queries may not be nested.
-render_pass_encoder_end_pipeline_statistics_query :: proc(
-    using self: ^Render_Pass_Encoder,
-) {
+render_pass_encoder_end_pipeline_statistics_query :: proc(using self: ^Render_Pass_Encoder) {
     wgpu.render_pass_encoder_end_pipeline_statistics_query(ptr)
 }
 
@@ -307,10 +276,7 @@ render_pass_encoder_set_bind_group :: proc(
 }
 
 // Sets the blend color as used by some of the blending modes.
-render_pass_encoder_set_blend_constant :: proc(
-    using self: ^Render_Pass_Encoder,
-    color: ^Color,
-) {
+render_pass_encoder_set_blend_constant :: proc(using self: ^Render_Pass_Encoder, color: ^Color) {
     wgpu.render_pass_encoder_set_blend_constant(ptr, color)
 }
 
@@ -346,10 +312,7 @@ render_pass_encoder_set_scissor_rect :: proc(
     wgpu.render_pass_encoder_set_scissor_rect(ptr, x, y, width, height)
 }
 
-render_pass_encoder_set_stencil_reference :: proc(
-    self: ^Render_Pass_Encoder,
-    reference: u32,
-) {
+render_pass_encoder_set_stencil_reference :: proc(self: ^Render_Pass_Encoder, reference: u32) {
     wgpu.render_pass_encoder_set_stencil_reference(self.ptr, reference)
 }
 

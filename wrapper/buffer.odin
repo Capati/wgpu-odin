@@ -21,17 +21,9 @@ Buffer :: struct {
 @(private)
 Buffer_VTable :: struct {
     destroy:                proc(self: ^Buffer),
-    get_const_mapped_range: proc(
-        self: ^Buffer,
-        byte_count: uint = 0,
-        offset: uint = 0,
-    ) -> []byte,
+    get_const_mapped_range: proc(self: ^Buffer, byte_count: uint = 0, offset: uint = 0) -> []byte,
     get_map_state:          proc(self: ^Buffer) -> Buffer_Map_State,
-    get_mapped_range:       proc(
-        self: ^Buffer,
-        byte_count: uint = 0,
-        offset: uint = 0,
-    ) -> []byte,
+    get_mapped_range:       proc(self: ^Buffer, byte_count: uint = 0, offset: uint = 0) -> []byte,
     get_size:               proc(self: ^Buffer) -> u64,
     get_usage:              proc(self: ^Buffer) -> Buffer_Usage_Flags,
     map_read:               proc(
@@ -90,11 +82,7 @@ buffer_destroy :: proc(using self: ^Buffer) {
 
 // Returns a `slice` of `bytes` with the contents of the `Buffer` in the given mapped
 // range. Cannot modify the buffer's data.
-buffer_get_const_mapped_range :: proc(
-    self: ^Buffer,
-    offset: uint = 0,
-    size: uint = 0,
-) -> []byte {
+buffer_get_const_mapped_range :: proc(self: ^Buffer, offset: uint = 0, size: uint = 0) -> []byte {
     size := size
 
     if size == 0 {
@@ -114,11 +102,7 @@ buffer_get_map_state :: proc(using self: ^Buffer) -> Buffer_Map_State {
 
 // Returns a `slice` of `bytes` with the contents of the `Buffer` in the given mapped
 // range.
-buffer_get_mapped_range :: proc(
-    self: ^Buffer,
-    offset: uint = 0,
-    size: uint = 0,
-) -> []byte {
+buffer_get_mapped_range :: proc(self: ^Buffer, offset: uint = 0, size: uint = 0) -> []byte {
     size := size
 
     if size == 0 {
