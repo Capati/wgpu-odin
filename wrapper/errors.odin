@@ -30,11 +30,7 @@ get_error_message :: proc() -> string {
     return last_error_message
 }
 
-uncaptured_error_callback := proc "c" (
-    type: Error_Type,
-    message: cstring,
-    user_data: rawptr,
-) {
+uncaptured_error_callback := proc "c" (type: Error_Type, message: cstring, user_data: rawptr) {
     if type == .No_Error {
         return
     }

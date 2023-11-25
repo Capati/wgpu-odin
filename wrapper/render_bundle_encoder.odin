@@ -138,11 +138,7 @@ render_bundle_encoder_draw_indexed_indirect :: proc(
     indirect_buffer: Buffer,
     indirect_offset: u64 = 0,
 ) {
-    wgpu.render_bundle_encoder_draw_indexed_indirect(
-        ptr,
-        indirect_buffer.ptr,
-        indirect_offset,
-    )
+    wgpu.render_bundle_encoder_draw_indexed_indirect(ptr, indirect_buffer.ptr, indirect_offset)
 }
 
 render_bundle_encoder_draw_indirect :: proc(
@@ -229,10 +225,7 @@ render_bundle_encoder_set_index_buffer :: proc(
 }
 
 // Sets label.
-render_bundle_encoder_set_label :: proc(
-    using self: ^Render_Bundle_Encoder,
-    label: cstring,
-) {
+render_bundle_encoder_set_label :: proc(using self: ^Render_Bundle_Encoder, label: cstring) {
     wgpu.render_bundle_encoder_set_label(ptr, label)
 }
 

@@ -166,10 +166,8 @@ Sampler_Descriptor :: wgpu.Sampler_Descriptor
 Shader_Module_Compilation_Hint :: wgpu.Shader_Module_Compilation_Hint
 Stencil_Face_State :: wgpu.Stencil_Face_State
 Storage_Texture_Binding_Layout :: wgpu.Storage_Texture_Binding_Layout
-Surface_Descriptor_From_Android_Native_Window ::
-    wgpu.Surface_Descriptor_From_Android_Native_Window
-Surface_Descriptor_From_Canvas_Html_Selector ::
-    wgpu.Surface_Descriptor_From_Canvas_Html_Selector
+Surface_Descriptor_From_Android_Native_Window :: wgpu.Surface_Descriptor_From_Android_Native_Window
+Surface_Descriptor_From_Canvas_Html_Selector :: wgpu.Surface_Descriptor_From_Canvas_Html_Selector
 Surface_Descriptor_From_Metal_Layer :: wgpu.Surface_Descriptor_From_Metal_Layer
 Surface_Descriptor_From_Wayland_Surface :: wgpu.Surface_Descriptor_From_Wayland_Surface
 Surface_Descriptor_From_Windows_HWND :: wgpu.Surface_Descriptor_From_Windows_HWND

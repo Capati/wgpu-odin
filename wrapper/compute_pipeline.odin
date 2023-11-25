@@ -45,10 +45,7 @@ compute_pipeline_get_bind_group_layout :: proc(
     bind_group_layout: Bind_Group_Layout,
     err: Error_Type,
 ) {
-    bind_group_layout_ptr := wgpu.compute_pipeline_get_bind_group_layout(
-        ptr,
-        group_index,
-    )
+    bind_group_layout_ptr := wgpu.compute_pipeline_get_bind_group_layout(ptr, group_index)
 
     if bind_group_layout_ptr == nil {
         update_error_message("Failed to acquire Bind_Group_Layout")

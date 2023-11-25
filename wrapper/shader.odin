@@ -78,9 +78,7 @@ device_load_wgsl_shader_module :: proc(
     descriptor := Shader_Module_Descriptor {
         label           = current_label,
         // clone to cstring to ensure null termination
-        wgsl_descriptor = &{
-            code = strings.clone_to_cstring(string(data), context.temp_allocator),
-        },
+        wgsl_descriptor = &{code = strings.clone_to_cstring(string(data), context.temp_allocator)},
     }
 
     shader_module = self->create_shader_module(&descriptor) or_return

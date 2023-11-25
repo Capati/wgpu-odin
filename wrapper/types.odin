@@ -49,7 +49,7 @@ Blend_State_Replace := Blend_State {
 }
 
 Blend_State_Alpha_Blending := Blend_State {
-    color = Blend_Component{
+    color = Blend_Component {
         operation = .Add,
         src_factor = .Src_Alpha,
         dst_factor = .One_Minus_Src_Alpha,

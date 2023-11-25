@@ -41,10 +41,7 @@ device_create_buffer_with_data :: proc(
     // Copy_Buffer_Alignment.
 
     align_mask := Copy_Buffer_Alignment - 1
-    padded_size := max(
-        ((unpadded_size + align_mask) & ~align_mask),
-        Copy_Buffer_Alignment,
-    )
+    padded_size := max(((unpadded_size + align_mask) & ~align_mask), Copy_Buffer_Alignment)
 
     buffer_descriptor: Buffer_Descriptor = {
         label              = descriptor.label,

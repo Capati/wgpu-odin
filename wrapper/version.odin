@@ -15,7 +15,7 @@ get_version :: proc() -> WGPU_Version {
     version := wgpu.get_version()
 
     return(
-        {
+         {
             major = cast(u8)((version >> 24) & 0xFF),
             minor = cast(u8)((version >> 16) & 0xFF),
             patch = cast(u8)((version >> 8) & 0xFF),

@@ -253,9 +253,7 @@ instance_enumerate_adapters :: proc(
         return {}
     }
 
-    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(
-        ignore = allocator == context.temp_allocator,
-    )
+    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
     wgpu_adapters := make([]WGPU_Adapter, adapter_count, context.temp_allocator)
     wgpu.instance_enumerate_adapters(ptr, &options, raw_data(wgpu_adapters))
 
