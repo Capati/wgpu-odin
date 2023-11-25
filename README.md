@@ -1,6 +1,6 @@
 # WGPU Odin Bindings
 
-Bindings to [wgpu-native](https://github.com/gfx-rs/wgpu-native) **0.18.1** in the [Odin programming language](https://odin-lang.org/).
+Bindings to [wgpu-native](https://github.com/gfx-rs/wgpu-native) **0.18.1.2** in the [Odin programming language](https://odin-lang.org/).
 
 See [examples here](./examples).
 
@@ -30,7 +30,7 @@ On Linux or Mac, you can tell the library to link against system `libwgpu_native
 
 1. Clone this repository.
 2. Create a folder `libs/wgpu` in the root of your project (from where you run `odin build`).
-3. If you want the wrapper version, copy both the `bindings` and `wrapper` folders from this repository to the directory created in the previous step.
+3. If you want the wrapper version, copy the folders `bindings`, `wrapper` and `utils`  from this repository to the directory created in the previous step.
 4. To easily import the package to your project, you can set a `collection`:
 
 ```
