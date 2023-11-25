@@ -61,7 +61,7 @@ init :: proc(
     wgpu.set_log_level(.Warn)
 
     instance, instance_err := wgpu.create_instance(
-        &{
+        & {
             backends = wgpu.Instance_Backend_Primary,
             dx12_shader_compiler = wgpu.Default_Dx12_Compiler,
         },
@@ -80,11 +80,7 @@ init :: proc(
 
     gc.surface, gpu_err = app.get_wgpu_surface(&instance)
     if gpu_err != .No_Error {
-        fmt.eprintf(
-            "Failed to create GPU Surface [%v]: %s\n",
-            gpu_err,
-            wgpu.get_error_message(),
-        )
+        fmt.eprintf("Failed to create GPU Surface [%v]: %s\n", gpu_err, wgpu.get_error_message())
         return nil, .Init_Failed
     }
     defer if err != .No_Error do gc.surface->release()
@@ -106,10 +102,7 @@ init :: proc(
         // Try to read WGPU_BACKEND_TYPE config to see if a backend type should be forced
         if WGPU_BACKEND_TYPE != core.STR_UNDEFINED_CONFIG {
             // Try to get the backend type from the string configuration
-            backend, backend_ok := reflect.enum_from_name(
-                wgpu.Backend_Type,
-                WGPU_BACKEND_TYPE,
-            )
+            backend, backend_ok := reflect.enum_from_name(wgpu.Backend_Type, WGPU_BACKEND_TYPE)
 
             if backend_ok {
                 adapter_options.backend_type = backend
@@ -154,11 +147,7 @@ init :: proc(
 
     gc.device, gpu_err = adapter->request_device(&device_descriptor)
     if gpu_err != .No_Error {
-        fmt.eprintf(
-            "Failed to create GPU Device [%v]: %s\n",
-            gpu_err,
-            wgpu.get_error_message(),
-        )
+        fmt.eprintf("Failed to create GPU Device [%v]: %s\n", gpu_err, wgpu.get_error_message())
         return nil, .Init_Failed
     }
     defer if err != .No_Error do gc.device->release()
@@ -193,11 +182,7 @@ init :: proc(
 
     gpu_err = gc.surface->configure(&gc.device, &gc.config)
     if gpu_err != .No_Error {
-        fmt.eprintf(
-            "Failed to configure surface [%v]: %s\n",
-            gpu_err,
-            wgpu.get_error_message(),
-        )
+        fmt.eprintf("Failed to configure surface [%v]: %s\n", gpu_err, wgpu.get_error_message())
         return nil, .Gpu_Failed
     }
 

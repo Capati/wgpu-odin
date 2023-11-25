@@ -31,32 +31,30 @@ main :: proc() {
     defer shader->release()
 
     pipeline, pipeline_err := gpu.device->create_render_pipeline(
-        &{
+        & {
             label = "Render Pipeline",
             vertex = {module = &shader, entry_point = "vs"},
-            fragment = &{
+            fragment = & {
                 module = &shader,
                 entry_point = "fs",
-                targets = {
-                    {
+                targets =  {
+                     {
                         format = gpu.config.format,
                         blend = &wgpu.Blend_State_Replace,
                         write_mask = wgpu.Color_Write_Mask_All,
                     },
                 },
             },
-            multisample = {
-                count = Msaa_Count,
-                mask = ~u32(0),
-                alpha_to_coverage_enabled = false,
-            },
+            multisample = {count = Msaa_Count, mask = ~u32(0), alpha_to_coverage_enabled = false},
         },
     )
     if pipeline_err != .No_Error do return
     defer pipeline->release()
 
-    multisampled_framebuffer, multisampled_framebuffer_err :=
-        get_multisampled_framebuffer(gpu, {gpu.config.width, gpu.config.height})
+    multisampled_framebuffer, multisampled_framebuffer_err := get_multisampled_framebuffer(
+        gpu,
+        {gpu.config.width, gpu.config.height},
+    )
     if multisampled_framebuffer_err != .No_Error do return
 
     fmt.printf("Entering main loop...\n\n")
@@ -99,10 +97,10 @@ main :: proc() {
         defer encoder->release()
 
         render_pass := encoder->begin_render_pass(
-            &{
+            & {
                 label = "Render Pass",
-                color_attachments = []wgpu.Render_Pass_Color_Attachment{
-                    {
+                color_attachments = []wgpu.Render_Pass_Color_Attachment {
+                     {
                         view = &multisampled_framebuffer,
                         resolve_target = &view,
                         load_op = .Clear,
@@ -138,7 +136,7 @@ get_multisampled_framebuffer :: proc(
     err: wgpu.Error_Type,
 ) {
     texture := gpu.device->create_texture(
-        &{
+        & {
             usage = {.Render_Attachment},
             dimension = .D2,
             size = {width = size.width, height = size.height, depth_or_array_layers = 1},

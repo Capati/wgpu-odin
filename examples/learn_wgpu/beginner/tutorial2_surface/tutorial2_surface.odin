@@ -127,10 +127,10 @@ render :: proc(using state: ^State) -> wgpu.Error_Type {
     defer encoder->release()
 
     render_pass := encoder->begin_render_pass(
-        &{
+        & {
             label = "Render Pass",
-            color_attachments = []wgpu.Render_Pass_Color_Attachment{
-                {
+            color_attachments = []wgpu.Render_Pass_Color_Attachment {
+                 {
                     view = &view,
                     resolve_target = nil,
                     load_op = .Clear,
@@ -209,10 +209,7 @@ main :: proc() {
                 #partial switch (e.window.event) {
                 case .SIZE_CHANGED:
                 case .RESIZED:
-                    err = resize_window(
-                        &state,
-                        {cast(u32)e.window.data1, cast(u32)e.window.data2},
-                    )
+                    err = resize_window(&state, {cast(u32)e.window.data1, cast(u32)e.window.data2})
                     if err != .No_Error do break main_loop
 
                 case .MINIMIZED:

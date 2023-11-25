@@ -38,11 +38,11 @@ main :: proc() {
         label = "Render Pipeline",
         layout = &render_pipeline_layout,
         vertex = {module = &shader, entry_point = "vs_main"},
-        fragment = &{
+        fragment = & {
             module = &shader,
             entry_point = "fs_main",
-            targets = {
-                {
+            targets =  {
+                 {
                     format = gpu.config.format,
                     blend = &wgpu.Blend_State_Replace,
                     write_mask = wgpu.Color_Write_Mask_All,
@@ -71,11 +71,11 @@ main :: proc() {
         label = "Challenge Render Pipeline",
         layout = &render_pipeline_layout,
         vertex = {module = &challenge_shader, entry_point = "vs_main"},
-        fragment = &{
+        fragment = & {
             module = &challenge_shader,
             entry_point = "fs_main",
-            targets = {
-                {
+            targets =  {
+                 {
                     format = gpu.config.format,
                     blend = &wgpu.Blend_State_Replace,
                     write_mask = wgpu.Color_Write_Mask_All,
@@ -133,10 +133,10 @@ main :: proc() {
         defer encoder->release()
 
         render_pass := encoder->begin_render_pass(
-            &{
+            & {
                 label = "Render Pass",
-                color_attachments = []wgpu.Render_Pass_Color_Attachment{
-                    {
+                color_attachments = []wgpu.Render_Pass_Color_Attachment {
+                     {
                         view = &view,
                         resolve_target = nil,
                         load_op = .Clear,

@@ -92,7 +92,7 @@ main :: proc() {
     buffer_size := buffer_dimensions.padded_bytes_per_row * buffer_dimensions.height
 
     output_buffer, output_buffer_err := device->create_buffer(
-        &wgpu.Buffer_Descriptor{
+        &wgpu.Buffer_Descriptor {
             label = "Buffer output",
             size = cast(u64)buffer_size,
             usage = {.Map_Read, .Copy_Dst},
@@ -109,7 +109,7 @@ main :: proc() {
     }
 
     texture, texture_err := device->create_texture(
-        &wgpu.Texture_Descriptor{
+        &wgpu.Texture_Descriptor {
             label = "Texture",
             size = texture_extent,
             mip_level_count = 1,
@@ -132,8 +132,8 @@ main :: proc() {
     if command_encoder_err != .No_Error do return
     defer command_encoder->release()
 
-    colors: []wgpu.Render_Pass_Color_Attachment = {
-        {
+    colors: []wgpu.Render_Pass_Color_Attachment =  {
+         {
             view = &texture_view,
             load_op = .Clear,
             store_op = .Store,
@@ -149,9 +149,9 @@ main :: proc() {
 
     command_encoder->copy_texture_to_buffer(
         &{texture = &texture, mip_level = 0, origin = {}, aspect = .All},
-        &{
+        & {
             buffer = &output_buffer,
-            layout = {
+            layout =  {
                 offset = 0,
                 bytes_per_row = cast(u32)buffer_dimensions.padded_bytes_per_row,
                 rows_per_image = cast(u32)wgpu.Copy_Stride_Undefined,
