@@ -48,14 +48,7 @@ texture_from_image :: proc(
     defer if err != .No_Error do handle->release()
 
     device.queue->write_texture(
-        &wgpu.Image_Copy_Texture{
-            texture = &handle,
-            mip_level = 0,
-            origin = {},
-            aspect = .All,
-        },
-        bytes.buffer_to_bytes(&image.pixels),
-        &wgpu.Texture_Data_Layout{
+        wgpu.to_bytes(&image.pixels),
             offset = 0,
             bytes_per_row = 4 * cast(u32)image.width,
             rows_per_image = cast(u32)image.height,

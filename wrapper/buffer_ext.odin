@@ -1,14 +1,15 @@
 package wgpu
 
-import "core:slice"
-import "core:reflect"
+import "core:bytes"
 import "core:fmt"
+import "core:reflect"
+import "core:slice"
 
 from_bytes :: slice.reinterpret
 
-CHECK_TO_BYTES :: #config(WGPU_CHECK_TO_BYTES,true)
+CHECK_TO_BYTES :: #config(WGPU_CHECK_TO_BYTES, true)
 
-@(private="file")
+@(private = "file")
 can_be_bytes :: proc(T: typeid) -> bool {
     id := reflect.typeid_core(T)
     kind := reflect.type_kind(id)
@@ -48,6 +49,7 @@ can_be_bytes :: proc(T: typeid) -> bool {
 
     return true
 }
+
 dynamic_array_to_bytes :: proc(arr: $T/[dynamic]$E) -> []u8 {
     when CHECK_TO_BYTES {
         if can_be_bytes(E) {
@@ -57,6 +59,7 @@ dynamic_array_to_bytes :: proc(arr: $T/[dynamic]$E) -> []u8 {
         return slice.to_bytes(arr[:])
     }
 }
+
 slice_to_bytes :: proc(s: $T/[]$E) -> []u8 {
     when CHECK_TO_BYTES {
         if can_be_bytes(E) {
@@ -67,8 +70,12 @@ slice_to_bytes :: proc(s: $T/[]$E) -> []u8 {
     }
 }
 
+buffer_stream_to_bytes :: proc(b: ^bytes.Buffer) -> []u8 {
+    return bytes.buffer_to_bytes(b)
+}
+
 // Compile time panic stub
-@(private="file")
+@(private = "file")
 map_to_bytes :: proc(m: $T/map[$K]$V) -> []u8 {
     #panic("Cannot fully convert map to bytes")
 }
@@ -85,6 +92,7 @@ any_to_bytes :: proc(v: any) -> []u8 {
 
 to_bytes :: proc {
     slice_to_bytes,
+    buffer_stream_to_bytes,
     dynamic_array_to_bytes,
     map_to_bytes,
     any_to_bytes,
