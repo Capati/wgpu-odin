@@ -120,7 +120,15 @@ main :: proc() {
     bind_group, bind_group_err := gpu.device->create_bind_group(
         &{
             layout = &bind_group_layout,
-            entries = {{binding = 0, buffer = &uniform_buffer, size = wgpu.Whole_Size}},
+            entries =  {
+                 {
+                    binding = 0,
+                    resource = wgpu.Buffer_Binding {
+                        buffer = &uniform_buffer,
+                        size = wgpu.Whole_Size,
+                    },
+                },
+            },
         },
     )
     if bind_group_err != .No_Error do return

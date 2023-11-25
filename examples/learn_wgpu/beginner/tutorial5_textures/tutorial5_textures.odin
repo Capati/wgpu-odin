@@ -59,9 +59,9 @@ main :: proc() {
         &wgpu.Bind_Group_Descriptor{
             label = "diffuse_bind_group",
             layout = &texture_bind_group_layout,
-            entries = {
-                {binding = 0, texture_view = &diffuse_texture.view},
-                {binding = 1, sampler = &diffuse_texture.sampler},
+            entries =  {
+                {binding = 0, resource = &diffuse_texture.view},
+                {binding = 1, resource = &diffuse_texture.sampler},
             },
         },
     )
