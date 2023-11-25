@@ -42,29 +42,21 @@ main :: proc() {
     vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
         array_stride = size_of(Vertex),
         step_mode = .Vertex,
-        attributes = {
+        attributes =  {
             {offset = 0, shader_location = 0, format = .Float32x3},
-            {
-                offset = cast(u64)offset_of(Vertex, color),
-                shader_location = 1,
-                format = .Float32x3,
-            },
+            {offset = cast(u64)offset_of(Vertex, color), shader_location = 1, format = .Float32x3},
         },
     }
 
     render_pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
         label = "Render Pipeline",
         layout = &render_pipeline_layout,
-        vertex = {
-            module = &shader,
-            entry_point = "vs_main",
-            buffers = {vertex_buffer_layout},
-        },
-        fragment = &{
+        vertex = {module = &shader, entry_point = "vs_main", buffers = {vertex_buffer_layout}},
+        fragment = & {
             module = &shader,
             entry_point = "fs_main",
-            targets = {
-                {
+            targets =  {
+                 {
                     format = gpu.config.format,
                     blend = &wgpu.Blend_State_Replace,
                     write_mask = wgpu.Color_Write_Mask_All,
@@ -102,7 +94,7 @@ main :: proc() {
     num_indices := cast(u32)len(indices)
 
     vertex_buffer, vertex_buffer_err := gpu.device->create_buffer_with_data(
-        &wgpu.Buffer_Data_Descriptor{
+        &wgpu.Buffer_Data_Descriptor {
             label = "Vertex Buffer",
             contents = wgpu.to_bytes(vertices),
             usage = {.Vertex},
@@ -112,7 +104,7 @@ main :: proc() {
     defer vertex_buffer->release()
 
     index_buffer, index_buffer_err := gpu.device->create_buffer_with_data(
-        &wgpu.Buffer_Data_Descriptor{
+        &wgpu.Buffer_Data_Descriptor {
             label = "Index Buffer",
             contents = wgpu.to_bytes(indices),
             usage = {.Index},
@@ -157,10 +149,10 @@ main :: proc() {
         defer encoder->release()
 
         render_pass := encoder->begin_render_pass(
-            &{
+            & {
                 label = "Render Pass",
-                color_attachments = []wgpu.Render_Pass_Color_Attachment{
-                    {
+                color_attachments = []wgpu.Render_Pass_Color_Attachment {
+                     {
                         view = &view,
                         resolve_target = nil,
                         load_op = .Clear,

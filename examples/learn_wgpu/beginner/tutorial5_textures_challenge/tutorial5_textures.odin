@@ -36,17 +36,13 @@ main :: proc() {
     defer texture.texture_destroy(&diffuse_texture)
 
     texture_bind_group_layout, texture_bind_group_layout_err := gpu.device->create_bind_group_layout(
-        &{
+        & {
             label = "TextureBindGroupLayout",
-            entries = {
-                {
+            entries =  {
+                 {
                     binding = 0,
                     visibility = {.Fragment},
-                    texture = {
-                        multisampled = false,
-                        view_dimension = .D2,
-                        sample_type = .Float,
-                    },
+                    texture = {multisampled = false, view_dimension = .D2, sample_type = .Float},
                 },
                 {binding = 1, visibility = {.Fragment}, sampler = {type = .Filtering}},
             },
@@ -56,7 +52,7 @@ main :: proc() {
     defer texture_bind_group_layout->release()
 
     diffuse_bind_group, diffuse_bind_group_err := gpu.device->create_bind_group(
-        &wgpu.Bind_Group_Descriptor{
+        &wgpu.Bind_Group_Descriptor {
             label = "diffuse_bind_group",
             layout = &texture_bind_group_layout,
             entries =  {
@@ -76,7 +72,7 @@ main :: proc() {
     defer texture.texture_destroy(&cartoon_texture)
 
     cartoon_bind_group, cartoon_bind_group_err := gpu.device->create_bind_group(
-        &wgpu.Bind_Group_Descriptor{
+        &wgpu.Bind_Group_Descriptor {
             label = "cartoon_bind_group",
             layout = &texture_bind_group_layout,
             entries =  {
@@ -89,10 +85,7 @@ main :: proc() {
     defer cartoon_bind_group->release()
 
     render_pipeline_layout, render_pipeline_layout_err := gpu.device->create_pipeline_layout(
-        &{
-            label = "Render Pipeline Layout",
-            bind_group_layouts = {texture_bind_group_layout},
-        },
+        &{label = "Render Pipeline Layout", bind_group_layouts = {texture_bind_group_layout}},
     )
     if render_pipeline_layout_err != .No_Error do return
     defer render_pipeline_layout->release()
@@ -100,9 +93,9 @@ main :: proc() {
     vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
         array_stride = size_of(Vertex),
         step_mode = .Vertex,
-        attributes = {
+        attributes =  {
             {offset = 0, shader_location = 0, format = .Float32x3},
-            {
+             {
                 offset = cast(u64)offset_of(Vertex, tex_coords),
                 shader_location = 1,
                 format = .Float32x2,
@@ -120,16 +113,12 @@ main :: proc() {
     render_pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
         label = "Render Pipeline",
         layout = &render_pipeline_layout,
-        vertex = {
-            module = &shader,
-            entry_point = "vs_main",
-            buffers = {vertex_buffer_layout},
-        },
-        fragment = &{
+        vertex = {module = &shader, entry_point = "vs_main", buffers = {vertex_buffer_layout}},
+        fragment = & {
             module = &shader,
             entry_point = "fs_main",
-            targets = {
-                {
+            targets =  {
+                 {
                     format = gpu.config.format,
                     blend = &wgpu.Blend_State_Replace,
                     write_mask = wgpu.Color_Write_Mask_All,
@@ -148,18 +137,9 @@ main :: proc() {
     defer render_pipeline->release()
 
     vertices := []Vertex {
-        {
-            position = {-0.0868241, 0.49240386, 0.0},
-            tex_coords = {0.4131759, 0.00759614},
-        }, // A
-        {
-            position = {-0.49513406, 0.06958647, 0.0},
-            tex_coords = {0.0048659444, 0.43041354},
-        }, // B
-        {
-            position = {-0.21918549, -0.44939706, 0.0},
-            tex_coords = {0.28081453, 0.949397},
-        }, // C
+        {position = {-0.0868241, 0.49240386, 0.0}, tex_coords = {0.4131759, 0.00759614}}, // A
+        {position = {-0.49513406, 0.06958647, 0.0}, tex_coords = {0.0048659444, 0.43041354}}, // B
+        {position = {-0.21918549, -0.44939706, 0.0}, tex_coords = {0.28081453, 0.949397}}, // C
         {position = {0.35966998, -0.3473291, 0.0}, tex_coords = {0.85967, 0.84732914}}, // D
         {position = {0.44147372, 0.2347359, 0.0}, tex_coords = {0.9414737, 0.2652641}}, // E
     }
@@ -169,7 +149,7 @@ main :: proc() {
     num_indices := cast(u32)len(indices)
 
     vertex_buffer, vertex_buffer_err := gpu.device->create_buffer_with_data(
-        &wgpu.Buffer_Data_Descriptor{
+        &wgpu.Buffer_Data_Descriptor {
             label = "Vertex Buffer",
             contents = wgpu.to_bytes(vertices),
             usage = {.Vertex},
@@ -179,7 +159,7 @@ main :: proc() {
     defer vertex_buffer->release()
 
     index_buffer, index_buffer_err := gpu.device->create_buffer_with_data(
-        &wgpu.Buffer_Data_Descriptor{
+        &wgpu.Buffer_Data_Descriptor {
             label = "Index Buffer",
             contents = wgpu.to_bytes(indices),
             usage = {.Index},
@@ -228,10 +208,10 @@ main :: proc() {
         defer encoder->release()
 
         render_pass := encoder->begin_render_pass(
-            &{
+            & {
                 label = "Render Pass",
-                color_attachments = []wgpu.Render_Pass_Color_Attachment{
-                    {
+                color_attachments = []wgpu.Render_Pass_Color_Attachment {
+                     {
                         view = &view,
                         resolve_target = nil,
                         load_op = .Clear,

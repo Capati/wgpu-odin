@@ -27,21 +27,13 @@ main :: proc() {
     defer renderer.deinit(gpu)
 
     vertex_buffer, vertex_buffer_err := gpu.device->create_buffer_with_data(
-        &{
-            label = "Vertex Buffer",
-            contents = wgpu.to_bytes(vertex_data),
-            usage = {.Vertex},
-        },
+        &{label = "Vertex Buffer", contents = wgpu.to_bytes(vertex_data), usage = {.Vertex}},
     )
     if vertex_buffer_err != .No_Error do return
     defer vertex_buffer->release()
 
     index_buffer, index_buffer_err := gpu.device->create_buffer_with_data(
-        &{
-            label = "Index Buffer",
-            contents = wgpu.to_bytes(index_data),
-            usage = {.Index},
-        },
+        &{label = "Index Buffer", contents = wgpu.to_bytes(index_data), usage = {.Index}},
     )
     if index_buffer_err != .No_Error do return
     defer index_buffer->release()
@@ -53,7 +45,7 @@ main :: proc() {
         depth_or_array_layers = 1,
     }
     texture, texture_err := gpu.device->create_texture(
-        &{
+        & {
             size = texture_extent,
             mip_level_count = 1,
             sample_count = 1,
@@ -72,7 +64,7 @@ main :: proc() {
     write_texture_err := gpu.device.queue->write_texture(
         &{texture = &texture, mip_level = 0, origin = {}, aspect = .All},
         wgpu.to_bytes(texels),
-        &{
+        & {
             offset = 0,
             bytes_per_row = Texel_Size,
             rows_per_image = cast(u32)wgpu.Copy_Stride_Undefined,
@@ -86,7 +78,7 @@ main :: proc() {
     fmt.printf("%#v\n\n", mx_total)
 
     uniform_buffer, uniform_buffer_err := gpu.device->create_buffer_with_data(
-        &{
+        & {
             label = "Uniform Buffer",
             contents = wgpu.to_bytes(mx_total),
             usage = {.Uniform, .Copy_Dst},
@@ -105,9 +97,9 @@ main :: proc() {
     vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
         array_stride = size_of(Vertex),
         step_mode = .Vertex,
-        attributes = {
+        attributes =  {
             {format = .Float32x4, offset = 0, shader_location = 0},
-            {
+             {
                 format = .Float32x2,
                 offset = cast(u64)offset_of(Vertex, tex_coords),
                 shader_location = 1,
@@ -116,28 +108,20 @@ main :: proc() {
     }
 
     pipeline, pipeline_err := gpu.device->create_render_pipeline(
-        &{
-            vertex = {
-                module = &shader,
-                entry_point = "vs_main",
-                buffers = {vertex_buffer_layout},
-            },
-            fragment = &{
+        & {
+            vertex = {module = &shader, entry_point = "vs_main", buffers = {vertex_buffer_layout}},
+            fragment = & {
                 module = &shader,
                 entry_point = "fs_main",
-                targets = {
-                    {
+                targets =  {
+                     {
                         format = gpu.config.format,
                         blend = nil,
                         write_mask = wgpu.Color_Write_Mask_All,
                     },
                 },
             },
-            primitive = {
-                topology = .Triangle_List,
-                front_face = .CCW,
-                cull_mode = .Back,
-            },
+            primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
             depth_stencil = nil,
             multisample = wgpu.Default_Multisample_State,
         },
@@ -151,7 +135,7 @@ main :: proc() {
     defer bind_group_layout->release()
 
     bind_group, bind_group_err := gpu.device->create_bind_group(
-        &{
+        & {
             layout = &bind_group_layout,
             entries =  {
                  {
@@ -185,9 +169,7 @@ main :: proc() {
                 write_buffer_err := gpu.device.queue->write_buffer(
                     &uniform_buffer,
                     0,
-                    wgpu.to_bytes(
-                        generate_matrix(cast(f32)event.width / cast(f32)event.height),
-                    ),
+                    wgpu.to_bytes(generate_matrix(cast(f32)event.width / cast(f32)event.height)),
                 )
                 if write_buffer_err != .No_Error do break main_loop
 
@@ -212,10 +194,10 @@ main :: proc() {
         defer encoder->release()
 
         render_pass := encoder->begin_render_pass(
-            &{
+            & {
                 label = "Render Pass",
-                color_attachments = []wgpu.Render_Pass_Color_Attachment{
-                    {
+                color_attachments = []wgpu.Render_Pass_Color_Attachment {
+                     {
                         view = &view,
                         resolve_target = nil,
                         load_op = .Clear,

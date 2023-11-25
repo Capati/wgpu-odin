@@ -35,7 +35,7 @@ texture_from_image :: proc(
     }
 
     handle := device->create_texture(
-        &wgpu.Texture_Descriptor{
+        &wgpu.Texture_Descriptor {
             label = path,
             size = size,
             mip_level_count = 1,
@@ -48,7 +48,9 @@ texture_from_image :: proc(
     defer if err != .No_Error do handle->release()
 
     device.queue->write_texture(
+        &wgpu.Image_Copy_Texture{texture = &handle, mip_level = 0, origin = {}, aspect = .All},
         wgpu.to_bytes(&image.pixels),
+        &wgpu.Texture_Data_Layout {
             offset = 0,
             bytes_per_row = 4 * cast(u32)image.width,
             rows_per_image = cast(u32)image.height,

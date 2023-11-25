@@ -26,19 +26,12 @@ main :: proc() {
     if gpu_err != .No_Error do return
     defer renderer.deinit(gpu)
 
-    shader, shader_err := gpu.device->load_wgsl_shader_module(
-        "assets/cube.wgsl",
-        "Cube shader",
-    )
+    shader, shader_err := gpu.device->load_wgsl_shader_module("assets/cube.wgsl", "Cube shader")
     if shader_err != .No_Error do return
     defer shader->release()
 
     vertex_buffer, vertex_buffer_err := gpu.device->create_buffer_with_data(
-        &{
-            label = "Cube Vertex Buffer",
-            contents = wgpu.to_bytes(vertex_data),
-            usage = {.Vertex},
-        },
+        &{label = "Cube Vertex Buffer", contents = wgpu.to_bytes(vertex_data), usage = {.Vertex}},
     )
     if vertex_buffer_err != .No_Error do return
     defer vertex_buffer->release()
@@ -46,28 +39,20 @@ main :: proc() {
     vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
         array_stride = size_of(Vertex),
         step_mode = .Vertex,
-        attributes = {
+        attributes =  {
             {format = .Float32x3, offset = 0, shader_location = 0},
-            {
-                format = .Float32x3,
-                offset = cast(u64)offset_of(Vertex, color),
-                shader_location = 1,
-            },
+            {format = .Float32x3, offset = cast(u64)offset_of(Vertex, color), shader_location = 1},
         },
     }
 
     pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
         label = "Render Pipeline",
-        vertex = {
-            module = &shader,
-            entry_point = "vertex_main",
-            buffers = {vertex_buffer_layout},
-        },
-        fragment = &{
+        vertex = {module = &shader, entry_point = "vertex_main", buffers = {vertex_buffer_layout}},
+        fragment = & {
             module = &shader,
             entry_point = "fragment_main",
-            targets = {
-                {
+            targets =  {
+                 {
                     format = gpu.config.format,
                     blend = &wgpu.Blend_State_Replace,
                     write_mask = wgpu.Color_Write_Mask_All,
@@ -77,7 +62,7 @@ main :: proc() {
         primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .None},
         // Enable depth testing so that the fragment closest to the camera
         // is rendered in front.
-        depth_stencil = &{
+        depth_stencil = & {
             depth_write_enabled = true,
             depth_compare = .Less,
             format = Depth_Format,
@@ -104,7 +89,7 @@ main :: proc() {
     mvp_mat := generate_matrix(aspect)
 
     uniform_buffer, uniform_buffer_err := gpu.device->create_buffer_with_data(
-        &{
+        & {
             label = "Uniform Buffer",
             contents = wgpu.to_bytes(mvp_mat),
             usage = {.Uniform, .Copy_Dst},
@@ -118,7 +103,7 @@ main :: proc() {
     defer bind_group_layout->release()
 
     bind_group, bind_group_err := gpu.device->create_bind_group(
-        &{
+        & {
             layout = &bind_group_layout,
             entries =  {
                  {
@@ -151,18 +136,13 @@ main :: proc() {
                 size: app.Physical_Size = {event.width, event.height}
 
                 depth_stencil_view->release()
-                depth_stencil_view, depth_stencil_view_err = get_depth_framebuffer(
-                    gpu,
-                    size,
-                )
+                depth_stencil_view, depth_stencil_view_err = get_depth_framebuffer(gpu, size)
                 if depth_stencil_view_err != .No_Error do return
 
                 write_buffer_err := gpu.device.queue->write_buffer(
                     &uniform_buffer,
                     0,
-                    wgpu.to_bytes(
-                        generate_matrix(cast(f32)size.width / cast(f32)size.height),
-                    ),
+                    wgpu.to_bytes(generate_matrix(cast(f32)size.width / cast(f32)size.height)),
                 )
                 if write_buffer_err != .No_Error do break main_loop
 
@@ -187,10 +167,10 @@ main :: proc() {
         defer encoder->release()
 
         render_pass := encoder->begin_render_pass(
-            &{
+            & {
                 label = "Render Pass",
-                color_attachments = []wgpu.Render_Pass_Color_Attachment{
-                    {
+                color_attachments = []wgpu.Render_Pass_Color_Attachment {
+                     {
                         view = &view,
                         resolve_target = nil,
                         load_op = .Clear,
@@ -198,7 +178,7 @@ main :: proc() {
                         clear_value = {0.2, 0.2, 0.2, 1.0},
                     },
                 },
-                depth_stencil_attachment = &{
+                depth_stencil_attachment = & {
                     view = &depth_stencil_view,
                     depth_clear_value = 1.0,
                     depth_load_op = .Clear,
@@ -233,7 +213,7 @@ get_depth_framebuffer :: proc(
     err: wgpu.Error_Type,
 ) {
     texture := gpu.device->create_texture(
-        &{
+        & {
             size = {width = size.width, height = size.height, depth_or_array_layers = 1},
             mip_level_count = 1,
             sample_count = 1,

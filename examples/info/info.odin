@@ -30,9 +30,7 @@ main :: proc() {
     defer instance->release()
 
     // Adapter
-    adapter, adapter_err := instance->request_adapter(
-        &{power_preference = .High_Performance},
-    )
+    adapter, adapter_err := instance->request_adapter(&{power_preference = .High_Performance})
     if adapter_err != .No_Error {
         fmt.eprintln("ERROR Creating Adapter:", wgpu.get_error_message())
         return

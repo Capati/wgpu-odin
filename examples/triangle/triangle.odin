@@ -29,14 +29,14 @@ main :: proc() {
     defer shader->release()
 
     pipeline, pipeline_err := gpu.device->create_render_pipeline(
-        &{
+        & {
             label = "Render Pipeline",
             vertex = {module = &shader, entry_point = "vs"},
-            fragment = &{
+            fragment = & {
                 module = &shader,
                 entry_point = "fs",
-                targets = {
-                    {
+                targets =  {
+                     {
                         format = gpu.config.format,
                         blend = &wgpu.Blend_State_Replace,
                         write_mask = wgpu.Color_Write_Mask_All,
@@ -84,10 +84,10 @@ main :: proc() {
         defer encoder->release()
 
         render_pass := encoder->begin_render_pass(
-            &{
+            & {
                 label = "Render Pass",
-                color_attachments = []wgpu.Render_Pass_Color_Attachment{
-                    {
+                color_attachments = []wgpu.Render_Pass_Color_Attachment {
+                     {
                         view = &view,
                         resolve_target = nil,
                         load_op = .Clear,

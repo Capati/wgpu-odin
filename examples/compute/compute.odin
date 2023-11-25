@@ -24,9 +24,7 @@ main :: proc() {
     numbers_length: u32 = numbers_size / size_of(u32)
 
     // Instantiates instance of WebGPU
-    instance, instance_err := wgpu.create_instance(
-        &{backends = wgpu.Instance_Backend_Primary},
-    )
+    instance, instance_err := wgpu.create_instance(&{backends = wgpu.Instance_Backend_Primary})
     if instance_err != .No_Error {
         fmt.eprintln("ERROR Creating Instance:", wgpu.get_error_message())
         return
@@ -73,11 +71,7 @@ main :: proc() {
     //   `Map_Read` allows it to be read (outside the shader).
     //   `Copy_Dst` allows it to be the destination of the copy.
     staging_buffer, staging_buffer_err := device->create_buffer(
-        &{
-            label = "staging_buffer",
-            size = cast(u64)numbers_size,
-            usage = {.Map_Read, .Copy_Dst},
-        },
+        &{label = "staging_buffer", size = cast(u64)numbers_size, usage = {.Map_Read, .Copy_Dst}},
     )
     if staging_buffer_err != .No_Error do return
     defer staging_buffer->release()
@@ -89,7 +83,7 @@ main :: proc() {
     //   The destination of a copy.
     //   The source of a copy.
     storage_buffer, storage_buffer_err := device->create_buffer(
-        &{
+        & {
             label = "storage_buffer",
             size = cast(u64)numbers_size,
             usage = {.Storage, .Copy_Src, .Copy_Dst},
@@ -107,7 +101,7 @@ main :: proc() {
 
     // Instantiates the pipeline.
     compute_pipeline, compute_pipeline_err := device->create_compute_pipeline(
-        &wgpu.Compute_Pipeline_Descriptor{
+        &wgpu.Compute_Pipeline_Descriptor {
             label = "compute_pipeline",
             layout = nil,
             compute = {module = &shader_module, entry_point = "main"},
@@ -117,9 +111,7 @@ main :: proc() {
     defer compute_pipeline->release()
 
     // Instantiates the bind group, once again specifying the binding of buffers.
-    bind_group_layout, bind_group_layout_err := compute_pipeline->get_bind_group_layout(
-        0,
-    )
+    bind_group_layout, bind_group_layout_err := compute_pipeline->get_bind_group_layout(0)
     if bind_group_layout_err != .No_Error {
         fmt.eprintln("ERROR Couldn't Get Bind Group Layout: ", wgpu.get_error_message())
         return
@@ -129,15 +121,15 @@ main :: proc() {
     // Setup a bindGroup to tell the shader which
     // buffer to use for the computation
     bind_group, bind_group_err := device->create_bind_group(
-        &{
+        & {
             layout = &bind_group_layout,
-            entries = {
-                {
+            entries =  {
+                 {
                     binding = 0,
                     resource = wgpu.Buffer_Binding {
-                    buffer = &storage_buffer,
-                    offset = 0,
-                    size = storage_buffer.size,
+                        buffer = &storage_buffer,
+                        offset = 0,
+                        size = storage_buffer.size,
                     },
                 },
             },
@@ -155,9 +147,7 @@ main :: proc() {
     if encoder_err != .No_Error do return
     defer encoder->release()
 
-    compute_pass, compute_pass_err := encoder->begin_compute_pass(
-        &{label = "compute_pass"},
-    )
+    compute_pass, compute_pass_err := encoder->begin_compute_pass(&{label = "compute_pass"})
     if compute_pass_err != .No_Error {
         fmt.eprintln("ERROR Couldn't Begin Compute Pass: ", wgpu.get_error_message())
         return
@@ -171,13 +161,7 @@ main :: proc() {
 
     // Sets adds copy operation to command encoder.
     // Will copy data from storage buffer on GPU to staging buffer on CPU.
-    encoder->copy_buffer_to_buffer(
-        storage_buffer,
-        0,
-        staging_buffer,
-        0,
-        staging_buffer.size,
-    )
+    encoder->copy_buffer_to_buffer(storage_buffer, 0, staging_buffer, 0, staging_buffer.size)
 
     // Submits command encoder for processing
     command_buffer, command_buffer_err := encoder->finish()
