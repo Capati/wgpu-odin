@@ -1,9 +1,14 @@
-package events
+package native_application
+
+// Package
+import "../events"
 
 // Vendor
 import sdl "vendor:sdl2"
 
-get_key_state :: proc(key: sdl.KeyboardEvent) -> (key_event: Key_Event) {
+Key :: events.Key
+
+get_key_state :: proc(key: sdl.KeyboardEvent) -> (key_event: events.Key_Event) {
     key_event = {
         key    = cast(Key)key.keysym.scancode,
         repeat = key.repeat > 0,
@@ -13,11 +18,7 @@ get_key_state :: proc(key: sdl.KeyboardEvent) -> (key_event: Key_Event) {
     return
 }
 
-get_mouse_state :: proc(
-    button: sdl.MouseButtonEvent,
-) -> (
-    mouse_event: Mouse_Button_Event,
-) {
+get_mouse_state :: proc(button: sdl.MouseButtonEvent) -> (mouse_event: events.Mouse_Button_Event) {
     switch button.button {
     case sdl.BUTTON_LEFT:
         mouse_event.button = .Left
@@ -37,7 +38,7 @@ get_mouse_state :: proc(
     return
 }
 
-get_mod_state :: proc(mod: sdl.Keymod) -> (key_mods: Key_Mods) {
+get_mod_state :: proc(mod: sdl.Keymod) -> (key_mods: events.Key_Mods) {
     // Check for no modifiers
     mod_keys := sdl.KMOD_CTRL | sdl.KMOD_SHIFT | sdl.KMOD_ALT | sdl.KMOD_GUI
     if (mod & mod_keys) != sdl.KMOD_NONE {

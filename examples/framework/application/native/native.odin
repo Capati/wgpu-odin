@@ -202,49 +202,34 @@ process_events :: proc() -> events.Event_List {
     for sdl.PollEvent(&e) {
         #partial switch (e.type) {
         case .QUIT:
-            events.push_event(&_ctx.events, events.Quit_Event(true))
+            push_event(events.Quit_Event(true))
 
         case .KEYDOWN:
-            events.push_event(
-                &_ctx.events,
-                cast(events.Key_Press_Event)events.get_key_state(e.key),
-            )
+            if e.key.keysym.scancode == .ESCAPE {
+                push_event(events.Quit_Event(true))
+            }
+            push_event(cast(events.Key_Press_Event)get_key_state(e.key))
 
         case .KEYUP:
-            events.push_event(
-                &_ctx.events,
-                cast(events.Key_Release_Event)events.get_key_state(e.key),
-            )
+            push_event(cast(events.Key_Release_Event)get_key_state(e.key))
 
         case .MOUSEBUTTONDOWN:
-            events.push_event(
-                &_ctx.events,
-                cast(events.Mouse_Press_Event)events.get_mouse_state(e.button),
-            )
+            push_event(cast(events.Mouse_Press_Event)get_mouse_state(e.button))
 
         case .MOUSEBUTTONUP:
-            events.push_event(
-                &_ctx.events,
-                cast(events.Mouse_Release_Event)events.get_mouse_state(e.button),
-            )
+            push_event(cast(events.Mouse_Release_Event)get_mouse_state(e.button))
 
         case .MOUSEMOTION:
-            events.push_event(
-                &_ctx.events,
-                events.Mouse_Motion_Event{f64(e.motion.x), f64(e.motion.y)},
-            )
+            push_event(events.Mouse_Motion_Event{f64(e.motion.x), f64(e.motion.y)})
 
         case .MOUSEWHEEL:
-            events.push_event(
-                &_ctx.events,
-                events.Mouse_Scroll_Event{f64(e.wheel.x), f64(e.wheel.y)},
-            )
+            push_event(events.Mouse_Scroll_Event{f64(e.wheel.x), f64(e.wheel.y)})
 
         case .WINDOWEVENT:
             #partial switch (e.window.event) {
             case .SIZE_CHANGED:
             case .RESIZED:
-                new_size := events.Framebuffer_Resize_Event{
+                new_size := events.Framebuffer_Resize_Event {
                     cast(u32)e.window.data1,
                     cast(u32)e.window.data2,
                 }
@@ -253,7 +238,7 @@ process_events :: proc() -> events.Event_List {
                 if _ctx.properties.size.width != new_size.width ||
                    _ctx.properties.size.height != new_size.height {
                     _ctx.properties.size = {new_size.width, new_size.height}
-                    events.push_event(&_ctx.events, new_size)
+                    push_event(new_size)
                 }
             }
         }
