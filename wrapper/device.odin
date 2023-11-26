@@ -805,20 +805,6 @@ device_create_sampler :: proc(
     return sampler, .No_Error
 }
 
-Shader_Module_SPIRV_Descriptor :: struct {
-    code: []u32,
-}
-
-Shader_Module_WGSL_Descriptor :: struct {
-    code: cstring,
-}
-
-Shader_Module_Descriptor :: struct {
-    label:            cstring,
-    spirv_descriptor: ^Shader_Module_SPIRV_Descriptor,
-    wgsl_descriptor:  ^Shader_Module_WGSL_Descriptor,
-}
-
 // Creates a shader module from either `SPIR-V` or `WGSL` source code.
 device_create_shader_module :: proc(
     using self: ^Device,
@@ -832,29 +818,30 @@ device_create_shader_module :: proc(
     if descriptor != nil {
         desc.label = descriptor.label
 
-        if descriptor.spirv_descriptor != nil {
+        switch &source in descriptor.source {
+        case WGSL_Source:
+            wgsl := wgpu.Shader_Module_WGSL_Descriptor {
+                chain = {next = nil, stype = .Shader_Module_WGSL_Descriptor},
+                code = source,
+            }
+
+            desc.next_in_chain = cast(^Chained_Struct)&wgsl
+        case SPIRV_Source:
             spirv := wgpu.Shader_Module_SPIRV_Descriptor {
                 chain = {next = nil, stype = .Shader_Module_SPIRV_Descriptor},
                 code = nil,
             }
 
-            if descriptor.spirv_descriptor.code != nil {
-                code_size := cast(u32)len(descriptor.spirv_descriptor.code)
+            if source != nil {
+                code_size := cast(u32)len(source)
 
                 if code_size > 0 {
                     spirv.code_size = code_size
-                    spirv.code = raw_data(descriptor.spirv_descriptor.code)
+                    spirv.code = raw_data(source)
                 }
             }
 
             desc.next_in_chain = cast(^Chained_Struct)&spirv
-        } else if descriptor.wgsl_descriptor != nil {
-            wgsl := wgpu.Shader_Module_WGSL_Descriptor {
-                chain = {next = nil, stype = .Shader_Module_WGSL_Descriptor},
-                code = descriptor.wgsl_descriptor.code,
-            }
-
-            desc.next_in_chain = cast(^Chained_Struct)&wgsl
         }
     }
 
