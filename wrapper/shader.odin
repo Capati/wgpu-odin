@@ -40,20 +40,34 @@ default_shader_module := Shader_Module {
     vtable = &default_shader_module_vtable,
 }
 
-Shader_Load_Error :: enum {
-    No_Error,
-    Read_File,
-    Shader_Compilation_Error,
+// Shader_Load_Error :: enum {
+//     No_Error,
+//     Read_File,
+//     Shader_Compilation_Error,
+// }
+
+// @(private)
+// Shader_Module_Response :: struct {
+//     status: Compilation_Info_Request_Status,
+// }
+
+// Shader_Load_Response :: struct {
+//     type:    Error_Type,
+//     message: cstring,
+// }
+
+WGSL_Source :: cstring
+SPIRV_Source :: []u32
+
+// Source of a shader module.
+Shader_Source :: union {
+    WGSL_Source,
+    SPIRV_Source,
 }
 
-@(private)
-Shader_Module_Response :: struct {
-    status: Compilation_Info_Request_Status,
-}
-
-Shader_Load_Response :: struct {
-    type:    Error_Type,
-    message: cstring,
+Shader_Module_Descriptor :: struct {
+    label:  cstring,
+    source: Shader_Source,
 }
 
 device_load_wgsl_shader_module :: proc(
@@ -65,6 +79,7 @@ device_load_wgsl_shader_module :: proc(
     err: Error_Type,
 ) {
     runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+
     data, data_ok := os.read_entire_file(string(path), context.temp_allocator)
 
     if !data_ok {
@@ -76,17 +91,12 @@ device_load_wgsl_shader_module :: proc(
     current_label: cstring = path if label == nil else label
 
     descriptor := Shader_Module_Descriptor {
-        label           = current_label,
+        label  = current_label,
         // clone to cstring to ensure null termination
-        wgsl_descriptor = &{code = strings.clone_to_cstring(string(data), context.temp_allocator)},
+        source = strings.clone_to_cstring(string(data), context.temp_allocator),
     }
 
-    shader_module = self->create_shader_module(&descriptor) or_return
-
-    // res := Shader_Module_Response{}
-    // shader_module->get_compilation_info(_compilation_info_callback, &res)
-
-    return shader_module, .No_Error
+    return self->create_shader_module(&descriptor)
 }
 
 device_load_spirv_shader_module :: proc(
@@ -98,6 +108,7 @@ device_load_spirv_shader_module :: proc(
     err: Error_Type,
 ) {
     runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+
     data, data_ok := os.read_entire_file(string(path), context.temp_allocator)
 
     if !data_ok {
@@ -109,16 +120,11 @@ device_load_spirv_shader_module :: proc(
     current_label: cstring = path if label == nil else label
 
     descriptor := Shader_Module_Descriptor {
-        label            = current_label,
-        spirv_descriptor = &{code = slice.reinterpret([]u32, data)},
+        label  = current_label,
+        source = slice.reinterpret([]u32, data),
     }
 
-    shader_module = self->create_shader_module(&descriptor) or_return
-
-    // res := Shader_Module_Response{}
-    // shader_module->get_compilation_info(_compilation_info_callback, &res)
-
-    return shader_module, .No_Error
+    return self->create_shader_module(&descriptor)
 }
 
 // @(private)
