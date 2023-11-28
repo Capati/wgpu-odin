@@ -3,9 +3,9 @@ OUT = -out:./build
 
 .PHONY: all
 
-all: info triangle_example triangle_msaa_example cube_example cube_textured_example compute_example capture_example learn_wgpu_examples
+all: info_example triangle_example triangle_msaa_example cube_example cube_textured_example compute_example capture_example learn_wgpu_examples
 
-info:
+info_example:
 	odin build ./info $(ARGS) $(OUT)/info
 
 triangle_example:
