@@ -6,7 +6,6 @@ import "core:fmt"
 import wgpu "../bindings"
 
 adapter_print_information :: proc(using self: ^Adapter) {
-    fmt.print("Device information:\n\n")
     fmt.printf("%s\n", info.name)
 
     driver_description: cstring = info.driver_description
