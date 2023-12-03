@@ -37,5 +37,6 @@ main :: proc() {
     }
     defer adapter->release()
 
+    fmt.print("Device information:\n\n")
     adapter->print_info()
 }
