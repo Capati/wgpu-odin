@@ -232,8 +232,8 @@ adapter_request_device :: proc(
         desc.required_limits = &required_limits
 
         if descriptor.device_lost_callback != nil {
-            descriptor.device_lost_callback = descriptor.device_lost_callback
-            descriptor.device_lost_userdata = descriptor.device_lost_userdata
+            desc.device_lost_callback = descriptor.device_lost_callback
+            desc.device_lost_userdata = descriptor.device_lost_userdata
         }
 
         // Write a trace of all commands to a file so it can be reproduced
