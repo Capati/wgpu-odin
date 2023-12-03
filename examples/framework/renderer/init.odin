@@ -24,7 +24,7 @@ Renderer :: struct {
 
 Renderer_Properties :: struct {
     power_preferences: wgpu.Power_Preference,
-    required_features: []wgpu.Features,
+    required_features: []wgpu.Feature,
     required_limits:   wgpu.Limits,
 }
 
