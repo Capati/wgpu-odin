@@ -10,7 +10,7 @@ import wgpu "../bindings"
 // Handle to a physical graphics and/or compute device.
 Adapter :: struct {
     ptr:          WGPU_Adapter,
-    features:     []Features,
+    features:     []Feature,
     limits:       Limits,
     info:         Adapter_Info,
     using vtable: ^Adapter_VTable,
@@ -23,11 +23,11 @@ Adapter_VTable :: struct {
     get_features:   proc(
         self: ^Adapter,
         allocator: mem.Allocator = context.allocator,
-    ) -> []Features,
+    ) -> []Feature,
     get_limits:     proc(self: ^Adapter) -> Limits,
     request_info:   proc(self: ^Adapter) -> Adapter_Info,
     print_info:     proc(self: ^Adapter),
-    has_feature:    proc(self: ^Adapter, feature: Features) -> bool,
+    has_feature:    proc(self: ^Adapter, feature: Feature) -> bool,
     request_device: proc(
         self: ^Adapter,
         descriptor: ^Device_Descriptor = nil,
@@ -56,7 +56,7 @@ default_adapter := Adapter {
 }
 
 // List all features that are supported with this adapter.
-adapter_get_features :: proc(using self: ^Adapter, allocator := context.allocator) -> []Features {
+adapter_get_features :: proc(using self: ^Adapter, allocator := context.allocator) -> []Feature {
     features_count := wgpu.adapter_enumerate_features(ptr, nil)
 
     if features_count == 0 {
@@ -66,7 +66,7 @@ adapter_get_features :: proc(using self: ^Adapter, allocator := context.allocato
     adapter_features := make([]wgpu.Feature_Name, features_count, allocator)
     wgpu.adapter_enumerate_features(ptr, raw_data(adapter_features))
 
-    return transmute([]Features)adapter_features
+    return transmute([]Feature)adapter_features
 }
 
 // List the “best” limits that are supported by this adapter.
@@ -132,14 +132,14 @@ adapter_request_info :: proc(using self: ^Adapter) -> Adapter_Info {
 }
 
 // Check if adapter support a feature.
-adapter_has_feature :: proc(using self: ^Adapter, feature: Features) -> bool {
+adapter_has_feature :: proc(using self: ^Adapter, feature: Feature) -> bool {
     return wgpu.adapter_has_feature(ptr, cast(wgpu.Feature_Name)feature)
 }
 
 // Describes a `Device` for use with `adapter->request_device`.
 Device_Descriptor :: struct {
     label:                cstring,
-    features:             []Features,
+    features:             []Feature,
     limits:               Limits,
     trace_path:           cstring,
     device_lost_callback: Device_Lost_Callback,
