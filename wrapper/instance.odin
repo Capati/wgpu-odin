@@ -292,6 +292,7 @@ instance_print_report :: proc(using self: ^Instance) {
     }
 
     print_hub_report :: proc(report: Hub_Report, prefix: cstring) {
+        fmt.printf("  %s:\n", prefix)
         print_storage_report(report.adapters, "adapters.")
         print_storage_report(report.devices, "devices.")
         print_storage_report(report.pipeline_layouts, "pipeline_layouts.")
@@ -308,26 +309,27 @@ instance_print_report :: proc(using self: ^Instance) {
         print_storage_report(report.samplers, "samplers.")
     }
 
-    fmt.print("struct Global_Report {\n")
+    fmt.print("Global_Report {\n")
 
-    print_storage_report(report.surfaces, "surfaces.")
+    fmt.print("  Surfaces:\n")
+    print_storage_report(report.surfaces, "Surfaces:")
 
     #partial switch report.backend_type {
     case .D3D11:
-        print_hub_report(report.dx11, "dx11.")
+        print_hub_report(report.dx11, "D3D11")
     case .D3D12:
-        print_hub_report(report.dx12, "dx12.")
+        print_hub_report(report.dx12, "D3D12")
     case .Metal:
-        print_hub_report(report.metal, "metal.")
+        print_hub_report(report.metal, "Metal")
     case .Vulkan:
-        print_hub_report(report.vulkan, "vulkan.")
+        print_hub_report(report.vulkan, "Vulkan")
     case .OpenGL:
-        print_hub_report(report.gl, "gl.")
+        print_hub_report(report.gl, "OpenGL")
     case:
         fmt.printf("%s - Invalid backend type: %v", #procedure, report.backend_type)
     }
 
-    fmt.print("}\n\n")
+    fmt.print("}\n")
 }
 
 // Release instance.
