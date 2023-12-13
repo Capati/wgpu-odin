@@ -285,6 +285,22 @@ device_create_bind_group :: proc(
     return bind_group, .No_Error
 }
 
+// Specific type of a binding.
+Binding_Type :: union {
+    wgpu.Buffer_Binding_Layout,
+    wgpu.Sampler_Binding_Layout,
+    wgpu.Texture_Binding_Layout,
+    wgpu.Storage_Texture_Binding_Layout,
+}
+
+// Describes a single binding inside a bind group.
+Bind_Group_Layout_Entry :: struct {
+    binding:    u32,
+    visibility: wgpu.Shader_Stage_Flags,
+    type:       Binding_Type,
+}
+
+// Describes a `Bind_Group_Layout`.
 Bind_Group_Layout_Descriptor :: struct {
     label:   cstring,
     entries: []Bind_Group_Layout_Entry,
@@ -300,14 +316,57 @@ device_create_bind_group_layout :: proc(
 ) {
     desc := wgpu.Bind_Group_Layout_Descriptor{}
 
+    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+
     if descriptor != nil {
         desc.label = descriptor.label
 
         entry_count := cast(uint)len(descriptor.entries)
 
         if entry_count > 0 {
+            entries := make([]wgpu.Bind_Group_Layout_Entry, entry_count, context.temp_allocator)
+
+            for v, i in descriptor.entries {
+                entry := wgpu.Bind_Group_Layout_Entry {
+                    binding = v.binding,
+                    visibility = v.visibility,
+                    buffer =  {
+                        next_in_chain = nil,
+                        type = .Undefined,
+                        has_dynamic_offset = false,
+                        min_binding_size = 0,
+                    },
+                    sampler = {next_in_chain = nil, type = .Undefined},
+                    texture =  {
+                        next_in_chain = nil,
+                        sample_type = .Undefined,
+                        view_dimension = .Undefined,
+                        multisampled = false,
+                    },
+                    storage_texture =  {
+                        next_in_chain = nil,
+                        access = .Undefined,
+                        format = .Undefined,
+                        view_dimension = .Undefined,
+                    },
+                }
+
+                switch e in v.type {
+                case wgpu.Buffer_Binding_Layout:
+                    entry.buffer = e
+                case wgpu.Sampler_Binding_Layout:
+                    entry.sampler = e
+                case wgpu.Texture_Binding_Layout:
+                    entry.texture = e
+                case wgpu.Storage_Texture_Binding_Layout:
+                    entry.storage_texture = e
+                }
+
+                entries[i] = entry
+            }
+
             desc.entry_count = entry_count
-            desc.entries = raw_data(descriptor.entries)
+            desc.entries = raw_data(entries)
         }
     }
 

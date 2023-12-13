@@ -178,7 +178,7 @@ Texture_Binding_Layout :: wgpu.Texture_Binding_Layout
 Texture_Data_Layout :: wgpu.Texture_Data_Layout
 Texture_View_Descriptor :: wgpu.Texture_View_Descriptor
 Vertex_Attribute :: wgpu.Vertex_Attribute
-Bind_Group_Layout_Entry :: wgpu.Bind_Group_Layout_Entry
+// Bind_Group_Layout_Entry :: wgpu.Bind_Group_Layout_Entry
 Blend_State :: wgpu.Blend_State
 Compilation_Info :: wgpu.Compilation_Info
 Compute_Pass_Descriptor :: wgpu.Compute_Pass_Descriptor
