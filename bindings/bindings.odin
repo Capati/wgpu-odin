@@ -62,23 +62,9 @@ Instance_Backend :: enum c.int {
     DX11,
     Browser_WebGPU,
 }
-Instance_Backend_Flags :: bit_set[Instance_Backend;Flags]
-Instance_Backend_Primary :: Instance_Backend_Flags{
-    .Vulkan,
-    .Metal,
-    .DX12,
-    .Browser_WebGPU,
-}
+Instance_Backend_Flags :: bit_set[Instance_Backend]
+Instance_Backend_Primary :: Instance_Backend_Flags{.Vulkan, .Metal, .DX12, .Browser_WebGPU}
 Instance_Backend_Secondary :: Instance_Backend_Flags{.GL, .DX11}
-Instance_Backend_All :: Instance_Backend_Flags{
-    .Vulkan,
-    .GL,
-    .Metal,
-    .DX12,
-    .DX11,
-    .Browser_WebGPU,
-}
-// Instance_Backend_None :: Instance_Backend_Flags{}
 
 Instance_Flag :: enum c.int {
     Default,
@@ -1179,16 +1165,6 @@ Surface_Descriptor_From_Xlib_Window :: struct {
     window:  c.uint32_t,
 }
 
-Swap_Chain_Descriptor :: struct {
-    next_in_chain: ^Chained_Struct,
-    label:         cstring,
-    usage:         Texture_Usage_Flags,
-    format:        Texture_Format,
-    width:         c.uint32_t,
-    height:        c.uint32_t,
-    present_mode:  Present_Mode,
-}
-
 Surface_Texture :: struct {
     texture:    Texture,
     suboptimal: bool,
@@ -1417,10 +1393,7 @@ Render_Pipeline_Descriptor :: struct {
     fragment:      ^Fragment_State,
 }
 
-Buffer_Map_Callback :: #type proc "c" (
-    status: Buffer_Map_Async_Status,
-    user_data: rawptr,
-)
+Buffer_Map_Callback :: #type proc "c" (status: Buffer_Map_Async_Status, user_data: rawptr)
 
 Compilation_Info_Callback :: #type proc "c" (
     status: Compilation_Info_Request_Status,
@@ -1452,10 +1425,7 @@ Error_Callback :: #type proc "c" (type: Error_Type, message: cstring, user_data:
 
 Proc :: #type proc(self: rawptr)
 
-Queue_Work_Done_Callback :: #type proc "c" (
-    status: Queue_Work_Done_Status,
-    user_data: rawptr,
-)
+Queue_Work_Done_Callback :: #type proc "c" (status: Queue_Work_Done_Status, user_data: rawptr)
 
 Request_Adapter_Callback :: #type proc "c" (
     status: Request_Adapter_Status,

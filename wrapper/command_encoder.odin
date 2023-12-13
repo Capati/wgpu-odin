@@ -69,7 +69,7 @@ Command_Encoder_VTable :: struct {
     push_debug_group:        proc(self: ^Command_Encoder, group_label: cstring) -> Error_Type,
     resolve_query_set:       proc(
         self: ^Command_Encoder,
-        query_set: Query_Set,
+        query_set: ^Query_Set,
         first_query: u32,
         query_count: u32,
         destination: Buffer,
@@ -507,7 +507,7 @@ command_encoder_push_debug_group :: proc(
 
 command_encoder_resolve_query_set :: proc(
     using self: ^Command_Encoder,
-    query_set: Query_Set,
+    query_set: ^Query_Set,
     first_query: u32,
     query_count: u32,
     destination: Buffer,
