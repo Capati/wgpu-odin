@@ -21,7 +21,8 @@ Queue_VTable :: struct {
         data: rawptr = nil,
     ),
     set_label:              proc(self: ^Queue, label: cstring),
-    submit:                 proc(self: ^Queue, commands: ..Command_Buffer) -> Submission_Index,
+    submit:                 proc(self: ^Queue, commands: ..Command_Buffer),
+    submit_for_index:       proc(self: ^Queue, commands: ..Command_Buffer) -> Submission_Index,
     write_buffer:           proc(
         self: ^Queue,
         buffer: ^Buffer,
@@ -44,6 +45,7 @@ default_queue_vtable := Queue_VTable {
     on_submitted_work_done = queue_on_submitted_work_done,
     set_label              = queue_set_label,
     submit                 = queue_submit,
+    submit_for_index       = queue_submit_for_index,
     write_buffer           = queue_write_buffer,
     write_texture          = queue_write_texture,
     reference              = queue_reference,
@@ -70,8 +72,33 @@ queue_set_label :: proc(using self: ^Queue, label: cstring) {
 }
 
 // Submits a series of finished command buffers for execution.
-queue_submit :: proc(using self: ^Queue, commands: ..Command_Buffer) -> Submission_Index {
-    command_count := cast(u32)len(commands)
+queue_submit :: proc(using self: ^Queue, commands: ..Command_Buffer) {
+    command_count := cast(uint)len(commands)
+
+    if command_count == 0 {
+        wgpu.queue_submit(ptr, 0, nil)
+        return
+    } else if command_count == 1 {
+        wgpu.queue_submit(ptr, 1, &commands[0].ptr)
+        return
+    }
+
+    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+    commands_ptrs := make([]WGPU_Command_Buffer, command_count, context.temp_allocator)
+
+    for c, i in commands {
+        commands_ptrs[i] = c.ptr
+    }
+
+    wgpu.queue_submit(ptr, command_count, raw_data(commands_ptrs))
+}
+
+// Submits a series of finished command buffers for execution and return the index of the queue.
+queue_submit_for_index :: proc(
+    using self: ^Queue,
+    commands: ..Command_Buffer,
+) -> Submission_Index {
+    command_count := cast(uint)len(commands)
 
     if command_count == 0 {
         return wgpu.queue_submit_for_index(ptr, 0, nil)
