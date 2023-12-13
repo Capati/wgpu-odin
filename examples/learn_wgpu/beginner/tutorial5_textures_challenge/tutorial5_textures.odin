@@ -42,9 +42,17 @@ main :: proc() {
                  {
                     binding = 0,
                     visibility = {.Fragment},
-                    texture = {multisampled = false, view_dimension = .D2, sample_type = .Float},
+                    type = wgpu.Texture_Binding_Layout {
+                        multisampled = false,
+                        view_dimension = .D2,
+                        sample_type = .Float,
+                    },
                 },
-                {binding = 1, visibility = {.Fragment}, sampler = {type = .Filtering}},
+                 {
+                    binding = 1,
+                    visibility = {.Fragment},
+                    type = wgpu.Sampler_Binding_Layout{type = .Filtering},
+                },
             },
         },
     )
