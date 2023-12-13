@@ -453,10 +453,9 @@ device_create_command_encoder :: proc(
 }
 
 Programmable_Stage_Descriptor :: struct {
-    module:         ^Shader_Module,
-    entry_point:    cstring,
-    constant_count: uint,
-    constants:      ^Constant_Entry,
+    module:      ^Shader_Module,
+    entry_point: cstring,
+    constants:   []Constant_Entry,
 }
 
 Compute_Pipeline_Descriptor :: struct {
@@ -840,6 +839,7 @@ device_create_render_pipeline :: proc(
     return render_pipeline, .No_Error
 }
 
+// Creates a new `Sampler`.
 device_create_sampler :: proc(
     using self: ^Device,
     descriptor: ^Sampler_Descriptor,
