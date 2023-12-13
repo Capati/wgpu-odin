@@ -246,7 +246,7 @@ foreign wgpu_native {
     instance_enumerate_adapters :: proc(instance: Instance, options: ^Instance_Enumerate_Adapter_Options, adapters: [^]Adapter) -> c.size_t ---
 
     @(link_name = "wgpuQueueSubmitForIndex")
-    queue_submit_for_index :: proc(queue: Queue, command_count: c.uint32_t, commands: ^Command_Buffer) -> Submission_Index ---
+    queue_submit_for_index :: proc(queue: Queue, command_count: c.size_t, commands: ^Command_Buffer) -> Submission_Index ---
 
     @(link_name = "wgpuDevicePoll")
     device_poll :: proc(device: Device, wait: bool, wrapped_submission_index: ^Wrapped_Submission_Index) -> bool ---
