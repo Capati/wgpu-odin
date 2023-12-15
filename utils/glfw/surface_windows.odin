@@ -12,18 +12,18 @@ import "vendor:glfw"
 import wgpu "../../wrapper"
 
 get_surface_descriptor :: proc(
-    w: glfw.WindowHandle,
+	w: glfw.WindowHandle,
 ) -> (
-    descriptor: wgpu.Surface_Descriptor,
-    err: wgpu.Error_Type,
+	descriptor: wgpu.Surface_Descriptor,
+	err: wgpu.Error_Type,
 ) {
-    instance := win.GetModuleHandleW(nil)
+	instance := win.GetModuleHandleW(nil)
 
-    // Setup surface information
-    descriptor.target = wgpu.Surface_Descriptor_From_Windows_HWND {
-        hinstance = instance,
-        hwnd      = glfw.GetWin32Window(w),
-    }
+	// Setup surface information
+	descriptor.target = wgpu.Surface_Descriptor_From_Windows_HWND {
+		hinstance = instance,
+		hwnd      = glfw.GetWin32Window(w),
+	}
 
-    return
+	return
 }

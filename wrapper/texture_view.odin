@@ -3,38 +3,25 @@ package wgpu
 // Package
 import wgpu "../bindings"
 
+// Handle to a texture view.
+//
+// A `Texture_View` object describes a texture and associated metadata needed by a
+// `Render_Pipeline` or `Bind_Group`.
 Texture_View :: struct {
-    ptr:          WGPU_Texture_View,
-    using vtable: ^Texture_View_VTable,
+	_ptr: WGPU_Texture_View,
 }
 
-@(private)
-Texture_View_VTable :: struct {
-    set_label: proc(self: ^Texture_View, label: cstring),
-    reference: proc(self: ^Texture_View),
-    release:   proc(self: ^Texture_View),
-}
-
-@(private)
-default_texture_view_vtable := Texture_View_VTable {
-    set_label = texture_view_set_label,
-    reference = texture_view_reference,
-    release   = texture_view_release,
-}
-
-@(private)
-default_texture_view := Texture_View {
-    vtable = &default_texture_view_vtable,
-}
-
+// Set debug label.
 texture_view_set_label :: proc(using texture_view: ^Texture_View, label: cstring) {
-    wgpu.texture_view_set_label(ptr, label)
+	wgpu.texture_view_set_label(_ptr, label)
 }
 
+// Increase the reference count.
 texture_view_reference :: proc(using texture_view: ^Texture_View) {
-    wgpu.texture_view_reference(ptr)
+	wgpu.texture_view_reference(_ptr)
 }
 
+// Release the `Texture_View`.
 texture_view_release :: proc(using texture_view: ^Texture_View) {
-    wgpu.texture_view_release(ptr)
+	wgpu.texture_view_release(_ptr)
 }

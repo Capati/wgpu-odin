@@ -10,24 +10,24 @@ import sdl "vendor:sdl2"
 import wgpu "../../wrapper"
 
 get_sys_info :: proc(window: ^sdl.Window) -> (sdl.SysWMinfo, wgpu.Error_Type) {
-    wm_info: sdl.SysWMinfo
-    sdl.GetVersion(&wm_info.version)
+	wm_info: sdl.SysWMinfo
+	sdl.GetVersion(&wm_info.version)
 
-    if !sdl.GetWindowWMInfo(window, &wm_info) {
-        fmt.eprintf("ERROR: Could not obtain SDL WM info from window.\n")
-        return {}, .Internal
-    }
+	if !sdl.GetWindowWMInfo(window, &wm_info) {
+		fmt.eprintf("ERROR: Could not obtain SDL WM info from window.\n")
+		return {}, .Internal
+	}
 
-    return wm_info, .No_Error
+	return wm_info, .No_Error
 }
 
 create_surface :: proc(
-    window: ^sdl.Window,
-    instance: ^wgpu.Instance,
+	window: ^sdl.Window,
+	instance: ^wgpu.Instance,
 ) -> (
-    surface: wgpu.Surface,
-    err: wgpu.Error_Type,
+	surface: wgpu.Surface,
+	err: wgpu.Error_Type,
 ) {
-    surface_descriptor := get_surface_descriptor(window) or_return
-    return instance->create_surface(&surface_descriptor)
+	surface_descriptor := get_surface_descriptor(window) or_return
+	return wgpu.instance_create_surface(instance, &surface_descriptor)
 }

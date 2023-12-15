@@ -3,39 +3,27 @@ package wgpu
 // Package
 import wgpu "../bindings"
 
+// Handle to a sampler.
+//
+// A `Sampler` object defines how a pipeline will sample from a `Texture_View`. Samplers define
+// image filters (including anisotropy) and address (wrapping) modes, among other things.
+//
+// It can be created with `device_create_sampler`.
 Sampler :: struct {
-    ptr:          WGPU_Sampler,
-    using vtable: ^Sampler_VTable,
+	_ptr: WGPU_Sampler,
 }
 
-@(private)
-Sampler_VTable :: struct {
-    set_label: proc(self: ^Sampler, label: cstring),
-    reference: proc(self: ^Sampler),
-    release:   proc(self: ^Sampler),
-}
-
-@(private)
-default_sampler_vtable := Sampler_VTable {
-    set_label = sampler_set_label,
-    reference = sampler_reference,
-    release   = sampler_release,
-}
-
-@(private)
-default_sampler := Sampler {
-    ptr    = nil,
-    vtable = &default_sampler_vtable,
-}
-
+// Set debut label.
 sampler_set_label :: proc(using self: ^Sampler, label: cstring) {
-    wgpu.sampler_set_label(ptr, label)
+	wgpu.sampler_set_label(_ptr, label)
 }
 
+// Increase the reference count.
 sampler_reference :: proc(using self: ^Sampler) {
-    wgpu.sampler_reference(ptr)
+	wgpu.sampler_reference(_ptr)
 }
 
+// Release the `Sampler`.
 sampler_release :: proc(using self: ^Sampler) {
-    wgpu.sampler_release(ptr)
+	wgpu.sampler_release(_ptr)
 }

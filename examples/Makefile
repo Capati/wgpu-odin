@@ -1,4 +1,8 @@
-ARGS = -define:WGPU_USE_SYSTEM_LIBRARIES=true
+# -define:WGPU_USE_SYSTEM_LIBRARIES=true
+ARGS = -o:speed \
+	-disable-assert \
+	-no-bounds-check \
+	-define:CHECK_TO_BYTES=false
 OUT = -out:./build
 
 .PHONY: all

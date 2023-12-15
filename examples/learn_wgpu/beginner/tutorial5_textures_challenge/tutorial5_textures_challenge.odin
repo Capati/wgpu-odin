@@ -1,11 +1,11 @@
-package tutorial4_buffer_challenge
+package tutorial5_textures_challenge
 
 // Core
 import "core:fmt"
-import "core:math"
 
 // Package
 import wgpu "../../../../wrapper"
+import "../tutorial5_textures/texture"
 
 // Framework
 import app "../../../framework/application"
@@ -13,20 +13,19 @@ import "../../../framework/application/events"
 import "../../../framework/renderer"
 
 Vertex :: struct {
-	position: [3]f32,
-	color:    [3]f32,
+	position:   [3]f32,
+	tex_coords: [2]f32,
 }
 
 State :: struct {
-	gpu:                     ^renderer.Renderer,
-	render_pipeline:         wgpu.Render_Pipeline,
-	vertex_buffer:           wgpu.Buffer,
-	index_buffer:            wgpu.Buffer,
-	num_indices:             u32,
-	num_challenge_indices:   u32,
-	challenge_vertex_buffer: wgpu.Buffer,
-	challenge_index_buffer:  wgpu.Buffer,
-	use_complex:             bool,
+	gpu:                ^renderer.Renderer,
+	diffuse_bind_group: wgpu.Bind_Group,
+	cartoon_bind_group: wgpu.Bind_Group,
+	render_pipeline:    wgpu.Render_Pipeline,
+	num_indices:        u32,
+	vertex_buffer:      wgpu.Buffer,
+	index_buffer:       wgpu.Buffer,
+	is_space_pressed:   bool,
 }
 
 Error :: union #shared_nil {
@@ -39,17 +38,74 @@ init_example :: proc() -> (state: State, err: Error) {
 	state.gpu = renderer.init() or_return
 	defer if err != nil do renderer.deinit(state.gpu)
 
-	// Use the same shader from the Tutorial 4 - Buffers
-	shader_source := #load("./../tutorial4_buffer/shader.wgsl")
-	shader_module := wgpu.device_create_shader_module(
+	// Load our tree image to texture
+	diffuse_texture := texture.texture_from_image(
 		&state.gpu.device,
-		&{source = cstring(raw_data(shader_source))},
+		&state.gpu.queue,
+		"assets/learn_wgpu/tutorial5/happy-tree.png",
 	) or_return
-	defer wgpu.shader_module_release(&shader_module)
+	defer texture.texture_destroy(&diffuse_texture)
+
+	texture_bind_group_layout := wgpu.device_create_bind_group_layout(
+		&state.gpu.device,
+		& {
+			label = "TextureBindGroupLayout",
+			entries =  {
+				 {
+					binding = 0,
+					visibility = {.Fragment},
+					type = wgpu.Texture_Binding_Layout {
+						multisampled = false,
+						view_dimension = .D2,
+						sample_type = .Float,
+					},
+				},
+				 {
+					binding = 1,
+					visibility = {.Fragment},
+					type = wgpu.Sampler_Binding_Layout{type = .Filtering},
+				},
+			},
+		},
+	) or_return
+	defer wgpu.bind_group_layout_release(&texture_bind_group_layout)
+
+	state.diffuse_bind_group = wgpu.device_create_bind_group(
+		&state.gpu.device,
+		&wgpu.Bind_Group_Descriptor {
+			label = "diffuse_bind_group",
+			layout = &texture_bind_group_layout,
+			entries =  {
+				{binding = 0, resource = &diffuse_texture.view},
+				{binding = 1, resource = &diffuse_texture.sampler},
+			},
+		},
+	) or_return
+	defer if err != nil do wgpu.bind_group_release(&state.diffuse_bind_group)
+
+	cartoon_texture := texture.texture_from_image(
+		&state.gpu.device,
+		&state.gpu.queue,
+		"assets/learn_wgpu/tutorial5/happy-tree-cartoon.png",
+	) or_return
+	defer texture.texture_destroy(&cartoon_texture)
+
+	state.cartoon_bind_group = wgpu.device_create_bind_group(
+		&state.gpu.device,
+		&wgpu.Bind_Group_Descriptor {
+			label = "cartoon_bind_group",
+			layout = &texture_bind_group_layout,
+			entries =  {
+				{binding = 0, resource = &cartoon_texture.view},
+				{binding = 1, resource = &cartoon_texture.sampler},
+			},
+		},
+	) or_return
+	defer if err != nil do wgpu.bind_group_release(&state.cartoon_bind_group)
 
 	render_pipeline_layout := wgpu.device_create_pipeline_layout(
 		&state.gpu.device,
-		&{label = "Render Pipeline Layout"},
+		&{label = "Render Pipeline Layout", bind_group_layouts = {texture_bind_group_layout}},
 	) or_return
 	defer wgpu.pipeline_layout_release(&render_pipeline_layout)
 
@@ -58,9 +114,21 @@ init_example :: proc() -> (state: State, err: Error) {
 		step_mode = .Vertex,
 		attributes =  {
 			{offset = 0, shader_location = 0, format = .Float32x3},
-			{offset = cast(u64)offset_of(Vertex, color), shader_location = 1, format = .Float32x3},
+			 {
+				offset = cast(u64)offset_of(Vertex, tex_coords),
+				shader_location = 1,
+				format = .Float32x2,
+			},
 		},
 	}
+
+	// Use the same shader from the Tutorial 5- Textures
+	shader_source := #load("./../tutorial5_textures/shader.wgsl")
+	shader_module := wgpu.device_create_shader_module(
+		&state.gpu.device,
+		&{source = cstring(raw_data(shader_source))},
+	) or_return
+	defer wgpu.shader_module_release(&shader_module)
 
 	render_pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
 		label = "Render Pipeline",
@@ -92,23 +160,16 @@ init_example :: proc() -> (state: State, err: Error) {
 	) or_return
 	defer if err != nil do wgpu.render_pipeline_release(&state.render_pipeline)
 
-	// vertices := []Vertex{
-	//     {position = {0.0, 0.5, 0.0}, color = {1.0, 0.0, 0.0}},
-	//     {position = {-0.5, -0.5, 0.0}, color = {0.0, 1.0, 0.0}},
-	//     {position = {0.5, -0.5, 0.0}, color = {0.0, 0.0, 1.0}},
-	// }
-
 	vertices := []Vertex {
-		{position = {-0.0868241, 0.49240386, 0.0}, color = {0.5, 0.0, 0.5}}, // A
-		{position = {-0.49513406, 0.06958647, 0.0}, color = {0.5, 0.0, 0.5}}, // B
-		{position = {-0.21918549, -0.44939706, 0.0}, color = {0.5, 0.0, 0.5}}, // C
-		{position = {0.35966998, -0.3473291, 0.0}, color = {0.5, 0.0, 0.5}}, // D
-		{position = {0.44147372, 0.2347359, 0.0}, color = {0.5, 0.0, 0.5}}, // E
+		{position = {-0.0868241, 0.49240386, 0.0}, tex_coords = {0.4131759, 0.00759614}}, // A
+		{position = {-0.49513406, 0.06958647, 0.0}, tex_coords = {0.0048659444, 0.43041354}}, // B
+		{position = {-0.21918549, -0.44939706, 0.0}, tex_coords = {0.28081453, 0.949397}}, // C
+		{position = {0.35966998, -0.3473291, 0.0}, tex_coords = {0.85967, 0.84732914}}, // D
+		{position = {0.44147372, 0.2347359, 0.0}, tex_coords = {0.9414737, 0.2652641}}, // E
 	}
 
 	indices: []u16 = {0, 1, 4, 1, 2, 4, 2, 3, 4}
 
-	// gpu.num_vertices = cast(u32)len(vertices)
 	state.num_indices = cast(u32)len(indices)
 
 	state.vertex_buffer = wgpu.device_create_buffer_with_data(
@@ -129,54 +190,6 @@ init_example :: proc() -> (state: State, err: Error) {
 			usage = {.Index},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(&state.index_buffer)
-
-	num_vertices :: 100
-	angle := math.PI * 2.0 / f32(num_vertices)
-	challenge_verts: [num_vertices]Vertex
-
-	for i := 0; i < num_vertices; i += 1 {
-		theta := angle * f32(i)
-		theta_sin, theta_cos := math.sincos_f64(f64(theta))
-
-		challenge_verts[i] = Vertex {
-			position = {0.5 * f32(theta_cos), -0.5 * f32(theta_sin), 0.0},
-			color = {(1.0 + f32(theta_cos)) / 2.0, (1.0 + f32(theta_sin)) / 2.0, 1.0},
-		}
-	}
-
-	num_triangles :: num_vertices - 2
-	challenge_indices: [num_triangles * 3]u16
-	{
-		index := 0
-		for i := u16(1); i < num_triangles + 1; i += 1 {
-			challenge_indices[index] = i + 1
-			challenge_indices[index + 1] = i
-			challenge_indices[index + 2] = 0
-			index += 3
-		}
-	}
-
-	state.num_challenge_indices = cast(u32)len(challenge_indices)
-
-	state.challenge_vertex_buffer = wgpu.device_create_buffer_with_data(
-		&state.gpu.device,
-		&wgpu.Buffer_Data_Descriptor {
-			label = "Vertex Buffer",
-			contents = wgpu.to_bytes(challenge_verts[:]),
-			usage = {.Vertex},
-		},
-	) or_return
-	defer if err != nil do wgpu.buffer_release(&state.challenge_vertex_buffer)
-
-	state.challenge_index_buffer = wgpu.device_create_buffer_with_data(
-		&state.gpu.device,
-		&wgpu.Buffer_Data_Descriptor {
-			label = "Index Buffer",
-			contents = wgpu.to_bytes(challenge_indices[:]),
-			usage = {.Index},
-		},
-	) or_return
 
 	return
 }
@@ -189,10 +202,7 @@ render :: proc(using state: ^State) -> (err: Error) {
 	view := wgpu.texture_create_view(&frame.texture, nil) or_return
 	defer wgpu.texture_view_release(&view)
 
-	encoder := wgpu.device_create_command_encoder(
-		&gpu.device,
-		&wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
-	) or_return
+	encoder := wgpu.device_create_command_encoder(&gpu.device) or_return
 	defer wgpu.command_encoder_release(&encoder)
 
 	render_pass := wgpu.command_encoder_begin_render_pass(
@@ -215,25 +225,18 @@ render :: proc(using state: ^State) -> (err: Error) {
 
 	wgpu.render_pass_set_pipeline(&render_pass, &render_pipeline)
 
-	if use_complex {
-		wgpu.render_pass_set_vertex_buffer(&render_pass, 0, challenge_vertex_buffer)
-		wgpu.render_pass_set_index_buffer(
-			&render_pass,
-			challenge_index_buffer,
-			.Uint16,
-			0,
-			wgpu.WHOLE_SIZE,
-		)
-		wgpu.render_pass_draw_indexed(&render_pass, num_challenge_indices)
+	if is_space_pressed {
+		wgpu.render_pass_set_bind_group(&render_pass, 0, &cartoon_bind_group)
 	} else {
-		wgpu.render_pass_set_vertex_buffer(&render_pass, 0, vertex_buffer)
-		wgpu.render_pass_set_index_buffer(&render_pass, index_buffer, .Uint16, 0, wgpu.WHOLE_SIZE)
-		wgpu.render_pass_draw_indexed(&render_pass, num_indices)
+		wgpu.render_pass_set_bind_group(&render_pass, 0, &diffuse_bind_group)
 	}
 
+	wgpu.render_pass_set_vertex_buffer(&render_pass, 0, vertex_buffer)
+	wgpu.render_pass_set_index_buffer(&render_pass, index_buffer, .Uint16, 0, wgpu.WHOLE_SIZE)
+	wgpu.render_pass_draw_indexed(&render_pass, num_indices)
 	wgpu.render_pass_end(&render_pass) or_return
 
-	command_buffer := wgpu.command_encoder_finish(&encoder, "Default command buffer") or_return
+	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
 	defer wgpu.command_buffer_release(&command_buffer)
 
 	wgpu.queue_submit(&gpu.queue, &command_buffer)
@@ -249,7 +252,7 @@ resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Er
 
 main :: proc() {
 	app_properties := app.Default_Properties
-	app_properties.title = "Tutorial 4 - Buffers"
+	app_properties.title = "Tutorial 5 - Textures Challenge"
 	if app.init(app_properties) != .No_Error do return
 	defer app.deinit()
 
@@ -267,9 +270,9 @@ main :: proc() {
 			case events.Quit_Event:
 				break main_loop
 			case events.Key_Press_Event:
-				if event.key == .Space do state.use_complex = true
+				if event.key == .Space do state.is_space_pressed = true
 			case events.Key_Release_Event:
-				if event.key == .Space do state.use_complex = false
+				if event.key == .Space do state.is_space_pressed = false
 			case events.Framebuffer_Resize_Event:
 				if err := resize_surface(&state, {event.width, event.height}); err != nil {
 					fmt.eprintf(
@@ -289,11 +292,11 @@ main :: proc() {
 	}
 
 	// deinit state
-	wgpu.buffer_release(&state.challenge_index_buffer)
-	wgpu.buffer_release(&state.challenge_vertex_buffer)
 	wgpu.buffer_release(&state.index_buffer)
 	wgpu.buffer_release(&state.vertex_buffer)
 	wgpu.render_pipeline_release(&state.render_pipeline)
+	wgpu.bind_group_release(&state.cartoon_bind_group)
+	wgpu.bind_group_release(&state.diffuse_bind_group)
 
 	fmt.println("Exiting...")
 }

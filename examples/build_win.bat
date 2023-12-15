@@ -1,7 +1,11 @@
 @echo off
 setlocal
 
-set ARGS=
+@REM -define:WGPU_BACKEND_TYPE=Vulkan
+set ARGS=-o:speed ^
+	-disable-assert ^
+	-no-bounds-check ^
+	-define:CHECK_TO_BYTES=false
 set OUT=-out:.\build
 
 if "%1" == "" (

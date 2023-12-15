@@ -147,14 +147,14 @@ Color_Yellow_Green :: Color{0.603922, 0.803922, 0.196078, 1.0}
 // ### Arguments
 // * `brightness` - The brightness of the color. `0.0` is black, `1.0` is white
 color_gray :: proc(brightness: f64) -> Color {
-    b := brightness if brightness <= 1.0 else 1.0
-    return {b, b, b, 1.0}
+	b := brightness if brightness <= 1.0 else 1.0
+	return {b, b, b, 1.0}
 }
 
 // Returns a semi-transparent white color
 // ### Arguments
 // * `transparency` - The transparency of the color. `0.0` is transparent, `1.0` is opaque
 color_alpha :: proc(transparency: f64) -> Color {
-    t := transparency if transparency <= 1.0 else 1.0
-    return {1.0, 1.0, 1.0, t}
+	t := transparency if transparency <= 1.0 else 1.0
+	return {1.0, 1.0, 1.0, t}
 }

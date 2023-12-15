@@ -13,27 +13,27 @@ _PLATFORM_TYPE :: #config(_PLATFORM_TYPE, STR_UNDEFINED_CONFIG)
 _BACKEND_TYPE :: #config(_BACKEND_TYPE, STR_UNDEFINED_CONFIG)
 
 Application_Type :: enum {
-    Native,
-    Wasm,
+	Native,
+	Wasm,
 }
 
 Backend_Type :: enum {
-    WebGL,
-    WGPU,
+	WebGL,
+	WGPU,
 }
 
 when _PLATFORM_TYPE == STR_UNDEFINED_CONFIG {
-    when ODIN_OS == .JS || ODIN_OS == .WASI {
-        APPLICATION_TYPE :: Application_Type.Wasm
-    } else {
-        APPLICATION_TYPE :: Application_Type.Native
-    }
+	when ODIN_OS == .JS || ODIN_OS == .WASI {
+		APPLICATION_TYPE :: Application_Type.Wasm
+	} else {
+		APPLICATION_TYPE :: Application_Type.Native
+	}
 } else {
-    when _PLATFORM_TYPE == STR_WASM_PLATFORM {
-        APPLICATION_TYPE :: Application_Type.Wasm
-    } else when _PLATFORM_TYPE == STR_NATIVE_PLATFORM {
-        APPLICATION_TYPE :: Application_Type.Native
-    } else {
-        #panic("APPLICATION_TYPE not available.")
-    }
+	when _PLATFORM_TYPE == STR_WASM_PLATFORM {
+		APPLICATION_TYPE :: Application_Type.Wasm
+	} else when _PLATFORM_TYPE == STR_NATIVE_PLATFORM {
+		APPLICATION_TYPE :: Application_Type.Native
+	} else {
+		#panic("APPLICATION_TYPE not available.")
+	}
 }
