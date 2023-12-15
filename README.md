@@ -1,6 +1,6 @@
 # WGPU Odin Bindings
 
-Bindings to [wgpu-native](https://github.com/gfx-rs/wgpu-native) **0.18.1.2** in the [Odin programming language](https://odin-lang.org/).
+Bindings to [wgpu-native](https://github.com/gfx-rs/wgpu-native) **0.18.1.4** in the [Odin programming language](https://odin-lang.org/).
 
 See [examples here](./examples).
 
@@ -64,4 +64,4 @@ Types and values follow the [Odin Naming Convention](https://github.com/odin-lan
 
 ## License
 
-BSD 3-clause.
+MIT license.
