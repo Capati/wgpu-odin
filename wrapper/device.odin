@@ -1,7 +1,6 @@
 package wgpu
 
 // Core
-import "core:mem"
 import "core:runtime"
 
 // Package
