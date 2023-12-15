@@ -96,6 +96,7 @@ odin build .\learn_wgpu\beginner\tutorial4_buffer %ARGS% %OUT%/tutorial4_buffer.
 odin build .\learn_wgpu\beginner\tutorial4_buffer_challenge %ARGS% %OUT%/tutorial4_buffer_challenge.exe
 odin build .\learn_wgpu\beginner\tutorial5_textures %ARGS% %OUT%/tutorial5_textures.exe
 odin build .\learn_wgpu\beginner\tutorial5_textures_challenge %ARGS% %OUT%/tutorial5_textures_challenge.exe
+odin build .\learn_wgpu\beginner\tutorial6_uniforms %ARGS% %OUT%/tutorial6_uniforms.exe
 goto :eof
 
 :end
