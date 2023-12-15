@@ -9,348 +9,320 @@ import "core:runtime"
 import wgpu "../bindings"
 
 // Context for all other wgpu objects.
+//
+// This is the first thing you create when using wgpu. Its primary use is to create `Adapter`s and
+// `Surface`s.
+//
+// Does not have to be kept alive.
 Instance :: struct {
-    ptr:          WGPU_Instance,
-    using vtable: ^Instance_VTable,
-}
-
-@(private)
-Instance_VTable :: struct {
-    create_surface:     proc(
-        self: ^Instance,
-        options: ^Surface_Descriptor,
-    ) -> (
-        Surface,
-        Error_Type,
-    ),
-    request_adapter:    proc(
-        self: ^Instance,
-        options: ^Request_Adapter_Options,
-    ) -> (
-        Adapter,
-        Error_Type,
-    ),
-    enumerate_adapters: proc(
-        self: ^Instance,
-        backends: Instance_Backend_Flags,
-        allocator: mem.Allocator = context.allocator,
-    ) -> []Adapter,
-    generate_report:    proc(self: ^Instance) -> Global_Report,
-    print_report:       proc(self: ^Instance),
-    release:            proc(self: ^Instance),
-}
-
-@(private)
-default_instance_vtable := Instance_VTable {
-    create_surface     = instance_create_surface,
-    request_adapter    = instance_request_adapter,
-    enumerate_adapters = instance_enumerate_adapters,
-    generate_report    = instance_generate_report,
-    print_report       = instance_print_report,
-    release            = instance_release,
-}
-
-@(private)
-default_instance := Instance {
-    ptr    = nil,
-    vtable = &default_instance_vtable,
+	_ptr: WGPU_Instance,
 }
 
 // Options for creating an instance.
 Instance_Descriptor :: struct {
-    backends:             Instance_Backend_Flags,
-    flags:                Instance_Flags,
-    dx12_shader_compiler: Dx12_Compiler,
-    gles3_minor_version:  Gles3_Minor_Version,
-    dxil_path:            cstring,
-    dxc_path:             cstring,
+	backends:             Instance_Backend_Flags,
+	flags:                Instance_Flags,
+	dx12_shader_compiler: Dx12_Compiler,
+	gles3_minor_version:  Gles3_Minor_Version,
+	dxil_path:            cstring,
+	dxc_path:             cstring,
 }
 
 // Create an new instance of wgpu.
 create_instance :: proc(
-    descriptor: ^Instance_Descriptor = nil,
+	descriptor: ^Instance_Descriptor = nil,
 ) -> (
-    instance: Instance,
-    err: Error_Type,
+	instance: Instance,
+	err: Error_Type,
 ) {
-    desc: ^wgpu.Instance_Descriptor = nil
+	desc: ^wgpu.Instance_Descriptor = nil
 
-    if descriptor != nil {
-        desc = &{}
+	if descriptor != nil {
+		desc = &{}
 
-        instance_extras := Instance_Extras {
-            chain = {next = nil, stype = cast(SType)Native_SType.Instance_Extras},
-            backends = descriptor.backends,
-            flags = descriptor.flags,
-            dx12_shader_compiler = descriptor.dx12_shader_compiler,
-            gles3_minor_version = descriptor.gles3_minor_version,
-            dxil_path = descriptor.dxil_path,
-            dxc_path = descriptor.dxc_path,
-        }
+		instance_extras := Instance_Extras {
+			chain = {next = nil, stype = cast(SType)Native_SType.Instance_Extras},
+			backends = descriptor.backends,
+			flags = descriptor.flags,
+			dx12_shader_compiler = descriptor.dx12_shader_compiler,
+			gles3_minor_version = descriptor.gles3_minor_version,
+			dxil_path = descriptor.dxil_path,
+			dxc_path = descriptor.dxc_path,
+		}
 
-        desc.next_in_chain = cast(^Chained_Struct)&instance_extras
-    }
+		desc.next_in_chain = cast(^Chained_Struct)&instance_extras
+	}
 
-    instance_ptr := wgpu.create_instance(desc)
+	instance_ptr := wgpu.create_instance(desc)
 
-    if instance_ptr == nil {
-        update_error_message("Failed to acquire instance")
-        return {}, .Unknown
-    }
+	if instance_ptr == nil {
+		update_error_message("Failed to acquire an instance")
+		return {}, .Unknown
+	}
 
-    instance = default_instance
-    instance.ptr = instance_ptr
+	instance._ptr = instance_ptr
 
-    return
+	return
 }
 
+// Describes a surface target.
 Surface_Descriptor :: struct {
-    label:  cstring,
-    target: union {
-        Surface_Descriptor_From_Android_Native_Window,
-        Surface_Descriptor_From_Canvas_Html_Selector,
-        Surface_Descriptor_From_Metal_Layer,
-        Surface_Descriptor_From_Wayland_Surface,
-        Surface_Descriptor_From_Windows_HWND,
-        Surface_Descriptor_From_Xcb_Window,
-        Surface_Descriptor_From_Xlib_Window,
-    },
+	label:  cstring,
+	target: union {
+		Surface_Descriptor_From_Android_Native_Window,
+		Surface_Descriptor_From_Canvas_Html_Selector,
+		Surface_Descriptor_From_Metal_Layer,
+		Surface_Descriptor_From_Wayland_Surface,
+		Surface_Descriptor_From_Windows_HWND,
+		Surface_Descriptor_From_Xcb_Window,
+		Surface_Descriptor_From_Xlib_Window,
+	},
 }
 
-// Creates a surface from a window handle.
+// Creates a surface from a window target.
+//
+// If the specified display and window target are not supported by any of the backends, then the
+// surface will not be supported by any adapters.
 instance_create_surface :: proc(
-    using self: ^Instance,
-    descriptor: ^Surface_Descriptor,
+	using self: ^Instance,
+	descriptor: ^Surface_Descriptor,
 ) -> (
-    Surface,
-    Error_Type,
+	surface: Surface,
+	err: Error_Type,
 ) {
-    desc := wgpu.Surface_Descriptor{}
+	desc := wgpu.Surface_Descriptor{}
 
-    if descriptor != nil {
-        desc.label = descriptor.label
-        switch &t in descriptor.target {
-        case Surface_Descriptor_From_Windows_HWND:
-            if desc.label == nil || desc.label == "" {
-                desc.label = "Windows HWND"
-            }
-            t.chain.stype = .Surface_Descriptor_From_Windows_HWND
-            desc.next_in_chain = cast(^Chained_Struct)&t
-        case Surface_Descriptor_From_Xcb_Window:
-            if desc.label == nil || desc.label == "" {
-                desc.label = "XCB Window"
-            }
-            t.chain.stype = .Surface_Descriptor_From_Xcb_Window
-            desc.next_in_chain = cast(^Chained_Struct)&t
-        case Surface_Descriptor_From_Xlib_Window:
-            if desc.label == nil || desc.label == "" {
-                desc.label = "X11 Window"
-            }
-            t.chain.stype = .Surface_Descriptor_From_Xlib_Window
-            desc.next_in_chain = cast(^Chained_Struct)&t
-        case Surface_Descriptor_From_Metal_Layer:
-            if desc.label == nil || desc.label == "" {
-                desc.label = "Metal Layer"
-            }
-            t.chain.stype = .Surface_Descriptor_From_Metal_Layer
-            desc.next_in_chain = cast(^Chained_Struct)&t
-        case Surface_Descriptor_From_Wayland_Surface:
-            if desc.label == nil || desc.label == "" {
-                desc.label = "Wayland Surface"
-            }
-            t.chain.stype = .Surface_Descriptor_From_Wayland_Surface
-            desc.next_in_chain = cast(^Chained_Struct)&t
-        case Surface_Descriptor_From_Android_Native_Window:
-            if desc.label == nil || desc.label == "" {
-                desc.label = "Android Native Window"
-            }
-            t.chain.stype = .Surface_Descriptor_From_Android_Native_Window
-            desc.next_in_chain = cast(^Chained_Struct)&t
-        case Surface_Descriptor_From_Canvas_Html_Selector:
-            if desc.label == nil || desc.label == "" {
-                desc.label = "Canvas Html Selector"
-            }
-            t.chain.stype = .Surface_Descriptor_From_Canvas_Html_Selector
-            desc.next_in_chain = cast(^Chained_Struct)&t
-        }
-    }
+	if descriptor != nil {
+		desc.label = descriptor.label
+		switch &t in descriptor.target {
+		case Surface_Descriptor_From_Windows_HWND:
+			if desc.label == nil || desc.label == "" {
+				desc.label = "Windows HWND"
+			}
+			t.chain.stype = .Surface_Descriptor_From_Windows_HWND
+			desc.next_in_chain = cast(^Chained_Struct)&t
+		case Surface_Descriptor_From_Xcb_Window:
+			if desc.label == nil || desc.label == "" {
+				desc.label = "XCB Window"
+			}
+			t.chain.stype = .Surface_Descriptor_From_Xcb_Window
+			desc.next_in_chain = cast(^Chained_Struct)&t
+		case Surface_Descriptor_From_Xlib_Window:
+			if desc.label == nil || desc.label == "" {
+				desc.label = "X11 Window"
+			}
+			t.chain.stype = .Surface_Descriptor_From_Xlib_Window
+			desc.next_in_chain = cast(^Chained_Struct)&t
+		case Surface_Descriptor_From_Metal_Layer:
+			if desc.label == nil || desc.label == "" {
+				desc.label = "Metal Layer"
+			}
+			t.chain.stype = .Surface_Descriptor_From_Metal_Layer
+			desc.next_in_chain = cast(^Chained_Struct)&t
+		case Surface_Descriptor_From_Wayland_Surface:
+			if desc.label == nil || desc.label == "" {
+				desc.label = "Wayland Surface"
+			}
+			t.chain.stype = .Surface_Descriptor_From_Wayland_Surface
+			desc.next_in_chain = cast(^Chained_Struct)&t
+		case Surface_Descriptor_From_Android_Native_Window:
+			if desc.label == nil || desc.label == "" {
+				desc.label = "Android Native Window"
+			}
+			t.chain.stype = .Surface_Descriptor_From_Android_Native_Window
+			desc.next_in_chain = cast(^Chained_Struct)&t
+		case Surface_Descriptor_From_Canvas_Html_Selector:
+			if desc.label == nil || desc.label == "" {
+				desc.label = "Canvas Html Selector"
+			}
+			t.chain.stype = .Surface_Descriptor_From_Canvas_Html_Selector
+			desc.next_in_chain = cast(^Chained_Struct)&t
+		}
+	}
 
-    surface_ptr := wgpu.instance_create_surface(ptr, &desc)
+	surface_ptr := wgpu.instance_create_surface(_ptr, &desc)
 
-    if surface_ptr == nil {
-        update_error_message("Failed to acquire surface")
-        return {}, .Internal
-    }
+	if surface_ptr == nil {
+		update_error_message("Failed to acquire surface")
+		return {}, .Internal
+	}
 
-    surface := default_surface
-    surface.ptr = surface_ptr
+	surface._ptr = surface_ptr
 
-    return surface, .No_Error
+	return surface, .No_Error
 }
 
+@(private = "file")
 Adapter_Response :: struct {
-    status:  Request_Adapter_Status,
-    adapter: WGPU_Adapter,
+	status:  Request_Adapter_Status,
+	adapter: WGPU_Adapter,
 }
 
+// Additional information required when requesting an adapter.
+//
+// For use with `instance_request_adapter`.
 Request_Adapter_Options :: struct {
-    compatible_surface:     ^Surface,
-    power_preference:       Power_Preference,
-    backend_type:           Backend_Type,
-    force_fallback_adapter: bool,
+	compatible_surface:     ^Surface,
+	power_preference:       Power_Preference,
+	backend_type:           Backend_Type,
+	force_fallback_adapter: bool,
 }
 
 // Retrieves an `Adapter` which matches the given parameters.
 instance_request_adapter :: proc(
-    using self: ^Instance,
-    options: ^Request_Adapter_Options,
+	using self: ^Instance,
+	options: ^Request_Adapter_Options,
 ) -> (
-    Adapter,
-    Error_Type,
+	adapter: Adapter,
+	err: Error_Type,
 ) {
-    opts := wgpu.Request_Adapter_Options{}
+	opts := wgpu.Request_Adapter_Options{}
 
-    if options != nil {
-        if options.compatible_surface != nil {
-            opts.compatible_surface = options.compatible_surface.ptr
-        }
+	if options != nil {
+		if options.compatible_surface != nil {
+			opts.compatible_surface = options.compatible_surface._ptr
+		}
 
-        opts.power_preference = options.power_preference
-        opts.force_fallback_adapter = options.force_fallback_adapter
-        opts.backend_type = options.backend_type
-    }
+		opts.power_preference = options.power_preference
+		opts.force_fallback_adapter = options.force_fallback_adapter
+		opts.backend_type = options.backend_type
+	}
 
-    res := Adapter_Response{}
-    wgpu.instance_request_adapter(ptr, &opts, _on_request_adapter_callback, &res)
+	res := Adapter_Response{}
+	wgpu.instance_request_adapter(_ptr, &opts, _on_request_adapter_callback, &res)
 
-    if res.status != .Success {
-        return {}, .Unknown
-    }
+	if res.status != .Success {
+		return {}, .Unknown
+	}
 
-    adapter := default_adapter
-    adapter.ptr = res.adapter
-    adapter.features = adapter->get_features()
-    adapter.limits = adapter->get_limits()
-    adapter.info = adapter->request_info()
+	adapter._ptr = res.adapter
+	// Fill adapter details
+	adapter.features = adapter_get_features(&adapter)
+	adapter.limits = adapter_get_limits(&adapter)
+	adapter.info = adapter_request_info(&adapter)
 
-    return adapter, .No_Error
+	return
 }
 
 // Retrieves all available `Adapters` that match the given options.
 instance_enumerate_adapters :: proc(
-    using self: ^Instance,
-    backends: Instance_Backend_Flags,
-    allocator := context.allocator,
+	using self: ^Instance,
+	backends: Instance_Backend_Flags,
+	allocator := context.allocator,
 ) -> []Adapter {
-    options := Instance_Enumerate_Adapter_Options {
-        backends = backends,
-    }
+	options := Instance_Enumerate_Adapter_Options {
+		backends = backends,
+	}
 
-    adapter_count: uint = wgpu.instance_enumerate_adapters(ptr, &options, nil)
+	adapter_count: uint = wgpu.instance_enumerate_adapters(_ptr, &options, nil)
 
-    if adapter_count == 0 {
-        fmt.print("No compatible adapter found!\n")
-        return {}
-    }
+	if adapter_count == 0 {
+		fmt.print("No compatible adapter found!\n")
+		return {}
+	}
 
-    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
-    wgpu_adapters := make([]WGPU_Adapter, adapter_count, context.temp_allocator)
-    wgpu.instance_enumerate_adapters(ptr, &options, raw_data(wgpu_adapters))
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
+	wgpu_adapters := make([]WGPU_Adapter, adapter_count, context.temp_allocator)
+	wgpu.instance_enumerate_adapters(_ptr, &options, raw_data(wgpu_adapters))
 
-    adapters := make([]Adapter, adapter_count, allocator)
+	adapters := make([]Adapter, adapter_count, allocator)
 
-    for i: uint = 0; i < adapter_count; i += 1 {
-        adapters[i] = {
-            ptr    = wgpu_adapters[i],
-            vtable = &default_adapter_vtable,
-        }
+	for i: uint = 0; i < adapter_count; i += 1 {
+		adapters[i] = {
+			_ptr = wgpu_adapters[i],
+		}
 
-        adapters[i].features = adapters[i]->get_features()
-        adapters[i].limits = adapters[i]->get_limits()
-        adapters[i].info = adapters[i]->request_info()
-    }
+		adapters[i].features = adapter_get_features(&adapters[i])
+		adapters[i].limits = adapter_get_limits(&adapters[i])
+		adapters[i].info = adapter_request_info(&adapters[i])
+	}
 
-    return adapters
+	return adapters
 }
 
 // Generates memory report.
 instance_generate_report :: proc(self: ^Instance) -> Global_Report {
-    report: Global_Report = {}
-    wgpu.generate_report(self.ptr, &report)
-    return report
+	report: Global_Report = {}
+	wgpu.generate_report(self._ptr, &report)
+	return report
 }
 
 // Print memory report.
 instance_print_report :: proc(using self: ^Instance) {
-    report := self->generate_report()
+	report := instance_generate_report(self)
 
-    print_storage_report :: proc(report: Storage_Report, prefix: cstring) {
-        fmt.printf("\t%snum_occupied = %d\n", prefix, report.num_occupied)
-        fmt.printf("\t%snum_vacant = %d\n", prefix, report.num_vacant)
-        fmt.printf("\t%snum_error = %d\n", prefix, report.num_error)
-        fmt.printf("\t%selement_size = %d\n", prefix, report.element_size)
-    }
+	print_storage_report :: proc(report: Storage_Report, prefix: cstring) {
+		fmt.printf("\t%snum_occupied = %d\n", prefix, report.num_occupied)
+		fmt.printf("\t%snum_vacant = %d\n", prefix, report.num_vacant)
+		fmt.printf("\t%snum_error = %d\n", prefix, report.num_error)
+		fmt.printf("\t%selement_size = %d\n", prefix, report.element_size)
+	}
 
-    print_hub_report :: proc(report: Hub_Report, prefix: cstring) {
-        fmt.printf("  %s:\n", prefix)
-        print_storage_report(report.adapters, "adapters.")
-        print_storage_report(report.devices, "devices.")
-        print_storage_report(report.pipeline_layouts, "pipeline_layouts.")
-        print_storage_report(report.shader_modules, "shader_modules.")
-        print_storage_report(report.bind_group_layouts, "bind_group_layouts.")
-        print_storage_report(report.bind_groups, "bind_groups.")
-        print_storage_report(report.command_buffers, "command_buffers.")
-        print_storage_report(report.render_bundles, "render_bundles.")
-        print_storage_report(report.render_pipelines, "render_pipelines.")
-        print_storage_report(report.compute_pipelines, "compute_pipelines.")
-        print_storage_report(report.query_sets, "query_sets.")
-        print_storage_report(report.textures, "textures.")
-        print_storage_report(report.texture_views, "texture_views.")
-        print_storage_report(report.samplers, "samplers.")
-    }
+	print_hub_report :: proc(report: Hub_Report, prefix: cstring) {
+		fmt.printf("  %s:\n", prefix)
+		print_storage_report(report.adapters, "adapters.")
+		print_storage_report(report.devices, "devices.")
+		print_storage_report(report.pipeline_layouts, "pipeline_layouts.")
+		print_storage_report(report.shader_modules, "shader_modules.")
+		print_storage_report(report.bind_group_layouts, "bind_group_layouts.")
+		print_storage_report(report.bind_groups, "bind_groups.")
+		print_storage_report(report.command_buffers, "command_buffers.")
+		print_storage_report(report.render_bundles, "render_bundles.")
+		print_storage_report(report.render_pipelines, "render_pipelines.")
+		print_storage_report(report.compute_pipelines, "compute_pipelines.")
+		print_storage_report(report.query_sets, "query_sets.")
+		print_storage_report(report.textures, "textures.")
+		print_storage_report(report.texture_views, "texture_views.")
+		print_storage_report(report.samplers, "samplers.")
+	}
 
-    fmt.print("Global_Report {\n")
+	fmt.print("Global_Report {\n")
 
-    fmt.print("  Surfaces:\n")
-    print_storage_report(report.surfaces, "Surfaces:")
+	fmt.print("  Surfaces:\n")
+	print_storage_report(report.surfaces, "Surfaces:")
 
-    #partial switch report.backend_type {
-    case .D3D11:
-        print_hub_report(report.dx11, "D3D11")
-    case .D3D12:
-        print_hub_report(report.dx12, "D3D12")
-    case .Metal:
-        print_hub_report(report.metal, "Metal")
-    case .Vulkan:
-        print_hub_report(report.vulkan, "Vulkan")
-    case .OpenGL:
-        print_hub_report(report.gl, "OpenGL")
-    case:
-        fmt.printf("%s - Invalid backend type: %v", #procedure, report.backend_type)
-    }
+	#partial switch report.backend_type {
+	case .D3D11:
+		print_hub_report(report.dx11, "D3D11")
+	case .D3D12:
+		print_hub_report(report.dx12, "D3D12")
+	case .Metal:
+		print_hub_report(report.metal, "Metal")
+	case .Vulkan:
+		print_hub_report(report.vulkan, "Vulkan")
+	case .OpenGL:
+		print_hub_report(report.gl, "OpenGL")
+	case:
+		fmt.printf("%s - Invalid backend type: %v", #procedure, report.backend_type)
+	}
 
-    fmt.print("}\n")
+	fmt.print("}\n")
 }
 
-// Release instance.
+// Increase the reference count.
+instance_reference :: proc(using self: ^Instance) {
+	wgpu.instance_reference(_ptr)
+}
+
+// Release the `Instance`.
 instance_release :: proc(using self: ^Instance) {
-    if ptr != nil do wgpu.instance_release(ptr)
+	if _ptr != nil do wgpu.instance_release(_ptr)
 }
 
-@(private)
+@(private = "file")
 _on_request_adapter_callback :: proc "c" (
-    status: Request_Adapter_Status,
-    adapter: WGPU_Adapter,
-    message: cstring,
-    user_data: rawptr,
+	status: Request_Adapter_Status,
+	adapter: WGPU_Adapter,
+	message: cstring,
+	user_data: rawptr,
 ) {
-    response := cast(^Adapter_Response)user_data
-    response.status = status
+	response := cast(^Adapter_Response)user_data
+	response.status = status
 
-    if status == .Success {
-        response.adapter = adapter
-    } else {
-        context = runtime.default_context()
-        update_error_message(string(message))
-    }
+	if status == .Success {
+		response.adapter = adapter
+	} else {
+		context = runtime.default_context()
+		update_error_message(string(message))
+	}
 }

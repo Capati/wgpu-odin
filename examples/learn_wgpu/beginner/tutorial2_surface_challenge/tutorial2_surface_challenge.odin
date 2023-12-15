@@ -11,83 +11,117 @@ import app "../../../framework/application"
 import "../../../framework/application/events"
 import "../../../framework/renderer"
 
+State :: struct {
+	gpu:         ^renderer.Renderer,
+	clear_color: wgpu.Color,
+}
+
+Error :: union #shared_nil {
+	app.Application_Error,
+	renderer.Renderer_Error,
+	wgpu.Error_Type,
+}
+
+init_example :: proc() -> (state: State, err: Error) {
+	state.gpu = renderer.init() or_return
+	return
+}
+
+render :: proc(using state: ^State) -> (err: Error) {
+	frame := renderer.get_current_texture_frame(gpu) or_return
+	defer wgpu.texture_release(&frame.texture)
+	if gpu.skip_frame do return
+
+	view := wgpu.texture_create_view(&frame.texture, nil) or_return
+	defer wgpu.texture_view_release(&view)
+
+	encoder := wgpu.device_create_command_encoder(
+		&gpu.device,
+		&wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
+	) or_return
+	defer wgpu.command_encoder_release(&encoder)
+
+	render_pass := wgpu.command_encoder_begin_render_pass(
+		&encoder,
+		& {
+			label = "Render Pass",
+			color_attachments = []wgpu.Render_Pass_Color_Attachment {
+				 {
+					view = &view,
+					resolve_target = nil,
+					load_op = .Clear,
+					store_op = .Store,
+					clear_value = clear_color,
+				},
+			},
+			depth_stencil_attachment = nil,
+		},
+	)
+	wgpu.render_pass_end(&render_pass) or_return
+	wgpu.render_pass_release(&render_pass)
+
+	command_buffer := wgpu.command_encoder_finish(&encoder, "Default command buffer") or_return
+	defer wgpu.command_buffer_release(&command_buffer)
+
+	wgpu.queue_submit(&gpu.queue, &command_buffer)
+	wgpu.surface_present(&gpu.surface)
+
+	return
+}
+
+resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Error) {
+	renderer.resize_surface(gpu, {size.width, size.height}) or_return
+	return
+}
+
 main :: proc() {
-    app_properties := app.Default_Properties
-    app_properties.title = "Tutorial 2 - Surface Challenge"
-    if app.init(app_properties) != .No_Error do return
-    defer app.deinit()
+	app_properties := app.Default_Properties
+	app_properties.title = "Tutorial 2 - Surface Challenge"
+	if app.init(app_properties) != .No_Error do return
+	defer app.deinit()
 
-    gpu, gpu_err := renderer.init()
-    if gpu_err != .No_Error do return
-    defer renderer.deinit(gpu)
+	state, state_err := init_example()
+	if state_err != nil do return
+	defer renderer.deinit(state.gpu)
 
-    clear_color := wgpu.Color_Black
+	state.clear_color = wgpu.Color_Black
 
-    fmt.printf("Entering main loop...\n\n")
+	fmt.printf("Entering main loop...\n\n")
 
-    main_loop: for {
-        iter := app.process_events()
+	main_loop: for {
+		iter := app.process_events()
 
-        for iter->has_next() {
-            #partial switch event in iter->next() {
-            case events.Quit_Event:
-                break main_loop
-            case events.Key_Press_Event:
-            case events.Mouse_Press_Event:
-            case events.Mouse_Motion_Event:
-                clear_color = {
-                    r = cast(f64)event.x / cast(f64)gpu.config.width,
-                    g = cast(f64)event.y / cast(f64)gpu.config.height,
-                    b = 1.0,
-                    a = 1.0,
-                }
-            case events.Mouse_Scroll_Event:
-            case events.Framebuffer_Resize_Event:
-                resize_err := renderer.resize_surface(gpu, {event.width, event.height})
-                if resize_err != .No_Error do break main_loop
-            }
-        }
+		for iter->has_next() {
+			#partial switch event in iter->next() {
+			case events.Quit_Event:
+				break main_loop
+			case events.Key_Press_Event:
+			case events.Mouse_Press_Event:
+			case events.Mouse_Motion_Event:
+				state.clear_color = {
+					r = cast(f64)event.x / cast(f64)state.gpu.config.width,
+					g = cast(f64)event.y / cast(f64)state.gpu.config.height,
+					b = 1.0,
+					a = 1.0,
+				}
+			case events.Mouse_Scroll_Event:
+			case events.Framebuffer_Resize_Event:
+				if err := resize_surface(&state, {event.width, event.height}); err != nil {
+					fmt.eprintf(
+						"Error occurred while resizing [%v]: %v\n",
+						err,
+						wgpu.get_error_message(),
+					)
+					break main_loop
+				}
+			}
+		}
 
-        frame, frame_err := renderer.get_current_texture_frame(gpu)
-        if frame_err != .No_Error do break main_loop
-        defer frame->release()
-        if gpu.skip_frame do continue main_loop
+		if err := render(&state); err != nil {
+			fmt.eprintf("Error occurred while rendering [%v]: %v\n", err, wgpu.get_error_message())
+			break main_loop
+		}
+	}
 
-        view, view_err := frame.texture->create_view(nil)
-        if view_err != .No_Error do break main_loop
-        defer view->release()
-
-        encoder, encoder_err := gpu.device->create_command_encoder(
-            &wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
-        )
-        if encoder_err != .No_Error do break main_loop
-        defer encoder->release()
-
-        render_pass := encoder->begin_render_pass(
-            & {
-                label = "Render Pass",
-                color_attachments = []wgpu.Render_Pass_Color_Attachment {
-                     {
-                        view = &view,
-                        resolve_target = nil,
-                        load_op = .Clear,
-                        store_op = .Store,
-                        clear_value = clear_color,
-                    },
-                },
-                depth_stencil_attachment = nil,
-            },
-        )
-        if render_pass->end() != .No_Error do break main_loop
-        render_pass->release()
-
-        command_buffer, command_buffer_err := encoder->finish("Default command buffer")
-        if command_buffer_err != .No_Error do break main_loop
-        defer command_buffer->release()
-
-        gpu.device.queue->submit(command_buffer)
-        gpu.surface->present()
-    }
-
-    fmt.println("Exiting...")
+	fmt.println("Exiting...")
 }

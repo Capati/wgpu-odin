@@ -6,14 +6,14 @@ import wgpu "../bindings"
 // NOTE: Commented lines are wrapped types.
 
 
-Array_Layer_Count_Undefined :: wgpu.Array_Layer_Count_Undefined
-Copy_Stride_Undefined :: wgpu.Copy_Stride_Undefined
-Limit_U32_Undefined :: wgpu.Limit_U32_Undefined
-Limit_U64_Undefined :: wgpu.Limit_U64_Undefined
-Mip_Level_Count_Undefined :: wgpu.Mip_Level_Count_Undefined
-Wgpu_Query_Set_Index_Undefined :: wgpu.Wgpu_Query_Set_Index_Undefined
-Whole_Map_Si :: wgpu.Whole_Map_Si
-Whole_Size :: wgpu.Whole_Size
+ARRAY_LAYER_COUNT_UNDEFINED :: wgpu.ARRAY_LAYER_COUNT_UNDEFINED
+COPY_STRIDE_UNDEFINED :: wgpu.COPY_STRIDE_UNDEFINED
+LIMIT_U32_UNDEFINED :: wgpu.LIMIT_U32_UNDEFINED
+LIMIT_U64_UNDEFINED :: wgpu.LIMIT_U64_UNDEFINED
+MIP_LEVEL_COUNT_UNDEFINED :: wgpu.MIP_LEVEL_COUNT_UNDEFINED
+WGPU_QUERY_SET_INDEX_UNDEFINED :: wgpu.WGPU_QUERY_SET_INDEX_UNDEFINED
+WHOLE_MAP_SI :: wgpu.WHOLE_MAP_SI
+WHOLE_SIZE :: wgpu.WHOLE_SIZE
 
 WGPU_Adapter :: wgpu.Adapter
 WGPU_Bind_Group :: wgpu.Bind_Group

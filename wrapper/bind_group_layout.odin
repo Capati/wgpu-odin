@@ -3,40 +3,27 @@ package wgpu
 // Package
 import wgpu "../bindings"
 
+// Handle to a binding group layout.
+//
+// A `Bind_Group_Layout` is a handle to the GPU-side layout of a binding group. It can be used to
+// create a `Bind_Group_Descriptor` object, which in turn can be used to create a `Bind_Group`
+// object with `device_create_bind_group`. A series of `Bind_Group_Layout`s can also be used to
+// create a `Pipeline_Layout_Descriptor`, which can be used to create a `Pipeline_Layout`.
 Bind_Group_Layout :: struct {
-    ptr:          WGPU_Bind_Group_Layout,
-    using vtable: ^GPU_Bind_Group_Layout_VTable,
+	_ptr: WGPU_Bind_Group_Layout,
 }
 
-@(private)
-GPU_Bind_Group_Layout_VTable :: struct {
-    set_label: proc(self: ^Bind_Group_Layout, label: cstring),
-    reference: proc(self: ^Bind_Group_Layout),
-    release:   proc(self: ^Bind_Group_Layout),
-}
-
-@(private)
-default_bind_group_layout_vtable := GPU_Bind_Group_Layout_VTable {
-    set_label = bind_group_layout_set_label,
-    reference = bind_group_layout_reference,
-    release   = bind_group_layout_release,
-}
-
-@(private)
-default_bind_group_layout := Bind_Group_Layout {
-    ptr    = nil,
-    vtable = &default_bind_group_layout_vtable,
-}
-
+// Set debug label.
 bind_group_layout_set_label :: proc(using self: ^Bind_Group_Layout, label: cstring) {
-    wgpu.bind_group_layout_set_label(ptr, label)
+	wgpu.bind_group_layout_set_label(_ptr, label)
 }
 
+// Increase the reference count.
 bind_group_layout_reference :: proc(using self: ^Bind_Group_Layout) {
-    wgpu.bind_group_layout_reference(ptr)
+	wgpu.bind_group_layout_reference(_ptr)
 }
 
 // Release the `Bind_Group_Layout`.
 bind_group_layout_release :: proc(using self: ^Bind_Group_Layout) {
-    wgpu.bind_group_layout_release(ptr)
+	wgpu.bind_group_layout_release(_ptr)
 }

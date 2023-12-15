@@ -4,254 +4,216 @@ package wgpu
 import wgpu "../bindings"
 
 // Encodes a series of GPU operations into a reusable "render bundle".
+//
+// It only supports a handful of render commands, but it makes them reusable. It can be created
+// with `device_create_render_bundle_encoder`. It can be executed onto a `Command_Encoder` using
+// `render_pass_execute_bundles`.
+//
+// Executing a `Render_Bundle` is often more efficient than issuing the underlying commands
+// manually.
 Render_Bundle_Encoder :: struct {
-    ptr:          WGPU_Render_Bundle_Encoder,
-    using vtable: ^Render_Bundle_Encoder_VTable,
+	_ptr: WGPU_Render_Bundle_Encoder,
 }
 
-@(private)
-Render_Bundle_Encoder_VTable :: struct {
-    draw:                  proc(
-        self: ^Render_Bundle_Encoder,
-        vertex_count: u32,
-        instance_count: u32 = 1,
-        first_vertex: u32 = 0,
-        first_instance: u32 = 0,
-    ),
-    draw_indexed:          proc(
-        self: ^Render_Bundle_Encoder,
-        index_count: u32,
-        instance_count: u32 = 1,
-        firstIndex: u32 = 0,
-        base_vertex: i32 = 0,
-        first_instance: u32 = 0,
-    ),
-    draw_indexed_indirect: proc(
-        self: ^Render_Bundle_Encoder,
-        indirect_buffer: Buffer,
-        indirect_offset: u64 = 0,
-    ),
-    draw_indirect:         proc(
-        self: ^Render_Bundle_Encoder,
-        indirect_buffer: Buffer,
-        indirect_offset: u64 = 0,
-    ),
-    finish:                proc(
-        self: ^Render_Bundle_Encoder,
-        descriptor: ^Render_Bundle_Descriptor,
-    ) -> (
-        Render_Bundle,
-        Error_Type,
-    ),
-    insert_debug_marker:   proc(self: ^Render_Bundle_Encoder, marker_label: cstring),
-    pop_debug_group:       proc(self: ^Render_Bundle_Encoder),
-    push_debug_group:      proc(self: ^Render_Bundle_Encoder, group_label: cstring),
-    set_bind_group:        proc(
-        self: ^Render_Bundle_Encoder,
-        group_index: u32,
-        group: ^Bind_Group,
-        dynamic_offsets: []u32 = {},
-    ),
-    set_index_buffer:      proc(
-        self: ^Render_Bundle_Encoder,
-        buffer: Buffer,
-        format: Index_Format,
-        offset: u64 = 0,
-        size: u64 = Whole_Size,
-    ),
-    set_label:             proc(self: ^Render_Bundle_Encoder, label: cstring),
-    set_pipeline:          proc(self: ^Render_Bundle_Encoder, pipeline: Render_Pipeline),
-    set_vertex_buffer:     proc(
-        self: ^Render_Bundle_Encoder,
-        slot: u32,
-        buffer: Buffer,
-        offset: u64 = 0,
-        size: u64 = Whole_Size,
-    ),
-    reference:             proc(self: ^Render_Bundle_Encoder),
-    release:               proc(self: ^Render_Bundle_Encoder),
+// Finishes recording and returns a `Render_Bundle` that can be executed in other render passes.
+render_bundle_encoder_finish :: proc(
+	using self: ^Render_Bundle_Encoder,
+	descriptor: ^Render_Bundle_Descriptor,
+) -> (
+	render_bundle: Render_Bundle,
+	err: Error_Type,
+) {
+	desc: wgpu.Render_Bundle_Descriptor
+
+	if descriptor != nil {
+		desc.label = descriptor.label
+	}
+
+	render_bundle_ptr := wgpu.render_bundle_encoder_finish(_ptr, &desc)
+
+	if render_bundle_ptr == nil {
+		update_error_message("Failed to acquire RenderBundle")
+		return {}, .Unknown
+	}
+
+	render_bundle._ptr = render_bundle_ptr
+
+	return
 }
 
-@(private)
-default_render_bundle_encoder_vtable := Render_Bundle_Encoder_VTable {
-    draw                  = render_bundle_encoder_draw,
-    draw_indexed          = render_bundle_encoder_draw_indexed,
-    draw_indexed_indirect = render_bundle_encoder_draw_indexed_indirect,
-    draw_indirect         = render_bundle_encoder_draw_indirect,
-    finish                = render_bundle_encoder_finish,
-    insert_debug_marker   = render_bundle_encoder_insert_debug_marker,
-    pop_debug_group       = render_bundle_encoder_pop_debug_group,
-    push_debug_group      = render_bundle_encoder_push_debug_group,
-    set_bind_group        = render_bundle_encoder_set_bind_group,
-    set_index_buffer      = render_bundle_encoder_set_index_buffer,
-    set_label             = render_bundle_encoder_set_label,
-    set_pipeline          = render_bundle_encoder_set_pipeline,
-    set_vertex_buffer     = render_bundle_encoder_set_vertex_buffer,
-    reference             = render_bundle_encoder_reference,
-    release               = render_bundle_encoder_release,
+// Sets the active bind group for a given bind group index. The bind group layout in the active
+// pipeline when any `draw` procedure is called must match the layout of this bind group.
+//
+// If the bind group have dynamic offsets, provide them in the binding order.
+render_bundle_encoder_set_bind_group :: proc(
+	using self: ^Render_Bundle_Encoder,
+	group_index: u32,
+	group: ^Bind_Group,
+	dynamic_offsets: []u32 = {},
+) {
+	dynamic_offset_count := cast(uint)len(dynamic_offsets)
+
+	if dynamic_offset_count == 0 {
+		wgpu.render_bundle_encoder_set_bind_group(_ptr, group_index, group._ptr, 0, nil)
+	} else {
+		wgpu.render_bundle_encoder_set_bind_group(
+			_ptr,
+			group_index,
+			group._ptr,
+			dynamic_offset_count,
+			raw_data(dynamic_offsets),
+		)
+	}
 }
 
-@(private)
-default_render_bundle_encoder := Render_Bundle_Encoder {
-    ptr    = nil,
-    vtable = &default_render_bundle_encoder_vtable,
+// Sets the active render pipeline.
+//
+// Subsequent draw calls will exhibit the behavior defined by pipeline.
+render_bundle_encoder_set_pipeline :: proc(
+	using self: ^Render_Bundle_Encoder,
+	pipeline: Render_Pipeline,
+) {
+	wgpu.render_bundle_encoder_set_pipeline(_ptr, pipeline._ptr)
+}
+
+// Sets the active index buffer.
+//
+// Subsequent calls to draw_indexed on this `Render_Bundle_Encoder` will use buffer as the source
+// index buffer.
+render_bundle_encoder_set_index_buffer :: proc(
+	using self: ^Render_Bundle_Encoder,
+	buffer: Buffer,
+	format: Index_Format,
+	offset: u64 = 0,
+	size: u64 = WHOLE_SIZE,
+) {
+	wgpu.render_bundle_encoder_set_index_buffer(_ptr, buffer._ptr, format, offset, size)
+}
+
+// Assign a vertex buffer to a slot.
+//
+// Subsequent calls to `draw` and `draw_indexed` on this `Render_Bundle_Encoder` will use buffer as
+// one of the source vertex buffers.
+//
+// The slot refers to the index of the matching descriptor in `VertexState.buffers`.
+render_bundle_encoder_set_vertex_buffer :: proc(
+	using self: ^Render_Bundle_Encoder,
+	slot: u32,
+	buffer: Buffer,
+	offset: u64 = 0,
+	size: u64 = WHOLE_SIZE,
+) {
+	wgpu.render_bundle_encoder_set_vertex_buffer(_ptr, slot, buffer._ptr, offset, size)
 }
 
 // Draws primitives from the active vertex buffer(s).
 render_bundle_encoder_draw :: proc(
-    using self: ^Render_Bundle_Encoder,
-    vertex_count: u32,
-    instance_count: u32 = 1,
-    first_vertex: u32 = 0,
-    first_instance: u32 = 0,
+	using self: ^Render_Bundle_Encoder,
+	vertex_count: u32,
+	instance_count: u32 = 1,
+	first_vertex: u32 = 0,
+	first_instance: u32 = 0,
 ) {
-    wgpu.render_bundle_encoder_draw(
-        ptr,
-        vertex_count,
-        instance_count,
-        first_vertex,
-        first_instance,
-    )
+	wgpu.render_bundle_encoder_draw(
+		_ptr,
+		vertex_count,
+		instance_count,
+		first_vertex,
+		first_instance,
+	)
 }
 
 // Draws indexed primitives using the active index buffer and the active vertex buffer(s).
 render_bundle_encoder_draw_indexed :: proc(
-    using self: ^Render_Bundle_Encoder,
-    index_count: u32,
-    instance_count: u32 = 1,
-    firstIndex: u32 = 0,
-    base_vertex: i32 = 0,
-    first_instance: u32 = 0,
+	using self: ^Render_Bundle_Encoder,
+	index_count: u32,
+	instance_count: u32 = 1,
+	firstIndex: u32 = 0,
+	base_vertex: i32 = 0,
+	first_instance: u32 = 0,
 ) {
-    wgpu.render_bundle_encoder_draw_indexed(
-        ptr,
-        index_count,
-        instance_count,
-        firstIndex,
-        base_vertex,
-        first_instance,
-    )
+	wgpu.render_bundle_encoder_draw_indexed(
+		_ptr,
+		index_count,
+		instance_count,
+		firstIndex,
+		base_vertex,
+		first_instance,
+	)
 }
 
+// Draws indexed primitives using the active index buffer and the active vertex buffers, based on
+// the contents of the `indirect_buffer`.
 render_bundle_encoder_draw_indexed_indirect :: proc(
-    using self: ^Render_Bundle_Encoder,
-    indirect_buffer: Buffer,
-    indirect_offset: u64 = 0,
+	using self: ^Render_Bundle_Encoder,
+	indirect_buffer: Buffer,
+	indirect_offset: u64 = 0,
 ) {
-    wgpu.render_bundle_encoder_draw_indexed_indirect(ptr, indirect_buffer.ptr, indirect_offset)
+	wgpu.render_bundle_encoder_draw_indexed_indirect(_ptr, indirect_buffer._ptr, indirect_offset)
 }
 
+// Draws primitives from the active vertex buffer(s) based on the contents of the `indirect_buffer`.
 render_bundle_encoder_draw_indirect :: proc(
-    using self: ^Render_Bundle_Encoder,
-    indirect_buffer: Buffer,
-    indirect_offset: u64 = 0,
+	using self: ^Render_Bundle_Encoder,
+	indirect_buffer: Buffer,
+	indirect_offset: u64 = 0,
 ) {
-    wgpu.render_bundle_encoder_draw_indirect(ptr, indirect_buffer.ptr, indirect_offset)
+	wgpu.render_bundle_encoder_draw_indirect(_ptr, indirect_buffer._ptr, indirect_offset)
 }
 
-render_bundle_encoder_finish :: proc(
-    using self: ^Render_Bundle_Encoder,
-    descriptor: ^Render_Bundle_Descriptor,
-) -> (
-    render_bundle: Render_Bundle,
-    err: Error_Type,
-) {
-    desc: wgpu.Render_Bundle_Descriptor
+// // Set push constant data for subsequent draw calls.
+// //
+// // Write the bytes in `data` at offset `offset` within push constant storage, all of which are
+// // accessible by all the pipeline stages in `stages`, and no others. Both `offset` and the length
+// // of `data` must be multiples of `Push_Constant_Alignment`, which is always `4`.
+// render_bundle_encoder_set_push_constants :: proc(
+// 	using self: ^Render_Bundle_Encoder,
+// 	stages: Shader_Stage_Flags,
+// 	offset: u32,
+// 	data: []byte,
+// ) {
+// 	size := cast(u32)len(data)
 
-    if descriptor != nil {
-        desc.label = descriptor.label
-    }
+// 	if size == 0 {
+// 		wgpu.render_bundle_encoder_set_push_constants(_ptr, stages, offset, 0, nil)
+// 		return
+// 	}
 
-    render_bundle_ptr := wgpu.render_bundle_encoder_finish(ptr, &desc)
+// 	wgpu.render_bundle_encoder_set_push_constants(_ptr, stages, offset, size, raw_data(data))
+// }
 
-    if render_bundle_ptr == nil {
-        update_error_message("Failed to acquire RenderBundle")
-        return {}, .Unknown
-    }
-
-    render_bundle = default_render_bundle
-    render_bundle.ptr = render_bundle_ptr
-
-    return
-}
-
+// Inserts debug marker.
 render_bundle_encoder_insert_debug_marker :: proc(
-    using self: ^Render_Bundle_Encoder,
-    marker_label: cstring,
+	using self: ^Render_Bundle_Encoder,
+	marker_label: cstring,
 ) {
-    wgpu.render_bundle_encoder_insert_debug_marker(ptr, marker_label)
+	wgpu.render_bundle_encoder_insert_debug_marker(_ptr, marker_label)
 }
 
-render_bundle_encoder_pop_debug_group :: proc(using self: ^Render_Bundle_Encoder) {
-    wgpu.render_bundle_encoder_pop_debug_group(ptr)
-}
-
+// Start record commands and group it into debug marker group.
 render_bundle_encoder_push_debug_group :: proc(
-    using self: ^Render_Bundle_Encoder,
-    group_label: cstring,
+	using self: ^Render_Bundle_Encoder,
+	group_label: cstring,
 ) {
-    wgpu.render_bundle_encoder_push_debug_group(ptr, group_label)
+	wgpu.render_bundle_encoder_push_debug_group(_ptr, group_label)
 }
 
-render_bundle_encoder_set_bind_group :: proc(
-    using self: ^Render_Bundle_Encoder,
-    group_index: u32,
-    group: ^Bind_Group,
-    dynamic_offsets: []u32 = {},
-) {
-    dynamic_offset_count := cast(uint)len(dynamic_offsets)
-
-    if dynamic_offset_count == 0 {
-        wgpu.render_bundle_encoder_set_bind_group(ptr, group_index, group.ptr, 0, nil)
-    } else {
-        wgpu.render_bundle_encoder_set_bind_group(
-            ptr,
-            group_index,
-            group.ptr,
-            dynamic_offset_count,
-            raw_data(dynamic_offsets),
-        )
-    }
+// Stops command recording and creates debug group.
+render_bundle_encoder_pop_debug_group :: proc(using self: ^Render_Bundle_Encoder) {
+	wgpu.render_bundle_encoder_pop_debug_group(_ptr)
 }
 
-render_bundle_encoder_set_index_buffer :: proc(
-    using self: ^Render_Bundle_Encoder,
-    buffer: Buffer,
-    format: Index_Format,
-    offset: u64 = 0,
-    size: u64 = Whole_Size,
-) {
-    wgpu.render_bundle_encoder_set_index_buffer(ptr, buffer.ptr, format, offset, size)
-}
-
-// Sets label.
+// Set debug label.
 render_bundle_encoder_set_label :: proc(using self: ^Render_Bundle_Encoder, label: cstring) {
-    wgpu.render_bundle_encoder_set_label(ptr, label)
+	wgpu.render_bundle_encoder_set_label(_ptr, label)
 }
 
-// Sets the active render pipeline.
-render_bundle_encoder_set_pipeline :: proc(
-    using self: ^Render_Bundle_Encoder,
-    pipeline: Render_Pipeline,
-) {
-    wgpu.render_bundle_encoder_set_pipeline(ptr, pipeline.ptr)
-}
-
-// Assign a vertex buffer to a slot.
-render_bundle_encoder_set_vertex_buffer :: proc(
-    using self: ^Render_Bundle_Encoder,
-    slot: u32,
-    buffer: Buffer,
-    offset: u64 = 0,
-    size: u64 = Whole_Size,
-) {
-    wgpu.render_bundle_encoder_set_vertex_buffer(ptr, slot, buffer.ptr, offset, size)
-}
-
+// Increase the reference count.
 render_bundle_encoder_reference :: proc(using self: ^Render_Bundle_Encoder) {
-    wgpu.render_bundle_encoder_reference(ptr)
+	wgpu.render_bundle_encoder_reference(_ptr)
 }
 
+// Release the `Render_Bundle_Encoder`.
 render_bundle_encoder_release :: proc(using self: ^Render_Bundle_Encoder) {
-    wgpu.render_bundle_encoder_release(ptr)
+	wgpu.render_bundle_encoder_release(_ptr)
 }

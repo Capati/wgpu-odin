@@ -4,40 +4,25 @@ package wgpu
 import wgpu "../bindings"
 
 // Handle to a command buffer on the GPU.
+//
+// A `Command_Buffer` represents a complete sequence of commands that may be submitted to a command
+// queue with `queue_submit`. A `Command_Buffer` is obtained by recording a series of commands to a
+// `Command_Encoder` and then calling `command_encoder_finish`.
 Command_Buffer :: struct {
-    ptr:          WGPU_Command_Buffer,
-    using vtable: ^Command_Buffer_VTable,
+	_ptr: WGPU_Command_Buffer,
 }
 
-@(private)
-Command_Buffer_VTable :: struct {
-    set_label: proc(self: ^Command_Buffer, label: cstring),
-    reference: proc(self: ^Command_Buffer),
-    release:   proc(self: ^Command_Buffer),
-}
-
-@(private)
-default_command_buffer_vtable := Command_Buffer_VTable {
-    set_label = command_buffer_set_label,
-    reference = command_buffer_reference,
-    release   = command_buffer_release,
-}
-
-@(private)
-default_command_buffer := Command_Buffer {
-    ptr    = nil,
-    vtable = &default_command_buffer_vtable,
-}
-
+// Set debug label.
 command_buffer_set_label :: proc(using self: ^Command_Buffer, label: cstring) {
-    wgpu.command_buffer_set_label(ptr, label)
+	wgpu.command_buffer_set_label(_ptr, label)
 }
 
+// Increase the reference count.
 command_buffer_reference :: proc(using self: ^Command_Buffer) {
-    wgpu.command_buffer_reference(ptr)
+	wgpu.command_buffer_reference(_ptr)
 }
 
 // Release the `Command_Buffer`.
 command_buffer_release :: proc(using self: ^Command_Buffer) {
-    wgpu.command_buffer_release(ptr)
+	wgpu.command_buffer_release(_ptr)
 }

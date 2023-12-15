@@ -2,28 +2,18 @@ package wgpu
 
 import wgpu "../bindings"
 
+// Surface texture that can be rendered to. Result of a successful call to
+// `surface_get_current_texture`.
+//
+// This type is unique to the wgpu-native. In the WebGPU specification, the `GPUCanvasContext`
+// provides a texture without any additional information.
 Surface_Texture :: struct {
-    texture:      Texture,
-    suboptimal:   bool,
-    status:       wgpu.Surface_Get_Current_Texture_Status,
-    using vtable: ^Surface_Texture_VTable,
+	texture:    Texture,
+	suboptimal: bool,
+	status:     wgpu.Surface_Get_Current_Texture_Status,
 }
 
-@(private)
-Surface_Texture_VTable :: struct {
-    release: proc(self: ^Surface_Texture),
-}
-
-@(private)
-default_surface_texture_vtable := Surface_Texture_VTable {
-    release = surface_texture_release,
-}
-
-@(private)
-default_surface_texture := Surface_Texture {
-    vtable = &default_surface_texture_vtable,
-}
-
+// Release the texture that belongs to this `Surface_Texture`.
 surface_texture_release :: proc(using self: ^Surface_Texture) {
-    texture->release()
+	texture_release(&texture)
 }
