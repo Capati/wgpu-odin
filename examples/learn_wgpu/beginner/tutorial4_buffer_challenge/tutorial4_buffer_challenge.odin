@@ -81,7 +81,7 @@ init_example :: proc() -> (state: State, err: Error) {
 				},
 			},
 		},
-		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .None},
+		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
 		depth_stencil = nil,
 		multisample = {count = 1, mask = ~u32(0), alpha_to_coverage_enabled = false},
 	}
