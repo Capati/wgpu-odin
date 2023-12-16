@@ -24,38 +24,54 @@ buffer_destroy :: proc(using self: ^Buffer) {
 	wgpu.buffer_destroy(_ptr)
 }
 
-// Returns a `slice` of `bytes` with the contents of the `Buffer` in the given mapped
+// Returns a `slice` of `T` with the contents of the `Buffer` in the given mapped
 // range. Cannot modify the buffer's data.
-buffer_get_const_mapped_range :: proc(self: ^Buffer, offset: uint = 0, size: uint = 0) -> []byte {
+buffer_get_const_mapped_range :: proc(
+	self: ^Buffer,
+	$T: typeid,
+	offset: uint = 0,
+	size: uint = 0,
+) -> []T {
 	size := size
 
 	if size == 0 {
 		size = cast(uint)self.size
 	}
 
-	return slice.bytes_from_ptr(
-		wgpu.buffer_get_const_mapped_range(self._ptr, offset, size),
-		cast(int)size,
-	)
+	raw_data := wgpu.buffer_get_const_mapped_range(self._ptr, offset, size)
+
+	if raw_data == nil {
+		return {}
+	}
+
+	return slice.reinterpret([]T, slice.bytes_from_ptr(raw_data, cast(int)size))
+}
+
+// Returns a `slice` of `T` with the contents of the `Buffer` in the given mapped range.
+buffer_get_mapped_range :: proc(
+	self: ^Buffer,
+	$T: typeid,
+	offset: uint = 0,
+	size: uint = 0,
+) -> []T {
+	size := size
+
+	if size == 0 {
+		size = cast(uint)self.size
+	}
+
+	raw_data := wgpu.buffer_get_mapped_range(self._ptr, offset, size)
+
+	if raw_data == nil {
+		return {}
+	}
+
+	return slice.reinterpret([]T, slice.bytes_from_ptr(raw_data, cast(int)size))
 }
 
 // Get current `Buffer_Map_State` state.
 buffer_get_map_state :: proc(using self: ^Buffer) -> Buffer_Map_State {
 	return wgpu.buffer_get_map_state(_ptr)
-}
-
-// Returns a `slice` of `bytes` with the contents of the `Buffer` in the given mapped range.
-buffer_get_mapped_range :: proc(self: ^Buffer, offset: uint = 0, size: uint = 0) -> []byte {
-	size := size
-
-	if size == 0 {
-		size = cast(uint)self.size
-	}
-
-	return slice.bytes_from_ptr(
-		wgpu.buffer_get_mapped_range(self._ptr, offset, size),
-		cast(int)size,
-	)
 }
 
 // Returns the length of the buffer allocation in bytes.
@@ -80,13 +96,15 @@ _buffer_map_callback :: proc "c" (status: Buffer_Map_Async_Status, user_data: ra
 
 buffer_map_read :: proc(
 	self: ^Buffer,
+	$T: typeid,
 	offset: uint = 0,
 	size: uint = 0,
 ) -> (
-	[]byte,
-	Buffer_Map_Async_Status,
+	data: []T,
+	status: Buffer_Map_Async_Status,
 ) {
 	self._err_data.type = .No_Error
+
 	self.map_state = .Pending
 
 	res := Buffer_Map_Async_Response {
@@ -106,20 +124,22 @@ buffer_map_read :: proc(
 
 	wgpu.device_poll(self._device_ptr, true, nil)
 
-	if res.status != .Success {
+	status = res.status
+
+	if status != .Success {
 		update_error_message("Could not read buffer data")
-		return {}, res.status
+		return {}, status
 	}
 
 	self.map_state = .Mapped
 
-	data := buffer_get_mapped_range(self, offset, size)
+	data = buffer_get_mapped_range(self, T, offset, size)
 
 	if buffer_unmap(self) != .No_Error {
 		return {}, .Error
 	}
 
-	return data, .Success
+	return
 }
 
 buffer_map_write :: proc(
@@ -129,6 +149,7 @@ buffer_map_write :: proc(
 	size: uint = 0,
 ) -> Buffer_Map_Async_Status {
 	self._err_data.type = .No_Error
+
 	self.map_state = .Pending
 
 	res := Buffer_Map_Async_Response {

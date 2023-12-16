@@ -201,11 +201,10 @@ main :: proc() {
 	wgpu.queue_write_buffer(&queue, &storage_buffer, 0, wgpu.to_bytes(numbers))
 	wgpu.queue_submit(&queue, &command_buffer)
 
-	data, status := wgpu.buffer_map_read(&staging_buffer)
+	data, status := wgpu.buffer_map_read(&staging_buffer, u32)
 
 	if status == .Success {
-		buf := wgpu.from_bytes([]u32, data)
-		fmt.printf("Steps: [%d, %d, %d, %d]\n", buf[0], buf[1], buf[2], buf[3])
+		fmt.printf("Steps: [%d, %d, %d, %d]\n", data[0], data[1], data[2], data[3])
 	} else {
 		fmt.eprintf("ERROR: Failed to map async result buffer: %v\n", status)
 	}

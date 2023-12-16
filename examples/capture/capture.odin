@@ -176,22 +176,19 @@ main :: proc() {
 
 	wgpu.queue_submit(&queue, &command_buffer)
 
-	data, data_err := wgpu.buffer_map_read(&output_buffer)
+	data, data_err := wgpu.buffer_map_read(&output_buffer, byte)
 	if data_err != .Success do return
 
 	/* Async version:
-    handle_buffer_map := proc "c" (
-        status: wgpu.Buffer_Map_Async_Status,
-        user_data: rawptr,
-    ) {
-        context = runtime.default_context()
-        fmt.printf("Buffer map status: %v\n", status)
-    }
-    output_buffer->map_async({.Read}, handle_buffer_map, nil, 0, buffer_size)
-    device->poll(true, nil)
+	handle_buffer_map := proc "c" (status: wgpu.Buffer_Map_Async_Status, user_data: rawptr) {
+		context = runtime.default_context()
+		fmt.printf("Buffer map status: %v\n", status)
+	}
+	wgpu.buffer_map_async(&output_buffer, {.Read}, handle_buffer_map, nil, 0, buffer_size)
+	wgpu.device_poll(&device)
 
-    data := output_buffer->get_const_mapped_range(0, buffer_size)
-    */
+	data := wgpu.buffer_get_const_mapped_range(&output_buffer, byte, 0, buffer_size)
+	*/
 
 	result := image.write_png(
 		"red.png",
