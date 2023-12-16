@@ -55,7 +55,7 @@ device_create_buffer_with_data :: proc(
 	// Synchronously and immediately map a buffer for reading. If the buffer is not
 	// immediately mappable through `mapped_at_creation` or
 	// `buffer->map_async`, will panic.
-	mapped_array_buffer := buffer_get_mapped_range(&buffer, 0, cast(uint)padded_size)
+	mapped_array_buffer := buffer_get_mapped_range(&buffer, byte, 0, cast(uint)padded_size)
 	copy(mapped_array_buffer, descriptor.contents)
 	buffer_unmap(&buffer) or_return
 
