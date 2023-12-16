@@ -76,7 +76,7 @@ init_example :: proc() -> (state: State, err: Error) {
 				},
 			},
 		},
-		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .None},
+		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
 		// Enable depth testing so that the fragment closest to the camera
 		// is rendered in front.
 		depth_stencil = & {
