@@ -19,3 +19,5 @@
 
 # logs
 /tmp
+
+**/.DS_Store
