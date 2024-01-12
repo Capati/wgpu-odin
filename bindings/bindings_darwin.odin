@@ -1,3 +1,4 @@
+//+build darwin
 package wgpu_bindings
 
 import "vendor:darwin/Foundation"
