@@ -5,6 +5,10 @@ ARGS = -o:speed \
 	-define:CHECK_TO_BYTES=false
 OUT = -out:./build
 
+ifeq ($(shell uname -s),Darwin)
+	ARGS := $(ARGS) -extra-linker-flags:"-L/opt/homebrew/lib"
+endif
+
 .PHONY: all
 
 all: info_example triangle_example triangle_msaa_example cube_example cube_textured_example compute_example capture_example learn_wgpu_examples
