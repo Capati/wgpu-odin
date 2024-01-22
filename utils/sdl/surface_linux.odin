@@ -1,5 +1,4 @@
 //+build linux
-
 package wgpu_utils_sdl
 
 // Core
