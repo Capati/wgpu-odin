@@ -26,7 +26,7 @@ get_surface_descriptor :: proc(
 	} else if wm_info.subsystem == .X11 {
 		descriptor.target = wgpu.Surface_Descriptor_From_Xlib_Window {
 			display = wm_info.info.x11.display,
-			window  = cast(u32)wm_info.info.x11.window,
+			window  = cast(u64)wm_info.info.x11.window,
 		}
 	}
 
