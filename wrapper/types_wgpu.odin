@@ -55,6 +55,7 @@ Composite_Alpha_Mode :: wgpu.Composite_Alpha_Mode
 Instance_Extras :: wgpu.Instance_Extras
 Device_Extras :: wgpu.Device_Extras
 Required_Limits_Extras :: wgpu.Required_Limits_Extras
+Surface_Configuration_Extras :: wgpu.Surface_Configuration_Extras
 Supported_Limits_Extras :: wgpu.Supported_Limits_Extras
 Push_Constant_Range :: wgpu.Push_Constant_Range
 Pipeline_Layout_Extras :: wgpu.Pipeline_Layout_Extras
@@ -62,7 +63,7 @@ Submission_Index :: wgpu.Submission_Index
 Wrapped_Submission_Index :: wgpu.Wrapped_Submission_Index
 Shader_Define :: wgpu.Shader_Define
 Shader_Module_Glsl_Descriptor :: wgpu.Shader_Module_Glsl_Descriptor
-Storage_Report :: wgpu.Storage_Report
+Registry_Report :: wgpu.Registry_Report
 Hub_Report :: wgpu.Hub_Report
 Global_Report :: wgpu.Global_Report
 Instance_Enumerate_Adapter_Options :: wgpu.Instance_Enumerate_Adapter_Options
