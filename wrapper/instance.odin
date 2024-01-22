@@ -250,39 +250,38 @@ instance_generate_report :: proc(self: ^Instance) -> Global_Report {
 instance_print_report :: proc(using self: ^Instance) {
 	report := instance_generate_report(self)
 
-	print_storage_report :: proc(report: Storage_Report, prefix: cstring) {
-		fmt.printf("\t%snum_occupied = %d\n", prefix, report.num_occupied)
-		fmt.printf("\t%snum_vacant = %d\n", prefix, report.num_vacant)
+	print_registry_report :: proc(report: Registry_Report, prefix: cstring) {
+		fmt.printf("\t%snum_allocated = %d\n", prefix, report.num_allocated)
+		fmt.printf("\t%snum_kept_from_user = %d\n", prefix, report.num_kept_from_user)
+		fmt.printf("\t%snum_released_from_user = %d\n", prefix, report.num_released_from_user)
 		fmt.printf("\t%snum_error = %d\n", prefix, report.num_error)
 		fmt.printf("\t%selement_size = %d\n", prefix, report.element_size)
 	}
 
 	print_hub_report :: proc(report: Hub_Report, prefix: cstring) {
 		fmt.printf("  %s:\n", prefix)
-		print_storage_report(report.adapters, "adapters.")
-		print_storage_report(report.devices, "devices.")
-		print_storage_report(report.pipeline_layouts, "pipeline_layouts.")
-		print_storage_report(report.shader_modules, "shader_modules.")
-		print_storage_report(report.bind_group_layouts, "bind_group_layouts.")
-		print_storage_report(report.bind_groups, "bind_groups.")
-		print_storage_report(report.command_buffers, "command_buffers.")
-		print_storage_report(report.render_bundles, "render_bundles.")
-		print_storage_report(report.render_pipelines, "render_pipelines.")
-		print_storage_report(report.compute_pipelines, "compute_pipelines.")
-		print_storage_report(report.query_sets, "query_sets.")
-		print_storage_report(report.textures, "textures.")
-		print_storage_report(report.texture_views, "texture_views.")
-		print_storage_report(report.samplers, "samplers.")
+		print_registry_report(report.adapters, "adapters.")
+		print_registry_report(report.devices, "devices.")
+		print_registry_report(report.pipeline_layouts, "pipeline_layouts.")
+		print_registry_report(report.shader_modules, "shader_modules.")
+		print_registry_report(report.bind_group_layouts, "bind_group_layouts.")
+		print_registry_report(report.bind_groups, "bind_groups.")
+		print_registry_report(report.command_buffers, "command_buffers.")
+		print_registry_report(report.render_bundles, "render_bundles.")
+		print_registry_report(report.render_pipelines, "render_pipelines.")
+		print_registry_report(report.compute_pipelines, "compute_pipelines.")
+		print_registry_report(report.query_sets, "query_sets.")
+		print_registry_report(report.textures, "textures.")
+		print_registry_report(report.texture_views, "texture_views.")
+		print_registry_report(report.samplers, "samplers.")
 	}
 
 	fmt.print("Global_Report {\n")
 
 	fmt.print("  Surfaces:\n")
-	print_storage_report(report.surfaces, "Surfaces:")
+	print_registry_report(report.surfaces, "Surfaces:")
 
 	#partial switch report.backend_type {
-	case .D3D11:
-		print_hub_report(report.dx11, "D3D11")
 	case .D3D12:
 		print_hub_report(report.dx12, "D3D12")
 	case .Metal:

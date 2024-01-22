@@ -60,12 +60,7 @@ init :: proc(
 	wgpu.set_log_callback(_wgpu_native_log_callback, nil)
 	wgpu.set_log_level(.Warn)
 
-	instance, instance_err := wgpu.create_instance(
-		& {
-			backends = wgpu.Instance_Backend_Primary,
-			dx12_shader_compiler = wgpu.Default_Dx12_Compiler,
-		},
-	)
+	instance, instance_err := wgpu.create_instance()
 	if instance_err != .No_Error {
 		fmt.eprintf(
 			"Failed to create GPU Instance [%v]: %s\n",
@@ -113,12 +108,6 @@ init :: proc(
 				)
 
 				return nil, .Init_Failed
-			}
-		} else {
-			// By default force D3D12 on Windows if none is given
-			// https://github.com/gfx-rs/wgpu/issues/2719
-			when ODIN_OS == .Windows {
-				adapter_options.backend_type = .D3D12
 			}
 		}
 	}
