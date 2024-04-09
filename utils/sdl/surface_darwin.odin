@@ -2,7 +2,7 @@
 package wgpu_utils_sdl
 
 // Vendor
-import NS "vendor:darwin/Foundation"
+import NS "core:sys/darwin/Foundation"
 import CA "vendor:darwin/QuartzCore"
 import sdl "vendor:sdl2"
 
@@ -31,3 +31,4 @@ get_surface_descriptor :: proc(
 
 	return
 }
+
