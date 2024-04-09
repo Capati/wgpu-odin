@@ -3,7 +3,7 @@
 package wgpu_utils_glfw
 
 // Vendor
-import NS "vendor:darwin/Foundation"
+import NS "core:sys/darwin/Foundation"
 import CA "vendor:darwin/QuartzCore"
 import "vendor:glfw"
 
@@ -30,3 +30,4 @@ get_surface_descriptor :: proc(
 
 	return
 }
+
