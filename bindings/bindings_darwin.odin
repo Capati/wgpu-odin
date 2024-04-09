@@ -1,10 +1,10 @@
 //+build darwin
 package wgpu_bindings
 
-import "vendor:darwin/Foundation"
-import "vendor:darwin/QuartzCore"
+import "core:sys/darwin/Foundation"
 import "vendor:darwin/Metal"
 import "vendor:darwin/MetalKit"
+import "vendor:darwin/QuartzCore"
 
 // Required by wgpu-native
 foreign import _core_animation "system:QuartzCore.framework"
