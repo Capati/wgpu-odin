@@ -1,9 +1,12 @@
+
 # Build
 
 /examples/build/*
 !/examples/build/assets/
-!/examples/build/SDL2.dll
-!/examples/build/wgpu_native.dll
+bindings/lib/**/*.lib
+bindings/lib/**/*.dll
+bindings/lib/**/*.a
+bindings/lib/**/*.dylib
 
 # Bin
 
