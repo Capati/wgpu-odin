@@ -54,6 +54,8 @@ Native_Feature :: enum c.uint32_t {
 	Texture_Binding_Array                                         = 0x00030006,
 	Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing = 0x00030007,
 	Pipeline_Statistics_Query                                     = 0x00030008,
+	Storage_Resource_Binding_Array                                = 0x00030009,
+	Partially_Bound_Binding_Array                                 = 0x0003000A,
 }
 
 Log_Level :: enum c.uint32_t {
