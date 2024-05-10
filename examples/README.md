@@ -18,7 +18,9 @@ You can use the `build_win.bat` with a example name as argument, for example:
 ./build_win.bat cube_textured
 ```
 
-Examples that use the framework, the `Direct3D-12` is enforced, if you want to use `Vulkan`, provide the config as `-define:WGPU_BACKEND_TYPE=Vulkan`:
+To run the examples you need `wgpu_native.dll` along side the examples executables, just place this file in the `build` directory. Examples that use the framework need `SDL2.dll` that can be copied from your Odin installation in `\vendor\sdl2\SDL2.dll` to the `build` directory.
+
+If you want to enforce `DirectX 12`, provide the config as `-define:WGPU_BACKEND_TYPE=D3D12`:
 
 ```bat
 set ARGS=-o:speed ^
