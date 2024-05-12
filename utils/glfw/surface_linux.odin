@@ -13,44 +13,36 @@ import "vendor:glfw"
 // Package
 import wgpu "../../wrapper"
 
+// temporary versions of the required function prototypes
+foreign _ {
+	glfwGetX11Display :: proc() -> rawptr ---
+	glfwGetX11Window :: proc(window: glfw.WindowHandle) -> u64 ---
+	glfwGetWaylandDisplay :: proc() -> rawptr ---
+	glfwGetWaylandWindow :: proc(window: glfw.WindowHandle) -> rawptr ---
+}
+
 get_surface_descriptor :: proc(
 	w: glfw.WindowHandle,
 ) -> (
 	descriptor: wgpu.Surface_Descriptor,
 	err: wgpu.Error_Type,
 ) {
-	// We use the environment variable `WAYLAND_DISPLAY` to detect wayland
-	// sessions, and `DISPLAY` for Xorg/X11 sessions.
-	// If both are empty or not set, we can assume there is no support for
-	// graphical desktop session.
-
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-
-	wayland_value, found_wayland := os.lookup_env("WAYLAND_DISPLAY", context.temp_allocator)
-
-	// TODO: GLFW vendor is missing native bindings.
-
-	// Setup surface information
-	if found_wayland && wayland_value != "" {
+	switch glfw.GetPlatform() {
+	case glfw.PLATFORM_WAYLAND:
 		descriptor.target = wgpu.Surface_Descriptor_From_Wayland_Surface {
-			display = glfw.GetWaylandDisplay(),
-			surface = glfw.GetWaylandWindow(w),
+			display = glfwGetWaylandDisplay(),
+			surface = glfwGetWaylandWindow(w),
 		}
-
-		return
-	}
-
-	x11_value, found_x11 := os.lookup_env("DISPLAY", context.temp_allocator)
-
-	if found_x11 && x11_value != "" {
+	case glfw.PLATFORM_X11:
 		descriptor.target = wgpu.Surface_Descriptor_From_Xlib_Window {
-			display = glfw.GetX11Display(),
-			window  = cast(u32)glfw.GetX11Window(w),
+			display = glfwGetX11Display(),
+			window  = glfwGetX11Window(w),
 		}
-
-		return
+	case:
+		fmt.eprintf("ERROR: Unable to recognize the current desktop session.")
+		return {}, .Internal
 	}
 
-	fmt.eprintf("ERROR: Unable to recognize the current desktop session.")
-	return {}, .Internal
+	return
 }
+
