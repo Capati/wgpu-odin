@@ -101,45 +101,6 @@ surface_get_capabilities :: proc(
 
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
 
-	if caps.format_count > 0 {
-		caps.formats =
-		cast(^Texture_Format)(mem.alloc(
-				cast(int)caps.format_count * size_of(Texture_Format),
-				allocator = context.temp_allocator,
-			) or_else nil)
-
-		if caps.formats == nil {
-			update_error_message("Failed to allocate memory for formats array")
-			return {}, .Out_Of_Memory
-		}
-	}
-
-	if caps.present_mode_count > 0 {
-		caps.present_modes =
-		cast(^Present_Mode)(mem.alloc(
-				cast(int)caps.present_mode_count * size_of(Present_Mode),
-				allocator = context.temp_allocator,
-			) or_else nil)
-
-		if caps.present_modes == nil {
-			update_error_message("Failed to allocate memory for present modes array")
-			return {}, .Out_Of_Memory
-		}
-	}
-
-	if caps.alpha_mode_count > 0 {
-		caps.alpha_modes =
-		cast(^Composite_Alpha_Mode)(mem.alloc(
-				cast(int)caps.alpha_mode_count * size_of(Composite_Alpha_Mode),
-				allocator = context.temp_allocator,
-			) or_else nil)
-
-		if caps.alpha_modes == nil {
-			update_error_message("Failed to allocate memory for alpha modes array")
-			return {}, .Out_Of_Memory
-		}
-	}
-
 	wgpu.surface_get_capabilities(_ptr, adapter._ptr, &caps)
 
 	ret := Surface_Capabilities{}
@@ -161,6 +122,8 @@ surface_get_capabilities :: proc(
 		ret.alpha_modes = make([]Composite_Alpha_Mode, caps.alpha_mode_count, allocator)
 		copy(ret.alpha_modes, alpha_modes_tmp)
 	}
+
+	wgpu.surface_capabilities_free_members(caps)
 
 	return ret, .No_Error
 }
