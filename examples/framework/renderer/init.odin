@@ -156,9 +156,7 @@ init :: proc(
 		return nil, .Init_Failed
 	}
 	defer {
-		delete(caps.formats)
-		delete(caps.present_modes)
-		delete(caps.alpha_modes)
+		wgpu.surface_delete_capabilities(&caps)
 	}
 
 	size := app.get_size()

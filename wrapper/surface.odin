@@ -128,6 +128,12 @@ surface_get_capabilities :: proc(
 	return ret, .No_Error
 }
 
+surface_delete_capabilities :: proc(caps: ^Surface_Capabilities) {
+	delete(caps.formats)
+	delete(caps.present_modes)
+	delete(caps.alpha_modes)
+}
+
 // Returns the next texture to be presented by the swapchain for drawing.
 surface_get_current_texture :: proc(
 	using self: ^Surface,
