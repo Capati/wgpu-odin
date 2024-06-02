@@ -271,7 +271,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuRenderPassEncoderMultiDrawIndirect")
 	render_pass_encoder_multi_draw_indirect :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: c.uint64_t, count: c.uint32_t) ---
 	@(link_name = "wgpuRenderPassEncoderMultiDrawIndexedIndirect")
-	render_pass_encoder_multi_draw_indexed_indirect :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset, count: c.uint32_t) ---
+	render_pass_encoder_multi_draw_indexed_indirect :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: c.uint64_t, count: c.uint32_t) ---
 
 	@(link_name = "wgpuRenderPassEncoderMultiDrawIndirectCount")
 	render_pass_encoder_multi_draw_indirect_count :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: c.uint64_t, count_buffer: Buffer, count_buffer_offset, max_count: c.uint32_t) ---
