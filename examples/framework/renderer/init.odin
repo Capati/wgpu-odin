@@ -129,7 +129,7 @@ init :: proc(
 	wgpu.adapter_print_info(&adapter)
 
 	device_descriptor := wgpu.Device_Descriptor {
-		label    = adapter.info.name,
+		label    = adapter.properties.name,
 		limits   = properties.required_limits,
 		features = properties.required_features,
 	}

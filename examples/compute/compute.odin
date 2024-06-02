@@ -46,7 +46,7 @@ main :: proc() {
 	// `features` being the available features.
 	device, queue, device_err := wgpu.adapter_request_device(
 		&adapter,
-		&{label = adapter.info.name},
+		&wgpu.Device_Descriptor{label = adapter.properties.name},
 	)
 	if device_err != .No_Error {
 		fmt.eprintln("ERROR Couldn't Request Adapter:", wgpu.get_error_message())
