@@ -13,14 +13,7 @@ import wgpu "../bindings"
 //
 // Does not have to be kept alive.
 Adapter :: struct {
-	_ptr:     WGPU_Adapter,
-	features: []Feature,
-	limits:   Limits,
-	info:     Adapter_Info,
-}
-
-// Information about an adapter.
-Adapter_Info :: wgpu.Adapter_Properties
+	properties: Adapter_Properties,
 
 // List all features that are supported with this adapter.
 //
@@ -97,11 +90,8 @@ adapter_get_limits :: proc(self: ^Adapter) -> Limits {
 }
 
 // Get info about the adapter itself.
-adapter_request_info :: proc(using self: ^Adapter) -> Adapter_Info {
-	adapter_properties := Adapter_Info{}
-	wgpu.adapter_get_properties(_ptr, &adapter_properties)
-
-	return adapter_properties
+adapter_get_properties :: proc(self: ^Adapter) -> (properties: Adapter_Properties) {
+	return
 }
 
 // Check if adapter support a feature.

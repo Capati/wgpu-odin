@@ -67,7 +67,7 @@ main :: proc() {
 	defer wgpu.adapter_release(&adapter)
 
 	device_descriptor := wgpu.Device_Descriptor {
-		label = adapter.info.name,
+		label = adapter.properties.name,
 	}
 
 	device, queue, device_err := wgpu.adapter_request_device(&adapter, &device_descriptor)
