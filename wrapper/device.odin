@@ -400,13 +400,9 @@ device_create_buffer :: proc(
 		return {}, _err_data.type
 	}
 
-	wgpu.device_reference(_ptr)
-
-	buffer._ptr = buffer_ptr
-	buffer._device_ptr = self._ptr
-	buffer._err_data = _err_data
 	buffer.size = descriptor.size
 	buffer.usage = descriptor.usage
+	buffer._err_data = _err_data
 
 	return
 }

@@ -198,14 +198,31 @@ main :: proc() {
 	}
 	defer wgpu.command_buffer_release(&command_buffer)
 
-	wgpu.queue_write_buffer(&queue, &storage_buffer, 0, wgpu.to_bytes(numbers))
-	wgpu.queue_submit(&queue, &command_buffer)
+	result: wgpu.Buffer_Map_Async_Status
 
-	data, status := wgpu.buffer_map_read(&staging_buffer, u32)
+	handle_buffer_map := proc "c" (status: wgpu.Buffer_Map_Async_Status, user_data: rawptr) {
+		result := cast(^wgpu.Buffer_Map_Async_Status)user_data
+		result^ = status
+	}
+	wgpu.buffer_map_async(
+		&staging_buffer,
+		{.Read},
+		handle_buffer_map,
+		&result,
+		0,
+		uint(staging_buffer.size),
+	)
+	wgpu.device_poll(&device)
 
-	if status == .Success {
+	if result == .Success {
+		data := wgpu.buffer_get_const_mapped_range(
+			&staging_buffer,
+			u32,
+			0,
+			uint(staging_buffer.size),
+		)
 		fmt.printf("Steps: [%d, %d, %d, %d]\n", data[0], data[1], data[2], data[3])
 	} else {
-		fmt.eprintf("ERROR: Failed to map async result buffer: %v\n", status)
+		fmt.eprintf("ERROR: Failed to map async result buffer: %v\n", result)
 	}
 }
