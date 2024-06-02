@@ -450,6 +450,7 @@ Cull_Mode :: enum c.uint32_t {
 
 Device_Lost_Reason :: enum c.uint32_t {
 	Undefined,
+	Unknown,
 	Destroyed,
 }
 
