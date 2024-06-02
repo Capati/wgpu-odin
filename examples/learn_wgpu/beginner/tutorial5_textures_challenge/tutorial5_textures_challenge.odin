@@ -48,10 +48,10 @@ init_example :: proc() -> (state: State, err: Error) {
 
 	texture_bind_group_layout := wgpu.device_create_bind_group_layout(
 		&state.gpu.device,
-		& {
+		&{
 			label = "TextureBindGroupLayout",
-			entries =  {
-				 {
+			entries = {
+				{
 					binding = 0,
 					visibility = {.Fragment},
 					type = wgpu.Texture_Binding_Layout {
@@ -60,7 +60,7 @@ init_example :: proc() -> (state: State, err: Error) {
 						sample_type = .Float,
 					},
 				},
-				 {
+				{
 					binding = 1,
 					visibility = {.Fragment},
 					type = wgpu.Sampler_Binding_Layout{type = .Filtering},
@@ -74,10 +74,10 @@ init_example :: proc() -> (state: State, err: Error) {
 		&state.gpu.device,
 		&wgpu.Bind_Group_Descriptor {
 			label = "diffuse_bind_group",
-			layout = &texture_bind_group_layout,
-			entries =  {
-				{binding = 0, resource = &diffuse_texture.view},
-				{binding = 1, resource = &diffuse_texture.sampler},
+			layout = texture_bind_group_layout.ptr,
+			entries = {
+				{binding = 0, resource = diffuse_texture.view.ptr},
+				{binding = 1, resource = diffuse_texture.sampler.ptr},
 			},
 		},
 	) or_return
@@ -94,10 +94,10 @@ init_example :: proc() -> (state: State, err: Error) {
 		&state.gpu.device,
 		&wgpu.Bind_Group_Descriptor {
 			label = "cartoon_bind_group",
-			layout = &texture_bind_group_layout,
-			entries =  {
-				{binding = 0, resource = &cartoon_texture.view},
-				{binding = 1, resource = &cartoon_texture.sampler},
+			layout = texture_bind_group_layout.ptr,
+			entries = {
+				{binding = 0, resource = cartoon_texture.view.ptr},
+				{binding = 1, resource = cartoon_texture.sampler.ptr},
 			},
 		},
 	) or_return
@@ -105,16 +105,16 @@ init_example :: proc() -> (state: State, err: Error) {
 
 	render_pipeline_layout := wgpu.device_create_pipeline_layout(
 		&state.gpu.device,
-		&{label = "Render Pipeline Layout", bind_group_layouts = {texture_bind_group_layout}},
+		&{label = "Render Pipeline Layout", bind_group_layouts = {texture_bind_group_layout.ptr}},
 	) or_return
 	defer wgpu.pipeline_layout_release(&render_pipeline_layout)
 
 	vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
 		array_stride = size_of(Vertex),
-		step_mode = .Vertex,
-		attributes =  {
+		step_mode    = .Vertex,
+		attributes   = {
 			{offset = 0, shader_location = 0, format = .Float32x3},
-			 {
+			{
 				offset = cast(u64)offset_of(Vertex, tex_coords),
 				shader_location = 1,
 				format = .Float32x2,
@@ -132,17 +132,17 @@ init_example :: proc() -> (state: State, err: Error) {
 
 	render_pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
 		label = "Render Pipeline",
-		layout = &render_pipeline_layout,
-		vertex =  {
-			module = &shader_module,
+		layout = render_pipeline_layout.ptr,
+		vertex = {
+			module = shader_module.ptr,
 			entry_point = "vs_main",
 			buffers = {vertex_buffer_layout},
 		},
-		fragment = & {
-			module = &shader_module,
+		fragment = &{
+			module = shader_module.ptr,
 			entry_point = "fs_main",
-			targets =  {
-				 {
+			targets = {
+				{
 					format = state.gpu.config.format,
 					blend = &wgpu.Blend_State_Replace,
 					write_mask = wgpu.Color_Write_Mask_All,
@@ -207,11 +207,11 @@ render :: proc(using state: ^State) -> (err: Error) {
 
 	render_pass := wgpu.command_encoder_begin_render_pass(
 		&encoder,
-		& {
+		&{
 			label = "Render Pass",
 			color_attachments = []wgpu.Render_Pass_Color_Attachment {
-				 {
-					view = &view,
+				{
+					view = view.ptr,
 					resolve_target = nil,
 					load_op = .Clear,
 					store_op = .Store,
@@ -221,25 +221,31 @@ render :: proc(using state: ^State) -> (err: Error) {
 			depth_stencil_attachment = nil,
 		},
 	)
-	defer wgpu.render_pass_release(&render_pass)
+	defer wgpu.render_pass_encoder_release(&render_pass)
 
-	wgpu.render_pass_set_pipeline(&render_pass, &render_pipeline)
+	wgpu.render_pass_encoder_set_pipeline(&render_pass, render_pipeline.ptr)
 
 	if is_space_pressed {
-		wgpu.render_pass_set_bind_group(&render_pass, 0, &cartoon_bind_group)
+		wgpu.render_pass_encoder_set_bind_group(&render_pass, 0, cartoon_bind_group.ptr)
 	} else {
-		wgpu.render_pass_set_bind_group(&render_pass, 0, &diffuse_bind_group)
+		wgpu.render_pass_encoder_set_bind_group(&render_pass, 0, diffuse_bind_group.ptr)
 	}
 
-	wgpu.render_pass_set_vertex_buffer(&render_pass, 0, vertex_buffer)
-	wgpu.render_pass_set_index_buffer(&render_pass, index_buffer, .Uint16, 0, wgpu.WHOLE_SIZE)
-	wgpu.render_pass_draw_indexed(&render_pass, num_indices)
-	wgpu.render_pass_end(&render_pass) or_return
+	wgpu.render_pass_encoder_set_vertex_buffer(&render_pass, 0, vertex_buffer.ptr)
+	wgpu.render_pass_encoder_set_index_buffer(
+		&render_pass,
+		index_buffer.ptr,
+		.Uint16,
+		0,
+		wgpu.WHOLE_SIZE,
+	)
+	wgpu.render_pass_encoder_draw_indexed(&render_pass, num_indices)
+	wgpu.render_pass_encoder_end(&render_pass) or_return
 
 	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
 	defer wgpu.command_buffer_release(&command_buffer)
 
-	wgpu.queue_submit(&gpu.queue, &command_buffer)
+	wgpu.queue_submit(&gpu.queue, command_buffer.ptr)
 	wgpu.surface_present(&gpu.surface)
 
 	return

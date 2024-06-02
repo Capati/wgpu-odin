@@ -54,7 +54,7 @@ Default_Primitive_State :: Primitive_State {
 	cull_mode  = .None,
 }
 
-Default_Render_Pipeline_Descriptor: Render_Pipeline_Descriptor :  {
+Default_Render_Pipeline_Descriptor: Render_Pipeline_Descriptor : {
 	primitive = Default_Primitive_State,
 	depth_stencil = nil,
 	multisample = Default_Multisample_State,

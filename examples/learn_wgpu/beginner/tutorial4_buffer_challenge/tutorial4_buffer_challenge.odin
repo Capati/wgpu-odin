@@ -55,8 +55,8 @@ init_example :: proc() -> (state: State, err: Error) {
 
 	vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
 		array_stride = size_of(Vertex),
-		step_mode = .Vertex,
-		attributes =  {
+		step_mode    = .Vertex,
+		attributes   = {
 			{offset = 0, shader_location = 0, format = .Float32x3},
 			{offset = cast(u64)offset_of(Vertex, color), shader_location = 1, format = .Float32x3},
 		},
@@ -64,17 +64,17 @@ init_example :: proc() -> (state: State, err: Error) {
 
 	render_pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
 		label = "Render Pipeline",
-		layout = &render_pipeline_layout,
-		vertex =  {
-			module = &shader_module,
+		layout = render_pipeline_layout.ptr,
+		vertex = {
+			module = shader_module.ptr,
 			entry_point = "vs_main",
 			buffers = {vertex_buffer_layout},
 		},
-		fragment = & {
-			module = &shader_module,
+		fragment = &{
+			module = shader_module.ptr,
 			entry_point = "fs_main",
-			targets =  {
-				 {
+			targets = {
+				{
 					format = state.gpu.config.format,
 					blend = &wgpu.Blend_State_Replace,
 					write_mask = wgpu.Color_Write_Mask_All,
@@ -141,7 +141,7 @@ init_example :: proc() -> (state: State, err: Error) {
 
 		challenge_verts[i] = Vertex {
 			position = {0.5 * f32(theta_cos), -0.5 * f32(theta_sin), 0.0},
-			color = {(1.0 + f32(theta_cos)) / 2.0, (1.0 + f32(theta_sin)) / 2.0, 1.0},
+			color    = {(1.0 + f32(theta_cos)) / 2.0, (1.0 + f32(theta_sin)) / 2.0, 1.0},
 		}
 	}
 
@@ -197,11 +197,11 @@ render :: proc(using state: ^State) -> (err: Error) {
 
 	render_pass := wgpu.command_encoder_begin_render_pass(
 		&encoder,
-		& {
+		&{
 			label = "Render Pass",
 			color_attachments = []wgpu.Render_Pass_Color_Attachment {
-				 {
-					view = &view,
+				{
+					view = view.ptr,
 					resolve_target = nil,
 					load_op = .Clear,
 					store_op = .Store,
@@ -211,32 +211,38 @@ render :: proc(using state: ^State) -> (err: Error) {
 			depth_stencil_attachment = nil,
 		},
 	)
-	defer wgpu.render_pass_release(&render_pass)
+	defer wgpu.render_pass_encoder_release(&render_pass)
 
-	wgpu.render_pass_set_pipeline(&render_pass, &render_pipeline)
+	wgpu.render_pass_encoder_set_pipeline(&render_pass, render_pipeline.ptr)
 
 	if use_complex {
-		wgpu.render_pass_set_vertex_buffer(&render_pass, 0, challenge_vertex_buffer)
-		wgpu.render_pass_set_index_buffer(
+		wgpu.render_pass_encoder_set_vertex_buffer(&render_pass, 0, challenge_vertex_buffer.ptr)
+		wgpu.render_pass_encoder_set_index_buffer(
 			&render_pass,
-			challenge_index_buffer,
+			challenge_index_buffer.ptr,
 			.Uint16,
 			0,
 			wgpu.WHOLE_SIZE,
 		)
-		wgpu.render_pass_draw_indexed(&render_pass, num_challenge_indices)
+		wgpu.render_pass_encoder_draw_indexed(&render_pass, num_challenge_indices)
 	} else {
-		wgpu.render_pass_set_vertex_buffer(&render_pass, 0, vertex_buffer)
-		wgpu.render_pass_set_index_buffer(&render_pass, index_buffer, .Uint16, 0, wgpu.WHOLE_SIZE)
-		wgpu.render_pass_draw_indexed(&render_pass, num_indices)
+		wgpu.render_pass_encoder_set_vertex_buffer(&render_pass, 0, vertex_buffer.ptr)
+		wgpu.render_pass_encoder_set_index_buffer(
+			&render_pass,
+			index_buffer.ptr,
+			.Uint16,
+			0,
+			wgpu.WHOLE_SIZE,
+		)
+		wgpu.render_pass_encoder_draw_indexed(&render_pass, num_indices)
 	}
 
-	wgpu.render_pass_end(&render_pass) or_return
+	wgpu.render_pass_encoder_end(&render_pass) or_return
 
-	command_buffer := wgpu.command_encoder_finish(&encoder, "Default command buffer") or_return
+	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
 	defer wgpu.command_buffer_release(&command_buffer)
 
-	wgpu.queue_submit(&gpu.queue, &command_buffer)
+	wgpu.queue_submit(&gpu.queue, command_buffer.ptr)
 	wgpu.surface_present(&gpu.surface)
 
 	return

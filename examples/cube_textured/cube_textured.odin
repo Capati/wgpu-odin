@@ -55,7 +55,7 @@ init_example :: proc() -> (state: State, err: Error) {
 
 	texture := wgpu.device_create_texture(
 		&state.gpu.device,
-		& {
+		&{
 			size = texture_extent,
 			mip_level_count = 1,
 			sample_count = 1,
@@ -73,9 +73,9 @@ init_example :: proc() -> (state: State, err: Error) {
 
 	wgpu.queue_write_texture(
 		&state.gpu.queue,
-		&{texture = &texture, mip_level = 0, origin = {}, aspect = .All},
+		&{texture = texture.ptr, mip_level = 0, origin = {}, aspect = .All},
 		wgpu.to_bytes(texels),
-		& {
+		&{
 			offset = 0,
 			bytes_per_row = Texel_Size,
 			rows_per_image = cast(u32)wgpu.COPY_STRIDE_UNDEFINED,
@@ -87,7 +87,7 @@ init_example :: proc() -> (state: State, err: Error) {
 
 	state.uniform_buffer = wgpu.device_create_buffer_with_data(
 		&state.gpu.device,
-		& {
+		&{
 			label = "Uniform Buffer",
 			contents = wgpu.to_bytes(mx_total),
 			usage = {.Uniform, .Copy_Dst},
@@ -105,10 +105,10 @@ init_example :: proc() -> (state: State, err: Error) {
 
 	vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
 		array_stride = size_of(Vertex),
-		step_mode = .Vertex,
-		attributes =  {
+		step_mode    = .Vertex,
+		attributes   = {
 			{format = .Float32x4, offset = 0, shader_location = 0},
-			 {
+			{
 				format = .Float32x2,
 				offset = cast(u64)offset_of(Vertex, tex_coords),
 				shader_location = 1,
@@ -118,17 +118,17 @@ init_example :: proc() -> (state: State, err: Error) {
 
 	state.render_pipeline = wgpu.device_create_render_pipeline(
 		&state.gpu.device,
-		& {
-			vertex =  {
-				module = &shader_module,
+		&{
+			vertex = {
+				module = shader_module.ptr,
 				entry_point = "vs_main",
 				buffers = {vertex_buffer_layout},
 			},
-			fragment = & {
-				module = &shader_module,
+			fragment = &{
+				module = shader_module.ptr,
 				entry_point = "fs_main",
-				targets =  {
-					 {
+				targets = {
+					{
 						format = state.gpu.config.format,
 						blend = nil,
 						write_mask = wgpu.Color_Write_Mask_All,
@@ -150,17 +150,17 @@ init_example :: proc() -> (state: State, err: Error) {
 
 	state.bind_group = wgpu.device_create_bind_group(
 		&state.gpu.device,
-		& {
-			layout = &bind_group_layout,
-			entries =  {
-				 {
+		&{
+			layout = bind_group_layout.ptr,
+			entries = {
+				{
 					binding = 0,
 					resource = wgpu.Buffer_Binding {
-						buffer = &state.uniform_buffer,
+						buffer = state.uniform_buffer.ptr,
 						size = wgpu.WHOLE_SIZE,
 					},
 				},
-				{binding = 1, resource = &texture_view},
+				{binding = 1, resource = texture_view.ptr},
 			},
 		},
 	) or_return
@@ -181,11 +181,11 @@ render :: proc(using state: ^State) -> (err: Error) {
 
 	render_pass := wgpu.command_encoder_begin_render_pass(
 		&encoder,
-		& {
+		&{
 			label = "Render Pass",
 			color_attachments = []wgpu.Render_Pass_Color_Attachment {
-				 {
-					view = &view,
+				{
+					view = view.ptr,
 					resolve_target = nil,
 					load_op = .Clear,
 					store_op = .Store,
@@ -195,19 +195,31 @@ render :: proc(using state: ^State) -> (err: Error) {
 			depth_stencil_attachment = nil,
 		},
 	)
-	defer wgpu.render_pass_release(&render_pass)
+	defer wgpu.render_pass_encoder_release(&render_pass)
 
-	wgpu.render_pass_set_pipeline(&render_pass, &render_pipeline)
-	wgpu.render_pass_set_bind_group(&render_pass, 0, &bind_group, nil)
-	wgpu.render_pass_set_index_buffer(&render_pass, index_buffer, .Uint16, 0, wgpu.WHOLE_SIZE)
-	wgpu.render_pass_set_vertex_buffer(&render_pass, 0, vertex_buffer, 0, wgpu.WHOLE_SIZE)
-	wgpu.render_pass_draw_indexed(&render_pass, cast(u32)len(index_data), 1, 0, 0, 0)
-	wgpu.render_pass_end(&render_pass) or_return
+	wgpu.render_pass_encoder_set_pipeline(&render_pass, render_pipeline.ptr)
+	wgpu.render_pass_encoder_set_bind_group(&render_pass, 0, bind_group.ptr, nil)
+	wgpu.render_pass_encoder_set_index_buffer(
+		&render_pass,
+		index_buffer.ptr,
+		.Uint16,
+		0,
+		wgpu.WHOLE_SIZE,
+	)
+	wgpu.render_pass_encoder_set_vertex_buffer(
+		&render_pass,
+		0,
+		vertex_buffer.ptr,
+		0,
+		wgpu.WHOLE_SIZE,
+	)
+	wgpu.render_pass_encoder_draw_indexed(&render_pass, cast(u32)len(index_data), 1, 0, 0, 0)
+	wgpu.render_pass_encoder_end(&render_pass) or_return
 
-	command_buffer := wgpu.command_encoder_finish(&encoder, "Default command buffer") or_return
+	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
 	defer wgpu.command_buffer_release(&command_buffer)
 
-	wgpu.queue_submit(&gpu.queue, &command_buffer)
+	wgpu.queue_submit(&gpu.queue, command_buffer.ptr)
 	wgpu.surface_present(&gpu.surface)
 
 	return
@@ -216,7 +228,7 @@ render :: proc(using state: ^State) -> (err: Error) {
 resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Error) {
 	wgpu.queue_write_buffer(
 		&gpu.queue,
-		&uniform_buffer,
+		uniform_buffer.ptr,
 		0,
 		wgpu.to_bytes(generate_matrix(cast(f32)size.width / cast(f32)size.height)),
 	) or_return

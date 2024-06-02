@@ -36,14 +36,14 @@ init_example :: proc() -> (state: State, err: Error) {
 
 	state.render_pipeline = wgpu.device_create_render_pipeline(
 		&state.gpu.device,
-		& {
+		&{
 			label = "Render Pipeline",
-			vertex = {module = &shader_module, entry_point = "vs"},
-			fragment = & {
-				module = &shader_module,
+			vertex = {module = shader_module.ptr, entry_point = "vs"},
+			fragment = &{
+				module = shader_module.ptr,
 				entry_point = "fs",
-				targets =  {
-					 {
+				targets = {
+					{
 						format = state.gpu.config.format,
 						blend = &wgpu.Blend_State_Replace,
 						write_mask = wgpu.Color_Write_Mask_All,
@@ -70,11 +70,11 @@ render :: proc(using state: ^State) -> (err: Error) {
 
 	render_pass := wgpu.command_encoder_begin_render_pass(
 		&encoder,
-		& {
+		&{
 			label = "Render Pass",
 			color_attachments = []wgpu.Render_Pass_Color_Attachment {
-				 {
-					view = &view,
+				{
+					view = view.ptr,
 					resolve_target = nil,
 					load_op = .Clear,
 					store_op = .Store,
@@ -84,16 +84,16 @@ render :: proc(using state: ^State) -> (err: Error) {
 			depth_stencil_attachment = nil,
 		},
 	)
-	defer wgpu.render_pass_release(&render_pass)
+	defer wgpu.render_pass_encoder_release(&render_pass)
 
-	wgpu.render_pass_set_pipeline(&render_pass, &render_pipeline)
-	wgpu.render_pass_draw(&render_pass, 3)
-	wgpu.render_pass_end(&render_pass) or_return
+	wgpu.render_pass_encoder_set_pipeline(&render_pass, render_pipeline.ptr)
+	wgpu.render_pass_encoder_draw(&render_pass, 3)
+	wgpu.render_pass_encoder_end(&render_pass) or_return
 
 	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
 	defer wgpu.command_buffer_release(&command_buffer)
 
-	wgpu.queue_submit(&gpu.queue, &command_buffer)
+	wgpu.queue_submit(&gpu.queue, command_buffer.ptr)
 	wgpu.surface_present(&gpu.surface)
 
 	return

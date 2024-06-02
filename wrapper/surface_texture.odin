@@ -15,5 +15,6 @@ Surface_Texture :: struct {
 
 // Release the texture that belongs to this `Surface_Texture`.
 surface_texture_release :: proc(using self: ^Surface_Texture) {
+	if texture.ptr == nil do return
 	texture_release(&texture)
 }

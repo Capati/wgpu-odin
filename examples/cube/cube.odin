@@ -51,8 +51,8 @@ init_example :: proc() -> (state: State, err: Error) {
 
 	vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
 		array_stride = size_of(Vertex),
-		step_mode = .Vertex,
-		attributes =  {
+		step_mode    = .Vertex,
+		attributes   = {
 			{format = .Float32x3, offset = 0, shader_location = 0},
 			{format = .Float32x3, offset = cast(u64)offset_of(Vertex, color), shader_location = 1},
 		},
@@ -60,16 +60,16 @@ init_example :: proc() -> (state: State, err: Error) {
 
 	pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
 		label = "Render Pipeline",
-		vertex =  {
-			module = &shader_module,
+		vertex = {
+			module = shader_module.ptr,
 			entry_point = "vertex_main",
 			buffers = {vertex_buffer_layout},
 		},
-		fragment = & {
-			module = &shader_module,
+		fragment = &{
+			module = shader_module.ptr,
 			entry_point = "fragment_main",
-			targets =  {
-				 {
+			targets = {
+				{
 					format = state.gpu.config.format,
 					blend = &wgpu.Blend_State_Replace,
 					write_mask = wgpu.Color_Write_Mask_All,
@@ -79,7 +79,7 @@ init_example :: proc() -> (state: State, err: Error) {
 		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
 		// Enable depth testing so that the fragment closest to the camera
 		// is rendered in front.
-		depth_stencil = & {
+		depth_stencil = &{
 			depth_write_enabled = true,
 			depth_compare = .Less,
 			format = Depth_Format,
@@ -108,7 +108,7 @@ init_example :: proc() -> (state: State, err: Error) {
 
 	state.uniform_buffer = wgpu.device_create_buffer_with_data(
 		&state.gpu.device,
-		& {
+		&{
 			label = "Uniform Buffer",
 			contents = wgpu.to_bytes(mvp_mat),
 			usage = {.Uniform, .Copy_Dst},
@@ -124,13 +124,13 @@ init_example :: proc() -> (state: State, err: Error) {
 
 	state.bind_group = wgpu.device_create_bind_group(
 		&state.gpu.device,
-		& {
-			layout = &bind_group_layout,
-			entries =  {
-				 {
+		&{
+			layout = bind_group_layout.ptr,
+			entries = {
+				{
 					binding = 0,
 					resource = wgpu.Buffer_Binding {
-						buffer = &state.uniform_buffer,
+						buffer = state.uniform_buffer.ptr,
 						size = wgpu.WHOLE_SIZE,
 					},
 				},
@@ -154,37 +154,43 @@ render :: proc(using state: ^State) -> (err: Error) {
 
 	render_pass := wgpu.command_encoder_begin_render_pass(
 		&encoder,
-		& {
+		&{
 			label = "Render Pass",
 			color_attachments = []wgpu.Render_Pass_Color_Attachment {
-				 {
-					view = &view,
+				{
+					view = view.ptr,
 					resolve_target = nil,
 					load_op = .Clear,
 					store_op = .Store,
 					clear_value = {0.2, 0.2, 0.2, 1.0},
 				},
 			},
-			depth_stencil_attachment = & {
-				view = &depth_stencil_view,
+			depth_stencil_attachment = &{
+				view = depth_stencil_view.ptr,
 				depth_clear_value = 1.0,
 				depth_load_op = .Clear,
 				depth_store_op = .Store,
 			},
 		},
 	)
-	defer wgpu.render_pass_release(&render_pass)
+	defer wgpu.render_pass_encoder_release(&render_pass)
 
-	wgpu.render_pass_set_pipeline(&render_pass, &render_pipeline)
-	wgpu.render_pass_set_bind_group(&render_pass, 0, &bind_group, nil)
-	wgpu.render_pass_set_vertex_buffer(&render_pass, 0, vertex_buffer, 0, wgpu.WHOLE_SIZE)
-	wgpu.render_pass_draw(&render_pass, cast(u32)len(vertex_data))
-	wgpu.render_pass_end(&render_pass) or_return
+	wgpu.render_pass_encoder_set_pipeline(&render_pass, render_pipeline.ptr)
+	wgpu.render_pass_encoder_set_bind_group(&render_pass, 0, bind_group.ptr, nil)
+	wgpu.render_pass_encoder_set_vertex_buffer(
+		&render_pass,
+		0,
+		vertex_buffer.ptr,
+		0,
+		wgpu.WHOLE_SIZE,
+	)
+	wgpu.render_pass_encoder_draw(&render_pass, cast(u32)len(vertex_data))
+	wgpu.render_pass_encoder_end(&render_pass) or_return
 
 	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
 	defer wgpu.command_buffer_release(&command_buffer)
 
-	wgpu.queue_submit(&gpu.queue, &command_buffer)
+	wgpu.queue_submit(&gpu.queue, command_buffer.ptr)
 	wgpu.surface_present(&gpu.surface)
 
 	return
@@ -196,7 +202,7 @@ resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Er
 
 	mvp_mat := generate_matrix(cast(f32)size.width / cast(f32)size.height)
 
-	wgpu.queue_write_buffer(&gpu.queue, &uniform_buffer, 0, wgpu.to_bytes(mvp_mat)) or_return
+	wgpu.queue_write_buffer(&gpu.queue, uniform_buffer.ptr, 0, wgpu.to_bytes(mvp_mat)) or_return
 
 	renderer.resize_surface(gpu, size) or_return
 
@@ -259,7 +265,7 @@ get_depth_framebuffer :: proc(
 ) {
 	texture := wgpu.device_create_texture(
 		&gpu.device,
-		& {
+		&{
 			size = {width = size.width, height = size.height, depth_or_array_layers = 1},
 			mip_level_count = 1,
 			sample_count = 1,

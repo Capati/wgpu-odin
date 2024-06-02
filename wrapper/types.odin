@@ -125,11 +125,3 @@ Feature :: enum c.int {
 	Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing = 0x00030007,
 	Pipeline_Statistics_Query                                     = 0x00030008,
 }
-
-// View of a texture which can be used to copy to/from a buffer/texture.
-Image_Copy_Texture :: struct {
-	texture:   ^Texture,
-	mip_level: u32,
-	origin:    Origin_3D,
-	aspect:    Texture_Aspect,
-}

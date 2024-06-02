@@ -31,7 +31,7 @@ get_current_texture_frame :: proc(
 		// Skip this frame
 		renderer.skip_frame = true
 
-		if frame.texture._ptr != nil {
+		if frame.texture.ptr != nil {
 			wgpu.texture_release(&frame.texture)
 		}
 

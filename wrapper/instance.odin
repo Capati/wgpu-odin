@@ -14,7 +14,7 @@ import wgpu "../bindings"
 //
 // Does not have to be kept alive.
 Instance :: struct {
-	_ptr: WGPU_Instance,
+	ptr: WGPU_Instance,
 }
 
 // Options for creating an instance.
@@ -28,40 +28,49 @@ Instance_Descriptor :: struct {
 }
 
 // Create an new instance of wgpu.
-create_instance :: proc(
-	descriptor: ^Instance_Descriptor = nil,
+create_instance_from_descriptor :: proc(
+	descriptor: ^Instance_Descriptor,
 ) -> (
 	instance: Instance,
 	err: Error_Type,
 ) {
-	desc: ^wgpu.Instance_Descriptor = nil
-
-	if descriptor != nil {
-		desc = &{}
-
-		instance_extras := Instance_Extras {
-			chain = {next = nil, stype = cast(SType)Native_SType.Instance_Extras},
-			backends = descriptor.backends,
-			flags = descriptor.flags,
-			dx12_shader_compiler = descriptor.dx12_shader_compiler,
-			gles3_minor_version = descriptor.gles3_minor_version,
-			dxil_path = descriptor.dxil_path,
-			dxc_path = descriptor.dxc_path,
-		}
-
-		desc.next_in_chain = cast(^Chained_Struct)&instance_extras
+	instance_extras := Instance_Extras {
+		chain = {next = nil, stype = cast(SType)Native_SType.Instance_Extras},
+		backends = descriptor.backends,
+		flags = descriptor.flags,
+		dx12_shader_compiler = descriptor.dx12_shader_compiler,
+		gles3_minor_version = descriptor.gles3_minor_version,
+		dxil_path = descriptor.dxil_path,
+		dxc_path = descriptor.dxc_path,
 	}
 
-	instance_ptr := wgpu.create_instance(desc)
+	desc: wgpu.Instance_Descriptor
+	desc.next_in_chain = &instance_extras.chain
 
-	if instance_ptr == nil {
+	instance.ptr = wgpu.create_instance(nil)
+
+	if instance.ptr == nil {
 		update_error_message("Failed to acquire an instance")
 		return {}, .Unknown
 	}
 
-	instance._ptr = instance_ptr
+	return
+}
+
+create_instance_empty :: proc() -> (instance: Instance, err: Error_Type) {
+	instance.ptr = wgpu.create_instance(nil)
+
+	if instance.ptr == nil {
+		update_error_message("Failed to acquire an instance")
+		return {}, .Unknown
+	}
 
 	return
+}
+
+create_instance :: proc {
+	create_instance_from_descriptor,
+	create_instance_empty,
 }
 
 // Describes a surface target.
@@ -99,54 +108,54 @@ instance_create_surface :: proc(
 				desc.label = "Windows HWND"
 			}
 			t.chain.stype = .Surface_Descriptor_From_Windows_HWND
-			desc.next_in_chain = cast(^Chained_Struct)&t
+			desc.next_in_chain = &t.chain
 		case Surface_Descriptor_From_Xcb_Window:
 			if desc.label == nil || desc.label == "" {
 				desc.label = "XCB Window"
 			}
 			t.chain.stype = .Surface_Descriptor_From_Xcb_Window
-			desc.next_in_chain = cast(^Chained_Struct)&t
+			desc.next_in_chain = &t.chain
 		case Surface_Descriptor_From_Xlib_Window:
 			if desc.label == nil || desc.label == "" {
 				desc.label = "X11 Window"
 			}
 			t.chain.stype = .Surface_Descriptor_From_Xlib_Window
-			desc.next_in_chain = cast(^Chained_Struct)&t
+			desc.next_in_chain = &t.chain
 		case Surface_Descriptor_From_Metal_Layer:
 			if desc.label == nil || desc.label == "" {
 				desc.label = "Metal Layer"
 			}
 			t.chain.stype = .Surface_Descriptor_From_Metal_Layer
-			desc.next_in_chain = cast(^Chained_Struct)&t
+			desc.next_in_chain = &t.chain
 		case Surface_Descriptor_From_Wayland_Surface:
 			if desc.label == nil || desc.label == "" {
 				desc.label = "Wayland Surface"
 			}
 			t.chain.stype = .Surface_Descriptor_From_Wayland_Surface
-			desc.next_in_chain = cast(^Chained_Struct)&t
+			desc.next_in_chain = &t.chain
 		case Surface_Descriptor_From_Android_Native_Window:
 			if desc.label == nil || desc.label == "" {
 				desc.label = "Android Native Window"
 			}
 			t.chain.stype = .Surface_Descriptor_From_Android_Native_Window
-			desc.next_in_chain = cast(^Chained_Struct)&t
+			desc.next_in_chain = &t.chain
 		case Surface_Descriptor_From_Canvas_Html_Selector:
 			if desc.label == nil || desc.label == "" {
 				desc.label = "Canvas Html Selector"
 			}
 			t.chain.stype = .Surface_Descriptor_From_Canvas_Html_Selector
-			desc.next_in_chain = cast(^Chained_Struct)&t
+			desc.next_in_chain = &t.chain
 		}
 	}
 
-	surface_ptr := wgpu.instance_create_surface(_ptr, &desc)
+	surface_ptr := wgpu.instance_create_surface(ptr, &desc)
 
 	if surface_ptr == nil {
 		update_error_message("Failed to acquire surface")
 		return {}, .Internal
 	}
 
-	surface._ptr = surface_ptr
+	surface.ptr = surface_ptr
 
 	return surface, .No_Error
 }
@@ -157,17 +166,7 @@ Adapter_Response :: struct {
 	adapter: WGPU_Adapter,
 }
 
-// Additional information required when requesting an adapter.
-//
-// For use with `instance_request_adapter`.
-Request_Adapter_Options :: struct {
-	compatible_surface:     ^Surface,
-	power_preference:       Power_Preference,
-	backend_type:           Backend_Type,
-	force_fallback_adapter: bool,
-}
-
-// Retrieves an `Adapter` which matches the given parameters.
+// Retrieves an `Adapter` which matches the given options.
 instance_request_adapter :: proc(
 	using self: ^Instance,
 	options: ^Request_Adapter_Options,
@@ -175,26 +174,15 @@ instance_request_adapter :: proc(
 	adapter: Adapter,
 	err: Error_Type,
 ) {
-	opts := wgpu.Request_Adapter_Options{}
-
-	if options != nil {
-		if options.compatible_surface != nil {
-			opts.compatible_surface = options.compatible_surface._ptr
-		}
-
-		opts.power_preference = options.power_preference
-		opts.force_fallback_adapter = options.force_fallback_adapter
-		opts.backend_type = options.backend_type
-	}
-
 	res := Adapter_Response{}
-	wgpu.instance_request_adapter(_ptr, &opts, _on_request_adapter_callback, &res)
+	wgpu.instance_request_adapter(ptr, options, _on_request_adapter_callback, &res)
 
 	if res.status != .Success {
 		return {}, .Unknown
 	}
 
-	adapter._ptr = res.adapter
+	adapter.ptr = res.adapter
+
 	// Fill adapter details
 	adapter.features = adapter_get_features(&adapter)
 	adapter.limits = adapter_get_limits(&adapter)
@@ -213,7 +201,7 @@ instance_enumerate_adapters :: proc(
 		backends = backends,
 	}
 
-	adapter_count: uint = wgpu.instance_enumerate_adapters(_ptr, &options, nil)
+	adapter_count: uint = wgpu.instance_enumerate_adapters(ptr, &options, nil)
 
 	if adapter_count == 0 {
 		fmt.print("No compatible adapter found!\n")
@@ -222,13 +210,13 @@ instance_enumerate_adapters :: proc(
 
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
 	wgpu_adapters := make([]WGPU_Adapter, adapter_count, context.temp_allocator)
-	wgpu.instance_enumerate_adapters(_ptr, &options, raw_data(wgpu_adapters))
+	wgpu.instance_enumerate_adapters(ptr, &options, raw_data(wgpu_adapters))
 
 	adapters := make([]Adapter, adapter_count, allocator)
 
 	for i: uint = 0; i < adapter_count; i += 1 {
 		adapters[i] = {
-			_ptr = wgpu_adapters[i],
+			ptr = wgpu_adapters[i],
 		}
 
 		adapters[i].features = adapter_get_features(&adapters[i])
@@ -242,8 +230,13 @@ instance_enumerate_adapters :: proc(
 // Generates memory report.
 instance_generate_report :: proc(self: ^Instance) -> Global_Report {
 	report: Global_Report = {}
-	wgpu.generate_report(self._ptr, &report)
+	wgpu.generate_report(self.ptr, &report)
 	return report
+}
+
+// Processes pending WebGPU events on the instance.
+instance_process_events :: proc(self: ^Instance) {
+	wgpu.instance_process_events(self.ptr)
 }
 
 // Print memory report.
@@ -299,12 +292,14 @@ instance_print_report :: proc(using self: ^Instance) {
 
 // Increase the reference count.
 instance_reference :: proc(using self: ^Instance) {
-	wgpu.instance_reference(_ptr)
+	wgpu.instance_reference(ptr)
 }
 
 // Release the `Instance`.
 instance_release :: proc(using self: ^Instance) {
-	if _ptr != nil do wgpu.instance_release(_ptr)
+	if ptr == nil do return
+	wgpu.instance_release(ptr)
+	ptr = nil
 }
 
 @(private = "file")

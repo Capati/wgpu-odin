@@ -82,7 +82,7 @@ init :: proc(
 
 	adapter_options := wgpu.Request_Adapter_Options {
 		power_preference       = properties.power_preferences,
-		compatible_surface     = &gc.surface,
+		compatible_surface     = gc.surface.ptr,
 		force_fallback_adapter = false,
 	}
 
@@ -146,7 +146,7 @@ init :: proc(
 		wgpu.device_release(&gc.device)
 	}
 
-	caps, caps_err := wgpu.surface_get_capabilities(&gc.surface, &adapter)
+	caps, caps_err := wgpu.surface_get_capabilities(&gc.surface, adapter.ptr)
 	if caps_err != .No_Error {
 		fmt.eprintf(
 			"Failed to get surface capabilities [%v]: %s\n",
@@ -161,15 +161,15 @@ init :: proc(
 
 	size := app.get_size()
 
-	preferred_format := wgpu.surface_get_preferred_format(&gc.surface, &adapter)
+	preferred_format := wgpu.surface_get_preferred_format(&gc.surface, adapter.ptr)
 
 	gc.config = wgpu.Surface_Configuration {
-		usage = {.Render_Attachment},
-		format = preferred_format,
-		width = size.width,
-		height = size.height,
+		usage        = {.Render_Attachment},
+		format       = preferred_format,
+		width        = size.width,
+		height       = size.height,
 		present_mode = .Fifo,
-		alpha_mode = caps.alpha_modes[0],
+		alpha_mode   = caps.alpha_modes[0],
 	}
 
 	gpu_err = wgpu.surface_configure(&gc.surface, &gc.device, &gc.config)

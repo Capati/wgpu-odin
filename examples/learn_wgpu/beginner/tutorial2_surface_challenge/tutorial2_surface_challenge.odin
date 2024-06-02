@@ -43,11 +43,11 @@ render :: proc(using state: ^State) -> (err: Error) {
 
 	render_pass := wgpu.command_encoder_begin_render_pass(
 		&encoder,
-		& {
+		&{
 			label = "Render Pass",
 			color_attachments = []wgpu.Render_Pass_Color_Attachment {
-				 {
-					view = &view,
+				{
+					view = view.ptr,
 					resolve_target = nil,
 					load_op = .Clear,
 					store_op = .Store,
@@ -57,13 +57,13 @@ render :: proc(using state: ^State) -> (err: Error) {
 			depth_stencil_attachment = nil,
 		},
 	)
-	wgpu.render_pass_end(&render_pass) or_return
-	wgpu.render_pass_release(&render_pass)
+	wgpu.render_pass_encoder_end(&render_pass) or_return
+	wgpu.render_pass_encoder_release(&render_pass)
 
-	command_buffer := wgpu.command_encoder_finish(&encoder, "Default command buffer") or_return
+	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
 	defer wgpu.command_buffer_release(&command_buffer)
 
-	wgpu.queue_submit(&gpu.queue, &command_buffer)
+	wgpu.queue_submit(&gpu.queue, command_buffer.ptr)
 	wgpu.surface_present(&gpu.surface)
 
 	return

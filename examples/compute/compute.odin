@@ -24,7 +24,9 @@ main :: proc() {
 	numbers_length: u32 = numbers_size / size_of(u32)
 
 	// Instantiates instance of WebGPU
-	instance, instance_err := wgpu.create_instance(&{backends = wgpu.Instance_Backend_Primary})
+	instance, instance_err := wgpu.create_instance(
+		&wgpu.Instance_Descriptor{backends = wgpu.Instance_Backend_Primary},
+	)
 	if instance_err != .No_Error {
 		fmt.eprintln("ERROR Creating Instance:", wgpu.get_error_message())
 		return
@@ -94,7 +96,7 @@ main :: proc() {
 	//   The source of a copy.
 	storage_buffer, storage_buffer_err := wgpu.device_create_buffer(
 		&device,
-		& {
+		&{
 			label = "storage_buffer",
 			size = cast(u64)numbers_size,
 			usage = {.Storage, .Copy_Src, .Copy_Dst},
@@ -116,8 +118,7 @@ main :: proc() {
 		&wgpu.Compute_Pipeline_Descriptor {
 			label = "compute_pipeline",
 			layout = nil,
-			module = &shader_module,
-			entry_point = "main",
+			compute = {module = shader_module.ptr, entry_point = "main"},
 		},
 	)
 	if compute_pipeline_err != .No_Error do return
@@ -138,13 +139,13 @@ main :: proc() {
 	// buffer to use for the computation
 	bind_group, bind_group_err := wgpu.device_create_bind_group(
 		&device,
-		& {
-			layout = &bind_group_layout,
-			entries =  {
-				 {
+		&{
+			layout = bind_group_layout.ptr,
+			entries = {
+				{
 					binding = 0,
 					resource = wgpu.Buffer_Binding {
-						buffer = &storage_buffer,
+						buffer = storage_buffer.ptr,
 						offset = 0,
 						size = storage_buffer.size,
 					},
@@ -165,28 +166,28 @@ main :: proc() {
 	if encoder_err != .No_Error do return
 	defer wgpu.command_encoder_release(&encoder)
 
-	compute_pass, compute_pass_err := wgpu.command_encoder_begin_compute_pass(
+	compute_pass, compute_pass_encoder_err := wgpu.command_encoder_begin_compute_pass(
 		&encoder,
 		&{label = "compute_pass"},
 	)
-	if compute_pass_err != .No_Error {
+	if compute_pass_encoder_err != .No_Error {
 		fmt.eprintln("ERROR Couldn't Begin Compute Pass: ", wgpu.get_error_message())
 		return
 	}
-	defer wgpu.compute_pass_release(&compute_pass)
+	defer wgpu.compute_pass_encoder_release(&compute_pass)
 
-	wgpu.compute_pass_set_pipeline(&compute_pass, &compute_pipeline)
-	wgpu.compute_pass_set_bind_group(&compute_pass, 0, &bind_group)
-	wgpu.compute_pass_dispatch_workgroups(&compute_pass, numbers_length)
-	wgpu.compute_pass_end(&compute_pass)
+	wgpu.compute_pass_encoder_set_pipeline(&compute_pass, compute_pipeline.ptr)
+	wgpu.compute_pass_encoder_set_bind_group(&compute_pass, 0, bind_group.ptr)
+	wgpu.compute_pass_encoder_dispatch_workgroups(&compute_pass, numbers_length)
+	wgpu.compute_pass_encoder_end(&compute_pass)
 
 	// Sets adds copy operation to command encoder.
 	// Will copy data from storage buffer on GPU to staging buffer on CPU.
 	wgpu.command_encoder_copy_buffer_to_buffer(
 		&encoder,
-		storage_buffer,
+		storage_buffer.ptr,
 		0,
-		staging_buffer,
+		staging_buffer.ptr,
 		0,
 		staging_buffer.size,
 	)
@@ -197,6 +198,9 @@ main :: proc() {
 		fmt.panicf("%v", command_buffer_err)
 	}
 	defer wgpu.command_buffer_release(&command_buffer)
+
+	wgpu.queue_write_buffer(&queue, storage_buffer.ptr, 0, wgpu.to_bytes(numbers))
+	wgpu.queue_submit(&queue, command_buffer.ptr)
 
 	result: wgpu.Buffer_Map_Async_Status
 

@@ -140,9 +140,9 @@ main :: proc() {
 	if command_encoder_err != .No_Error do return
 	defer wgpu.command_encoder_release(&command_encoder)
 
-	colors: []wgpu.Render_Pass_Color_Attachment =  {
-		 {
-			view = &texture_view,
+	colors: []wgpu.Render_Pass_Color_Attachment = {
+		{
+			view = texture_view.ptr,
 			load_op = .Clear,
 			store_op = .Store,
 			clear_value = {1.0, 0.0, 0.0, 1.0},
@@ -153,15 +153,15 @@ main :: proc() {
 		&command_encoder,
 		&{label = "render_pass", color_attachments = colors},
 	)
-	if wgpu.render_pass_end(&render_pass) != .No_Error do return
-	wgpu.render_pass_release(&render_pass)
+	if wgpu.render_pass_encoder_end(&render_pass) != .No_Error do return
+	wgpu.render_pass_encoder_release(&render_pass)
 
 	wgpu.command_encoder_copy_texture_to_buffer(
 		&command_encoder,
-		&{texture = &texture, mip_level = 0, origin = {}, aspect = .All},
-		& {
-			buffer = &output_buffer,
-			layout =  {
+		&{texture = texture.ptr, mip_level = 0, origin = {}, aspect = .All},
+		&{
+			buffer = output_buffer.ptr,
+			layout = {
 				offset = 0,
 				bytes_per_row = cast(u32)buffer_dimensions.padded_bytes_per_row,
 				rows_per_image = cast(u32)wgpu.COPY_STRIDE_UNDEFINED,
@@ -174,8 +174,7 @@ main :: proc() {
 	if command_buffer_err != .No_Error do return
 	defer wgpu.command_buffer_release(&command_buffer)
 
-	wgpu.queue_submit(&queue, &command_buffer)
-
+	wgpu.queue_submit(&queue, command_buffer.ptr)
 
 	handle_buffer_map := proc "c" (status: wgpu.Buffer_Map_Async_Status, user_data: rawptr) {
 		context = runtime.default_context()

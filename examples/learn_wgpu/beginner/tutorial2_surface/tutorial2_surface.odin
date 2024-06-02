@@ -50,7 +50,7 @@ init_state := proc(window: ^sdl.Window) -> (state: State, err: wgpu.Error_Type) 
 
 	adapter_options := wgpu.Request_Adapter_Options {
 		power_preference       = .High_Performance,
-		compatible_surface     = &state.surface,
+		compatible_surface     = state.surface.ptr,
 		force_fallback_adapter = false,
 	}
 
@@ -79,7 +79,7 @@ init_state := proc(window: ^sdl.Window) -> (state: State, err: wgpu.Error_Type) 
 		)
 	}
 
-	caps := wgpu.surface_get_capabilities(&state.surface, &adapter) or_return
+	caps := wgpu.surface_get_capabilities(&state.surface, adapter.ptr) or_return
 	defer {
 		wgpu.surface_delete_capabilities(&caps)
 	}
@@ -88,12 +88,12 @@ init_state := proc(window: ^sdl.Window) -> (state: State, err: wgpu.Error_Type) 
 	sdl.GetWindowSize(window, &width, &height)
 
 	state.config = {
-		usage = {.Render_Attachment},
-		format = wgpu.surface_get_preferred_format(&state.surface, &adapter),
-		width = cast(u32)width,
-		height = cast(u32)height,
+		usage        = {.Render_Attachment},
+		format       = wgpu.surface_get_preferred_format(&state.surface, adapter.ptr),
+		width        = cast(u32)width,
+		height       = cast(u32)height,
 		present_mode = .Fifo,
-		alpha_mode = caps.alpha_modes[0],
+		alpha_mode   = caps.alpha_modes[0],
 	}
 
 	wgpu.surface_configure(&state.surface, &state.device, &state.config) or_return
@@ -130,11 +130,11 @@ render :: proc(using state: ^State) -> wgpu.Error_Type {
 
 	render_pass := wgpu.command_encoder_begin_render_pass(
 		&encoder,
-		& {
+		&{
 			label = "Render Pass",
 			color_attachments = []wgpu.Render_Pass_Color_Attachment {
-				 {
-					view = &view,
+				{
+					view = view.ptr,
 					resolve_target = nil,
 					load_op = .Clear,
 					store_op = .Store,
@@ -144,13 +144,13 @@ render :: proc(using state: ^State) -> wgpu.Error_Type {
 			depth_stencil_attachment = nil,
 		},
 	)
-	defer wgpu.render_pass_release(&render_pass)
-	wgpu.render_pass_end(&render_pass) or_return
+	defer wgpu.render_pass_encoder_release(&render_pass)
+	wgpu.render_pass_encoder_end(&render_pass) or_return
 
 	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
 	defer wgpu.command_buffer_release(&command_buffer)
 
-	wgpu.queue_submit(&queue, &command_buffer)
+	wgpu.queue_submit(&queue, command_buffer.ptr)
 	wgpu.surface_present(&surface)
 
 	return .No_Error
