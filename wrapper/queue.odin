@@ -12,7 +12,7 @@ import wgpu "../bindings"
 // writing to buffers and textures. It can be created along with a `Device` by calling
 // `adapter_request_device`.
 Queue :: struct {
-	_ptr:      WGPU_Queue,
+	ptr:       WGPU_Queue,
 	_err_data: ^Error_Data,
 }
 
@@ -32,57 +32,69 @@ queue_on_submitted_work_done :: proc(
 	callback: Queue_Work_Done_Callback,
 	data: rawptr = nil,
 ) {
-	wgpu.queue_on_submitted_work_done(_ptr, callback, data)
+	wgpu.queue_on_submitted_work_done(ptr, callback, data)
 }
 
 // Set debug label.
 queue_set_label :: proc(using self: ^Queue, label: cstring) {
-	wgpu.queue_set_label(_ptr, label)
+	wgpu.queue_set_label(ptr, label)
+}
+
+queue_submit_raw :: proc(using self: ^Queue, command_count: uint, commands: ^WGPU_Command_Buffer) {
+	wgpu.queue_submit(ptr, command_count, commands)
+}
+
+queue_submit_slice :: proc(using self: ^Queue, commands: ..WGPU_Command_Buffer) {
+	wgpu.queue_submit(ptr, cast(uint)len(commands), raw_data(commands))
+}
+
+queue_submit_single :: proc(using self: ^Queue, command: ^WGPU_Command_Buffer) {
+	wgpu.queue_submit(ptr, 1, command)
+}
+
+queue_submit_empty :: proc(using self: ^Queue) {
+	wgpu.queue_submit(ptr, 0, nil)
 }
 
 // Submits a series of finished command buffers for execution.
-queue_submit :: proc(using self: ^Queue, commands: ..^Command_Buffer) {
-	command_count := cast(uint)len(commands)
-
-	if command_count == 0 {
-		wgpu.queue_submit(_ptr, 0, nil)
-		return
-	} else if command_count == 1 {
-		wgpu.queue_submit(_ptr, 1, &commands[0]._ptr)
-		return
-	}
-
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-	commands_ptrs := make([]WGPU_Command_Buffer, command_count, context.temp_allocator)
-
-	for c, i in commands {
-		commands_ptrs[i] = c._ptr
-	}
-
-	wgpu.queue_submit(_ptr, command_count, raw_data(commands_ptrs))
+queue_submit :: proc {
+	queue_submit_raw,
+	queue_submit_slice,
+	queue_submit_single,
+	queue_submit_empty,
 }
 
-// Submits a series of finished command buffers for execution and return the index of the queue.
-queue_submit_for_index :: proc(
+queue_submit_for_index_raw :: proc(
 	using self: ^Queue,
-	commands: ..^Command_Buffer,
+	command_count: uint,
+	commands: ^WGPU_Command_Buffer,
 ) -> Submission_Index {
-	command_count := cast(uint)len(commands)
+	return wgpu.queue_submit_for_index(ptr, command_count, commands)
+}
 
-	if command_count == 0 {
-		return wgpu.queue_submit_for_index(_ptr, 0, nil)
-	} else if command_count == 1 {
-		return wgpu.queue_submit_for_index(_ptr, 1, &commands[0]._ptr)
-	}
+queue_submit_for_index_slice :: proc(
+	using self: ^Queue,
+	commands: ..WGPU_Command_Buffer,
+) -> Submission_Index {
+	return wgpu.queue_submit_for_index(ptr, cast(uint)len(commands), raw_data(commands))
+}
 
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-	commands_ptrs := make([]WGPU_Command_Buffer, command_count, context.temp_allocator)
+queue_submit_for_index_single :: proc(
+	using self: ^Queue,
+	command: ^WGPU_Command_Buffer,
+) -> Submission_Index {
+	return wgpu.queue_submit_for_index(ptr, 1, command)
+}
 
-	for c, i in commands {
-		commands_ptrs[i] = c._ptr
-	}
+queue_submit_for_index_empty :: proc(using self: ^Queue) -> Submission_Index {
+	return wgpu.queue_submit_for_index(ptr, 0, nil)
+}
 
-	return wgpu.queue_submit_for_index(_ptr, command_count, raw_data(commands_ptrs))
+queue_submit_for_index :: proc {
+	queue_submit_for_index_raw,
+	queue_submit_for_index_slice,
+	queue_submit_for_index_single,
+	queue_submit_for_index_empty,
 }
 
 // Schedule a data write into `buffer` starting at `offset`.
@@ -94,7 +106,7 @@ queue_submit_for_index :: proc(
 // This method fails if `data` overruns the size of `buffer` starting at `offset`.
 queue_write_buffer :: proc(
 	using self: ^Queue,
-	buffer: ^Buffer,
+	buffer: WGPU_Buffer,
 	offset: Buffer_Address,
 	data: []byte,
 ) -> (
@@ -102,12 +114,10 @@ queue_write_buffer :: proc(
 ) {
 	_err_data.type = .No_Error
 
-	data_size := cast(uint)len(data)
-
-	if data_size == 0 {
-		wgpu.queue_write_buffer(_ptr, buffer._ptr, offset, nil, 0)
+	if len(data) == 0 {
+		wgpu.queue_write_buffer(ptr, buffer, offset, nil, 0)
 	} else {
-		wgpu.queue_write_buffer(_ptr, buffer._ptr, offset, raw_data(data), data_size)
+		wgpu.queue_write_buffer(ptr, buffer, offset, raw_data(data), cast(uint)len(data))
 	}
 
 	return _err_data.type
@@ -139,26 +149,17 @@ queue_write_texture :: proc(
 ) {
 	_err_data.type = .No_Error
 
-	dst: wgpu.Image_Copy_Texture
-
-	if texture != nil {
-		dst = {
-			mip_level = texture.mip_level,
-			origin    = texture.origin,
-			aspect    = texture.aspect,
-		}
-
-		if texture.texture != nil {
-			dst.texture = texture.texture._ptr
-		}
-	}
-
-	data_size := cast(uint)len(data)
-
-	if data_size == 0 {
-		wgpu.queue_write_texture(_ptr, &dst, nil, 0, data_layout, size)
+	if len(data) == 0 {
+		wgpu.queue_write_texture(ptr, texture, nil, 0, data_layout, size)
 	} else {
-		wgpu.queue_write_texture(_ptr, &dst, raw_data(data), data_size, data_layout, size)
+		wgpu.queue_write_texture(
+			ptr,
+			texture,
+			raw_data(data),
+			cast(uint)len(data),
+			data_layout,
+			size,
+		)
 	}
 
 	return _err_data.type
@@ -166,10 +167,12 @@ queue_write_texture :: proc(
 
 // Increase the reference count.
 queue_reference :: proc(using self: ^Queue) {
-	wgpu.queue_reference(_ptr)
+	wgpu.queue_reference(ptr)
 }
 
 // Release the `Queue`.
 queue_release :: proc(using self: ^Queue) {
-	wgpu.queue_release(_ptr)
+	if ptr == nil do return
+	wgpu.queue_release(ptr)
+	ptr = nil
 }

@@ -11,14 +11,15 @@ import wgpu "../bindings"
 //
 // Created with `device_create_buffer` or `device_create_buffer_with_data`.
 Buffer :: struct {
+	ptr:       WGPU_Buffer,
 	size:      Buffer_Size,
 	usage:     Buffer_Usage_Flags,
 	_err_data: ^Error_Data,
 }
 
-// Destroys the `Buffer`.
+// Destroys the `Buffer` from the GPU side.
 buffer_destroy :: proc(using self: ^Buffer) {
-	wgpu.buffer_destroy(_ptr)
+	wgpu.buffer_destroy(ptr)
 }
 
 // Returns a `slice` of `T` with the contents of the `Buffer` in the given mapped
@@ -35,13 +36,18 @@ buffer_get_const_mapped_range :: proc(
 		size = cast(uint)self.size
 	}
 
-	raw_data := wgpu.buffer_get_const_mapped_range(self._ptr, offset, size)
+	raw_data := wgpu.buffer_get_const_mapped_range(self.ptr, offset, size)
 
 	if raw_data == nil {
 		return {}
 	}
 
 	return slice.reinterpret([]T, slice.bytes_from_ptr(raw_data, cast(int)size))
+}
+
+// Get current `Buffer_Map_State` state.
+buffer_get_map_state :: proc(using self: ^Buffer) -> Buffer_Map_State {
+	return wgpu.buffer_get_map_state(ptr)
 }
 
 // Returns a `slice` of `T` with the contents of the `Buffer` in the given mapped range.
@@ -57,7 +63,7 @@ buffer_get_mapped_range :: proc(
 		size = cast(uint)self.size
 	}
 
-	raw_data := wgpu.buffer_get_mapped_range(self._ptr, offset, size)
+	raw_data := wgpu.buffer_get_mapped_range(self.ptr, offset, size)
 
 	if raw_data == nil {
 		return {}
@@ -66,14 +72,9 @@ buffer_get_mapped_range :: proc(
 	return slice.reinterpret([]T, slice.bytes_from_ptr(raw_data, cast(int)size))
 }
 
-// Get current `Buffer_Map_State` state.
-buffer_get_map_state :: proc(using self: ^Buffer) -> Buffer_Map_State {
-	return wgpu.buffer_get_map_state(_ptr)
-}
-
 // Returns the length of the buffer allocation in bytes.
 buffer_get_size :: proc(using self: ^Buffer) -> u64 {
-	return wgpu.buffer_get_size(_ptr)
+	return size
 }
 
 // Returns the allowed usages for this Buffer.
@@ -96,34 +97,32 @@ buffer_map_async :: proc(
 	}
 
 	self._err_data.type = .No_Error
-	wgpu.buffer_map_async(self._ptr, mode, offset, size, callback, user_data)
+	wgpu.buffer_map_async(self.ptr, mode, offset, size, callback, user_data)
 
 	return self._err_data.type
 }
 
 // Set debug label.
 buffer_set_label :: proc(using self: ^Buffer, label: cstring) {
-	wgpu.buffer_set_label(_ptr, label)
+	wgpu.buffer_set_label(ptr, label)
 }
 
 // Unmaps the mapped range of the `Buffer` and makes it's contents available for use
 // by the GPU again.
 buffer_unmap :: proc(using self: ^Buffer) -> Error_Type {
 	_err_data.type = .No_Error
-
-	wgpu.buffer_unmap(_ptr)
-
-	map_state = .Unmapped
-
+	wgpu.buffer_unmap(ptr)
 	return _err_data.type
 }
 
 // Increase the reference count.
 buffer_reference :: proc(using self: ^Buffer) {
-	wgpu.buffer_reference(_ptr)
+	wgpu.buffer_reference(ptr)
 }
 
 // Release the `Buffer`.
 buffer_release :: proc(using self: ^Buffer) {
-	wgpu.buffer_release(_ptr)
+	if ptr == nil do return
+	wgpu.buffer_release(ptr)
+	ptr = nil
 }

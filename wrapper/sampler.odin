@@ -10,20 +10,22 @@ import wgpu "../bindings"
 //
 // It can be created with `device_create_sampler`.
 Sampler :: struct {
-	_ptr: WGPU_Sampler,
+	ptr: WGPU_Sampler,
 }
 
 // Set debut label.
 sampler_set_label :: proc(using self: ^Sampler, label: cstring) {
-	wgpu.sampler_set_label(_ptr, label)
+	wgpu.sampler_set_label(ptr, label)
 }
 
 // Increase the reference count.
 sampler_reference :: proc(using self: ^Sampler) {
-	wgpu.sampler_reference(_ptr)
+	wgpu.sampler_reference(ptr)
 }
 
 // Release the `Sampler`.
 sampler_release :: proc(using self: ^Sampler) {
-	wgpu.sampler_release(_ptr)
+	if ptr == nil do return
+	wgpu.sampler_release(ptr)
+	ptr = nil
 }

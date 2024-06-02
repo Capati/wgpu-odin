@@ -17,7 +17,7 @@ import wgpu "../bindings"
 // `device_create_shader_module_spirv`. Shader modules are used to define programmable stages of a
 // pipeline.
 Shader_Module :: struct {
-	_ptr: WGPU_Shader_Module,
+	ptr: WGPU_Shader_Module,
 }
 
 WGSL_Source :: cstring
@@ -95,15 +95,17 @@ device_load_spirv_shader_module :: proc(
 
 // Set debug label.
 shader_module_set_label :: proc(using self: ^Shader_Module, label: cstring) {
-	wgpu.shader_module_set_label(_ptr, label)
+	wgpu.shader_module_set_label(ptr, label)
 }
 
 // Increase the reference count.
 shader_module_reference :: proc(using self: ^Shader_Module) {
-	wgpu.shader_module_reference(_ptr)
+	wgpu.shader_module_reference(ptr)
 }
 
 // Release the `Shader_Module`.
 shader_module_release :: proc(using self: ^Shader_Module) {
-	wgpu.shader_module_release(_ptr)
+	if ptr == nil do return
+	wgpu.shader_module_release(ptr)
+	ptr = nil
 }

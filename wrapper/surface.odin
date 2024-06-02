@@ -13,9 +13,13 @@ import wgpu "../bindings"
 // A `Surface` represents a platform-specific surface (e.g. a window) onto which rendered images
 // may be presented. A `Surface` may be created with `instance_create_surface`.
 Surface :: struct {
-	_ptr:      WGPU_Surface,
-	_err_data: ^Error_Data,
+	ptr:       WGPU_Surface,
 	config:    Surface_Configuration,
+	_err_data: ^Error_Data,
+}
+
+Surface_Configuration_Extras :: struct {
+	desired_maximum_frame_latency: bool,
 }
 
 // Describes a `Surface`.
@@ -29,6 +33,7 @@ Surface_Configuration :: struct {
 	width:        u32,
 	height:       u32,
 	present_mode: Present_Mode,
+	extras:       Surface_Configuration_Extras,
 }
 
 // Initializes `Surface` for presentation.
@@ -38,7 +43,7 @@ surface_configure :: proc(
 	config: ^Surface_Configuration,
 ) -> Error_Type {
 	cfg := wgpu.Surface_Configuration {
-		device = device._ptr,
+		device = device.ptr,
 	}
 
 	if config != nil {
@@ -62,9 +67,18 @@ surface_configure :: proc(
 
 	self.config = config^
 
+	extras: wgpu.Surface_Configuration_Extras
+
+	if config.extras.desired_maximum_frame_latency {
+		extras.chain.next = nil
+		extras.chain.stype = wgpu.SType(wgpu.Native_SType.Surface_Configuration_Extras)
+		extras.desired_maximum_frame_latency = true
+		cfg.next_in_chain = &extras.chain
+	}
+
 	device._err_data.type = .No_Error
 
-	wgpu.surface_configure(self._ptr, &cfg)
+	wgpu.surface_configure(self.ptr, &cfg)
 
 	if device._err_data.type != .No_Error {
 		return device._err_data.type
@@ -85,14 +99,14 @@ Surface_Capabilities :: struct {
 // Returns the capabilities of the surface when used with the given adapter.
 surface_get_capabilities :: proc(
 	using self: ^Surface,
-	adapter: ^Adapter,
+	adapter: WGPU_Adapter,
 	allocator := context.allocator,
 ) -> (
 	Surface_Capabilities,
 	Error_Type,
 ) {
 	caps: wgpu.Surface_Capabilities = {}
-	wgpu.surface_get_capabilities(_ptr, adapter._ptr, &caps)
+	wgpu.surface_get_capabilities(ptr, adapter, &caps)
 
 	if caps.format_count == 0 && caps.present_mode_count == 0 && caps.alpha_mode_count == 0 {
 		update_error_message("No compatible capabilities found with the given adapter")
@@ -101,7 +115,7 @@ surface_get_capabilities :: proc(
 
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
 
-	wgpu.surface_get_capabilities(_ptr, adapter._ptr, &caps)
+	wgpu.surface_get_capabilities(ptr, adapter, &caps)
 
 	ret := Surface_Capabilities{}
 
@@ -144,7 +158,7 @@ surface_get_current_texture :: proc(
 	_err_data.type = .No_Error
 
 	texture: wgpu.Surface_Texture
-	wgpu.surface_get_current_texture(_ptr, &texture)
+	wgpu.surface_get_current_texture(ptr, &texture)
 
 	if _err_data.type != .No_Error {
 		wgpu.texture_release(texture.texture)
@@ -153,9 +167,8 @@ surface_get_current_texture :: proc(
 
 	surface_texture = {
 		texture = Texture {
-			_ptr = texture.texture,
-			_err_data = _err_data,
-			descriptor =  {
+			ptr = texture.texture,
+			descriptor = {
 				size = {config.width, config.height, 1},
 				format = config.format,
 				usage = config.usage,
@@ -163,6 +176,7 @@ surface_get_current_texture :: proc(
 				sample_count = 1,
 				dimension = .D2,
 			},
+			_err_data = _err_data,
 		},
 		suboptimal = texture.suboptimal,
 		status = texture.status,
@@ -172,25 +186,28 @@ surface_get_current_texture :: proc(
 }
 
 // Returns the best format for the provided surface and adapter.
-surface_get_preferred_format :: proc(using self: ^Surface, adapter: ^Adapter) -> Texture_Format {
-	return wgpu.surface_get_preferred_format(_ptr, adapter._ptr)
+surface_get_preferred_format :: proc(
+	using self: ^Surface,
+	adapter: WGPU_Adapter,
+) -> Texture_Format {
+	return wgpu.surface_get_preferred_format(ptr, adapter)
 }
 
 // Schedule this surface to be presented on the owning surface.
 surface_present :: proc(using self: ^Surface) {
-	wgpu.surface_present(_ptr)
+	wgpu.surface_present(ptr)
 }
 
 // Removes the surface configuration. Destroys any textures produced while configured.
 surface_unconfigure :: proc(using self: ^Surface) {
-	wgpu.surface_unconfigure(_ptr)
+	wgpu.surface_unconfigure(ptr)
 }
 
 // Return a default `Surface_Configuration` from `width` and `height` to use for the
 // `Surface` with this adapter.
 surface_get_default_config :: proc(
 	self: ^Surface,
-	adapter: ^Adapter,
+	adapter: WGPU_Adapter,
 	width, height: u32,
 ) -> (
 	config: Surface_Configuration,
@@ -201,10 +218,10 @@ surface_get_default_config :: proc(
 	caps := surface_get_capabilities(self, adapter, context.temp_allocator) or_return
 
 	config = {
-		usage = {.Render_Attachment},
-		format = caps.formats[0],
-		width = width,
-		height = height,
+		usage        = {.Render_Attachment},
+		format       = caps.formats[0],
+		width        = width,
+		height       = height,
 		present_mode = caps.present_modes[0],
 	}
 
@@ -213,10 +230,12 @@ surface_get_default_config :: proc(
 
 // Increase the reference count.
 surface_reference :: proc(using self: ^Surface) {
-	wgpu.surface_reference(_ptr)
+	wgpu.surface_reference(ptr)
 }
 
 // Release the `Surface`.
 surface_release :: proc(using self: ^Surface) {
-	wgpu.surface_release(_ptr)
+	if ptr == nil do return
+	wgpu.surface_release(ptr)
+	ptr = nil
 }

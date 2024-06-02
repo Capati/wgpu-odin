@@ -32,18 +32,18 @@ can_be_bytes :: proc(T: typeid) -> bool {
 		}
 		return res
 	case .Slice,
-		 .Dynamic_Array,
-		 .Map,
-		 .Pointer,
-		 .Multi_Pointer,
-		 .String,
-		 .Procedure,
-		 .Type_Id,
-		 .Any,
-		 .Soa_Pointer,
-		 .Simd_Vector,
-		 .Relative_Pointer,
-		 .Relative_Multi_Pointer:
+	     .Dynamic_Array,
+	     .Map,
+	     .Pointer,
+	     .Multi_Pointer,
+	     .String,
+	     .Procedure,
+	     .Type_Id,
+	     .Any,
+	     .Soa_Pointer,
+	     .Simd_Vector,
+	     .Relative_Pointer,
+	     .Relative_Multi_Pointer:
 		return false
 	}
 

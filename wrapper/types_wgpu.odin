@@ -50,15 +50,16 @@ Instance_Backend_Secondary :: wgpu.Instance_Backend_Secondary
 // Instance_Backend_None :: wgpu.Instance_Backend_None
 Dx12_Compiler :: wgpu.Dx12_Compiler
 Gles3_Minor_Version :: wgpu.Gles3_Minor_Version
+Pipeline_Statistic_Name :: wgpu.Pipeline_Statistic_Name
 Composite_Alpha_Mode :: wgpu.Composite_Alpha_Mode
 
 Instance_Extras :: wgpu.Instance_Extras
 Device_Extras :: wgpu.Device_Extras
 Required_Limits_Extras :: wgpu.Required_Limits_Extras
-Surface_Configuration_Extras :: wgpu.Surface_Configuration_Extras
+// Surface_Configuration_Extras :: wgpu.Surface_Configuration_Extras
 Supported_Limits_Extras :: wgpu.Supported_Limits_Extras
 Push_Constant_Range :: wgpu.Push_Constant_Range
-Pipeline_Layout_Extras :: wgpu.Pipeline_Layout_Extras
+// Pipeline_Layout_Extras :: wgpu.Pipeline_Layout_Extras
 Submission_Index :: wgpu.Submission_Index
 Wrapped_Submission_Index :: wgpu.Wrapped_Submission_Index
 Shader_Define :: wgpu.Shader_Define
@@ -160,9 +161,10 @@ Primitive_Depth_Clip_Control :: wgpu.Primitive_Depth_Clip_Control
 // Primitive_State :: wgpu.Primitive_State
 Queue_Descriptor :: wgpu.Queue_Descriptor
 Render_Bundle_Descriptor :: wgpu.Render_Bundle_Descriptor
-// Render_Pass_Depth_Stencil_Attachment :: wgpu.Render_Pass_Depth_Stencil_Attachment
+Render_Pass_Depth_Stencil_Attachment :: wgpu.Render_Pass_Depth_Stencil_Attachment
 Render_Pass_Descriptor_Max_Draw_Count :: wgpu.Render_Pass_Descriptor_Max_Draw_Count
 Render_Pass_Timestamp_Writes :: wgpu.Render_Pass_Timestamp_Writes
+Request_Adapter_Options :: wgpu.Request_Adapter_Options
 Sampler_Binding_Layout :: wgpu.Sampler_Binding_Layout
 Sampler_Descriptor :: wgpu.Sampler_Descriptor
 Shader_Module_Compilation_Hint :: wgpu.Shader_Module_Compilation_Hint
@@ -185,8 +187,9 @@ Blend_State :: wgpu.Blend_State
 Compilation_Info :: wgpu.Compilation_Info
 Compute_Pass_Descriptor :: wgpu.Compute_Pass_Descriptor
 Depth_Stencil_State :: wgpu.Depth_Stencil_State
-// Image_Copy_Buffer :: wgpu.Image_Copy_Buffer
-// Image_Copy_Texture :: wgpu.Image_Copy_Texture
+Image_Copy_Buffer :: wgpu.Image_Copy_Buffer
+Image_Copy_Texture :: wgpu.Image_Copy_Texture
+Render_Pass_Color_Attachment :: wgpu.Render_Pass_Color_Attachment
 Required_Limits :: wgpu.Required_Limits
 Supported_Limits :: wgpu.Supported_Limits
 // Texture_Descriptor :: wgpu.Texture_Descriptor

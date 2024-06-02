@@ -51,7 +51,7 @@ texture_from_image :: proc(
 
 	wgpu.queue_write_texture(
 		queue,
-		&wgpu.Image_Copy_Texture{texture = &handle, mip_level = 0, origin = {}, aspect = .All},
+		&wgpu.Image_Copy_Texture{texture = handle.ptr, mip_level = 0, origin = {}, aspect = .All},
 		wgpu.to_bytes(&image.pixels),
 		&wgpu.Texture_Data_Layout {
 			offset = 0,
