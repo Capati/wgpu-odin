@@ -44,7 +44,7 @@ adapter_get_limits :: proc(self: ^Adapter) -> (limits: Limits) {
 		chain = {stype = SType(Native_SType.Supported_Limits_Extras)},
 	}
 	supported_limits := Supported_Limits {
-		next_in_chain = cast(^Chained_Struct_Out)&supported_extras,
+		next_in_chain = &supported_extras.chain,
 	}
 	wgpu.adapter_get_limits(self.ptr, &supported_limits)
 

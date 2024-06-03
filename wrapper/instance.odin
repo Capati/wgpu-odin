@@ -148,14 +148,12 @@ instance_create_surface :: proc(
 		}
 	}
 
-	surface_ptr := wgpu.instance_create_surface(ptr, &desc)
+	surface.ptr = wgpu.instance_create_surface(ptr, &desc)
 
-	if surface_ptr == nil {
+	if surface.ptr == nil {
 		update_error_message("Failed to acquire surface")
 		return {}, .Internal
 	}
-
-	surface.ptr = surface_ptr
 
 	return surface, .No_Error
 }
