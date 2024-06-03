@@ -52,6 +52,7 @@ Render_Pass_Descriptor :: struct {
 	depth_stencil_attachment: ^Render_Pass_Depth_Stencil_Attachment,
 	occlusion_query_set:      WGPU_Query_Set,
 	timestamp_writes:         []Render_Pass_Timestamp_Writes,
+	max_draw_count:           u64,
 }
 
 // Begins recording of a render pass.
@@ -79,6 +80,14 @@ command_encoder_begin_render_pass :: proc(
 
 	if len(descriptor.timestamp_writes) > 0 {
 		desc.timestamp_writes = raw_data(descriptor.timestamp_writes)
+	}
+
+	max_draw_count: wgpu.Render_Pass_Descriptor_Max_Draw_Count
+
+	if descriptor.max_draw_count > 0 {
+		max_draw_count.chain.stype = wgpu.SType.Render_Pass_Descriptor_Max_Draw_Count
+		max_draw_count.max_draw_count = descriptor.max_draw_count
+		desc.next_in_chain = &max_draw_count.chain
 	}
 
 	render_pass.ptr = wgpu.command_encoder_begin_render_pass(ptr, &desc)
