@@ -28,26 +28,30 @@ Instance_Descriptor :: struct {
 }
 
 // Create an new instance of wgpu.
-create_instance_from_descriptor :: proc(
-	descriptor: ^Instance_Descriptor,
+create_instance :: proc(
+	descriptor: ^Instance_Descriptor = nil,
 ) -> (
 	instance: Instance,
 	err: Error_Type,
 ) {
-	instance_extras := Instance_Extras {
-		chain = {next = nil, stype = cast(SType)Native_SType.Instance_Extras},
-		backends = descriptor.backends,
-		flags = descriptor.flags,
-		dx12_shader_compiler = descriptor.dx12_shader_compiler,
-		gles3_minor_version = descriptor.gles3_minor_version,
-		dxil_path = descriptor.dxil_path,
-		dxc_path = descriptor.dxc_path,
+	if descriptor == nil {
+		instance.ptr = wgpu.create_instance(nil)
+	} else {
+		instance_extras := Instance_Extras {
+			chain = {next = nil, stype = cast(SType)Native_SType.Instance_Extras},
+			backends = descriptor.backends,
+			flags = descriptor.flags,
+			dx12_shader_compiler = descriptor.dx12_shader_compiler,
+			gles3_minor_version = descriptor.gles3_minor_version,
+			dxil_path = descriptor.dxil_path,
+			dxc_path = descriptor.dxc_path,
+		}
+
+		desc: wgpu.Instance_Descriptor
+		desc.next_in_chain = &instance_extras.chain
+
+		instance.ptr = wgpu.create_instance(&desc)
 	}
-
-	desc: wgpu.Instance_Descriptor
-	desc.next_in_chain = &instance_extras.chain
-
-	instance.ptr = wgpu.create_instance(nil)
 
 	if instance.ptr == nil {
 		update_error_message("Failed to acquire an instance")
@@ -55,22 +59,6 @@ create_instance_from_descriptor :: proc(
 	}
 
 	return
-}
-
-create_instance_empty :: proc() -> (instance: Instance, err: Error_Type) {
-	instance.ptr = wgpu.create_instance(nil)
-
-	if instance.ptr == nil {
-		update_error_message("Failed to acquire an instance")
-		return {}, .Unknown
-	}
-
-	return
-}
-
-create_instance :: proc {
-	create_instance_from_descriptor,
-	create_instance_empty,
 }
 
 // Describes a surface target.
