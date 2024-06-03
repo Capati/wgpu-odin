@@ -121,13 +121,26 @@ Device_Response :: struct {
 }
 
 @(private = "file")
-_adapter_request_device_fill :: proc(
+_adapter_request_device :: proc(
 	self: ^Adapter,
-	res: ^Device_Response,
+	desc: ^wgpu.Device_Descriptor = nil,
 ) -> (
 	device: Device,
 	queue: Queue,
+	err: Error_Type,
 ) {
+	res: Device_Response
+	wgpu.adapter_request_device(
+		self.ptr,
+		desc if desc != nil else nil,
+		_on_adapter_request_device,
+		&res,
+	)
+
+	if res.status != .Success {
+		return {}, {}, .Unknown
+	}
+
 	device.ptr = res.device
 	device.features = device_get_features(&device)
 	device.limits = device_get_limits(&device)
@@ -149,14 +162,18 @@ _adapter_request_device_fill :: proc(
 // Requests a connection to a physical device, creating a logical device.
 //
 // Returns the `Device` together with a `Queue` that executes command buffers.
-adapter_request_device_from_descriptor :: proc(
+adapter_request_device :: proc(
 	self: ^Adapter,
-	descriptor: ^Device_Descriptor,
+	descriptor: ^Device_Descriptor = nil,
 ) -> (
 	device: Device,
 	queue: Queue,
 	err: Error_Type,
 ) {
+	if descriptor == nil {
+		return _adapter_request_device(self, nil)
+	}
+
 	desc: wgpu.Device_Descriptor
 	desc.label = descriptor.label
 
@@ -247,36 +264,7 @@ adapter_request_device_from_descriptor :: proc(
 		desc.next_in_chain = &device_extras.chain
 	}
 
-	res: Device_Response
-	wgpu.adapter_request_device(self.ptr, &desc, _on_adapter_request_device, &res)
-
-	if res.status != .Success {
-		return {}, {}, .Unknown
-	}
-
-	return _adapter_request_device_fill(self, &res), .No_Error
-}
-
-adapter_request_device_empty :: proc(
-	self: ^Adapter,
-) -> (
-	device: Device,
-	queue: Queue,
-	err: Error_Type,
-) {
-	res: Device_Response
-	wgpu.adapter_request_device(self.ptr, nil, _on_adapter_request_device, &res)
-
-	if res.status != .Success {
-		return {}, {}, .Unknown
-	}
-
-	return _adapter_request_device_fill(self, &res), .No_Error
-}
-
-adapter_request_device :: proc {
-	adapter_request_device_from_descriptor,
-	adapter_request_device_empty,
+	return _adapter_request_device(self, &desc)
 }
 
 // Increase the reference count.
