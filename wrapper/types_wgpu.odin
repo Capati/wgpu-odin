@@ -162,7 +162,7 @@ Primitive_Depth_Clip_Control :: wgpu.Primitive_Depth_Clip_Control
 Queue_Descriptor :: wgpu.Queue_Descriptor
 Render_Bundle_Descriptor :: wgpu.Render_Bundle_Descriptor
 Render_Pass_Depth_Stencil_Attachment :: wgpu.Render_Pass_Depth_Stencil_Attachment
-Render_Pass_Descriptor_Max_Draw_Count :: wgpu.Render_Pass_Descriptor_Max_Draw_Count
+// Render_Pass_Descriptor_Max_Draw_Count :: wgpu.Render_Pass_Descriptor_Max_Draw_Count
 Render_Pass_Timestamp_Writes :: wgpu.Render_Pass_Timestamp_Writes
 Request_Adapter_Options :: wgpu.Request_Adapter_Options
 Sampler_Binding_Layout :: wgpu.Sampler_Binding_Layout
