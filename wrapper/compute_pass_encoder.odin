@@ -7,7 +7,7 @@ import wgpu "../bindings"
 //
 // It can be created with `command_encoder_begin_compute_pass`.
 Compute_Pass_Encoder :: struct {
-	ptr:       WGPU_Compute_Pass_Encoder,
+	ptr:       Raw_Compute_Pass_Encoder,
 	_err_data: ^Error_Data,
 }
 
@@ -33,7 +33,7 @@ compute_pass_encoder_dispatch_workgroups :: proc(
 // The structure expected in `indirect_buffer` must conform to `Dispatch_Indirect`.
 compute_pass_encoder_dispatch_workgroups_indirect :: proc(
 	using self: ^Compute_Pass_Encoder,
-	indirect_buffer: WGPU_Buffer,
+	indirect_buffer: Raw_Buffer,
 	indirect_offset: u64,
 ) {
 	wgpu.compute_pass_encoder_dispatch_workgroups_indirect(ptr, indirect_buffer, indirect_offset)
@@ -79,7 +79,7 @@ compute_pass_encoder_push_debug_group :: proc(
 compute_pass_encoder_set_bind_group :: proc(
 	using self: ^Compute_Pass_Encoder,
 	group_index: u32,
-	group: WGPU_Bind_Group,
+	group: Raw_Bind_Group,
 	dynamic_offsets: []u32 = {},
 ) {
 	dynamic_offset_count := cast(uint)len(dynamic_offsets)
@@ -105,7 +105,7 @@ compute_pass_encoder_set_label :: proc(using self: ^Compute_Pass_Encoder, label:
 // Sets the active compute pipeline.
 compute_pass_encoder_set_pipeline :: proc(
 	using self: ^Compute_Pass_Encoder,
-	pipeline: WGPU_Compute_Pipeline,
+	pipeline: Raw_Compute_Pipeline,
 ) {
 	wgpu.compute_pass_encoder_set_pipeline(ptr, pipeline)
 }
@@ -114,7 +114,7 @@ compute_pass_encoder_set_pipeline :: proc(
 // `compute_pass_end_pipeline_statistics_query`. Pipeline statistics queries may not be nested.
 compute_pass_encoder_begin_pipeline_statistics_query :: proc(
 	using self: ^Compute_Pass_Encoder,
-	query_set: WGPU_Query_Set,
+	query_set: Raw_Query_Set,
 	query_index: u32,
 ) {
 	wgpu.compute_pass_encoder_begin_pipeline_statistics_query(ptr, query_set, query_index)

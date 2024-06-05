@@ -7,7 +7,7 @@ import wgpu "../bindings"
 //
 // It can be created with `device_create_texture`.
 Texture :: struct {
-	ptr:        WGPU_Texture,
+	ptr:        Raw_Texture,
 	descriptor: Texture_Descriptor,
 	_err_data:  ^Error_Data,
 }

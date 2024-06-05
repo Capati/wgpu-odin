@@ -14,7 +14,7 @@ import wgpu "../bindings"
 //
 // Does not have to be kept alive.
 Instance :: struct {
-	ptr: WGPU_Instance,
+	ptr: Raw_Instance,
 }
 
 // Options for creating an instance.
@@ -149,7 +149,7 @@ instance_create_surface :: proc(
 @(private = "file")
 Adapter_Response :: struct {
 	status:  Request_Adapter_Status,
-	adapter: WGPU_Adapter,
+	adapter: Raw_Adapter,
 }
 
 // Retrieves an `Adapter` which matches the given options.
@@ -195,7 +195,7 @@ instance_enumerate_adapters :: proc(
 	}
 
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
-	wgpu_adapters := make([]WGPU_Adapter, adapter_count, context.temp_allocator)
+	wgpu_adapters := make([]Raw_Adapter, adapter_count, context.temp_allocator)
 	wgpu.instance_enumerate_adapters(ptr, &options, raw_data(wgpu_adapters))
 
 	adapters := make([]Adapter, adapter_count, allocator)
@@ -291,7 +291,7 @@ instance_release :: proc(using self: ^Instance) {
 @(private = "file")
 _on_request_adapter_callback :: proc "c" (
 	status: Request_Adapter_Status,
-	adapter: WGPU_Adapter,
+	adapter: Raw_Adapter,
 	message: cstring,
 	user_data: rawptr,
 ) {

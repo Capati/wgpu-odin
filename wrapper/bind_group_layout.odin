@@ -10,7 +10,7 @@ import wgpu "../bindings"
 // object with `device_create_bind_group`. A series of `Bind_Group_Layout`s can also be used to
 // create a `Pipeline_Layout_Descriptor`, which can be used to create a `Pipeline_Layout`.
 Bind_Group_Layout :: struct {
-	ptr: WGPU_Bind_Group_Layout,
+	ptr: Raw_Bind_Group_Layout,
 }
 
 // Set debug label.

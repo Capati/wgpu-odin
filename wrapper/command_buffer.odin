@@ -9,7 +9,7 @@ import wgpu "../bindings"
 // queue with `queue_submit`. A `Command_Buffer` is obtained by recording a series of commands to a
 // `Command_Encoder` and then calling `command_encoder_finish`.
 Command_Buffer :: struct {
-	ptr: WGPU_Command_Buffer,
+	ptr: Raw_Command_Buffer,
 }
 
 // Set debug label.

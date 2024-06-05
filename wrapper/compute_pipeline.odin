@@ -8,7 +8,7 @@ import wgpu "../bindings"
 // A `Compute_Pipeline` object represents a compute pipeline and its single shader stage. It can be
 // created with `device_create_compute_pipeline`.
 Compute_Pipeline :: struct {
-	ptr: WGPU_Compute_Pipeline,
+	ptr: Raw_Compute_Pipeline,
 }
 
 // Get an object representing the bind group layout at a given index.

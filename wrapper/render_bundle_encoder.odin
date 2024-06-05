@@ -12,7 +12,7 @@ import wgpu "../bindings"
 // Executing a `Render_Bundle` is often more efficient than issuing the underlying commands
 // manually.
 Render_Bundle_Encoder :: struct {
-	ptr: WGPU_Render_Bundle_Encoder,
+	ptr: Raw_Render_Bundle_Encoder,
 }
 
 // Draws primitives from the active vertex buffer(s).
@@ -55,7 +55,7 @@ render_bundle_encoder_draw_indexed :: proc(
 // the contents of the `indirect_buffer`.
 render_bundle_encoder_draw_indexed_indirect :: proc(
 	using self: ^Render_Bundle_Encoder,
-	indirect_buffer: WGPU_Buffer,
+	indirect_buffer: Raw_Buffer,
 	indirect_offset: u64 = 0,
 ) {
 	wgpu.render_bundle_encoder_draw_indexed_indirect(ptr, indirect_buffer, indirect_offset)
@@ -64,7 +64,7 @@ render_bundle_encoder_draw_indexed_indirect :: proc(
 // Draws primitives from the active vertex buffer(s) based on the contents of the `indirect_buffer`.
 render_bundle_encoder_draw_indirect :: proc(
 	using self: ^Render_Bundle_Encoder,
-	indirect_buffer: WGPU_Buffer,
+	indirect_buffer: Raw_Buffer,
 	indirect_offset: u64 = 0,
 ) {
 	wgpu.render_bundle_encoder_draw_indirect(ptr, indirect_buffer, indirect_offset)
@@ -116,7 +116,7 @@ render_bundle_encoder_push_debug_group :: proc(
 render_bundle_encoder_set_bind_group :: proc(
 	using self: ^Render_Bundle_Encoder,
 	group_index: u32,
-	group: WGPU_Bind_Group,
+	group: Raw_Bind_Group,
 	dynamic_offsets: []u32 = {},
 ) {
 	if len(dynamic_offsets) == 0 {
@@ -138,7 +138,7 @@ render_bundle_encoder_set_bind_group :: proc(
 // index buffer.
 render_bundle_encoder_set_index_buffer :: proc(
 	using self: ^Render_Bundle_Encoder,
-	buffer: WGPU_Buffer,
+	buffer: Raw_Buffer,
 	format: Index_Format,
 	offset: u64 = 0,
 	size: u64 = WHOLE_SIZE,
@@ -156,7 +156,7 @@ render_bundle_encoder_set_label :: proc(using self: ^Render_Bundle_Encoder, labe
 // Subsequent draw calls will exhibit the behavior defined by pipeline.
 render_bundle_encoder_set_pipeline :: proc(
 	using self: ^Render_Bundle_Encoder,
-	pipeline: WGPU_Render_Pipeline,
+	pipeline: Raw_Render_Pipeline,
 ) {
 	wgpu.render_bundle_encoder_set_pipeline(ptr, pipeline)
 }
@@ -170,7 +170,7 @@ render_bundle_encoder_set_pipeline :: proc(
 render_bundle_encoder_set_vertex_buffer :: proc(
 	using self: ^Render_Bundle_Encoder,
 	slot: u32,
-	buffer: WGPU_Buffer,
+	buffer: Raw_Buffer,
 	offset: u64 = 0,
 	size: u64 = WHOLE_SIZE,
 ) {

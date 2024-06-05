@@ -11,7 +11,7 @@ import wgpu "../bindings"
 // It can be created by use of a `Render_Bundle_Encoder`, and executed onto a `Command_Encoder`
 // using `render_pass_encoder_execute_bundles`.
 Render_Bundle :: struct {
-	ptr: WGPU_Render_Bundle,
+	ptr: Raw_Render_Bundle,
 }
 
 // Set debug label.

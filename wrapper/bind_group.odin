@@ -10,7 +10,7 @@ import wgpu "../bindings"
 // bound to a particular `Render_Pass_Encoder` with `render_pass_encoder_set_bind_group`, or to a `Compute_Pass_Encoder`
 // with `compute_pass_encoder_set_bind_group`.
 Bind_Group :: struct {
-	ptr: WGPU_Bind_Group,
+	ptr: Raw_Bind_Group,
 }
 
 // Set debug label.

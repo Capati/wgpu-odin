@@ -14,7 +14,7 @@ import wgpu "../bindings"
 //
 // A device may be requested from an adapter with `adapter_request_device`.
 Device :: struct {
-	ptr:       WGPU_Device,
+	ptr:       Raw_Device,
 	features:  []Feature,
 	limits:    Limits,
 	_err_data: ^Error_Data,
@@ -22,7 +22,7 @@ Device :: struct {
 
 // Describes the segment of a buffer to bind.
 Buffer_Binding :: struct {
-	buffer: WGPU_Buffer,
+	buffer: Raw_Buffer,
 	offset: u64,
 	size:   u64,
 }
@@ -30,8 +30,8 @@ Buffer_Binding :: struct {
 // Resource that can be bound to a pipeline.
 Binding_Resource :: union {
 	Buffer_Binding,
-	WGPU_Sampler,
-	WGPU_Texture_View,
+	Raw_Sampler,
+	Raw_Texture_View,
 }
 
 // An element of a `Bind_Group_Descriptor`, consisting of a bindable resource
@@ -42,9 +42,9 @@ Bind_Group_Entry :: struct {
 }
 
 Bind_Group_Entry_Extras :: struct {
-	buffers:       []WGPU_Buffer,
-	samplers:      []WGPU_Sampler,
-	texture_views: []WGPU_Texture_View,
+	buffers:       []Raw_Buffer,
+	samplers:      []Raw_Sampler,
+	texture_views: []Raw_Texture_View,
 }
 
 // Describes a group of bindings and the resources to be bound.
@@ -52,7 +52,7 @@ Bind_Group_Entry_Extras :: struct {
 // For use with `device_create_bind_group`.
 Bind_Group_Descriptor :: struct {
 	label:   cstring,
-	layout:  WGPU_Bind_Group_Layout,
+	layout:  Raw_Bind_Group_Layout,
 	entries: []Bind_Group_Entry,
 	extras:  ^Bind_Group_Entry_Extras,
 }
@@ -88,9 +88,9 @@ device_create_bind_group :: proc(
 				raw_entry.buffer = res.buffer
 				raw_entry.size = res.size
 				raw_entry.offset = res.offset
-			case WGPU_Sampler:
+			case Raw_Sampler:
 				raw_entry.sampler = res
-			case WGPU_Texture_View:
+			case Raw_Texture_View:
 				raw_entry.texture_view = res
 			}
 		}
@@ -288,7 +288,7 @@ device_create_command_encoder :: proc(
 }
 
 Programmable_Stage_Descriptor :: struct {
-	module:      WGPU_Shader_Module,
+	module:      Raw_Shader_Module,
 	entry_point: cstring,
 	constants:   []Constant_Entry,
 }
@@ -298,7 +298,7 @@ Programmable_Stage_Descriptor :: struct {
 // For use with `device_create_compute_pipeline`.
 Compute_Pipeline_Descriptor :: struct {
 	label:   cstring,
-	layout:  WGPU_Pipeline_Layout,
+	layout:  Raw_Pipeline_Layout,
 	compute: Programmable_Stage_Descriptor,
 }
 
@@ -387,7 +387,7 @@ Pipeline_Layout_Extras :: struct {
 // For use with `device_create_pipeline_layout`.
 Pipeline_Layout_Descriptor :: struct {
 	label:              cstring,
-	bind_group_layouts: []WGPU_Bind_Group_Layout,
+	bind_group_layouts: []Raw_Bind_Group_Layout,
 	extras:             ^Pipeline_Layout_Extras,
 }
 
@@ -645,7 +645,7 @@ Vertex_Buffer_Layout :: struct {
 //
 // For use in `Render_Pipeline_Descriptor`.
 Vertex_State :: struct {
-	module:      WGPU_Shader_Module,
+	module:      Raw_Shader_Module,
 	entry_point: cstring,
 	constants:   []Constant_Entry,
 	buffers:     []Vertex_Buffer_Layout,
@@ -655,7 +655,7 @@ Vertex_State :: struct {
 //
 // For use in `Render_Pipeline_Descriptor`.
 Fragment_State :: struct {
-	module:      WGPU_Shader_Module,
+	module:      Raw_Shader_Module,
 	entry_point: cstring,
 	constants:   []Constant_Entry,
 	targets:     []Color_Target_State,
@@ -683,7 +683,7 @@ Primitive_State :: struct {
 // For use with `device_create_render_pipeline`.
 Render_Pipeline_Descriptor :: struct {
 	label:         cstring,
-	layout:        WGPU_Pipeline_Layout,
+	layout:        Raw_Pipeline_Layout,
 	vertex:        Vertex_State,
 	primitive:     Primitive_State,
 	depth_stencil: ^Depth_Stencil_State,

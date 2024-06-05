@@ -8,7 +8,7 @@ import wgpu "../bindings"
 // A `Pipeline_Layout` object describes the available binding groups of a pipeline. It can be
 // created with `device_create_pipeline_layout`.
 Pipeline_Layout :: struct {
-	ptr: WGPU_Pipeline_Layout,
+	ptr: Raw_Pipeline_Layout,
 }
 
 // Set debug label.

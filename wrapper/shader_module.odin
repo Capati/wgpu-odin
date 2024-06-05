@@ -17,7 +17,7 @@ import wgpu "../bindings"
 // `device_create_shader_module_spirv`. Shader modules are used to define programmable stages of a
 // pipeline.
 Shader_Module :: struct {
-	ptr: WGPU_Shader_Module,
+	ptr: Raw_Shader_Module,
 }
 
 WGSL_Source :: cstring
