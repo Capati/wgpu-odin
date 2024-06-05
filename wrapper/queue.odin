@@ -165,6 +165,21 @@ queue_write_texture :: proc(
 	return _err_data.type
 }
 
+queue_write_texture_raw :: proc(
+	using self: ^Queue,
+	texture: ^Image_Copy_Texture,
+	data: rawptr,
+	data_size: uint,
+	data_layout: ^Texture_Data_Layout,
+	size: ^Extent_3D,
+) -> (
+	err: Error_Type,
+) {
+	_err_data.type = .No_Error
+	wgpu.queue_write_texture(ptr, texture, data, data_size, data_layout, size)
+	return _err_data.type
+}
+
 // Increase the reference count.
 queue_reference :: proc(using self: ^Queue) {
 	wgpu.queue_reference(ptr)
