@@ -17,6 +17,11 @@ Buffer :: struct {
 	_err_data: ^Error_Data,
 }
 
+// Return the binding view of the entire buffer with the current size.
+buffer_as_entire_binding :: proc(using self: ^Buffer) -> Buffer_Binding {
+	return {buffer = ptr, offset = 0, size = size}
+}
+
 // Destroys the `Buffer` from the GPU side.
 buffer_destroy :: proc(using self: ^Buffer) {
 	wgpu.buffer_destroy(ptr)
