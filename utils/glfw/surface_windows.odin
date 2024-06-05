@@ -1,5 +1,4 @@
 //+build windows
-
 package wgpu_utils_glfw
 
 // Core

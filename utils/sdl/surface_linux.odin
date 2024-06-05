@@ -1,8 +1,6 @@
 //+build linux
 package wgpu_utils_sdl
 
-// Core
-
 // Vendor
 import sdl "vendor:sdl2"
 
