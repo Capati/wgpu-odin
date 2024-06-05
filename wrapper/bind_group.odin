@@ -25,6 +25,11 @@ bind_group_reference :: proc(using self: ^Bind_Group) {
 
 // Release the `Bind_Group`.
 bind_group_release :: proc(using self: ^Bind_Group) {
+	wgpu.bind_group_release(ptr)
+}
+
+// Release the `Bind_Group` and modify the raw pointer to `nil`.
+bind_group_release_and_nil :: proc(using self: ^Bind_Group) {
 	if ptr == nil do return
 	wgpu.bind_group_release(ptr)
 	ptr = nil

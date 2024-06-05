@@ -41,6 +41,11 @@ compute_pipeline_reference :: proc(using self: ^Compute_Pipeline) {
 
 // Release the `Compute_Pipeline`.
 compute_pipeline_release :: proc(using self: ^Compute_Pipeline) {
+	wgpu.compute_pipeline_release(ptr)
+}
+
+// Release the `Compute_Pipeline`and modify the raw pointer to `nil`.
+compute_pipeline_release_and_nil :: proc(using self: ^Compute_Pipeline) {
 	if ptr == nil do return
 	wgpu.compute_pipeline_release(ptr)
 	ptr = nil

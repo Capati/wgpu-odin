@@ -25,6 +25,11 @@ bind_group_layout_reference :: proc(using self: ^Bind_Group_Layout) {
 
 // Release the `Bind_Group_Layout`.
 bind_group_layout_release :: proc(using self: ^Bind_Group_Layout) {
+	wgpu.bind_group_layout_release(ptr)
+}
+
+// Release the `Bind_Group_Layout` and modify the raw pointer to `nil`..
+bind_group_layout_release_and_nil :: proc(using self: ^Bind_Group_Layout) {
 	if ptr == nil do return
 	wgpu.bind_group_layout_release(ptr)
 	ptr = nil

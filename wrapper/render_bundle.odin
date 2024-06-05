@@ -26,6 +26,11 @@ render_bundle_reference :: proc(using self: ^Render_Bundle) {
 
 // Release the `Render_Bundle`.
 render_bundle_release :: proc(using self: ^Render_Bundle) {
+	wgpu.render_bundle_release(ptr)
+}
+
+// Release the `Render_Bundle` and modify the raw pointer to `nil`.
+render_bundle_release_and_nil :: proc(using self: ^Render_Bundle) {
 	if ptr == nil do return
 	wgpu.render_bundle_release(ptr)
 	ptr = nil

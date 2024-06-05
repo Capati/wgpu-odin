@@ -184,6 +184,11 @@ render_bundle_encoder_reference :: proc(using self: ^Render_Bundle_Encoder) {
 
 // Release the `Render_Bundle_Encoder`.
 render_bundle_encoder_release :: proc(using self: ^Render_Bundle_Encoder) {
+	wgpu.render_bundle_encoder_release(ptr)
+}
+
+// Release the `Render_Bundle_Encoder` and modify the raw pointer to `nil`.
+render_bundle_encoder_release_and_nil :: proc(using self: ^Render_Bundle_Encoder) {
 	if ptr == nil do return
 	wgpu.render_bundle_encoder_release(ptr)
 	ptr = nil

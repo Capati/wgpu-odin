@@ -984,12 +984,21 @@ device_reference :: proc(using self: ^Device) {
 	wgpu.device_reference(ptr)
 }
 
-// Release the `Device` and delete internal objects.
-device_release :: proc(using self: ^Device) {
-	if ptr == nil do return
+@(private = "file")
+_device_release :: proc(using self: ^Device) {
 	delete(features)
 	free(_err_data)
-	wgpu.device_release(ptr)
+}
+
+// Release the `Device` and delete internal objects.
+device_release :: proc(using self: ^Device) {
+	_device_release(self)
+}
+
+// Release the `Device` and delete internal objects and modify the raw pointer to `nil`.
+device_release_and_nil :: proc(using self: ^Device) {
+	if ptr == nil do return
+	_device_release(self)
 	ptr = nil
 }
 

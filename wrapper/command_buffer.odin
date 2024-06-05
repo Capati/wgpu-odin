@@ -24,6 +24,11 @@ command_buffer_reference :: proc(using self: ^Command_Buffer) {
 
 // Release the `Command_Buffer`.
 command_buffer_release :: proc(using self: ^Command_Buffer) {
+	wgpu.command_buffer_release(ptr)
+}
+
+// Release the `Command_Buffer` and modify the raw pointer to `nil`.
+command_buffer_release_and_nil :: proc(using self: ^Command_Buffer) {
 	if ptr == nil do return
 	wgpu.command_buffer_release(ptr)
 	ptr = nil

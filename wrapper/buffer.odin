@@ -127,6 +127,11 @@ buffer_reference :: proc(using self: ^Buffer) {
 
 // Release the `Buffer`.
 buffer_release :: proc(using self: ^Buffer) {
+	wgpu.buffer_release(ptr)
+}
+
+// Release the `Buffer` and modify the raw pointer to `nil`.
+buffer_release_and_nil :: proc(using self: ^Buffer) {
 	if ptr == nil do return
 	wgpu.buffer_release(ptr)
 	ptr = nil

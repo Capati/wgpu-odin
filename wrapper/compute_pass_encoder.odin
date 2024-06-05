@@ -133,6 +133,11 @@ compute_pass_encoder_reference :: proc(using self: ^Compute_Pass_Encoder) {
 
 // Release the `Compute_Pass_Encoder`.
 compute_pass_encoder_release :: proc(using self: ^Compute_Pass_Encoder) {
+	wgpu.compute_pass_encoder_release(ptr)
+}
+
+// Release the `Compute_Pass_Encoder` and modify the raw pointer to `nil`.
+compute_pass_encoder_release_and_nil :: proc(using self: ^Compute_Pass_Encoder) {
 	if ptr == nil do return
 	wgpu.compute_pass_encoder_release(ptr)
 	ptr = nil

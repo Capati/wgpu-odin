@@ -25,6 +25,11 @@ sampler_reference :: proc(using self: ^Sampler) {
 
 // Release the `Sampler`.
 sampler_release :: proc(using self: ^Sampler) {
+	wgpu.sampler_release(ptr)
+}
+
+// Release the `Sampler` and modify the raw pointer to `nil`.
+sampler_release_and_nil :: proc(using self: ^Sampler) {
 	if ptr == nil do return
 	wgpu.sampler_release(ptr)
 	ptr = nil

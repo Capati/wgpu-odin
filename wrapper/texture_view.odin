@@ -23,6 +23,11 @@ texture_view_reference :: proc(using texture_view: ^Texture_View) {
 
 // Release the `Texture_View`.
 texture_view_release :: proc(using texture_view: ^Texture_View) {
+	wgpu.texture_view_release(ptr)
+}
+
+// Release the `Texture_View` and modify the raw pointer to `nil`.
+texture_view_release_and_nil :: proc(using texture_view: ^Texture_View) {
 	if ptr == nil do return
 	wgpu.texture_view_release(ptr)
 	ptr = nil

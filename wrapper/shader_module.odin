@@ -105,6 +105,11 @@ shader_module_reference :: proc(using self: ^Shader_Module) {
 
 // Release the `Shader_Module`.
 shader_module_release :: proc(using self: ^Shader_Module) {
+	wgpu.shader_module_release(ptr)
+}
+
+// Release the `Shader_Module` and modify the raw pointer to `nil`.
+shader_module_release_and_nil :: proc(using self: ^Shader_Module) {
 	if ptr == nil do return
 	wgpu.shader_module_release(ptr)
 	ptr = nil

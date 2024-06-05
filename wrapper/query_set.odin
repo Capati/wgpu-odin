@@ -37,6 +37,11 @@ query_set_reference :: proc(using self: ^Query_Set) {
 
 // Release the `Query_Set`.
 query_set_release :: proc(using self: ^Query_Set) {
+	wgpu.query_set_release(ptr)
+}
+
+// Release the `Query_Set` and modify the raw pointer to `nil`.
+query_set_release_and_nil :: proc(using self: ^Query_Set) {
 	if ptr == nil do return
 	wgpu.query_set_release(ptr)
 	ptr = nil

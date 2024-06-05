@@ -100,6 +100,11 @@ texture_reference :: proc(using self: ^Texture) {
 
 // Release the `Texture`.
 texture_release :: proc(using self: ^Texture) {
+	wgpu.texture_release(ptr)
+}
+
+// Release the `Texture` and modify the raw pointer to `nil`.
+texture_release_and_nil :: proc(using self: ^Texture) {
 	if ptr == nil do return
 	wgpu.texture_release(ptr)
 	ptr = nil
