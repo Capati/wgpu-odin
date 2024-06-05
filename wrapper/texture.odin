@@ -39,6 +39,15 @@ texture_destroy :: proc(using self: ^Texture) {
 	wgpu.texture_destroy(ptr)
 }
 
+// Make an `Image_Copy_Texture` representing the whole texture.
+texture_as_image_copy :: proc(using self: ^Texture) -> (image_copy_texture: Image_Copy_Texture) {
+	image_copy_texture.texture = ptr
+	image_copy_texture.mip_level = 0
+	image_copy_texture.origin = {0, 0, 0}
+	image_copy_texture.aspect = Texture_Aspect.All
+	return
+}
+
 // Returns the depth or layer count of this `Texture`.
 texture_get_depth_or_array_layers :: proc(using self: ^Texture) -> u32 {
 	return wgpu.texture_get_depth_or_array_layers(ptr)
