@@ -14,7 +14,7 @@ import wgpu "../bindings"
 // When finished recording, call `command_encoder_finish` to obtain a `Command_Buffer` which may be
 // submitted for execution.
 Command_Encoder :: struct {
-	ptr:       WGPU_Command_Encoder,
+	ptr:       Raw_Command_Encoder,
 	_err_data: ^Error_Data,
 }
 
@@ -50,7 +50,7 @@ Render_Pass_Descriptor :: struct {
 	label:                    cstring,
 	color_attachments:        []Render_Pass_Color_Attachment,
 	depth_stencil_attachment: ^Render_Pass_Depth_Stencil_Attachment,
-	occlusion_query_set:      WGPU_Query_Set,
+	occlusion_query_set:      Raw_Query_Set,
 	timestamp_writes:         []Render_Pass_Timestamp_Writes,
 	max_draw_count:           u64,
 }
@@ -99,7 +99,7 @@ command_encoder_begin_render_pass :: proc(
 // Clears buffer to zero.
 command_encoder_clear_buffer :: proc(
 	using self: ^Command_Encoder,
-	buffer: WGPU_Buffer,
+	buffer: Raw_Buffer,
 	offset: u64 = 0,
 	size: u64 = 0,
 ) -> Error_Type {
@@ -118,9 +118,9 @@ command_encoder_clear_buffer :: proc(
 // Copy data from one buffer to another.
 command_encoder_copy_buffer_to_buffer :: proc(
 	using self: ^Command_Encoder,
-	source: WGPU_Buffer,
+	source: Raw_Buffer,
 	source_offset: u64,
-	destination: WGPU_Buffer,
+	destination: Raw_Buffer,
 	destination_offset: u64,
 	size: u64,
 ) -> Error_Type {
@@ -259,10 +259,10 @@ command_encoder_push_debug_group :: proc(
 // Queries may be between 8 and 40 bytes each. See `Pipeline_Statistics_Types` for more information.
 command_encoder_resolve_query_set :: proc(
 	using self: ^Command_Encoder,
-	query_set: WGPU_Query_Set,
+	query_set: Raw_Query_Set,
 	first_query: u32,
 	query_count: u32,
-	destination: WGPU_Buffer,
+	destination: Raw_Buffer,
 	destination_offset: u64,
 ) -> Error_Type {
 	_err_data.type = .No_Error
@@ -288,7 +288,7 @@ command_encoder_set_label :: proc(using self: ^Command_Encoder, label: cstring) 
 // specified query set, at the specified index.
 command_encoder_write_timestamp :: proc(
 	using self: ^Command_Encoder,
-	query_set: WGPU_Query_Set,
+	query_set: Raw_Query_Set,
 	query_index: u32,
 ) -> Error_Type {
 	_err_data.type = .No_Error

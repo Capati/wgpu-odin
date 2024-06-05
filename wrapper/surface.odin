@@ -13,7 +13,7 @@ import wgpu "../bindings"
 // A `Surface` represents a platform-specific surface (e.g. a window) onto which rendered images
 // may be presented. A `Surface` may be created with `instance_create_surface`.
 Surface :: struct {
-	ptr:       WGPU_Surface,
+	ptr:       Raw_Surface,
 	config:    Surface_Configuration,
 	_err_data: ^Error_Data,
 }
@@ -99,7 +99,7 @@ Surface_Capabilities :: struct {
 // Returns the capabilities of the surface when used with the given adapter.
 surface_get_capabilities :: proc(
 	using self: ^Surface,
-	adapter: WGPU_Adapter,
+	adapter: Raw_Adapter,
 	allocator := context.allocator,
 ) -> (
 	Surface_Capabilities,
@@ -188,7 +188,7 @@ surface_get_current_texture :: proc(
 // Returns the best format for the provided surface and adapter.
 surface_get_preferred_format :: proc(
 	using self: ^Surface,
-	adapter: WGPU_Adapter,
+	adapter: Raw_Adapter,
 ) -> Texture_Format {
 	return wgpu.surface_get_preferred_format(ptr, adapter)
 }
@@ -207,7 +207,7 @@ surface_unconfigure :: proc(using self: ^Surface) {
 // `Surface` with this adapter.
 surface_get_default_config :: proc(
 	self: ^Surface,
-	adapter: WGPU_Adapter,
+	adapter: Raw_Adapter,
 	width, height: u32,
 ) -> (
 	config: Surface_Configuration,

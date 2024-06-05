@@ -13,7 +13,7 @@ import wgpu "../bindings"
 //
 // Does not have to be kept alive.
 Adapter :: struct {
-	ptr:        WGPU_Adapter,
+	ptr:        Raw_Adapter,
 	features:   []Feature,
 	limits:     Limits,
 	properties: Adapter_Properties,
@@ -117,7 +117,7 @@ Device_Descriptor :: struct {
 @(private = "file")
 Device_Response :: struct {
 	status: Request_Device_Status,
-	device: WGPU_Device,
+	device: Raw_Device,
 }
 
 @(private = "file")
@@ -283,7 +283,7 @@ adapter_release :: proc(using self: ^Adapter) {
 @(private = "file")
 _on_adapter_request_device :: proc "c" (
 	status: Request_Device_Status,
-	device: WGPU_Device,
+	device: Raw_Device,
 	message: cstring,
 	user_data: rawptr,
 ) {

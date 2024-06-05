@@ -11,7 +11,7 @@ import wgpu "../bindings"
 // It can be created with `command_encoder_begin_render_pass`, whose `Render_Pass_Descriptor`
 // specifies the attachments (textures) that will be rendered to.
 Render_Pass_Encoder :: struct {
-	ptr:       WGPU_Render_Pass_Encoder,
+	ptr:       Raw_Render_Pass_Encoder,
 	_err_data: ^Error_Data,
 }
 
@@ -58,7 +58,7 @@ render_pass_encoder_draw_indexed :: proc(
 // based on the contents of the `indirect_buffer`.
 render_pass_encoder_draw_indexed_indirect :: proc(
 	using self: ^Render_Pass_Encoder,
-	indirect_buffer: WGPU_Buffer,
+	indirect_buffer: Raw_Buffer,
 	indirect_offset: u64 = 0,
 ) {
 	wgpu.render_pass_encoder_draw_indexed_indirect(ptr, indirect_buffer, indirect_offset)
@@ -68,7 +68,7 @@ render_pass_encoder_draw_indexed_indirect :: proc(
 // `indirect_buffer`.
 render_pass_encoder_draw_indirect :: proc(
 	using self: ^Render_Pass_Encoder,
-	indirect_buffer: WGPU_Buffer,
+	indirect_buffer: Raw_Buffer,
 	indirect_offset: u64 = 0,
 ) {
 	wgpu.render_pass_encoder_draw_indirect(ptr, indirect_buffer, indirect_offset)
@@ -92,7 +92,7 @@ render_pass_encoder_end_occlusion_query :: proc(using self: ^Render_Pass_Encoder
 // together.
 render_pass_encoder_execute_bundles :: proc(
 	using self: ^Render_Pass_Encoder,
-	bundles: ..WGPU_Render_Bundle,
+	bundles: ..Raw_Render_Bundle,
 ) {
 	if len(bundles) == 0 {
 		wgpu.render_pass_encoder_execute_bundles(ptr, 0, nil)
@@ -132,7 +132,7 @@ render_pass_encoder_push_debug_group :: proc(
 render_pass_encoder_set_bind_group :: proc(
 	using self: ^Render_Pass_Encoder,
 	group_index: u32,
-	group: WGPU_Bind_Group,
+	group: Raw_Bind_Group,
 	dynamic_offsets: []u32 = {},
 ) {
 	if len(dynamic_offsets) == 0 {
@@ -156,7 +156,7 @@ render_pass_encoder_set_blend_constant :: proc(using self: ^Render_Pass_Encoder,
 // Sets the active index buffer.
 render_pass_encoder_set_index_buffer :: proc(
 	using self: ^Render_Pass_Encoder,
-	buffer: WGPU_Buffer,
+	buffer: Raw_Buffer,
 	format: Index_Format,
 	offset: Buffer_Size,
 	size: Buffer_Size,
@@ -172,7 +172,7 @@ render_pass_encoder_set_label :: proc(using self: ^Render_Pass_Encoder, label: c
 // Sets the active render pipeline.
 render_pass_encoder_set_pipeline :: proc(
 	using self: ^Render_Pass_Encoder,
-	pipeline: WGPU_Render_Pipeline,
+	pipeline: Raw_Render_Pipeline,
 ) {
 	wgpu.render_pass_encoder_set_pipeline(ptr, pipeline)
 }
@@ -198,7 +198,7 @@ render_pass_encoder_set_stencil_reference :: proc(self: ^Render_Pass_Encoder, re
 render_pass_encoder_set_vertex_buffer :: proc(
 	using self: ^Render_Pass_Encoder,
 	slot: u32,
-	buffer: WGPU_Buffer,
+	buffer: Raw_Buffer,
 	offset: Buffer_Address = 0,
 	size: Buffer_Size = WHOLE_SIZE,
 ) {
@@ -253,7 +253,7 @@ render_pass_encoder_set_push_constants :: proc(
 
 render_pass_encoder_multi_draw_indirect :: proc(
 	using self: ^Render_Pass_Encoder,
-	buffer: WGPU_Buffer,
+	buffer: Raw_Buffer,
 	offset: u64,
 	count: u32,
 ) {
@@ -262,7 +262,7 @@ render_pass_encoder_multi_draw_indirect :: proc(
 
 render_pass_encoder_multi_draw_indexed_indirect :: proc(
 	using self: ^Render_Pass_Encoder,
-	buffer: WGPU_Buffer,
+	buffer: Raw_Buffer,
 	offset: u64,
 	count: u32,
 ) {
@@ -271,9 +271,9 @@ render_pass_encoder_multi_draw_indexed_indirect :: proc(
 
 render_pass_encoder_multi_draw_indirect_count :: proc(
 	using self: ^Render_Pass_Encoder,
-	buffer: WGPU_Buffer,
+	buffer: Raw_Buffer,
 	offset: u64,
-	count_buffer: WGPU_Buffer,
+	count_buffer: Raw_Buffer,
 	count_buffer_offset, max_count: u32,
 ) {
 	wgpu.render_pass_encoder_multi_draw_indirect_count(
@@ -288,9 +288,9 @@ render_pass_encoder_multi_draw_indirect_count :: proc(
 
 render_pass_encoder_multi_draw_indexed_indirect_count :: proc(
 	using self: ^Render_Pass_Encoder,
-	buffer: WGPU_Buffer,
+	buffer: Raw_Buffer,
 	offset: u64,
-	count_buffer: WGPU_Buffer,
+	count_buffer: Raw_Buffer,
 	count_buffer_offset, max_count: u32,
 ) {
 	wgpu.render_pass_encoder_multi_draw_indexed_indirect_count(
@@ -307,7 +307,7 @@ render_pass_encoder_multi_draw_indexed_indirect_count :: proc(
 // `render_pass_end_pipeline_statistics_query`. Pipeline statistics queries may not be nested.
 render_pass_encoder_begin_pipeline_statistics_query :: proc(
 	using self: ^Render_Pass_Encoder,
-	query_set: WGPU_Query_Set,
+	query_set: Raw_Query_Set,
 	query_index: u32,
 ) {
 	wgpu.render_pass_encoder_begin_pipeline_statistics_query(ptr, query_set, query_index)

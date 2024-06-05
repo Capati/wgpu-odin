@@ -8,7 +8,7 @@ import wgpu "../bindings"
 // A `Render_Pipeline` object represents a graphics pipeline and its stages, bindings, vertex
 // buffers and targets. It can be created with `device_create_render_pipeline`.
 Render_Pipeline :: struct {
-	ptr: WGPU_Render_Pipeline,
+	ptr: Raw_Render_Pipeline,
 }
 
 // Get an object representing the bind group layout at a given index.

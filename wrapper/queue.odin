@@ -12,7 +12,7 @@ import wgpu "../bindings"
 // writing to buffers and textures. It can be created along with a `Device` by calling
 // `adapter_request_device`.
 Queue :: struct {
-	ptr:       WGPU_Queue,
+	ptr:       Raw_Queue,
 	_err_data: ^Error_Data,
 }
 
@@ -40,15 +40,15 @@ queue_set_label :: proc(using self: ^Queue, label: cstring) {
 	wgpu.queue_set_label(ptr, label)
 }
 
-queue_submit_raw :: proc(using self: ^Queue, command_count: uint, commands: ^WGPU_Command_Buffer) {
+queue_submit_raw :: proc(using self: ^Queue, command_count: uint, commands: ^Raw_Command_Buffer) {
 	wgpu.queue_submit(ptr, command_count, commands)
 }
 
-queue_submit_slice :: proc(using self: ^Queue, commands: ..WGPU_Command_Buffer) {
+queue_submit_slice :: proc(using self: ^Queue, commands: ..Raw_Command_Buffer) {
 	wgpu.queue_submit(ptr, cast(uint)len(commands), raw_data(commands))
 }
 
-queue_submit_single :: proc(using self: ^Queue, command: ^WGPU_Command_Buffer) {
+queue_submit_single :: proc(using self: ^Queue, command: ^Raw_Command_Buffer) {
 	wgpu.queue_submit(ptr, 1, command)
 }
 
@@ -67,21 +67,21 @@ queue_submit :: proc {
 queue_submit_for_index_raw :: proc(
 	using self: ^Queue,
 	command_count: uint,
-	commands: ^WGPU_Command_Buffer,
+	commands: ^Raw_Command_Buffer,
 ) -> Submission_Index {
 	return wgpu.queue_submit_for_index(ptr, command_count, commands)
 }
 
 queue_submit_for_index_slice :: proc(
 	using self: ^Queue,
-	commands: ..WGPU_Command_Buffer,
+	commands: ..Raw_Command_Buffer,
 ) -> Submission_Index {
 	return wgpu.queue_submit_for_index(ptr, cast(uint)len(commands), raw_data(commands))
 }
 
 queue_submit_for_index_single :: proc(
 	using self: ^Queue,
-	command: ^WGPU_Command_Buffer,
+	command: ^Raw_Command_Buffer,
 ) -> Submission_Index {
 	return wgpu.queue_submit_for_index(ptr, 1, command)
 }
@@ -106,7 +106,7 @@ queue_submit_for_index :: proc {
 // This method fails if `data` overruns the size of `buffer` starting at `offset`.
 queue_write_buffer :: proc(
 	using self: ^Queue,
-	buffer: WGPU_Buffer,
+	buffer: Raw_Buffer,
 	offset: Buffer_Address,
 	data: []byte,
 ) -> (

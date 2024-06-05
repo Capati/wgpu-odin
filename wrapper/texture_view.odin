@@ -8,7 +8,7 @@ import wgpu "../bindings"
 // A `Texture_View` object describes a texture and associated metadata needed by a
 // `Render_Pipeline` or `Bind_Group`.
 Texture_View :: struct {
-	ptr: WGPU_Texture_View,
+	ptr: Raw_Texture_View,
 }
 
 // Set debug label.

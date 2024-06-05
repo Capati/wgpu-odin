@@ -7,7 +7,7 @@ import wgpu "../bindings"
 //
 // It can be created with `device_create_query_set`.
 Query_Set :: struct {
-	ptr: WGPU_Query_Set,
+	ptr: Raw_Query_Set,
 }
 
 // Destroys the `Query_Set`.

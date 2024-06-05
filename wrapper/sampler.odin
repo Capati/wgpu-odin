@@ -10,7 +10,7 @@ import wgpu "../bindings"
 //
 // It can be created with `device_create_sampler`.
 Sampler :: struct {
-	ptr: WGPU_Sampler,
+	ptr: Raw_Sampler,
 }
 
 // Set debut label.

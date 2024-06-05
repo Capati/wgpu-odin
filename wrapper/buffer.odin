@@ -11,7 +11,7 @@ import wgpu "../bindings"
 //
 // Created with `device_create_buffer` or `device_create_buffer_with_data`.
 Buffer :: struct {
-	ptr:       WGPU_Buffer,
+	ptr:       Raw_Buffer,
 	size:      Buffer_Size,
 	usage:     Buffer_Usage_Flags,
 	_err_data: ^Error_Data,
