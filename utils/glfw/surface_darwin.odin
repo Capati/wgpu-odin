@@ -1,5 +1,4 @@
 //+build darwin
-
 package wgpu_utils_glfw
 
 // Vendor
@@ -30,4 +29,3 @@ get_surface_descriptor :: proc(
 
 	return
 }
-

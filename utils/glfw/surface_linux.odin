@@ -1,11 +1,9 @@
 //+build linux
-
 package wgpu_utils_glfw
 
 // Core
 import "core:fmt"
 import "core:os"
-import "core:runtime"
 
 // Vendor
 import "vendor:glfw"
@@ -45,4 +43,3 @@ get_surface_descriptor :: proc(
 
 	return
 }
-
