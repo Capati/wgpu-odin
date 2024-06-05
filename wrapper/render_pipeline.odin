@@ -41,6 +41,11 @@ render_pipeline_reference :: proc(using self: ^Render_Pipeline) {
 
 // Release the `Render_Pipeline`.
 render_pipeline_release :: proc(using self: ^Render_Pipeline) {
+	wgpu.render_pipeline_release(ptr)
+}
+
+// Release the `Render_Pipeline` and modify the raw pointer to `nil`.
+render_pipeline_release_and_nil :: proc(using self: ^Render_Pipeline) {
 	if ptr == nil do return
 	wgpu.render_pipeline_release(ptr)
 	ptr = nil

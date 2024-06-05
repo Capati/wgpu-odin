@@ -21,8 +21,13 @@ pipeline_layout_reference :: proc(using self: ^Pipeline_Layout) {
 	wgpu.pipeline_layout_reference(ptr)
 }
 
-// Executes the `Pipeline_Layout` destructor.
+// Release the `Pipeline_Layout`.
 pipeline_layout_release :: proc(using self: ^Pipeline_Layout) {
+	wgpu.pipeline_layout_release(ptr)
+}
+
+// Release the `Pipeline_Layout` and modify the raw pointer to `nil`.
+pipeline_layout_release_and_nil :: proc(using self: ^Pipeline_Layout) {
 	if ptr == nil do return
 	wgpu.pipeline_layout_release(ptr)
 	ptr = nil

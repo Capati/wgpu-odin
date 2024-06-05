@@ -1,8 +1,5 @@
 package wgpu
 
-// Core
-import "core:runtime"
-
 // Package
 import wgpu "../bindings"
 
@@ -187,6 +184,11 @@ queue_reference :: proc(using self: ^Queue) {
 
 // Release the `Queue`.
 queue_release :: proc(using self: ^Queue) {
+	wgpu.queue_release(ptr)
+}
+
+// Release the `Queue` and modify the raw pointer to `nil`.
+queue_release_and_nil :: proc(using self: ^Queue) {
 	if ptr == nil do return
 	wgpu.queue_release(ptr)
 	ptr = nil

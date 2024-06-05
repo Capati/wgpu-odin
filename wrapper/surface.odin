@@ -235,6 +235,11 @@ surface_reference :: proc(using self: ^Surface) {
 
 // Release the `Surface`.
 surface_release :: proc(using self: ^Surface) {
+	wgpu.surface_release(ptr)
+}
+
+// Release the `Surface` and modify the raw pointer to `nil`.
+surface_release_and_nil :: proc(using self: ^Surface) {
 	if ptr == nil do return
 	wgpu.surface_release(ptr)
 	ptr = nil

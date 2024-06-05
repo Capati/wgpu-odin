@@ -1,8 +1,5 @@
 package wgpu
 
-// Core
-import "core:runtime"
-
 // Package
 import wgpu "../bindings"
 
@@ -221,6 +218,11 @@ render_pass_encoder_reference :: proc(using self: ^Render_Pass_Encoder) {
 
 // Release the `Render_Pass_Encoder`.
 render_pass_encoder_release :: proc(using self: ^Render_Pass_Encoder) {
+	wgpu.render_pass_encoder_release(ptr)
+}
+
+// Release the `Render_Pass_Encoder` and modify the raw pointer to `nil`.
+render_pass_encoder_release_and_nil :: proc(using self: ^Render_Pass_Encoder) {
 	if ptr == nil do return
 	wgpu.render_pass_encoder_release(ptr)
 	ptr = nil

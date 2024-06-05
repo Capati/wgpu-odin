@@ -283,6 +283,11 @@ instance_reference :: proc(using self: ^Instance) {
 
 // Release the `Instance`.
 instance_release :: proc(using self: ^Instance) {
+	wgpu.instance_release(ptr)
+}
+
+// Release the `Instance` and modify the raw pointer to `nil`.
+instance_release_and_nil :: proc(using self: ^Instance) {
 	if ptr == nil do return
 	wgpu.instance_release(ptr)
 	ptr = nil

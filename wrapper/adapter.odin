@@ -273,10 +273,21 @@ adapter_reference :: proc(using self: ^Adapter) {
 }
 
 // Release the `Adapter`.
-adapter_release :: proc(using self: ^Adapter) {
-	if ptr == nil do return
+@(private = "file")
+_adapter_release :: proc(using self: ^Adapter) {
 	delete(features)
 	wgpu.adapter_release(ptr)
+}
+
+// Release the `Adapter`.
+adapter_release :: proc(using self: ^Adapter) {
+	_adapter_release(self)
+}
+
+// Release the `Adapter` and modify the raw pointer to `nil`..
+adapter_release_and_nil :: proc(using self: ^Adapter) {
+	if ptr == nil do return
+	_adapter_release(self)
 	ptr = nil
 }
 

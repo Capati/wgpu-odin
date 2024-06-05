@@ -1,8 +1,5 @@
 package wgpu
 
-// Core
-import "core:runtime"
-
 // Package
 import wgpu "../bindings"
 
@@ -305,6 +302,11 @@ command_encoder_reference :: proc(using self: ^Command_Encoder) {
 
 // Release the `Command_Encoder`.
 command_encoder_release :: proc(using self: ^Command_Encoder) {
+	wgpu.command_encoder_release(ptr)
+}
+
+// Release the `Command_Encoder` and modify the raw pointer to `nil`.
+command_encoder_release_and_nil :: proc(using self: ^Command_Encoder) {
 	if ptr == nil do return
 	wgpu.command_encoder_release(ptr)
 	ptr = nil
