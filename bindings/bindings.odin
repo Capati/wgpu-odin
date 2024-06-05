@@ -321,7 +321,6 @@ Render_Pipeline :: distinct Handle
 Sampler :: distinct Handle
 Shader_Module :: distinct Handle
 Surface :: distinct Handle
-Swap_Chain :: distinct Handle
 Texture :: distinct Handle
 Texture_View :: distinct Handle
 
