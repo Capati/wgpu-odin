@@ -988,6 +988,7 @@ device_reference :: proc(using self: ^Device) {
 _device_release :: proc(using self: ^Device) {
 	delete(features)
 	free(_err_data)
+	wgpu.device_release(ptr)
 }
 
 // Release the `Device` and delete internal objects.
