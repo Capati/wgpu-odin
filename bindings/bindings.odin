@@ -294,7 +294,7 @@ LIMIT_U32_UNDEFINED: c.ulong : 0xffffffff
 LIMIT_U64_UNDEFINED: c.ulonglong : 0xffffffffffffffff
 MIP_LEVEL_COUNT_UNDEFINED: c.ulong : 0xffffffff
 WGPU_QUERY_SET_INDEX_UNDEFINED: c.ulong : 0xffffffff
-WHOLE_MAP_SI :: c.SIZE_MAX
+WGPU_WHOLE_MAP_SIZE :: c.SIZE_MAX
 WHOLE_SIZE: c.ulonglong : 0xffffffffffffffff
 
 Flags :: c.uint32_t
