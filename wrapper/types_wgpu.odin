@@ -15,6 +15,8 @@ WGPU_QUERY_SET_INDEX_UNDEFINED :: wgpu.WGPU_QUERY_SET_INDEX_UNDEFINED
 WHOLE_MAP_SIZE :: wgpu.WGPU_WHOLE_MAP_SIZE
 WHOLE_SIZE :: wgpu.WHOLE_SIZE
 
+FLAGS :: wgpu.FLAGS
+
 Raw_Adapter :: wgpu.Adapter
 Raw_Bind_Group :: wgpu.Bind_Group
 Raw_Bind_Group_Layout :: wgpu.Bind_Group_Layout

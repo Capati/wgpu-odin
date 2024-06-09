@@ -32,7 +32,7 @@ when ODIN_OS == .Windows {
 
 import "core:c"
 
-Native_SType :: enum c.uint32_t {
+Native_SType :: enum FLAGS {
 	Device_Extras                  = 0x00030001,
 	Required_Limits_Extras         = 0x00030002,
 	Pipeline_Layout_Extras         = 0x00030003,
@@ -45,7 +45,7 @@ Native_SType :: enum c.uint32_t {
 	Surface_Configuration_Extras   = 0x0003000A,
 }
 
-Native_Feature :: enum c.uint32_t {
+Native_Feature :: enum FLAGS {
 	Push_Constants                                                = 0x00030001,
 	Texture_Adapter_Specific_Format_Features                      = 0x00030002,
 	Multi_Draw_Indirect                                           = 0x00030003,
@@ -58,7 +58,7 @@ Native_Feature :: enum c.uint32_t {
 	Partially_Bound_Binding_Array                                 = 0x0003000A,
 }
 
-Log_Level :: enum c.uint32_t {
+Log_Level :: enum FLAGS {
 	Off,
 	Error,
 	Warn,
@@ -67,7 +67,7 @@ Log_Level :: enum c.uint32_t {
 	Trace,
 }
 
-Instance_Backend :: enum c.uint32_t {
+Instance_Backend :: enum FLAGS {
 	Vulkan,
 	GL,
 	Metal,
@@ -75,32 +75,32 @@ Instance_Backend :: enum c.uint32_t {
 	DX11,
 	Browser_WebGPU,
 }
-Instance_Backend_Flags :: bit_set[Instance_Backend;Flags]
+Instance_Backend_Flags :: bit_set[Instance_Backend;FLAGS]
 Instance_Backend_Primary :: Instance_Backend_Flags{.Vulkan, .Metal, .DX12, .Browser_WebGPU}
 Instance_Backend_Secondary :: Instance_Backend_Flags{.GL, .DX11}
 
-Instance_Flag :: enum c.uint32_t {
+Instance_Flag :: enum FLAGS {
 	Default,
 	Debug,
 	Validation,
 	Discard_Hal_Labels,
 }
-Instance_Flags :: bit_set[Instance_Flag;Flags]
+Instance_Flags :: bit_set[Instance_Flag;FLAGS]
 
-Dx12_Compiler :: enum c.uint32_t {
+Dx12_Compiler :: enum FLAGS {
 	Undefined,
 	Fxc,
 	Dxc,
 }
 
-Gles3_Minor_Version :: enum c.uint32_t {
+Gles3_Minor_Version :: enum FLAGS {
 	Automatic,
 	Version_0,
 	Version_1,
 	Version_2,
 }
 
-Pipeline_Statistic_Name :: enum c.uint32_t {
+Pipeline_Statistic_Name :: enum FLAGS {
 	Vertex_Shader_Invocations,
 	Clipper_Invocations,
 	Clipper_Primitives_Out,
@@ -108,7 +108,7 @@ Pipeline_Statistic_Name :: enum c.uint32_t {
 	Compute_Shader_Invocations,
 }
 
-Native_Query_Type :: enum c.uint32_t {
+Native_Query_Type :: enum FLAGS {
 	Pipeline_Statistics = 0x00030000,
 }
 
@@ -297,7 +297,7 @@ WGPU_QUERY_SET_INDEX_UNDEFINED: c.ulong : 0xffffffff
 WGPU_WHOLE_MAP_SIZE :: c.SIZE_MAX
 WHOLE_SIZE: c.ulonglong : 0xffffffffffffffff
 
-Flags :: c.uint32_t
+FLAGS :: c.uint32_t
 
 Handle :: rawptr
 
@@ -324,20 +324,20 @@ Surface :: distinct Handle
 Texture :: distinct Handle
 Texture_View :: distinct Handle
 
-Adapter_Type :: enum c.uint32_t {
+Adapter_Type :: enum FLAGS {
 	Discrete_GPU,
 	Integrated_GPU,
 	CPU,
 	Unknown,
 }
 
-Address_Mode :: enum c.uint32_t {
+Address_Mode :: enum FLAGS {
 	Repeat,
 	Mirror_Repeat,
 	Clamp_To_Edge,
 }
 
-Backend_Type :: enum c.uint32_t {
+Backend_Type :: enum FLAGS {
 	Undefined,
 	Null,
 	WebGPU,
@@ -349,7 +349,7 @@ Backend_Type :: enum c.uint32_t {
 	OpenGLES,
 }
 
-Blend_Factor :: enum c.uint32_t {
+Blend_Factor :: enum FLAGS {
 	Zero,
 	One,
 	Src,
@@ -365,7 +365,7 @@ Blend_Factor :: enum c.uint32_t {
 	One_Minus_Constant,
 }
 
-Blend_Operation :: enum c.uint32_t {
+Blend_Operation :: enum FLAGS {
 	Add,
 	Subtract,
 	Reverse_Subtract,
@@ -373,14 +373,14 @@ Blend_Operation :: enum c.uint32_t {
 	Max,
 }
 
-Buffer_Binding_Type :: enum c.uint32_t {
+Buffer_Binding_Type :: enum FLAGS {
 	Undefined,
 	Uniform,
 	Storage,
 	Read_Only_Storage,
 }
 
-Buffer_Map_Async_Status :: enum c.uint32_t {
+Buffer_Map_Async_Status :: enum FLAGS {
 	Success,
 	Validation_Error,
 	Error,
@@ -393,13 +393,13 @@ Buffer_Map_Async_Status :: enum c.uint32_t {
 	Size_Out_Of_Range,
 }
 
-Buffer_Map_State :: enum c.uint32_t {
+Buffer_Map_State :: enum FLAGS {
 	Unmapped,
 	Pending,
 	Mapped,
 }
 
-Compare_Function :: enum c.uint32_t {
+Compare_Function :: enum FLAGS {
 	Undefined,
 	Never,
 	Less,
@@ -411,20 +411,20 @@ Compare_Function :: enum c.uint32_t {
 	Always,
 }
 
-Compilation_Info_Request_Status :: enum c.uint32_t {
+Compilation_Info_Request_Status :: enum FLAGS {
 	Success,
 	Error,
 	Device_Lost,
 	Unknown,
 }
 
-Compilation_Message_Type :: enum c.uint32_t {
+Compilation_Message_Type :: enum FLAGS {
 	Error,
 	Warning,
 	Info,
 }
 
-Composite_Alpha_Mode :: enum c.uint32_t {
+Composite_Alpha_Mode :: enum FLAGS {
 	Auto,
 	Opaque,
 	Premultiplied,
@@ -432,7 +432,7 @@ Composite_Alpha_Mode :: enum c.uint32_t {
 	Inherit,
 }
 
-Create_Pipeline_Async_Status :: enum c.uint32_t {
+Create_Pipeline_Async_Status :: enum FLAGS {
 	Success,
 	Validation_Error,
 	Internal_Error,
@@ -441,25 +441,25 @@ Create_Pipeline_Async_Status :: enum c.uint32_t {
 	Unknown,
 }
 
-Cull_Mode :: enum c.uint32_t {
+Cull_Mode :: enum FLAGS {
 	None,
 	Front,
 	Back,
 }
 
-Device_Lost_Reason :: enum c.uint32_t {
+Device_Lost_Reason :: enum FLAGS {
 	Undefined,
 	Unknown,
 	Destroyed,
 }
 
-Error_Filter :: enum c.uint32_t {
+Error_Filter :: enum FLAGS {
 	Validation,
 	Out_Of_Memory,
 	Internal,
 }
 
-Error_Type :: enum c.uint32_t {
+Error_Type :: enum FLAGS {
 	No_Error,
 	Validation,
 	Out_Of_Memory,
@@ -468,7 +468,7 @@ Error_Type :: enum c.uint32_t {
 	Device_Lost,
 }
 
-Feature_Name :: enum c.uint32_t {
+Feature_Name :: enum FLAGS {
 	Undefined                  = 0x00000000,
 	Depth_Clip_Control         = 0x00000001,
 	Depth32_Float_Stencil8     = 0x00000002,
@@ -483,47 +483,47 @@ Feature_Name :: enum c.uint32_t {
 	Float32_Filterable         = 0x0000000B,
 }
 
-Filter_Mode :: enum c.uint32_t {
+Filter_Mode :: enum FLAGS {
 	Nearest,
 	Linear,
 }
 
-Front_Face :: enum c.uint32_t {
+Front_Face :: enum FLAGS {
 	CCW,
 	CW,
 }
 
-Index_Format :: enum c.uint32_t {
+Index_Format :: enum FLAGS {
 	Undefined,
 	Uint16,
 	Uint32,
 }
 
-Load_Op :: enum c.uint32_t {
+Load_Op :: enum FLAGS {
 	Undefined,
 	Clear,
 	Load,
 }
 
-Mipmap_Filter_Mode :: enum c.uint32_t {
+Mipmap_Filter_Mode :: enum FLAGS {
 	Nearest,
 	Linear,
 }
 
-Power_Preference :: enum c.uint32_t {
+Power_Preference :: enum FLAGS {
 	Undefined,
 	Low_Power,
 	High_Performance,
 }
 
-Present_Mode :: enum c.uint32_t {
+Present_Mode :: enum FLAGS {
 	Fifo,
 	Fifo_Relaxed,
 	Immediate,
 	Mailbox,
 }
 
-Primitive_Topology :: enum c.uint32_t {
+Primitive_Topology :: enum FLAGS {
 	Point_List,
 	Line_List,
 	Line_Strip,
@@ -531,32 +531,32 @@ Primitive_Topology :: enum c.uint32_t {
 	Triangle_Strip,
 }
 
-Query_Type :: enum c.uint32_t {
+Query_Type :: enum FLAGS {
 	Occlusion,
 	Query_Type_Timestamp,
 }
 
-Queue_Work_Done_Status :: enum c.uint32_t {
+Queue_Work_Done_Status :: enum FLAGS {
 	Success,
 	Error,
 	Unknown,
 	Device_Lost,
 }
 
-Request_Adapter_Status :: enum c.uint32_t {
+Request_Adapter_Status :: enum FLAGS {
 	Success,
 	Unavailable,
 	Error,
 	Unknown,
 }
 
-Request_Device_Status :: enum c.uint32_t {
+Request_Device_Status :: enum FLAGS {
 	Success,
 	Error,
 	Unknown,
 }
 
-SType :: enum c.uint32_t {
+SType :: enum FLAGS {
 	Invalid,
 	Surface_Descriptor_From_Metal_Layer,
 	Surface_Descriptor_From_Windows_HWND,
@@ -571,14 +571,14 @@ SType :: enum c.uint32_t {
 	Render_Pass_Descriptor_Max_Draw_Count,
 }
 
-Sampler_Binding_Type :: enum c.uint32_t {
+Sampler_Binding_Type :: enum FLAGS {
 	Undefined,
 	Filtering,
 	Non_Filtering,
 	Comparison,
 }
 
-Stencil_Operation :: enum c.uint32_t {
+Stencil_Operation :: enum FLAGS {
 	Keep,
 	Zero,
 	Replace,
@@ -589,20 +589,20 @@ Stencil_Operation :: enum c.uint32_t {
 	Decrement_Wrap,
 }
 
-Storage_Texture_Access :: enum c.uint32_t {
+Storage_Texture_Access :: enum FLAGS {
 	Undefined,
 	Write_Only,
 	Read_Only,
 	Read_Write,
 }
 
-Store_Op :: enum c.uint32_t {
+Store_Op :: enum FLAGS {
 	Undefined,
 	Store,
 	Discard,
 }
 
-Surface_Get_Current_Texture_Status :: enum c.uint32_t {
+Surface_Get_Current_Texture_Status :: enum FLAGS {
 	Success,
 	Timeout,
 	Outdated,
@@ -611,26 +611,26 @@ Surface_Get_Current_Texture_Status :: enum c.uint32_t {
 	Device_Lost,
 }
 
-Texture_Aspect :: enum c.uint32_t {
+Texture_Aspect :: enum FLAGS {
 	All,
 	Stencil_Only,
 	Depth_Only,
 }
 
-Texture_Component_Type :: enum c.uint32_t {
+Texture_Component_Type :: enum FLAGS {
 	Float,
 	Sint,
 	Uint,
 	Depth_Comparison,
 }
 
-Texture_Dimension :: enum c.uint32_t {
+Texture_Dimension :: enum FLAGS {
 	D1,
 	D2,
 	D3,
 }
 
-Texture_Format :: enum c.uint32_t {
+Texture_Format :: enum FLAGS {
 	Undefined               = 0x00000000,
 	R8_Unorm                = 0x00000001,
 	R8_Snorm                = 0x00000002,
@@ -729,7 +729,7 @@ Texture_Format :: enum c.uint32_t {
 	Astc12x12_Unorm_Srgb    = 0x0000005F,
 }
 
-Texture_Sample_Type :: enum c.uint32_t {
+Texture_Sample_Type :: enum FLAGS {
 	Undefined,
 	Float,
 	Unfilterable_Float,
@@ -738,7 +738,7 @@ Texture_Sample_Type :: enum c.uint32_t {
 	Uint,
 }
 
-Texture_View_Dimension :: enum c.uint32_t {
+Texture_View_Dimension :: enum FLAGS {
 	Undefined,
 	D1,
 	D2,
@@ -748,7 +748,7 @@ Texture_View_Dimension :: enum c.uint32_t {
 	D3,
 }
 
-Vertex_Format :: enum c.uint32_t {
+Vertex_Format :: enum FLAGS {
 	Undefined,
 	Uint8x2,
 	Uint8x4,
@@ -782,13 +782,13 @@ Vertex_Format :: enum c.uint32_t {
 	Sint32x4,
 }
 
-Vertex_Step_Mode :: enum c.uint32_t {
+Vertex_Step_Mode :: enum FLAGS {
 	Vertex,
 	Instance,
 	Vertex_Buffer_Not_Used,
 }
 
-Buffer_Usage :: enum c.uint32_t {
+Buffer_Usage :: enum FLAGS {
 	Map_Read,
 	Map_Write,
 	Copy_Src,
@@ -800,41 +800,41 @@ Buffer_Usage :: enum c.uint32_t {
 	Indirect,
 	Query_Resolve,
 }
-Buffer_Usage_Flags :: bit_set[Buffer_Usage;Flags]
+Buffer_Usage_Flags :: bit_set[Buffer_Usage;FLAGS]
 Buffer_Usage_Flags_None :: Buffer_Usage_Flags{}
 
-Color_Write_Mask :: enum c.uint32_t {
+Color_Write_Mask :: enum FLAGS {
 	Red,
 	Green,
 	Blue,
 	Alpha,
 }
-Color_Write_Mask_Flags :: bit_set[Color_Write_Mask;Flags]
+Color_Write_Mask_Flags :: bit_set[Color_Write_Mask;FLAGS]
 Color_Write_Mask_None :: Color_Write_Mask_Flags{}
 Color_Write_Mask_All :: Color_Write_Mask_Flags{.Red, .Green, .Blue, .Alpha}
 
-Map_Mode :: enum c.uint32_t {
+Map_Mode :: enum FLAGS {
 	Read,
 	Write,
 }
-Map_Mode_Flags :: bit_set[Map_Mode;Flags]
+Map_Mode_Flags :: bit_set[Map_Mode;FLAGS]
 
-Shader_Stage :: enum c.uint32_t {
+Shader_Stage :: enum FLAGS {
 	Vertex,
 	Fragment,
 	Compute,
 }
-Shader_Stage_Flags :: bit_set[Shader_Stage;Flags]
+Shader_Stage_Flags :: bit_set[Shader_Stage;FLAGS]
 Shader_Stage_Flags_None :: Shader_Stage_Flags{}
 
-Texture_Usage :: enum c.uint32_t {
+Texture_Usage :: enum FLAGS {
 	Copy_Src,
 	Copy_Dst,
 	Texture_Binding,
 	Storage_Binding,
 	Render_Attachment,
 }
-Texture_Usage_Flags :: bit_set[Texture_Usage;Flags]
+Texture_Usage_Flags :: bit_set[Texture_Usage;FLAGS]
 Texture_Usage_Flags_None :: Texture_Usage_Flags{}
 
 Chained_Struct :: struct {
