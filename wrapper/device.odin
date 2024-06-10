@@ -15,7 +15,7 @@ import wgpu "../bindings"
 // A device may be requested from an adapter with `adapter_request_device`.
 Device :: struct {
 	ptr:       Raw_Device,
-	features:  []Feature,
+	features:  Features,
 	limits:    Limits,
 	_err_data: ^Error_Data,
 }
@@ -892,21 +892,42 @@ device_destroy :: proc(using self: ^Device) {
 	wgpu.device_destroy(ptr)
 }
 
+@(private)
+_device_get_features :: proc(
+	device: Raw_Device,
+	loc := #caller_location,
+) -> (
+	features: Features,
+	err: Error,
+) {
+	count := wgpu.device_enumerate_features(device, nil)
+
+	if count == 0 do return
+
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+
+	raw_features, alloc_err := make([]wgpu.Feature_Name, count, context.temp_allocator)
+
+	if alloc_err != nil {
+		err = alloc_err
+		set_and_update_err_data(nil, .General, err, "Failed to get device features", loc)
+		return
+	}
+
+	wgpu.device_enumerate_features(device, raw_data(raw_features))
+
+	features_slice := transmute([]Raw_Feature_Name)raw_features
+	features = features_slice_to_flags(&features_slice)
+
+	return
+}
+
 // List all features that may be used with this device.
 //
 // Functions may panic if you use unsupported features.
-device_get_features :: proc(using self: ^Device, allocator := context.allocator) -> []Feature {
-	count := wgpu.device_enumerate_features(ptr, nil)
-	if count == 0 do return {}
-
-	adapter_features := make([]wgpu.Feature_Name, count, allocator)
-	wgpu.device_enumerate_features(ptr, raw_data(adapter_features))
-
-	return transmute([]Feature)adapter_features
+device_get_features :: proc(self: ^Device) -> Features {
+	return self.features // filled on request device
 }
-
-// List all limits that were requested of this device.
-//
 
 @(private)
 _device_get_limits :: proc(device: Raw_Device) -> (limits: Limits) {
@@ -943,8 +964,17 @@ device_get_queue :: proc(using self: ^Device) -> (queue: Queue) {
 }
 
 // Check if device support the given feature name.
-device_has_feature :: proc(using self: ^Device, feature: Feature) -> bool {
-	return wgpu.device_has_feature(ptr, cast(wgpu.Feature_Name)feature)
+device_has_feature_name :: proc(self: ^Device, feature: Feature_Name) -> bool {
+	return feature in self.features
+}
+
+// Check if device support all features in the given flags.
+device_has_feature :: proc(self: ^Device, features: Features) -> bool {
+	if features == {} do return true
+	for f in features {
+		if f not_in self.features || f == .Undefined do return false
+	}
+	return true
 }
 
 device_pop_error_scope :: proc(using self: ^Device, callback: Error_Callback, user_data: rawptr) {
@@ -977,21 +1007,16 @@ device_reference :: proc(using self: ^Device) {
 	wgpu.device_reference(ptr)
 }
 
-@(private = "file")
-_device_release :: proc(using self: ^Device) {
-	delete(features)
-	wgpu.device_release(ptr)
-}
 
 // Release the `Device` and delete internal objects.
 device_release :: proc(using self: ^Device) {
-	_device_release(self)
+	wgpu.device_release(ptr)
 }
 
 // Release the `Device` and delete internal objects and modify the raw pointer to `nil`.
 device_release_and_nil :: proc(using self: ^Device) {
 	if ptr == nil do return
-	_device_release(self)
+	wgpu.device_release(ptr)
 	ptr = nil
 }
 

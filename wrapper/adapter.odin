@@ -16,25 +16,46 @@ import wgpu "../bindings"
 // Does not have to be kept alive.
 Adapter :: struct {
 	ptr:        Raw_Adapter,
-	features:   []Feature,
+	features:   Features,
 	limits:     Limits,
 	properties: Adapter_Properties,
+}
+
+@(private)
+_adapter_get_features :: proc(
+	adapter: Raw_Adapter,
+	loc := #caller_location,
+) -> (
+	features: Features,
+	err: Error,
+) {
+	count := wgpu.adapter_enumerate_features(adapter, nil)
+
+	if count == 0 do return
+
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+
+	raw_features, alloc_err := make([]wgpu.Feature_Name, count, context.temp_allocator)
+
+	if alloc_err != nil {
+		err = alloc_err
+		set_and_update_err_data(nil, .General, err, "Failed to get adapter features", loc)
+		return
+	}
+
+	wgpu.adapter_enumerate_features(adapter, raw_data(raw_features))
+
+	features_slice := transmute([]Raw_Feature_Name)raw_features
+	features = features_slice_to_flags(&features_slice)
+
+	return
 }
 
 // List all features that are supported with this adapter.
 //
 // Features must be explicitly requested in `adapter_request_device` in order to use them.
-adapter_get_features :: proc(using self: ^Adapter, allocator := context.allocator) -> []Feature {
-	features_count := wgpu.adapter_enumerate_features(ptr, nil)
-
-	if features_count == 0 {
-		return {}
-	}
-
-	adapter_features := make([]wgpu.Feature_Name, features_count, allocator)
-	wgpu.adapter_enumerate_features(ptr, raw_data(adapter_features))
-
-	return transmute([]Feature)adapter_features
+adapter_get_features :: proc(self: ^Adapter) -> Features {
+	return self.features // filled on request adapter
 }
 
 @(private)
@@ -73,20 +94,18 @@ adapter_get_properties :: proc(self: ^Adapter) -> Adapter_Properties {
 	return self.properties // filled on request adapter
 }
 
-// Describes a `Device` for use with `adapter->request_device`.
-Device_Descriptor :: struct {
-	label:                cstring,
-	features:             []Feature,
-	required_limits:      Limits,
-	trace_path:           cstring,
-	device_lost_callback: Device_Lost_Callback,
-	device_lost_userdata: rawptr,
+// Check if adapter support all features in the given flags.
+adapter_has_feature :: proc(self: ^Adapter, features: Features) -> bool {
+	if features == {} do return true
+	for f in features {
+		if f not_in self.features || f == .Undefined do return false
+	}
+	return true
 }
 
-@(private = "file")
-Device_Response :: struct {
-	status: Request_Device_Status,
-	device: Raw_Device,
+// Check if adapter support the given feature name.
+adapter_has_feature_name :: proc(self: ^Adapter, feature: Feature_Name) -> bool {
+	return feature in self.features
 }
 
 @(private = "file")
@@ -164,6 +183,16 @@ _adapter_request_device :: proc(
 	return
 }
 
+// Describes a `Device` for use with `adapter_request_device`.
+Device_Descriptor :: struct {
+	label:                cstring,
+	required_features:    Features,
+	required_limits:      Limits,
+	trace_path:           cstring,
+	device_lost_callback: Device_Lost_Callback,
+	device_lost_userdata: rawptr,
+}
+
 // Requests a connection to a physical device, creating a logical device.
 //
 // Returns the `Device` together with a `Queue` that executes command buffers.
@@ -183,9 +212,39 @@ adapter_request_device :: proc(
 	desc: wgpu.Device_Descriptor
 	desc.label = descriptor.label
 
-	if len(descriptor.features) > 0 {
-		desc.required_feature_count = len(descriptor.features)
-		desc.required_features = transmute(^wgpu.Feature_Name)raw_data(descriptor.features)
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+
+	features_len: int
+	features: [dynamic]Raw_Feature_Name
+	features.allocator = context.temp_allocator
+
+	if descriptor.required_features != {} {
+		for _ in descriptor.required_features do features_len += 1
+		if err = reserve(&features, features_len); err != nil {
+			set_and_update_err_data(nil, .Request_Device, err, "Failed to allocate features", loc)
+			return
+		}
+		for f in descriptor.required_features {
+			if f not_in self.features {
+				err = .Validation
+				set_and_update_err_data(
+					nil,
+					.Request_Device,
+					err,
+					fmt.tprintf(
+						"Required feature [%v] not supported by device [%s].",
+						f,
+						self.properties.name,
+					),
+					loc,
+				)
+				return
+			}
+			append(&features, features_flag_to_raw_feature_name(f))
+		}
+
+		desc.required_feature_count = uint(features_len)
+		desc.required_features = transmute(^wgpu.Feature_Name)raw_data(features[:])
 	}
 
 	// If no limits is provided, default to adapter best limits

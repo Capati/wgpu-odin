@@ -204,7 +204,7 @@ instance_request_adapter :: proc(
 	defer if err != nil do wgpu.adapter_release(adapter.ptr)
 
 	// Fill adapter details
-	adapter.features = adapter_get_features(&adapter)
+	adapter.features = _adapter_get_features(adapter.ptr, loc) or_return
 	adapter.limits = _adapter_get_limits(adapter.ptr)
 	adapter.properties = _adapter_get_properties(adapter.ptr)
 
@@ -264,7 +264,7 @@ instance_enumerate_adapters :: proc(
 			ptr = raw_adapters[i],
 		}
 
-		adapters[i].features = adapter_get_features(&adapters[i])
+		adapters[i].features = _adapter_get_features(raw_adapters[i], loc) or_return
 		adapters[i].limits = _adapter_get_limits(raw_adapters[i])
 		adapters[i].properties = _adapter_get_properties(raw_adapters[i])
 	}
