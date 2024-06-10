@@ -24,7 +24,8 @@ Renderer :: struct {
 
 Renderer_Properties :: struct {
 	power_preferences: wgpu.Power_Preference,
-	required_features: []wgpu.Feature,
+	optional_features: wgpu.Features,
+	required_features: wgpu.Features,
 	required_limits:   wgpu.Limits,
 }
 
@@ -99,9 +100,15 @@ init :: proc(
 	wgpu.adapter_print_info(&adapter)
 
 	device_descriptor := wgpu.Device_Descriptor {
-		label    = adapter.properties.name,
+		label             = adapter.properties.name,
 		required_limits   = properties.required_limits,
-		features = properties.required_features,
+		required_features = properties.required_features,
+	}
+
+	for f in properties.optional_features {
+		if f in adapter.features {
+			device_descriptor.required_features += {f}
+		}
 	}
 
 	gc.properties = properties

@@ -1,7 +1,5 @@
 package wgpu
 
-import "core:c"
-
 // Integral type used for buffer offsets.
 Buffer_Address :: u64
 // Integral type used for buffer slice sizes.
@@ -60,29 +58,4 @@ Blend_State_Alpha_Blending := Blend_State {
 Blend_State_Premultiplied_Alpha_Blending := Blend_State {
 	color = Blend_Component_Over,
 	alpha = Blend_Component_Over,
-}
-
-// Features that are part of the webgpu standard and extension features supported by
-// wgpu when targeting native.
-Feature :: enum c.int {
-	Depth_Clip_Control                                            = 0x00000001,
-	Depth32_Float_Stencil8                                        = 0x00000002,
-	Timestamp_Query                                               = 0x00000003,
-	Texture_Compression_Bc                                        = 0x00000004,
-	Texture_Compression_Etc2                                      = 0x00000005,
-	Texture_Compression_Astc                                      = 0x00000006,
-	Indirect_First_Instance                                       = 0x00000007,
-	Shader_F16                                                    = 0x00000008,
-	Rg11_B10_Ufloat_Renderable                                    = 0x00000009,
-	Bgra8_Unorm_Storage                                           = 0x0000000A,
-	Float32_Filterable                                            = 0x0000000B,
-	// Native features
-	Push_Constants                                                = 0x00030001,
-	Texture_Adapter_Specific_Format_Features                      = 0x00030002,
-	Multi_Draw_Indirect                                           = 0x00030003,
-	Multi_Draw_Indirect_Count                                     = 0x00030004,
-	Vertex_Writable_Storage                                       = 0x00030005,
-	Texture_Binding_Array                                         = 0x00030006,
-	Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing = 0x00030007,
-	Pipeline_Statistics_Query                                     = 0x00030008,
 }
