@@ -1,6 +1,7 @@
 package wgpu
 
 // Core
+import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "core:runtime"

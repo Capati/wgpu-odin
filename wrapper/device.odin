@@ -2,7 +2,7 @@ package wgpu
 
 // Core
 import "core:mem"
-import "core:runtime"
+import "base:runtime"
 
 // Package
 import wgpu "../bindings"

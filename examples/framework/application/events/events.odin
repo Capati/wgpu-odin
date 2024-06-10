@@ -1,6 +1,7 @@
 package events
 
 // Core
+import "base:runtime"
 import "core:container/queue"
 import "core:runtime"
 
