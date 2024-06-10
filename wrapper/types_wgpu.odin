@@ -106,6 +106,7 @@ Sampler_Binding_Type :: wgpu.Sampler_Binding_Type
 Stencil_Operation :: wgpu.Stencil_Operation
 Storage_Texture_Access :: wgpu.Storage_Texture_Access
 Store_Op :: wgpu.Store_Op
+Surface_Get_Current_Texture_Status :: wgpu.Surface_Get_Current_Texture_Status
 Texture_Aspect :: wgpu.Texture_Aspect
 Texture_Component_Type :: wgpu.Texture_Component_Type
 Texture_Dimension :: wgpu.Texture_Dimension

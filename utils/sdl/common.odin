@@ -9,8 +9,7 @@ import sdl "vendor:sdl2"
 // Package
 import wgpu "../../wrapper"
 
-get_sys_info :: proc(window: ^sdl.Window) -> (sdl.SysWMinfo, wgpu.Error_Type) {
-	wm_info: sdl.SysWMinfo
+get_sys_info :: proc(window: ^sdl.Window) -> (wm_info: sdl.SysWMinfo, err: wgpu.Error) {
 	sdl.GetVersion(&wm_info.version)
 
 	if !sdl.GetWindowWMInfo(window, &wm_info) {
@@ -18,7 +17,7 @@ get_sys_info :: proc(window: ^sdl.Window) -> (sdl.SysWMinfo, wgpu.Error_Type) {
 		return {}, .Internal
 	}
 
-	return wm_info, .No_Error
+	return
 }
 
 create_surface :: proc(
@@ -26,7 +25,7 @@ create_surface :: proc(
 	instance: ^wgpu.Instance,
 ) -> (
 	surface: wgpu.Surface,
-	err: wgpu.Error_Type,
+	err: wgpu.Error,
 ) {
 	surface_descriptor := get_surface_descriptor(window) or_return
 	return wgpu.instance_create_surface(instance, &surface_descriptor)

@@ -11,7 +11,7 @@ get_current_texture_frame :: proc(
 	renderer: ^Renderer,
 ) -> (
 	frame: wgpu.Surface_Texture,
-	err: wgpu.Error_Type,
+	err: wgpu.Error,
 ) {
 	frame = wgpu.surface_get_current_texture(&renderer.surface) or_return
 	renderer.skip_frame = false
@@ -47,9 +47,9 @@ get_current_texture_frame :: proc(
 	return
 }
 
-resize_surface :: proc(renderer: ^Renderer, size: app.Physical_Size) -> wgpu.Error_Type {
+resize_surface :: proc(renderer: ^Renderer, size: app.Physical_Size) -> (err: wgpu.Error) {
 	if size.width == 0 && size.height == 0 {
-		return .No_Error
+		return
 	}
 
 	renderer.config.width = size.width
@@ -58,5 +58,5 @@ resize_surface :: proc(renderer: ^Renderer, size: app.Physical_Size) -> wgpu.Err
 	wgpu.surface_unconfigure(&renderer.surface)
 	wgpu.surface_configure(&renderer.surface, &renderer.device, &renderer.config) or_return
 
-	return .No_Error
+	return
 }

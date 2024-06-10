@@ -3,7 +3,6 @@ package compute
 // Core
 import "base:runtime"
 import "core:fmt"
-import "core:runtime"
 
 // Package
 import wgpu "../../wrapper"
@@ -28,10 +27,7 @@ main :: proc() {
 	instance, instance_err := wgpu.create_instance(
 		&wgpu.Instance_Descriptor{backends = wgpu.Instance_Backend_Primary},
 	)
-	if instance_err != .No_Error {
-		fmt.eprintln("ERROR Creating Instance:", wgpu.get_error_message())
-		return
-	}
+	if instance_err != nil do return
 	defer wgpu.instance_release(&instance)
 
 	// Instantiates the general connection to the GPU
@@ -39,10 +35,7 @@ main :: proc() {
 		&instance,
 		&{compatible_surface = nil, power_preference = .High_Performance},
 	)
-	if adapter_err != .No_Error {
-		fmt.eprintln("ERROR Couldn't Request Adapter:", wgpu.get_error_message())
-		return
-	}
+	if adapter_err != nil do return
 	defer wgpu.adapter_release(&adapter)
 
 	// Instantiates the feature specific connection to the GPU, defining some parameters,
@@ -51,23 +44,11 @@ main :: proc() {
 		&adapter,
 		&wgpu.Device_Descriptor{label = adapter.properties.name},
 	)
-	if device_err != .No_Error {
-		fmt.eprintln("ERROR Couldn't Request Adapter:", wgpu.get_error_message())
-		return
-	}
+	if device_err != nil do return
 	defer {
 		wgpu.device_release(&device)
 		wgpu.queue_release(&queue)
 	}
-
-	wgpu.device_set_uncaptured_error_callback(
-		&device,
-		proc "c" (type: wgpu.Error_Type, message: cstring, user_data: rawptr) {
-			context = runtime.default_context()
-			fmt.eprintln("ERROR:", message)
-		},
-		nil,
-	)
 
 	// Shader module
 	shader_source := #load("./compute.wgsl")
@@ -75,7 +56,7 @@ main :: proc() {
 		&device,
 		&{label = "Compute module", source = cstring(raw_data(shader_source))},
 	)
-	if shader_module_err != .No_Error do return
+	if shader_module_err != nil do return
 	defer wgpu.shader_module_release(&shader_module)
 
 	// Instantiates buffer without data.
@@ -86,7 +67,7 @@ main :: proc() {
 		&device,
 		&{label = "staging_buffer", size = cast(u64)numbers_size, usage = {.Map_Read, .Copy_Dst}},
 	)
-	if staging_buffer_err != .No_Error do return
+	if staging_buffer_err != nil do return
 	defer wgpu.buffer_release(&staging_buffer)
 
 	// Instantiates buffer with data (`numbers`).
@@ -103,7 +84,7 @@ main :: proc() {
 			usage = {.Storage, .Copy_Src, .Copy_Dst},
 		},
 	)
-	if storage_buffer_err != .No_Error do return
+	if storage_buffer_err != nil do return
 	defer wgpu.buffer_release(&storage_buffer)
 
 	// A bind group defines how buffers are accessed by shaders.
@@ -122,7 +103,7 @@ main :: proc() {
 			compute = {module = shader_module.ptr, entry_point = "main"},
 		},
 	)
-	if compute_pipeline_err != .No_Error do return
+	if compute_pipeline_err != nil do return
 	defer wgpu.compute_pipeline_release(&compute_pipeline)
 
 	// Instantiates the bind group, once again specifying the binding of buffers.
@@ -130,10 +111,7 @@ main :: proc() {
 		&compute_pipeline,
 		0,
 	)
-	if bind_group_layout_err != .No_Error {
-		fmt.eprintln("ERROR Couldn't Get Bind Group Layout: ", wgpu.get_error_message())
-		return
-	}
+	if bind_group_layout_err != nil do return
 	defer wgpu.bind_group_layout_release(&bind_group_layout)
 
 	// Setup a bindGroup to tell the shader which
@@ -155,7 +133,7 @@ main :: proc() {
 			label = "bind_group_layout",
 		},
 	)
-	if bind_group_err != .No_Error do return
+	if bind_group_err != nil do return
 	defer wgpu.bind_group_release(&bind_group)
 
 	// A command encoder executes one or many pipelines.
@@ -164,17 +142,14 @@ main :: proc() {
 		&device,
 		&wgpu.Command_Encoder_Descriptor{label = "command_encoder"},
 	)
-	if encoder_err != .No_Error do return
+	if encoder_err != nil do return
 	defer wgpu.command_encoder_release(&encoder)
 
 	compute_pass, compute_pass_encoder_err := wgpu.command_encoder_begin_compute_pass(
 		&encoder,
 		&{label = "compute_pass"},
 	)
-	if compute_pass_encoder_err != .No_Error {
-		fmt.eprintln("ERROR Couldn't Begin Compute Pass: ", wgpu.get_error_message())
-		return
-	}
+	if compute_pass_encoder_err != nil do return
 	defer wgpu.compute_pass_encoder_release(&compute_pass)
 
 	wgpu.compute_pass_encoder_set_pipeline(&compute_pass, compute_pipeline.ptr)
@@ -195,9 +170,7 @@ main :: proc() {
 
 	// Submits command encoder for processing
 	command_buffer, command_buffer_err := wgpu.command_encoder_finish(&encoder)
-	if command_buffer_err != .No_Error {
-		fmt.panicf("%v", command_buffer_err)
-	}
+	if command_buffer_err != nil do return
 	defer wgpu.command_buffer_release(&command_buffer)
 
 	wgpu.queue_write_buffer(&queue, storage_buffer.ptr, 0, wgpu.to_bytes(numbers))
@@ -220,12 +193,13 @@ main :: proc() {
 	wgpu.device_poll(&device)
 
 	if result == .Success {
-		data := wgpu.buffer_get_const_mapped_range(
+		data, data_err := wgpu.buffer_get_const_mapped_range(
 			&staging_buffer,
 			u32,
 			0,
 			uint(staging_buffer.size),
 		)
+		if data_err != nil do return
 		fmt.printf("Steps: [%d, %d, %d, %d]\n", data[0], data[1], data[2], data[3])
 	} else {
 		fmt.eprintf("ERROR: Failed to map async result buffer: %v\n", result)

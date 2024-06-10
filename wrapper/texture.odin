@@ -16,19 +16,19 @@ Texture :: struct {
 texture_create_view :: proc(
 	self: ^Texture,
 	descriptor: ^Texture_View_Descriptor = nil,
+	loc := #caller_location,
 ) -> (
 	texture_view: Texture_View,
-	err: Error_Type,
+	err: Error,
 ) {
-	self._err_data.type = .No_Error
+	set_and_reset_err_data(self._err_data, loc)
 
 	texture_view.ptr = wgpu.texture_create_view(self.ptr, descriptor)
 
-	if self._err_data.type != .No_Error {
+	if err = get_last_error(); err != nil {
 		if texture_view.ptr != nil {
 			wgpu.texture_view_release(texture_view.ptr)
 		}
-		return {}, self._err_data.type
 	}
 
 	return

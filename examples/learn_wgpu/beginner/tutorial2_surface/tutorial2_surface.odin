@@ -3,7 +3,6 @@ package tutorial2_surface
 // Core
 import "base:runtime"
 import "core:fmt"
-import "core:runtime"
 
 // Vendor
 import sdl "vendor:sdl2"
@@ -36,7 +35,7 @@ init :: proc() {
 	wgpu.set_log_level(.Warn)
 }
 
-init_state := proc(window: ^sdl.Window) -> (state: State, err: wgpu.Error_Type) {
+init_state :: proc(window: ^sdl.Window) -> (state: State, err: wgpu.Error) {
 	instance_descriptor := wgpu.Instance_Descriptor {
 		backends             = wgpu.Instance_Backend_Primary,
 		dx12_shader_compiler = wgpu.Default_Dx12_Compiler,
@@ -47,7 +46,7 @@ init_state := proc(window: ^sdl.Window) -> (state: State, err: wgpu.Error_Type) 
 
 	surface_descriptor := wgpu_sdl.get_surface_descriptor(window) or_return
 	state.surface = wgpu.instance_create_surface(&instance, &surface_descriptor) or_return
-	defer if err != .No_Error do wgpu.surface_release(&state.surface)
+	defer if err != nil do wgpu.surface_release(&state.surface)
 
 	adapter_options := wgpu.Request_Adapter_Options {
 		power_preference       = .High_Performance,
@@ -59,25 +58,14 @@ init_state := proc(window: ^sdl.Window) -> (state: State, err: wgpu.Error_Type) 
 	defer wgpu.adapter_release(&adapter)
 
 	device_descriptor := wgpu.Device_Descriptor {
-		label  = adapter.properties.name,
-		limits = wgpu.Default_Limits,
+		label           = adapter.properties.name,
+		required_limits = wgpu.Default_Limits,
 	}
 
 	state.device, state.queue = wgpu.adapter_request_device(&adapter, &device_descriptor) or_return
-	defer if err != .No_Error {
+	defer if err != nil {
 		wgpu.queue_release(&state.queue)
 		wgpu.device_release(&state.device)
-	}
-
-	defer if err == .No_Error {
-		wgpu.device_set_uncaptured_error_callback(
-			&state.device,
-			proc "c" (type: wgpu.Error_Type, message: cstring, user_data: rawptr) {
-				context = runtime.default_context()
-				fmt.eprintln("ERROR: ", message)
-			},
-			nil,
-		)
 	}
 
 	caps := wgpu.surface_get_capabilities(&state.surface, adapter.ptr) or_return
@@ -99,12 +87,12 @@ init_state := proc(window: ^sdl.Window) -> (state: State, err: wgpu.Error_Type) 
 
 	wgpu.surface_configure(&state.surface, &state.device, &state.config) or_return
 
-	return state, .No_Error
+	return state, nil
 }
 
-resize_window :: proc(state: ^State, size: Physical_Size) -> wgpu.Error_Type {
+resize_window :: proc(state: ^State, size: Physical_Size) -> wgpu.Error {
 	if size.width == 0 && size.height == 0 {
-		return .No_Error
+		return nil
 	}
 
 	state.config.width = size.width
@@ -113,10 +101,10 @@ resize_window :: proc(state: ^State, size: Physical_Size) -> wgpu.Error_Type {
 	wgpu.surface_unconfigure(&state.surface)
 	wgpu.surface_configure(&state.surface, &state.device, &state.config) or_return
 
-	return .No_Error
+	return nil
 }
 
-render :: proc(using state: ^State) -> wgpu.Error_Type {
+render :: proc(using state: ^State) -> wgpu.Error {
 	frame := wgpu.surface_get_current_texture(&state.surface) or_return
 	defer wgpu.texture_release(&frame.texture)
 
@@ -154,7 +142,7 @@ render :: proc(using state: ^State) -> wgpu.Error_Type {
 	wgpu.queue_submit(&queue, command_buffer.ptr)
 	wgpu.surface_present(&surface)
 
-	return .No_Error
+	return nil
 }
 
 main :: proc() {
@@ -185,8 +173,8 @@ main :: proc() {
 
 	state, state_err := init_state(sdl_window)
 
-	if state_err != .No_Error {
-		message := wgpu.get_error_message()
+	if state_err != nil {
+		message := wgpu.get_last_error_message()
 		if message != "" {
 			fmt.eprintln("ERROR: Failed to initilize program:", message)
 		} else {
@@ -200,7 +188,7 @@ main :: proc() {
 		wgpu.surface_release(&state.surface)
 	}
 
-	err := wgpu.Error_Type{}
+	err := wgpu.Error{}
 
 	main_loop: for {
 		e: sdl.Event
@@ -215,7 +203,7 @@ main :: proc() {
 				case .SIZE_CHANGED:
 				case .RESIZED:
 					err = resize_window(&state, {cast(u32)e.window.data1, cast(u32)e.window.data2})
-					if err != .No_Error do break main_loop
+					if err != nil do break main_loop
 
 				case .MINIMIZED:
 					state.minimized = true
@@ -228,12 +216,8 @@ main :: proc() {
 
 		if !state.minimized {
 			err = render(&state)
-			if err != .No_Error do break main_loop
+			if err != nil do break main_loop
 		}
-	}
-
-	if err != .No_Error {
-		fmt.eprintf("Error occurred while rendering: %v\n", wgpu.get_error_message())
 	}
 
 	fmt.println("Exiting...")

@@ -18,8 +18,7 @@ State :: struct {
 
 Error :: union #shared_nil {
 	app.Application_Error,
-	renderer.Renderer_Error,
-	wgpu.Error_Type,
+	wgpu.Error,
 }
 
 init_example :: proc() -> (state: State, err: Error) {
@@ -65,6 +64,11 @@ init_example :: proc() -> (state: State, err: Error) {
 	) or_return
 
 	return
+}
+
+deinit_example :: proc(using state: ^State) {
+	wgpu.render_pipeline_release(&render_pipeline)
+	renderer.deinit(gpu)
 }
 
 render :: proc(using state: ^State) -> (err: Error) {
@@ -125,7 +129,7 @@ main :: proc() {
 
 	state, state_err := init_example()
 	if state_err != nil do return
-	defer renderer.deinit(state.gpu)
+	defer deinit_example(&state)
 
 	fmt.printf("Entering main loop...\n\n")
 
@@ -137,25 +141,13 @@ main :: proc() {
 			case events.Quit_Event:
 				break main_loop
 			case events.Framebuffer_Resize_Event:
-				if err := resize_surface(&state, {event.width, event.height}); err != nil {
-					fmt.eprintf(
-						"Error occurred while resizing [%v]: %v\n",
-						err,
-						wgpu.get_error_message(),
-					)
-					break main_loop
-				}
+				err := resize_surface(&state, {event.width, event.height})
+				if err != nil do break main_loop
 			}
 		}
 
-		if err := render(&state); err != nil {
-			fmt.eprintf("Error occurred while rendering [%v]: %v\n", err, wgpu.get_error_message())
-			break main_loop
-		}
+		if err := render(&state); err != nil do break main_loop
 	}
-
-	// deinit state
-	wgpu.render_pipeline_release(&state.render_pipeline)
 
 	fmt.println("Exiting...")
 }

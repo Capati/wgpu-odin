@@ -14,7 +14,7 @@ get_surface_descriptor :: proc(
 	w: glfw.WindowHandle,
 ) -> (
 	descriptor: wgpu.Surface_Descriptor,
-	err: wgpu.Error_Type,
+	err: wgpu.Error,
 ) {
 	instance := win.GetModuleHandleW(nil)
 

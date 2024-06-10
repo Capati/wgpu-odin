@@ -11,7 +11,7 @@ create_surface :: proc(
 	instance: ^wgpu.Instance,
 ) -> (
 	surface: wgpu.Surface,
-	err: wgpu.Error_Type,
+	err: wgpu.Error,
 ) {
 	surface_descriptor := get_surface_descriptor(window) or_return
 	return wgpu.instance_create_surface(instance, &surface_descriptor)

@@ -20,7 +20,7 @@ texture_from_image :: proc(
 	path: cstring,
 ) -> (
 	texture: Texture,
-	err: wgpu.Error_Type,
+	err: wgpu.Error,
 ) {
 	image, image_err := png.load_from_file(string(path))
 	if image_err != nil {

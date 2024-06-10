@@ -106,10 +106,11 @@ queue_write_buffer :: proc(
 	buffer: Raw_Buffer,
 	offset: Buffer_Address,
 	data: []byte,
+	loc := #caller_location,
 ) -> (
-	err: Error_Type,
+	err: Error,
 ) {
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
 
 	if len(data) == 0 {
 		wgpu.queue_write_buffer(ptr, buffer, offset, nil, 0)
@@ -117,7 +118,9 @@ queue_write_buffer :: proc(
 		wgpu.queue_write_buffer(ptr, buffer, offset, raw_data(data), cast(uint)len(data))
 	}
 
-	return _err_data.type
+	err = get_last_error()
+
+	return
 }
 
 // Schedule a write of some data into a texture.
@@ -141,10 +144,11 @@ queue_write_texture :: proc(
 	data: []byte,
 	data_layout: ^Texture_Data_Layout,
 	size: ^Extent_3D,
+	loc := #caller_location,
 ) -> (
-	err: Error_Type,
+	err: Error,
 ) {
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
 
 	if len(data) == 0 {
 		wgpu.queue_write_texture(ptr, texture, nil, 0, data_layout, size)
@@ -159,7 +163,9 @@ queue_write_texture :: proc(
 		)
 	}
 
-	return _err_data.type
+	err = get_last_error()
+
+	return
 }
 
 queue_write_texture_raw :: proc(
@@ -169,12 +175,17 @@ queue_write_texture_raw :: proc(
 	data_size: uint,
 	data_layout: ^Texture_Data_Layout,
 	size: ^Extent_3D,
+	loc := #caller_location,
 ) -> (
-	err: Error_Type,
+	err: Error,
 ) {
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
+
 	wgpu.queue_write_texture(ptr, texture, data, data_size, data_layout, size)
-	return _err_data.type
+
+	err = get_last_error()
+
+	return
 }
 
 // Increase the reference count.

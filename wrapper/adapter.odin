@@ -2,6 +2,8 @@ package wgpu
 
 // Core
 import "base:runtime"
+import "core:fmt"
+import "core:strings"
 
 // Package
 import wgpu "../bindings"
@@ -91,32 +93,68 @@ Device_Response :: struct {
 _adapter_request_device :: proc(
 	self: ^Adapter,
 	desc: ^wgpu.Device_Descriptor = nil,
+	loc := #caller_location,
 ) -> (
 	device: Device,
 	queue: Queue,
-	err: Error_Type,
+	err: Error,
 ) {
+	Device_Response :: struct {
+		status:  Request_Device_Status,
+		message: cstring,
+		device:  Raw_Device,
+	}
+
 	res: Device_Response
+
+	adapter_request_device_callback :: proc "c" (
+		status: Request_Device_Status,
+		device: Raw_Device,
+		message: cstring,
+		user_data: rawptr,
+	) {
+		response := cast(^Device_Response)user_data
+
+		response.status = status
+		response.message = message
+
+		if status == .Success {
+			response.device = device
+		}
+	}
+
 	wgpu.adapter_request_device(
 		self.ptr,
 		desc if desc != nil else nil,
-		_on_adapter_request_device,
+		adapter_request_device_callback,
 		&res,
 	)
 
 	if res.status != .Success {
-		return {}, {}, .Unknown
+		err = res.status
+		set_and_update_err_data(nil, .Request_Device, err, string(res.message), loc)
+		return
 	}
 
 	device.ptr = res.device
-	device.features = device_get_features(&device)
-	device.limits = device_get_limits(&device)
-	device._err_data = new(Error_Data) // Heap allocate to avoid stack fuckery
-	wgpu.device_set_uncaptured_error_callback(
-		device.ptr,
-		uncaptured_error_callback,
-		device._err_data,
-	)
+	defer if err != nil do wgpu.device_release(device.ptr)
+
+	when WGPU_ENABLE_ERROR_HANDLING {
+		if device._err_data, err = add_error_data(); err != nil {
+			set_and_update_err_data(nil, .Request_Device, err, "Failed to create error data", loc)
+			return
+		}
+
+		// Errors will propagate from this callback
+		wgpu.device_set_uncaptured_error_callback(
+			device.ptr,
+			uncaptured_error_data_callback,
+			device._err_data,
+		)
+	}
+
+	device.features = _device_get_features(device.ptr, loc) or_return
+	device.limits = _device_get_limits(device.ptr)
 
 	queue = Queue {
 		ptr       = wgpu.device_get_queue(res.device),
@@ -132,13 +170,14 @@ _adapter_request_device :: proc(
 adapter_request_device :: proc(
 	self: ^Adapter,
 	descriptor: ^Device_Descriptor = nil,
+	loc := #caller_location,
 ) -> (
 	device: Device,
 	queue: Queue,
-	err: Error_Type,
+	err: Error,
 ) {
 	if descriptor == nil {
-		return _adapter_request_device(self, nil)
+		return _adapter_request_device(self, nil, loc)
 	}
 
 	desc: wgpu.Device_Descriptor
@@ -231,7 +270,7 @@ adapter_request_device :: proc(
 		desc.next_in_chain = &device_extras.chain
 	}
 
-	return _adapter_request_device(self, &desc)
+	return _adapter_request_device(self, &desc, loc)
 }
 
 // Increase the reference count.
@@ -242,7 +281,6 @@ adapter_reference :: proc(using self: ^Adapter) {
 // Release the `Adapter`.
 @(private = "file")
 _adapter_release :: proc(using self: ^Adapter) {
-	delete(features)
 	wgpu.adapter_release(ptr)
 }
 
@@ -256,22 +294,4 @@ adapter_release_and_nil :: proc(using self: ^Adapter) {
 	if ptr == nil do return
 	_adapter_release(self)
 	ptr = nil
-}
-
-@(private = "file")
-_on_adapter_request_device :: proc "c" (
-	status: Request_Device_Status,
-	device: Raw_Device,
-	message: cstring,
-	user_data: rawptr,
-) {
-	response := cast(^Device_Response)user_data
-	response.status = status
-
-	if status == .Success {
-		response.device = device
-	} else {
-		context = runtime.default_context()
-		update_error_message(string(message))
-	}
 }

@@ -1,8 +1,8 @@
 package wgpu
 
 // Core
-import "core:mem"
 import "base:runtime"
+import "core:mem"
 
 // Package
 import wgpu "../bindings"
@@ -61,9 +61,10 @@ Bind_Group_Descriptor :: struct {
 device_create_bind_group :: proc(
 	using self: ^Device,
 	descriptor: ^Bind_Group_Descriptor,
+	loc := #caller_location,
 ) -> (
 	bind_group: Bind_Group,
-	err: Error_Type,
+	err: Error,
 ) {
 	desc: wgpu.Bind_Group_Descriptor
 	desc.label = descriptor.label
@@ -123,15 +124,14 @@ device_create_bind_group :: proc(
 		}
 	}
 
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
 
 	bind_group.ptr = wgpu.device_create_bind_group(ptr, &desc)
 
-	if _err_data.type != .No_Error {
+	if err = get_last_error(); err != nil {
 		if bind_group.ptr != nil {
 			wgpu.bind_group_release(bind_group.ptr)
 		}
-		return {}, _err_data.type
 	}
 
 	return
@@ -163,20 +163,19 @@ Bind_Group_Layout_Descriptor :: struct {
 device_create_bind_group_layout :: proc(
 	using self: ^Device,
 	descriptor: ^Bind_Group_Layout_Descriptor = nil,
+	loc := #caller_location,
 ) -> (
 	bind_group_layout: Bind_Group_Layout,
-	err: Error_Type,
+	err: Error,
 ) {
-	_err_data.type = .No_Error
-
 	if descriptor == nil {
+		set_and_reset_err_data(_err_data, loc)
 		bind_group_layout.ptr = wgpu.device_create_bind_group_layout(ptr, nil)
 
-		if _err_data.type != .No_Error {
+		if err = get_last_error(); err != nil {
 			if bind_group_layout.ptr != nil {
 				wgpu.bind_group_layout_release(bind_group_layout.ptr)
 			}
-			return {}, _err_data.type
 		}
 
 		return
@@ -221,13 +220,14 @@ device_create_bind_group_layout :: proc(
 		desc.next_in_chain = &descriptor.extras.chain
 	}
 
+	set_and_reset_err_data(_err_data, loc)
+
 	bind_group_layout.ptr = wgpu.device_create_bind_group_layout(ptr, &desc)
 
-	if _err_data.type != .No_Error {
+	if err = get_last_error(); err != nil {
 		if bind_group_layout.ptr != nil {
 			wgpu.bind_group_layout_release(bind_group_layout.ptr)
 		}
-		return {}, _err_data.type
 	}
 
 	return
@@ -237,19 +237,20 @@ device_create_bind_group_layout :: proc(
 device_create_buffer :: proc(
 	using self: ^Device,
 	descriptor: ^Buffer_Descriptor,
+	loc := #caller_location,
 ) -> (
 	buffer: Buffer,
-	err: Error_Type,
+	err: Error,
 ) {
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
 
 	buffer.ptr = wgpu.device_create_buffer(ptr, descriptor)
 
-	if _err_data.type != .No_Error {
+	if err = get_last_error(); err != nil {
 		if buffer.ptr != nil {
 			wgpu.buffer_release(buffer.ptr)
 		}
-		return {}, _err_data.type
+		return
 	}
 
 	buffer.size = descriptor.size
@@ -263,11 +264,12 @@ device_create_buffer :: proc(
 device_create_command_encoder :: proc(
 	using self: ^Device,
 	descriptor: ^Command_Encoder_Descriptor = nil,
+	loc := #caller_location,
 ) -> (
 	command_encoder: Command_Encoder,
-	err: Error_Type,
+	err: Error,
 ) {
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
 
 	if descriptor != nil {
 		command_encoder.ptr = wgpu.device_create_command_encoder(ptr, descriptor)
@@ -275,11 +277,11 @@ device_create_command_encoder :: proc(
 		command_encoder.ptr = wgpu.device_create_command_encoder(ptr, nil)
 	}
 
-	if _err_data.type != .No_Error {
+	if err = get_last_error(); err != nil {
 		if command_encoder.ptr != nil {
 			wgpu.command_encoder_release(command_encoder.ptr)
 		}
-		return {}, _err_data.type
+		return
 	}
 
 	command_encoder._err_data = _err_data
@@ -334,24 +336,24 @@ _device_create_compute_pipeline_descriptor :: proc(
 device_create_compute_pipeline :: proc(
 	using self: ^Device,
 	descriptor: ^Compute_Pipeline_Descriptor,
+	loc := #caller_location,
 ) -> (
 	compute_pipeline: Compute_Pipeline,
-	err: Error_Type,
+	err: Error,
 ) {
 	desc := _device_create_compute_pipeline_descriptor(descriptor)
 
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
 
 	compute_pipeline.ptr = wgpu.device_create_compute_pipeline(
 		ptr,
 		&desc if descriptor != nil else nil,
 	)
 
-	if _err_data.type != .No_Error {
+	if err = get_last_error(); err != nil {
 		if compute_pipeline.ptr != nil {
 			wgpu.compute_pipeline_release(compute_pipeline.ptr)
 		}
-		return {}, _err_data.type
 	}
 
 	return
@@ -363,19 +365,24 @@ device_create_compute_pipeline_async :: proc(
 	descriptor: ^Compute_Pipeline_Descriptor,
 	callback: Create_Compute_Pipeline_Async_Callback,
 	user_data: rawptr,
+	loc := #caller_location,
 ) -> (
-	err: Error_Type,
+	err: Error,
 ) {
 	desc := _device_create_compute_pipeline_descriptor(descriptor)
 
-	self._err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
+
 	wgpu.device_create_compute_pipeline_async(
 		ptr,
 		&desc if descriptor != nil else nil,
 		callback,
 		user_data,
 	)
-	return self._err_data.type
+
+	err = get_last_error()
+
+	return
 }
 
 Pipeline_Layout_Extras :: struct {
@@ -395,9 +402,10 @@ Pipeline_Layout_Descriptor :: struct {
 device_create_pipeline_layout :: proc(
 	using self: ^Device,
 	descriptor: ^Pipeline_Layout_Descriptor,
+	loc := #caller_location,
 ) -> (
 	pipeline_layout: Pipeline_Layout,
-	err: Error_Type,
+	err: Error,
 ) {
 	desc: wgpu.Pipeline_Layout_Descriptor
 	desc.label = descriptor.label
@@ -418,15 +426,14 @@ device_create_pipeline_layout :: proc(
 		desc.next_in_chain = &extras.chain
 	}
 
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
 
 	pipeline_layout.ptr = wgpu.device_create_pipeline_layout(ptr, &desc)
 
-	if _err_data.type != .No_Error {
+	if err = get_last_error(); err != nil {
 		if pipeline_layout.ptr != nil {
 			wgpu.pipeline_layout_release(pipeline_layout.ptr)
 		}
-		return {}, _err_data.type
 	}
 
 	return
@@ -450,9 +457,10 @@ Query_Set_Descriptor :: struct {
 device_create_query_set :: proc(
 	using self: ^Device,
 	descriptor: ^Query_Set_Descriptor,
+	loc := #caller_location,
 ) -> (
 	query_set: Query_Set,
-	err: Error_Type,
+	err: Error,
 ) {
 	desc: wgpu.Query_Set_Descriptor
 
@@ -473,15 +481,14 @@ device_create_query_set :: proc(
 		desc.next_in_chain = &extras.chain
 	}
 
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
 
 	query_set.ptr = wgpu.device_create_query_set(ptr, &desc)
 
-	if _err_data.type != .No_Error {
+	if err = get_last_error(); err != nil {
 		if query_set.ptr != nil {
 			wgpu.query_set_release(query_set.ptr)
 		}
-		return {}, _err_data.type
 	}
 
 	return
@@ -503,9 +510,10 @@ Render_Bundle_Encoder_Descriptor :: struct {
 device_create_render_bundle_encoder :: proc(
 	using self: ^Device,
 	descriptor: ^Render_Bundle_Encoder_Descriptor,
+	loc := #caller_location,
 ) -> (
 	render_bundle_encoder: Render_Bundle_Encoder,
-	err: Error_Type,
+	err: Error,
 ) {
 	desc: wgpu.Render_Bundle_Encoder_Descriptor
 	desc.label = descriptor.label
@@ -522,7 +530,15 @@ device_create_render_bundle_encoder :: proc(
 	desc.depth_read_only = descriptor.depth_read_only
 	desc.stencil_read_only = descriptor.stencil_read_only
 
+	set_and_reset_err_data(_err_data, loc)
+
 	render_bundle_encoder.ptr = wgpu.device_create_render_bundle_encoder(ptr, &desc)
+
+	if err = get_last_error(); err != nil {
+		if render_bundle_encoder.ptr != nil {
+			wgpu.render_bundle_encoder_release(render_bundle_encoder.ptr)
+		}
+	}
 
 	return
 }
@@ -695,23 +711,23 @@ Render_Pipeline_Descriptor :: struct {
 device_create_render_pipeline :: proc(
 	using self: ^Device,
 	descriptor: ^Render_Pipeline_Descriptor,
+	loc := #caller_location,
 ) -> (
 	render_pipeline: Render_Pipeline,
-	err: Error_Type,
+	err: Error,
 ) {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
 	desc := _device_create_render_pipeline_descriptor(descriptor, context.temp_allocator)
 
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
 
 	render_pipeline.ptr = wgpu.device_create_render_pipeline(ptr, &desc)
 
-	if _err_data.type != .No_Error {
+	if err = get_last_error(); err != nil {
 		if render_pipeline.ptr != nil {
 			wgpu.render_pipeline_release(render_pipeline.ptr)
 		}
-		return {}, _err_data.type
 	}
 
 	return
@@ -723,37 +739,40 @@ device_create_render_pipeline_async :: proc(
 	descriptor: ^Render_Pipeline_Descriptor,
 	callback: Create_Render_Pipeline_Async_Callback,
 	user_data: rawptr,
+	loc := #caller_location,
 ) -> (
-	err: Error_Type,
+	err: Error,
 ) {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
 	desc := _device_create_render_pipeline_descriptor(descriptor, context.temp_allocator)
 
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
 
 	wgpu.device_create_render_pipeline_async(ptr, &desc, callback, user_data)
 
-	return _err_data.type
+	err = get_last_error()
+
+	return
 }
 
 // Creates a new `Sampler`.
 device_create_sampler :: proc(
 	using self: ^Device,
 	descriptor: ^Sampler_Descriptor = nil,
+	loc := #caller_location,
 ) -> (
 	sampler: Sampler,
-	err: Error_Type,
+	err: Error,
 ) {
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
 
 	sampler.ptr = wgpu.device_create_sampler(ptr, descriptor if descriptor != nil else nil)
 
-	if _err_data.type != .No_Error {
+	if err = get_last_error(); err != nil {
 		if sampler.ptr != nil {
 			wgpu.sampler_release(sampler.ptr)
 		}
-		return {}, _err_data.type
 	}
 
 	return
@@ -763,14 +782,15 @@ device_create_sampler :: proc(
 device_create_shader_module :: proc(
 	using self: ^Device,
 	descriptor: ^Shader_Module_Descriptor,
+	loc := #caller_location,
 ) -> (
 	shader_module: Shader_Module,
-	err: Error_Type,
+	err: Error,
 ) {
 	desc: wgpu.Shader_Module_Descriptor
 	desc.label = descriptor.label
 
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
 
 	switch &source in descriptor.source {
 	case WGSL_Source:
@@ -802,11 +822,10 @@ device_create_shader_module :: proc(
 		shader_module.ptr = wgpu.device_create_shader_module(ptr, &desc)
 	}
 
-	if _err_data.type != .No_Error {
+	if err = get_last_error(); err != nil {
 		if shader_module.ptr != nil {
 			wgpu.shader_module_release(shader_module.ptr)
 		}
-		return {}, _err_data.type
 	}
 
 	return
@@ -830,9 +849,10 @@ Texture_Descriptor :: struct {
 device_create_texture :: proc(
 	using self: ^Device,
 	descriptor: ^Texture_Descriptor,
+	loc := #caller_location,
 ) -> (
 	texture: Texture,
-	err: Error_Type,
+	err: Error,
 ) {
 	desc: wgpu.Texture_Descriptor
 
@@ -851,15 +871,15 @@ device_create_texture :: proc(
 		desc.view_formats = raw_data(descriptor.view_formats)
 	}
 
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
 
 	texture.ptr = wgpu.device_create_texture(ptr, &desc)
 
-	if _err_data.type != .No_Error {
+	if err = get_last_error(); err != nil {
 		if texture.ptr != nil {
 			wgpu.texture_release(texture.ptr)
 		}
-		return {}, _err_data.type
+		return
 	}
 
 	texture.descriptor = descriptor^
@@ -913,13 +933,13 @@ device_get_limits :: proc(self: ^Device) -> Limits {
 }
 
 // Get a handle to a command queue on the device
-device_get_queue :: proc(using self: ^Device) -> Queue {
-	gpu_queue := Queue {
+device_get_queue :: proc(using self: ^Device) -> (queue: Queue) {
+	queue = Queue {
 		ptr       = wgpu.device_get_queue(ptr),
 		_err_data = _err_data,
 	}
 
-	return gpu_queue
+	return
 }
 
 // Check if device support the given feature name.
@@ -940,8 +960,11 @@ device_set_uncaptured_error_callback :: proc(
 	callback: Error_Callback,
 	user_data: rawptr,
 ) {
-	_err_data.user_cb = callback
-	_err_data.user_data = user_data
+	when WGPU_ENABLE_ERROR_HANDLING {
+		set_user_data_uncaptured_error_callback(_err_data, callback, user_data)
+	} else {
+		wgpu.device_set_uncaptured_error_callback(ptr, callback, user_data)
+	}
 }
 
 // Set debug label.
@@ -957,7 +980,6 @@ device_reference :: proc(using self: ^Device) {
 @(private = "file")
 _device_release :: proc(using self: ^Device) {
 	delete(features)
-	free(_err_data)
 	wgpu.device_release(ptr)
 }
 

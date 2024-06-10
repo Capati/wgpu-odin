@@ -3,7 +3,6 @@ package events
 // Core
 import "base:runtime"
 import "core:container/queue"
-import "core:runtime"
 
 // Default events queue capacity
 DEFAULT_EVENTS_CAPACITY :: #config(DEFAULT_EVENTS_CAPACITY, 2048)

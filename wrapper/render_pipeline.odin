@@ -15,15 +15,16 @@ Render_Pipeline :: struct {
 render_pipeline_get_bind_group_layout :: proc(
 	using self: ^Render_Pipeline,
 	group_index: u32,
+	loc := #caller_location,
 ) -> (
 	bind_group_layout: Bind_Group_Layout,
-	err: Error_Type,
+	err: Error,
 ) {
 	bind_group_layout.ptr = wgpu.render_pipeline_get_bind_group_layout(ptr, group_index)
 
 	if bind_group_layout.ptr == nil {
-		update_error_message("Failed to acquire Bind_Group_Layout")
-		return {}, .Unknown
+		err = wgpu.Error_Type.Unknown
+		set_and_update_err_data(nil, .General, err, "Failed to acquire Bind_Group_Layout", loc)
 	}
 
 	return
