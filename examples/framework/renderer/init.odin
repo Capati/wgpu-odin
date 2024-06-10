@@ -1,6 +1,7 @@
 package renderer
 
 // Core
+import "base:runtime"
 import "core:fmt"
 import "core:reflect"
 import "core:runtime"

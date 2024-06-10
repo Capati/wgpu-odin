@@ -1,6 +1,7 @@
 package capture
 
 // Core
+import "base:runtime"
 import "core:fmt"
 import "core:runtime"
 
