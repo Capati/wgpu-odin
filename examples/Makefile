@@ -10,9 +10,12 @@ ARGS = -o:speed \
     -disable-assert \
     -no-bounds-check \
     -define:CHECK_TO_BYTES=false \
-    -define:WGPU_ENABLE_ERROR_HANDLING=false \
-    -define:WGPU_USE_SYSTEM_LIBRARIES=true
+    -define:WGPU_ENABLE_ERROR_HANDLING=false
 endif
+
+# Set the default linking
+USE_SYSTEM_LIBRARIES ?= true
+ARGS := $(ARGS) -define:WGPU_USE_SYSTEM_LIBRARIES=$(USE_SYSTEM_LIBRARIES)
 
 ifeq ($(shell uname -s),Darwin)
 	ARGS := $(ARGS) -extra-linker-flags:"-L/opt/homebrew/lib"
