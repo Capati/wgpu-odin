@@ -60,15 +60,15 @@ adapter_get_limits :: proc(self: ^Adapter) -> Limits {
 	return self.limits // filled on request adapter
 }
 
-// Get info about the adapter itself.
-adapter_get_properties :: proc(self: ^Adapter) -> (properties: Adapter_Properties) {
-	wgpu.adapter_get_properties(self.ptr, &properties)
+@(private)
+_adapter_get_properties :: proc(adapter: Raw_Adapter) -> (properties: Adapter_Properties) {
+	wgpu.adapter_get_properties(adapter, &properties)
 	return
 }
 
-// Check if adapter support a feature.
-adapter_has_feature :: proc(using self: ^Adapter, feature: Feature) -> bool {
-	return wgpu.adapter_has_feature(ptr, cast(wgpu.Feature_Name)feature)
+// Get info about the adapter itself.
+adapter_get_properties :: proc(self: ^Adapter) -> Adapter_Properties {
+	return self.properties // filled on request adapter
 }
 
 // Describes a `Device` for use with `adapter->request_device`.

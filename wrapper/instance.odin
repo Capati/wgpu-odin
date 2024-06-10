@@ -172,7 +172,7 @@ instance_request_adapter :: proc(
 	// Fill adapter details
 	adapter.features = adapter_get_features(&adapter)
 	adapter.limits = _adapter_get_limits(adapter.ptr)
-	adapter.properties = adapter_get_properties(&adapter)
+	adapter.properties = _adapter_get_properties(adapter.ptr)
 
 	return
 }
@@ -207,7 +207,7 @@ instance_enumerate_adapters :: proc(
 
 		adapters[i].features = adapter_get_features(&adapters[i])
 		adapters[i].limits = _adapter_get_limits(raw_adapters[i])
-		adapters[i].properties = adapter_get_properties(&adapters[i])
+		adapters[i].properties = _adapter_get_properties(raw_adapters[i])
 	}
 
 	return adapters
