@@ -1,11 +1,19 @@
 @echo off
 setlocal
 
-:: -define:WGPU_BACKEND_TYPE=Vulkan
-set ARGS=-o:speed ^
-	-disable-assert ^
-	-no-bounds-check ^
-	-define:CHECK_TO_BYTES=false
+:: Set default values
+set ARGS=-debug
+
+:: Arguments optimized for release
+if "%2" == "release" (
+	set ARGS=-o:speed ^
+		-disable-assert ^
+		-no-bounds-check ^
+		-define:CHECK_TO_BYTES=false ^
+		-define:WGPU_ENABLE_ERROR_HANDLING=false
+)
+
+::set ARGS=%ARGS% -define:WGPU_BACKEND_TYPE=DX12
 
 set OUT=-out:.\build
 
