@@ -1,13 +1,24 @@
-# -define:WGPU_USE_SYSTEM_LIBRARIES=true
+# Set the default mode to debug
+MODE ?= debug
+
+# Arguments for debug mode
+ifeq ($(MODE),debug)
+ARGS = -debug
+else
+# Arguments optimized for release
 ARGS = -o:speed \
-	-disable-assert \
-	-no-bounds-check \
-	-define:CHECK_TO_BYTES=false
-OUT = -out:./build
+    -disable-assert \
+    -no-bounds-check \
+    -define:CHECK_TO_BYTES=false \
+    -define:WGPU_ENABLE_ERROR_HANDLING=false \
+    -define:WGPU_USE_SYSTEM_LIBRARIES=true
+endif
 
 ifeq ($(shell uname -s),Darwin)
 	ARGS := $(ARGS) -extra-linker-flags:"-L/opt/homebrew/lib"
 endif
+
+OUT = -out:./build
 
 .PHONY: all
 
