@@ -35,62 +35,29 @@ adapter_get_features :: proc(using self: ^Adapter, allocator := context.allocato
 	return transmute([]Feature)adapter_features
 }
 
+@(private)
+_adapter_get_limits :: proc(adapter: Raw_Adapter) -> (limits: Limits) {
+	native := Supported_Limits_Extras {
+		chain = {stype = SType(Native_SType.Supported_Limits_Extras)},
+	}
+
+	supported := Supported_Limits {
+		next_in_chain = &native.chain,
+	}
+
+	wgpu.adapter_get_limits(adapter, &supported)
+
+	limits = limits_merge_webgpu_with_native(supported.limits, native.limits)
+
+	return
+}
+
 // List the “best” limits that are supported by this adapter.
 //
 // Limits must be explicitly requested in `adapter_request_device` to set the values that you are
 // allowed to use.
-adapter_get_limits :: proc(self: ^Adapter) -> (limits: Limits) {
-	supported_extras := Supported_Limits_Extras {
-		chain = {stype = SType(Native_SType.Supported_Limits_Extras)},
-	}
-	supported_limits := Supported_Limits {
-		next_in_chain = &supported_extras.chain,
-	}
-	wgpu.adapter_get_limits(self.ptr, &supported_limits)
-
-	supported := supported_limits.limits
-	extras := supported_extras.limits
-
-	// This is merging base with native limits (extras)
-	limits = {
-		max_texture_dimension_1d                        = supported.max_texture_dimension_1d,
-		max_texture_dimension_2d                        = supported.max_texture_dimension_2d,
-		max_texture_dimension_3d                        = supported.max_texture_dimension_3d,
-		max_texture_array_layers                        = supported.max_texture_array_layers,
-		max_bind_groups                                 = supported.max_bind_groups,
-		max_bind_groups_plus_vertex_buffers             = supported.max_bind_groups_plus_vertex_buffers,
-		max_bindings_per_bind_group                     = supported.max_bindings_per_bind_group,
-		max_dynamic_uniform_buffers_per_pipeline_layout = supported.max_dynamic_uniform_buffers_per_pipeline_layout,
-		max_dynamic_storage_buffers_per_pipeline_layout = supported.max_dynamic_storage_buffers_per_pipeline_layout,
-		max_sampled_textures_per_shader_stage           = supported.max_sampled_textures_per_shader_stage,
-		max_samplers_per_shader_stage                   = supported.max_samplers_per_shader_stage,
-		max_storage_buffers_per_shader_stage            = supported.max_storage_buffers_per_shader_stage,
-		max_storage_textures_per_shader_stage           = supported.max_storage_textures_per_shader_stage,
-		max_uniform_buffers_per_shader_stage            = supported.max_uniform_buffers_per_shader_stage,
-		max_uniform_buffer_binding_size                 = supported.max_uniform_buffer_binding_size,
-		max_storage_buffer_binding_size                 = supported.max_storage_buffer_binding_size,
-		min_uniform_buffer_offset_alignment             = supported.min_uniform_buffer_offset_alignment,
-		min_storage_buffer_offset_alignment             = supported.min_storage_buffer_offset_alignment,
-		max_vertex_buffers                              = supported.max_vertex_buffers,
-		max_buffer_size                                 = supported.max_buffer_size,
-		max_vertex_attributes                           = supported.max_vertex_attributes,
-		max_vertex_buffer_array_stride                  = supported.max_vertex_buffer_array_stride,
-		max_inter_stage_shader_components               = supported.max_inter_stage_shader_components,
-		max_inter_stage_shader_variables                = supported.max_inter_stage_shader_variables,
-		max_color_attachments                           = supported.max_color_attachments,
-		max_color_attachment_bytes_per_sample           = supported.max_color_attachment_bytes_per_sample,
-		max_compute_workgroup_storage_size              = supported.max_compute_workgroup_storage_size,
-		max_compute_invocations_per_workgroup           = supported.max_compute_invocations_per_workgroup,
-		max_compute_workgroup_size_x                    = supported.max_compute_workgroup_size_x,
-		max_compute_workgroup_size_y                    = supported.max_compute_workgroup_size_y,
-		max_compute_workgroup_size_z                    = supported.max_compute_workgroup_size_z,
-		max_compute_workgroups_per_dimension            = supported.max_compute_workgroups_per_dimension,
-		// Limits extras
-		max_push_constant_size                          = extras.max_push_constant_size,
-		max_non_sampler_bindings                        = extras.max_non_sampler_bindings,
-	}
-
-	return
+adapter_get_limits :: proc(self: ^Adapter) -> Limits {
+	return self.limits // filled on request adapter
 }
 
 // Get info about the adapter itself.
@@ -108,7 +75,7 @@ adapter_has_feature :: proc(using self: ^Adapter, feature: Feature) -> bool {
 Device_Descriptor :: struct {
 	label:                cstring,
 	features:             []Feature,
-	limits:               Limits,
+	required_limits:      Limits,
 	trace_path:           cstring,
 	device_lost_callback: Device_Lost_Callback,
 	device_lost_userdata: rawptr,
@@ -184,7 +151,7 @@ adapter_request_device :: proc(
 
 	// If no limits is provided, default to adapter best limits
 	// TODO(Capati): Or default to a down level limits?
-	limits := descriptor.limits if descriptor.limits != {} else self.limits
+	limits := descriptor.required_limits if descriptor.required_limits != {} else self.limits
 
 	required_limits := Required_Limits {
 		next_in_chain = nil,
