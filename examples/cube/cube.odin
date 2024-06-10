@@ -27,8 +27,7 @@ State :: struct {
 
 Error :: union #shared_nil {
 	app.Application_Error,
-	renderer.Renderer_Error,
-	wgpu.Error_Type,
+	wgpu.Error,
 }
 
 init_example :: proc() -> (state: State, err: Error) {
@@ -141,6 +140,15 @@ init_example :: proc() -> (state: State, err: Error) {
 	return
 }
 
+deinit_example :: proc(using state: ^State) {
+	wgpu.bind_group_release(&bind_group)
+	wgpu.buffer_release(&uniform_buffer)
+	wgpu.texture_view_release(&depth_stencil_view)
+	wgpu.render_pipeline_release(&render_pipeline)
+	wgpu.buffer_release(&vertex_buffer)
+	renderer.deinit(gpu)
+}
+
 render :: proc(using state: ^State) -> (err: Error) {
 	frame := renderer.get_current_texture_frame(gpu) or_return
 	defer wgpu.texture_release(&frame.texture)
@@ -200,9 +208,12 @@ resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Er
 	wgpu.texture_view_release(&depth_stencil_view)
 	depth_stencil_view = get_depth_framebuffer(gpu, size) or_return
 
-	mvp_mat := generate_matrix(cast(f32)size.width / cast(f32)size.height)
-
-	wgpu.queue_write_buffer(&gpu.queue, uniform_buffer.ptr, 0, wgpu.to_bytes(mvp_mat)) or_return
+	wgpu.queue_write_buffer(
+		&gpu.queue,
+		uniform_buffer.ptr,
+		0,
+		wgpu.to_bytes(generate_matrix(cast(f32)size.width / cast(f32)size.height)),
+	) or_return
 
 	renderer.resize_surface(gpu, size) or_return
 
@@ -212,12 +223,12 @@ resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Er
 main :: proc() {
 	app_properties := app.Default_Properties
 	app_properties.title = "Cube"
-	if app.init(app_properties) != .No_Error do return
+	if app.init(app_properties) != nil do return
 	defer app.deinit()
 
 	state, state_err := init_example()
 	if state_err != nil do return
-	defer renderer.deinit(state.gpu)
+	defer deinit_example(&state)
 
 	fmt.printf("Entering main loop...\n\n")
 
@@ -230,28 +241,13 @@ main :: proc() {
 				break main_loop
 			case events.Framebuffer_Resize_Event:
 				if err := resize_surface(&state, {event.width, event.height}); err != nil {
-					fmt.eprintf(
-						"Error occurred while resizing [%v]: %v\n",
-						err,
-						wgpu.get_error_message(),
-					)
 					break main_loop
 				}
 			}
 		}
 
-		if err := render(&state); err != nil {
-			fmt.eprintf("Error occurred while rendering [%v]: %v\n", err, wgpu.get_error_message())
-			break main_loop
-		}
+		if err := render(&state); err != nil do break main_loop
 	}
-
-	// deinit state
-	wgpu.bind_group_release(&state.bind_group)
-	wgpu.buffer_release(&state.uniform_buffer)
-	wgpu.texture_view_release(&state.depth_stencil_view)
-	wgpu.render_pipeline_release(&state.render_pipeline)
-	wgpu.buffer_release(&state.vertex_buffer)
 
 	fmt.println("Exiting...")
 }
@@ -261,7 +257,7 @@ get_depth_framebuffer :: proc(
 	size: app.Physical_Size,
 ) -> (
 	view: wgpu.Texture_View,
-	err: wgpu.Error_Type,
+	err: wgpu.Error,
 ) {
 	texture := wgpu.device_create_texture(
 		&gpu.device,

@@ -72,11 +72,19 @@ render_pass_encoder_draw_indirect :: proc(
 }
 
 // Record the end of the render pass.
-render_pass_encoder_end :: proc(using self: ^Render_Pass_Encoder) -> Error_Type {
-	_err_data.type = .No_Error
+render_pass_encoder_end :: proc(
+	using self: ^Render_Pass_Encoder,
+	loc := #caller_location,
+) -> (
+	err: Error,
+) {
+	set_and_reset_err_data(_err_data, loc)
+
 	wgpu.render_pass_encoder_end(ptr)
 
-	return _err_data.type
+	err = get_last_error()
+
+	return
 }
 
 // End the occlusion query on this render pass. It can be started with begin_occlusion_query.

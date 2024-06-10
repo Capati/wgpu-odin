@@ -3,7 +3,6 @@ package capture
 // Core
 import "base:runtime"
 import "core:fmt"
-import "core:runtime"
 
 // Vendor
 import "vendor:stb/image"
@@ -51,20 +50,14 @@ main :: proc() {
 	}
 
 	instance, instance_err := wgpu.create_instance(&instance_descriptor)
-	if instance_err != .No_Error {
-		fmt.eprintln("ERROR Creating Instance:", wgpu.get_error_message())
-		return
-	}
+	if instance_err != nil do return
 	defer wgpu.instance_release(&instance)
 
 	adapter, adapter_err := wgpu.instance_request_adapter(
 		&instance,
 		&{compatible_surface = nil, power_preference = .High_Performance},
 	)
-	if adapter_err != .No_Error {
-		fmt.eprintln("ERROR Couldn't Request Adapter:", wgpu.get_error_message())
-		return
-	}
+	if adapter_err != nil do return
 	defer wgpu.adapter_release(&adapter)
 
 	device_descriptor := wgpu.Device_Descriptor {
@@ -72,23 +65,11 @@ main :: proc() {
 	}
 
 	device, queue, device_err := wgpu.adapter_request_device(&adapter, &device_descriptor)
-	if device_err != .No_Error {
-		fmt.eprintln("ERROR Couldn't Request Adapter:", wgpu.get_error_message())
-		return
-	}
+	if device_err != nil do return
 	defer {
 		wgpu.queue_release(&queue)
 		wgpu.device_release(&device)
 	}
-
-	wgpu.device_set_uncaptured_error_callback(
-		&device,
-		proc "c" (type: wgpu.Error_Type, message: cstring, user_data: rawptr) {
-			context = runtime.default_context()
-			fmt.eprintln("ERROR: ", message)
-		},
-		nil,
-	)
 
 	buffer_dimensions := Buffer_Dimensions{}
 	buffer_dimensions_init(&buffer_dimensions, Width, Height)
@@ -106,7 +87,7 @@ main :: proc() {
 			mapped_at_creation = false,
 		},
 	)
-	if output_buffer_err != .No_Error do return
+	if output_buffer_err != nil do return
 	defer wgpu.buffer_release(&output_buffer)
 
 	texture_extent := wgpu.Extent_3D {
@@ -127,18 +108,18 @@ main :: proc() {
 			usage = {.Render_Attachment, .Copy_Src},
 		},
 	)
-	if texture_err != .No_Error do return
+	if texture_err != nil do return
 	defer wgpu.texture_release(&texture)
 
 	texture_view, texture_view_err := wgpu.texture_create_view(&texture, nil)
-	if texture_view_err != .No_Error do return
+	if texture_view_err != nil do return
 	defer wgpu.texture_view_release(&texture_view)
 
 	command_encoder, command_encoder_err := wgpu.device_create_command_encoder(
 		&device,
 		&{label = "command_encoder"},
 	)
-	if command_encoder_err != .No_Error do return
+	if command_encoder_err != nil do return
 	defer wgpu.command_encoder_release(&command_encoder)
 
 	colors: []wgpu.Render_Pass_Color_Attachment = {
@@ -154,7 +135,7 @@ main :: proc() {
 		&command_encoder,
 		&{label = "render_pass", color_attachments = colors},
 	)
-	if wgpu.render_pass_encoder_end(&render_pass) != .No_Error do return
+	if wgpu.render_pass_encoder_end(&render_pass) != nil do return
 	wgpu.render_pass_encoder_release(&render_pass)
 
 	wgpu.command_encoder_copy_texture_to_buffer(
@@ -172,7 +153,7 @@ main :: proc() {
 	)
 
 	command_buffer, command_buffer_err := wgpu.command_encoder_finish(&command_encoder)
-	if command_buffer_err != .No_Error do return
+	if command_buffer_err != nil do return
 	defer wgpu.command_buffer_release(&command_buffer)
 
 	wgpu.queue_submit(&queue, command_buffer.ptr)
@@ -184,7 +165,8 @@ main :: proc() {
 	wgpu.buffer_map_async(&output_buffer, {.Read}, handle_buffer_map, nil, 0, buffer_size)
 	wgpu.device_poll(&device)
 
-	data := wgpu.buffer_get_const_mapped_range(&output_buffer, byte, 0, buffer_size)
+	data, data_err := wgpu.buffer_get_const_mapped_range(&output_buffer, byte, 0, buffer_size)
+	if data_err != nil do return
 
 	result := image.write_png(
 		"red.png",

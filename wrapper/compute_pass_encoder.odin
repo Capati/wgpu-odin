@@ -40,12 +40,19 @@ compute_pass_encoder_dispatch_workgroups_indirect :: proc(
 }
 
 // Record the end of the compute pass.
-compute_pass_encoder_end :: proc(using self: ^Compute_Pass_Encoder) -> Error_Type {
-	_err_data.type = .No_Error
+compute_pass_encoder_end :: proc(
+	using self: ^Compute_Pass_Encoder,
+	loc := #caller_location,
+) -> (
+	err: Error,
+) {
+	set_and_reset_err_data(_err_data, loc)
 
 	wgpu.compute_pass_encoder_end(ptr)
 
-	return _err_data.type
+	err = get_last_error()
+
+	return
 }
 
 // Inserts debug marker.

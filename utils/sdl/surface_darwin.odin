@@ -13,7 +13,7 @@ get_surface_descriptor :: proc(
 	window: ^sdl.Window,
 ) -> (
 	descriptor: wgpu.Surface_Descriptor,
-	err: wgpu.Error_Type,
+	err: wgpu.Error,
 ) {
 	wm_info := get_sys_info(window) or_return
 
@@ -31,4 +31,3 @@ get_surface_descriptor :: proc(
 
 	return
 }
-

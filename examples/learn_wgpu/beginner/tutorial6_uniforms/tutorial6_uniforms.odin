@@ -62,8 +62,7 @@ State :: struct {
 
 Error :: union #shared_nil {
 	app.Application_Error,
-	renderer.Renderer_Error,
-	wgpu.Error_Type,
+	wgpu.Error,
 }
 
 init_example :: proc() -> (state: State, err: Error) {
@@ -267,6 +266,16 @@ init_example :: proc() -> (state: State, err: Error) {
 	return
 }
 
+deinit_example :: proc(using state: ^State) {
+	wgpu.buffer_release(&index_buffer)
+	wgpu.buffer_release(&vertex_buffer)
+	wgpu.render_pipeline_release(&render_pipeline)
+	wgpu.bind_group_release(&camera_bind_group)
+	wgpu.bind_group_release(&diffuse_bind_group)
+	wgpu.buffer_release(&camera_buffer)
+	renderer.deinit(gpu)
+}
+
 update :: proc(using state: ^State) -> (err: Error) {
 	update_camera_controller(&camera_controller, &camera)
 	update_view_proj(&camera_uniform, &camera)
@@ -356,7 +365,7 @@ main :: proc() {
 
 	state, state_err := init_example()
 	if state_err != nil do return
-	defer renderer.deinit(state.gpu)
+	defer deinit_example(&state)
 
 	fmt.printf("Entering main loop...\n\n")
 
@@ -398,31 +407,14 @@ main :: proc() {
 					state.camera_controller.is_right_pressed = false
 				}
 			case events.Framebuffer_Resize_Event:
-				if err := resize_surface(&state, {event.width, event.height}); err != nil {
-					fmt.eprintf("Error while resizing [%v]: %v\n", err, wgpu.get_error_message())
-					break main_loop
-				}
+				err := resize_surface(&state, {event.width, event.height})
+				if err != nil do break main_loop
 			}
 		}
 
-		if err := update(&state); err != nil {
-			fmt.eprintf("Error while update [%v]: %v\n", err, wgpu.get_error_message())
-			break main_loop
-		}
-
-		if err := render(&state); err != nil {
-			fmt.eprintf("Error while rendering [%v]: %v\n", err, wgpu.get_error_message())
-			break main_loop
-		}
+		if err := update(&state); err != nil do break main_loop
+		if err := render(&state); err != nil do break main_loop
 	}
-
-	// deinit state
-	wgpu.buffer_release(&state.index_buffer)
-	wgpu.buffer_release(&state.vertex_buffer)
-	wgpu.render_pipeline_release(&state.render_pipeline)
-	wgpu.bind_group_release(&state.camera_bind_group)
-	wgpu.bind_group_release(&state.diffuse_bind_group)
-	wgpu.buffer_release(&state.camera_buffer)
 
 	fmt.println("Exiting...")
 }

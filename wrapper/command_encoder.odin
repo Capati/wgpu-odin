@@ -21,15 +21,23 @@ Command_Encoder :: struct {
 command_encoder_begin_compute_pass :: proc(
 	using self: ^Command_Encoder,
 	descriptor: ^Compute_Pass_Descriptor,
+	loc := #caller_location,
 ) -> (
 	compute_pass: Compute_Pass_Encoder,
-	err: Error_Type,
+	err: Error,
 ) {
 	compute_pass.ptr = wgpu.command_encoder_begin_compute_pass(ptr, descriptor)
 
 	if compute_pass.ptr == nil {
-		update_error_message("Failed to acquire Compute_Pass_Encoder")
-		return {}, .Unknown
+		err = wgpu.Error_Type.Unknown
+		set_and_update_err_data(
+			_err_data,
+			.General,
+			err,
+			"Failed to acquire Compute_Pass_Encoder",
+			loc,
+		)
+		return
 	}
 
 	compute_pass._err_data = _err_data
@@ -99,17 +107,45 @@ command_encoder_clear_buffer :: proc(
 	buffer: Raw_Buffer,
 	offset: u64 = 0,
 	size: u64 = 0,
-) -> Error_Type {
-	assert(offset % 4 == 0, "'offset' must be a multiple of 4")
-	assert(size > 0, "clear_buffer size must be > 0")
-	assert(size % 4 == 0, "size must be a multiple of 4")
-	assert(offset + size <= size, "buffer size out of range")
+	loc := #caller_location,
+) -> (
+	err: Error,
+) {
+	when WGPU_ENABLE_ERROR_HANDLING {
+		err = wgpu.Error_Type.Validation
 
-	_err_data.type = .No_Error
+		if offset % 4 != 0 {
+			set_and_update_err_data(
+				_err_data,
+				.Assert,
+				err,
+				"'offset' must be a multiple of 4",
+				loc,
+			)
+			return
+		}
 
+		if size <= 0 {
+			set_and_update_err_data(_err_data, .Assert, err, "'size' size must be > 0", loc)
+			return
+		}
+
+		if size % 4 != 0 {
+			set_and_update_err_data(_err_data, .Assert, err, "'size' must be a multiple of 4", loc)
+			return
+		}
+
+		if offset + size > size {
+			set_and_update_err_data(_err_data, .Assert, err, "buffer size out of range", loc)
+			return
+		}
+	}
+
+	set_and_reset_err_data(_err_data, loc)
 	wgpu.command_encoder_clear_buffer(ptr, buffer, offset, size)
+	err = get_last_error()
 
-	return _err_data.type
+	return
 }
 
 // Copy data from one buffer to another.
@@ -120,12 +156,42 @@ command_encoder_copy_buffer_to_buffer :: proc(
 	destination: Raw_Buffer,
 	destination_offset: u64,
 	size: u64,
-) -> Error_Type {
-	assert(source_offset % 4 == 0, "'source_offset' must be a multiple of 4")
-	assert(destination_offset % 4 == 0, "'destination_offset' must be a multiple of 4")
-	assert(size % 4 == 0, "'size' must be a multiple of 4")
+	loc := #caller_location,
+) -> (
+	err: Error,
+) {
+	when WGPU_ENABLE_ERROR_HANDLING {
+		err = .Validation
 
-	_err_data.type = .No_Error
+		if source_offset % 4 != 0 {
+			set_and_update_err_data(
+				_err_data,
+				.Assert,
+				err,
+				"'source_offset' must be a multiple of 4",
+				loc,
+			)
+			return
+		}
+
+		if destination_offset % 4 != 0 {
+			set_and_update_err_data(
+				_err_data,
+				.Assert,
+				err,
+				"'destination_offset' must be a multiple of 4",
+				loc,
+			)
+			return
+		}
+
+		if size % 4 != 0 {
+			set_and_update_err_data(_err_data, .Assert, err, "'size' must be a multiple of 4", loc)
+			return
+		}
+	}
+
+	set_and_reset_err_data(_err_data, loc)
 
 	wgpu.command_encoder_copy_buffer_to_buffer(
 		ptr,
@@ -136,7 +202,9 @@ command_encoder_copy_buffer_to_buffer :: proc(
 		size,
 	)
 
-	return _err_data.type
+	err = get_last_error()
+
+	return
 }
 
 // Copy data from a buffer to a texture.
@@ -145,19 +213,31 @@ command_encoder_copy_buffer_to_texture :: proc(
 	source: ^Image_Copy_Buffer,
 	destination: ^Image_Copy_Texture,
 	copy_size: ^Extent_3D,
-) -> Error_Type {
-	if source != nil {
-		if source.layout.bytes_per_row % Copy_Bytes_Per_Row_Alignment != 0 {
-			update_error_message("bytes_per_row must be a multiple of 256")
-			return .Validation
+	loc := #caller_location,
+) -> (
+	err: Error,
+) {
+	when WGPU_ENABLE_ERROR_HANDLING {
+		if source != nil && source.layout.bytes_per_row % Copy_Bytes_Per_Row_Alignment != 0 {
+			err = .Validation
+			set_and_update_err_data(
+				_err_data,
+				.Assert,
+				err,
+				"bytes_per_row must be a multiple of 256",
+				loc,
+			)
+			return
 		}
 	}
 
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
 
 	wgpu.command_encoder_copy_buffer_to_texture(ptr, source, destination, copy_size)
 
-	return _err_data.type
+	err = get_last_error()
+
+	return
 }
 
 // Copy data from a texture to a buffer.
@@ -166,19 +246,31 @@ command_encoder_copy_texture_to_buffer :: proc(
 	source: ^Image_Copy_Texture,
 	destination: ^Image_Copy_Buffer,
 	copy_size: ^Extent_3D,
-) -> Error_Type {
+	loc := #caller_location,
+) -> (
+	err: Error,
+) {
 	if destination != nil {
 		if destination.layout.bytes_per_row % Copy_Bytes_Per_Row_Alignment != 0 {
-			update_error_message("bytes_per_row must be a multiple of 256")
-			return .Validation
+			err = .Validation
+			set_and_update_err_data(
+				_err_data,
+				.Assert,
+				err,
+				"bytes_per_row must be a multiple of 256",
+				loc,
+			)
+			return
 		}
 	}
 
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
 
 	wgpu.command_encoder_copy_texture_to_buffer(ptr, source, destination, copy_size)
 
-	return _err_data.type
+	err = get_last_error()
+
+	return
 }
 
 // Copy data from one texture to another.
@@ -187,12 +279,17 @@ command_encoder_copy_texture_to_texture :: proc(
 	source: ^Image_Copy_Texture,
 	destination: ^Image_Copy_Texture,
 	copy_size: ^Extent_3D,
-) -> Error_Type {
-	_err_data.type = .No_Error
+	loc := #caller_location,
+) -> (
+	err: Error,
+) {
+	set_and_reset_err_data(_err_data, loc)
 
 	wgpu.command_encoder_copy_texture_to_texture(ptr, source, destination, copy_size)
 
-	return _err_data.type
+	err = get_last_error()
+
+	return
 }
 
 // Finishes recording commands and creates a new command buffer with the given descriptor.
@@ -200,19 +297,19 @@ command_encoder_copy_texture_to_texture :: proc(
 command_encoder_finish :: proc(
 	using self: ^Command_Encoder,
 	descriptor: ^Command_Buffer_Descriptor = nil,
+	loc := #caller_location,
 ) -> (
 	command_buffer: Command_Buffer,
-	err: Error_Type,
+	err: Error,
 ) {
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
 
 	command_buffer.ptr = wgpu.command_encoder_finish(ptr, descriptor)
 
-	if _err_data.type != .No_Error {
+	if err = get_last_error(); err != nil {
 		if command_buffer.ptr != nil {
 			wgpu.command_buffer_release(command_buffer.ptr)
 		}
-		return {}, _err_data.type
 	}
 
 	return
@@ -222,33 +319,50 @@ command_encoder_finish :: proc(
 command_encoder_insert_debug_marker :: proc(
 	using self: ^Command_Encoder,
 	marker_label: cstring,
-) -> Error_Type {
-	_err_data.type = .No_Error
+	loc := #caller_location,
+) -> (
+	err: Error,
+) {
+	set_and_reset_err_data(_err_data, loc)
 
 	wgpu.command_encoder_insert_debug_marker(ptr, marker_label)
 
-	return _err_data.type
+	err = get_last_error()
+
+	return
 }
 
 // Stops command recording and creates debug group.
-command_encoder_pop_debug_group :: proc(using self: ^Command_Encoder) -> Error_Type {
-	_err_data.type = .No_Error
+command_encoder_pop_debug_group :: proc(
+	using self: ^Command_Encoder,
+	loc := #caller_location,
+) -> (
+	err: Error,
+) {
+	set_and_reset_err_data(_err_data, loc)
 
 	wgpu.command_encoder_pop_debug_group(ptr)
 
-	return _err_data.type
+	err = get_last_error()
+
+	return
 }
 
 // Start record commands and group it into debug marker group.
 command_encoder_push_debug_group :: proc(
 	using self: ^Command_Encoder,
 	group_label: cstring,
-) -> Error_Type {
-	_err_data.type = .No_Error
+	loc := #caller_location,
+) -> (
+	err: Error,
+) {
+	set_and_reset_err_data(_err_data, loc)
 
 	wgpu.command_encoder_push_debug_group(ptr, group_label)
 
-	return _err_data.type
+	err = get_last_error()
+
+	return
 }
 
 // Resolve a query set, writing the results into the supplied destination buffer.
@@ -261,8 +375,11 @@ command_encoder_resolve_query_set :: proc(
 	query_count: u32,
 	destination: Raw_Buffer,
 	destination_offset: u64,
-) -> Error_Type {
-	_err_data.type = .No_Error
+	loc := #caller_location,
+) -> (
+	err: Error,
+) {
+	set_and_reset_err_data(_err_data, loc)
 
 	wgpu.command_encoder_resolve_query_set(
 		ptr,
@@ -273,7 +390,9 @@ command_encoder_resolve_query_set :: proc(
 		destination_offset,
 	)
 
-	return _err_data.type
+	err = get_last_error()
+
+	return
 }
 
 // Set debug label.
@@ -287,12 +406,17 @@ command_encoder_write_timestamp :: proc(
 	using self: ^Command_Encoder,
 	query_set: Raw_Query_Set,
 	query_index: u32,
-) -> Error_Type {
-	_err_data.type = .No_Error
+	loc := #caller_location,
+) -> (
+	err: Error,
+) {
+	set_and_reset_err_data(_err_data, loc)
 
 	wgpu.command_encoder_write_timestamp(ptr, query_set, query_index)
 
-	return _err_data.type
+	err = get_last_error()
+
+	return
 }
 
 // Increase the reference count.

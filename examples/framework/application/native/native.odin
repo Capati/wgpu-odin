@@ -261,7 +261,7 @@ get_system_info :: proc() -> Platform_Info {
 	return _ctx.system_info
 }
 
-get_wgpu_surface :: proc(instance: ^wgpu.Instance) -> (wgpu.Surface, wgpu.Error_Type) {
+get_wgpu_surface :: proc(instance: ^wgpu.Instance) -> (wgpu.Surface, wgpu.Error) {
 	return wgpu_sdl.create_surface(_ctx.window, instance)
 }
 

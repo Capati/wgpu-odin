@@ -74,15 +74,16 @@ render_bundle_encoder_draw_indirect :: proc(
 render_bundle_encoder_finish :: proc(
 	using self: ^Render_Bundle_Encoder,
 	descriptor: ^Render_Bundle_Descriptor = nil,
+	loc := #caller_location,
 ) -> (
 	render_bundle: Render_Bundle,
-	err: Error_Type,
+	err: Error,
 ) {
 	render_bundle.ptr = wgpu.render_bundle_encoder_finish(ptr, descriptor)
 
 	if render_bundle.ptr == nil {
-		update_error_message("Failed to acquire RenderBundle")
-		return {}, .Unknown
+		err = wgpu.Error_Type.Unknown
+		set_and_update_err_data(nil, .General, err, "Failed to acquire Render_Bundle", loc)
 	}
 
 	return

@@ -4,7 +4,6 @@ package wgpu
 import "base:runtime"
 import "core:fmt"
 import "core:os"
-import "core:runtime"
 import "core:slice"
 import "core:strings"
 
@@ -40,17 +39,20 @@ device_load_wgsl_shader_module :: proc(
 	using self: ^Device,
 	path: cstring,
 	label: cstring = nil,
+	loc := #caller_location,
 ) -> (
 	shader_module: Shader_Module,
-	err: Error_Type,
+	err: Error,
 ) {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
 	data, data_ok := os.read_entire_file(string(path), context.temp_allocator)
 
 	if !data_ok {
-		fmt.eprintf("Failed to load WGSL shader file: [%s]\n", path)
-		return {}, .Unknown
+		err = System_Error.Read_Entire_File
+		error_message := fmt.tprintf("Failed to load WGSL shader file: [%s]", path)
+		set_and_update_err_data(_err_data, .Shader, err, error_message, loc)
+		return
 	}
 
 	// Use the path as label if label is not given
@@ -70,17 +72,20 @@ device_load_spirv_shader_module :: proc(
 	using self: ^Device,
 	path: cstring,
 	label: cstring = nil,
+	loc := #caller_location,
 ) -> (
 	shader_module: Shader_Module,
-	err: Error_Type,
+	err: Error,
 ) {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
 	data, data_ok := os.read_entire_file(string(path), context.temp_allocator)
 
 	if !data_ok {
-		fmt.eprintf("Failed to load SPIRV shader file: [%s]\n", path)
-		return {}, .Unknown
+		err = System_Error.Read_Entire_File
+		error_message := fmt.tprintf("Failed to load SPIRV shader file: [%s]", path)
+		set_and_update_err_data(_err_data, .Shader, err, error_message, loc)
+		return
 	}
 
 	// Use the path as label if label is not given

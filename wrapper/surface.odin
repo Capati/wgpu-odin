@@ -3,7 +3,6 @@ package wgpu
 // Core
 import "base:runtime"
 import "core:mem"
-import "core:runtime"
 import "core:slice"
 
 // Package
@@ -42,7 +41,10 @@ surface_configure :: proc(
 	self: ^Surface,
 	device: ^Device,
 	config: ^Surface_Configuration,
-) -> Error_Type {
+	loc := #caller_location,
+) -> (
+	err: Error,
+) {
 	cfg := wgpu.Surface_Configuration {
 		device = device.ptr,
 	}
@@ -77,17 +79,17 @@ surface_configure :: proc(
 		cfg.next_in_chain = &extras.chain
 	}
 
-	device._err_data.type = .No_Error
+	set_and_reset_err_data(self._err_data, loc)
 
 	wgpu.surface_configure(self.ptr, &cfg)
 
-	if device._err_data.type != .No_Error {
-		return device._err_data.type
+	if err = get_last_error(); err != nil {
+		return
 	}
 
 	self._err_data = device._err_data
 
-	return .No_Error
+	return
 }
 
 // Defines the capabilities of a given surface and adapter.
@@ -102,45 +104,90 @@ surface_get_capabilities :: proc(
 	using self: ^Surface,
 	adapter: Raw_Adapter,
 	allocator := context.allocator,
+	loc := #caller_location,
 ) -> (
-	Surface_Capabilities,
-	Error_Type,
+	caps: Surface_Capabilities,
+	err: Error,
 ) {
-	caps: wgpu.Surface_Capabilities = {}
-	wgpu.surface_get_capabilities(ptr, adapter, &caps)
+	raw_caps: wgpu.Surface_Capabilities
+	wgpu.surface_get_capabilities(ptr, adapter, &raw_caps)
+	defer wgpu.surface_capabilities_free_members(raw_caps)
 
-	if caps.format_count == 0 && caps.present_mode_count == 0 && caps.alpha_mode_count == 0 {
-		update_error_message("No compatible capabilities found with the given adapter")
-		return {}, .Unknown
+	if raw_caps.format_count == 0 &&
+	   raw_caps.present_mode_count == 0 &&
+	   raw_caps.alpha_mode_count == 0 {
+		return
 	}
 
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
-
-	wgpu.surface_get_capabilities(ptr, adapter, &caps)
-
-	ret := Surface_Capabilities{}
-
-	if caps.format_count > 0 {
-		formats_tmp := slice.from_ptr(caps.formats, int(caps.format_count))
-		ret.formats = make([]Texture_Format, caps.format_count, allocator)
-		copy(ret.formats, formats_tmp)
+	defer if err != nil {
+		if len(caps.formats) > 0 do delete(caps.formats)
+		if len(caps.alpha_modes) > 0 do delete(caps.alpha_modes)
+		if len(caps.present_modes) > 0 do delete(caps.present_modes)
 	}
 
-	if caps.present_mode_count > 0 {
-		present_modes_tmp := slice.from_ptr(caps.present_modes, int(caps.present_mode_count))
-		ret.present_modes = make([]Present_Mode, caps.present_mode_count, allocator)
-		copy(ret.present_modes, present_modes_tmp)
+	alloc_err: mem.Allocator_Error
+
+	if raw_caps.format_count > 0 {
+		formats_tmp := slice.from_ptr(raw_caps.formats, int(raw_caps.format_count))
+		if caps.formats, alloc_err = make([]Texture_Format, raw_caps.format_count, allocator);
+		   alloc_err != nil {
+			err = alloc_err
+			set_and_update_err_data(
+				nil,
+				.General,
+				err,
+				"Failed to allocate formats capabilities",
+				loc,
+			)
+			return
+		}
+		copy(caps.formats, formats_tmp)
 	}
 
-	if caps.alpha_mode_count > 0 {
-		alpha_modes_tmp := slice.from_ptr(caps.alpha_modes, int(caps.alpha_mode_count))
-		ret.alpha_modes = make([]Composite_Alpha_Mode, caps.alpha_mode_count, allocator)
-		copy(ret.alpha_modes, alpha_modes_tmp)
+	if raw_caps.present_mode_count > 0 {
+		present_modes_tmp := slice.from_ptr(
+			raw_caps.present_modes,
+			int(raw_caps.present_mode_count),
+		)
+		if caps.present_modes, alloc_err = make(
+			[]Present_Mode,
+			raw_caps.present_mode_count,
+			allocator,
+		); alloc_err != nil {
+			err = alloc_err
+			set_and_update_err_data(
+				nil,
+				.General,
+				err,
+				"Failed to allocate present modes capabilities",
+				loc,
+			)
+			return
+		}
+		copy(caps.present_modes, present_modes_tmp)
 	}
 
-	wgpu.surface_capabilities_free_members(caps)
+	if raw_caps.alpha_mode_count > 0 {
+		alpha_modes_tmp := slice.from_ptr(raw_caps.alpha_modes, int(raw_caps.alpha_mode_count))
+		if caps.alpha_modes, alloc_err = make(
+			[]Composite_Alpha_Mode,
+			raw_caps.alpha_mode_count,
+			allocator,
+		); alloc_err != nil {
+			err = alloc_err
+			set_and_update_err_data(
+				nil,
+				.General,
+				err,
+				"Failed to allocate alpha modes capabilities",
+				loc,
+			)
+			return
+		}
+		copy(caps.alpha_modes, alpha_modes_tmp)
+	}
 
-	return ret, .No_Error
+	return
 }
 
 surface_delete_capabilities :: proc(caps: ^Surface_Capabilities) {
@@ -152,18 +199,21 @@ surface_delete_capabilities :: proc(caps: ^Surface_Capabilities) {
 // Returns the next texture to be presented by the swapchain for drawing.
 surface_get_current_texture :: proc(
 	using self: ^Surface,
+	loc := #caller_location,
 ) -> (
 	surface_texture: Surface_Texture,
-	err: Error_Type,
+	err: Error,
 ) {
-	_err_data.type = .No_Error
+	set_and_reset_err_data(_err_data, loc)
 
 	texture: wgpu.Surface_Texture
 	wgpu.surface_get_current_texture(ptr, &texture)
 
-	if _err_data.type != .No_Error {
-		wgpu.texture_release(texture.texture)
-		return {}, _err_data.type
+	if err = get_last_error(); err != nil {
+		if texture.texture != nil {
+			wgpu.texture_release(texture.texture)
+		}
+		return
 	}
 
 	surface_texture = {
@@ -183,7 +233,7 @@ surface_get_current_texture :: proc(
 		status = texture.status,
 	}
 
-	return surface_texture, .No_Error
+	return
 }
 
 // Returns the best format for the provided surface and adapter.
@@ -210,13 +260,14 @@ surface_get_default_config :: proc(
 	self: ^Surface,
 	adapter: Raw_Adapter,
 	width, height: u32,
+	loc := #caller_location,
 ) -> (
 	config: Surface_Configuration,
-	err: Error_Type,
+	err: Error,
 ) {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
-	caps := surface_get_capabilities(self, adapter, context.temp_allocator) or_return
+	caps := surface_get_capabilities(self, adapter, context.temp_allocator, loc) or_return
 
 	config = {
 		usage        = {.Render_Attachment},

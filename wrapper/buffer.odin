@@ -33,21 +33,32 @@ buffer_get_const_mapped_range :: proc(
 	self: ^Buffer,
 	$T: typeid,
 	offset: uint = 0,
-	size: uint = 0,
-) -> []T {
+	size: uint = WHOLE_MAP_SIZE,
+	loc := #caller_location,
+) -> (
+	data: []T,
+	err: Error,
+) {
+	assert(offset % 8 == 0, "Offset must be a multiple of 8.")
+	assert(size % 4 == 0, "Size must be a multiple of 4.")
+
 	size := size
 
 	if size == 0 {
 		size = cast(uint)self.size
 	}
 
+	set_and_reset_err_data(self._err_data, loc)
+
 	raw_data := wgpu.buffer_get_const_mapped_range(self.ptr, offset, size)
 
-	if raw_data == nil {
-		return {}
-	}
+	if err = get_last_error(); err != nil do return
 
-	return slice.reinterpret([]T, slice.bytes_from_ptr(raw_data, cast(int)size))
+	if raw_data == nil do return
+
+	data = slice.reinterpret([]T, slice.bytes_from_ptr(raw_data, cast(int)size))
+
+	return
 }
 
 // Get current `Buffer_Map_State` state.
@@ -60,21 +71,32 @@ buffer_get_mapped_range :: proc(
 	self: ^Buffer,
 	$T: typeid,
 	offset: uint = 0,
-	size: uint = 0,
-) -> []T {
+	size: uint = WHOLE_MAP_SIZE,
+	loc := #caller_location,
+) -> (
+	data: []T,
+	err: Error,
+) {
+	assert(offset % 8 == 0, "Offset must be a multiple of 8.")
+	assert(size % 4 == 0, "Size must be a multiple of 4.")
+
 	size := size
 
 	if size == 0 {
 		size = cast(uint)self.size
 	}
 
+	set_and_reset_err_data(self._err_data, loc)
+
 	raw_data := wgpu.buffer_get_mapped_range(self.ptr, offset, size)
 
-	if raw_data == nil {
-		return {}
-	}
+	if err = get_last_error(); err != nil do return
 
-	return slice.reinterpret([]T, slice.bytes_from_ptr(raw_data, cast(int)size))
+	if raw_data == nil do return
+
+	data = slice.reinterpret([]T, slice.bytes_from_ptr(raw_data, cast(int)size))
+
+	return
 }
 
 // Returns the length of the buffer allocation in bytes.
@@ -95,16 +117,20 @@ buffer_map_async :: proc(
 	user_data: rawptr,
 	offset: uint = 0,
 	size: uint = 0,
-) -> Error_Type {
+	loc := #caller_location,
+) -> (
+	err: Error,
+) {
 	size := size
 	if size == 0 {
 		size = cast(uint)self.size
 	}
 
-	self._err_data.type = .No_Error
+	set_and_reset_err_data(self._err_data, loc)
 	wgpu.buffer_map_async(self.ptr, mode, offset, size, callback, user_data)
+	err = get_last_error()
 
-	return self._err_data.type
+	return
 }
 
 // Set debug label.
@@ -114,10 +140,12 @@ buffer_set_label :: proc(using self: ^Buffer, label: cstring) {
 
 // Unmaps the mapped range of the `Buffer` and makes it's contents available for use
 // by the GPU again.
-buffer_unmap :: proc(using self: ^Buffer) -> Error_Type {
-	_err_data.type = .No_Error
+buffer_unmap :: proc(using self: ^Buffer, loc := #caller_location) -> (err: Error) {
+	set_and_reset_err_data(_err_data, loc)
 	wgpu.buffer_unmap(ptr)
-	return _err_data.type
+	err = get_last_error()
+
+	return
 }
 
 // Increase the reference count.

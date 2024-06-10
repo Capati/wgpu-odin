@@ -1,8 +1,9 @@
 package wgpu
 
 // Core
-import "core:fmt"
 import "base:runtime"
+import "core:fmt"
+import "core:mem"
 
 // Package
 import wgpu "../bindings"
@@ -30,9 +31,10 @@ Instance_Descriptor :: struct {
 // Create an new instance of wgpu.
 create_instance :: proc(
 	descriptor: ^Instance_Descriptor = nil,
+	loc := #caller_location,
 ) -> (
 	instance: Instance,
-	err: Error_Type,
+	err: Error,
 ) {
 	if descriptor == nil {
 		instance.ptr = wgpu.create_instance(nil)
@@ -54,8 +56,14 @@ create_instance :: proc(
 	}
 
 	if instance.ptr == nil {
-		update_error_message("Failed to acquire an instance")
-		return {}, .Unknown
+		err = wgpu.Error_Type.Unknown
+		set_and_update_err_data(
+			nil,
+			.Create_Instance,
+			err,
+			"Failed to acquire an instance, for more information check log callback with 'wgpu.set_log_callback'",
+			loc,
+		)
 	}
 
 	return
@@ -82,92 +90,118 @@ Surface_Descriptor :: struct {
 instance_create_surface :: proc(
 	using self: ^Instance,
 	descriptor: ^Surface_Descriptor,
+	loc := #caller_location,
 ) -> (
 	surface: Surface,
-	err: Error_Type,
+	err: Error,
 ) {
-	desc := wgpu.Surface_Descriptor{}
+	desc: wgpu.Surface_Descriptor
+	desc.label = descriptor.label
 
-	if descriptor != nil {
-		desc.label = descriptor.label
-		switch &t in descriptor.target {
-		case Surface_Descriptor_From_Windows_HWND:
-			if desc.label == nil || desc.label == "" {
-				desc.label = "Windows HWND"
-			}
-			t.chain.stype = .Surface_Descriptor_From_Windows_HWND
-			desc.next_in_chain = &t.chain
-		case Surface_Descriptor_From_Xcb_Window:
-			if desc.label == nil || desc.label == "" {
-				desc.label = "XCB Window"
-			}
-			t.chain.stype = .Surface_Descriptor_From_Xcb_Window
-			desc.next_in_chain = &t.chain
-		case Surface_Descriptor_From_Xlib_Window:
-			if desc.label == nil || desc.label == "" {
-				desc.label = "X11 Window"
-			}
-			t.chain.stype = .Surface_Descriptor_From_Xlib_Window
-			desc.next_in_chain = &t.chain
-		case Surface_Descriptor_From_Metal_Layer:
-			if desc.label == nil || desc.label == "" {
-				desc.label = "Metal Layer"
-			}
-			t.chain.stype = .Surface_Descriptor_From_Metal_Layer
-			desc.next_in_chain = &t.chain
-		case Surface_Descriptor_From_Wayland_Surface:
-			if desc.label == nil || desc.label == "" {
-				desc.label = "Wayland Surface"
-			}
-			t.chain.stype = .Surface_Descriptor_From_Wayland_Surface
-			desc.next_in_chain = &t.chain
-		case Surface_Descriptor_From_Android_Native_Window:
-			if desc.label == nil || desc.label == "" {
-				desc.label = "Android Native Window"
-			}
-			t.chain.stype = .Surface_Descriptor_From_Android_Native_Window
-			desc.next_in_chain = &t.chain
-		case Surface_Descriptor_From_Canvas_Html_Selector:
-			if desc.label == nil || desc.label == "" {
-				desc.label = "Canvas Html Selector"
-			}
-			t.chain.stype = .Surface_Descriptor_From_Canvas_Html_Selector
-			desc.next_in_chain = &t.chain
+	switch &t in descriptor.target {
+	case Surface_Descriptor_From_Windows_HWND:
+		if desc.label == nil || desc.label == "" {
+			desc.label = "Windows HWND"
 		}
+		t.chain.stype = .Surface_Descriptor_From_Windows_HWND
+		desc.next_in_chain = &t.chain
+	case Surface_Descriptor_From_Xcb_Window:
+		if desc.label == nil || desc.label == "" {
+			desc.label = "XCB Window"
+		}
+		t.chain.stype = .Surface_Descriptor_From_Xcb_Window
+		desc.next_in_chain = &t.chain
+	case Surface_Descriptor_From_Xlib_Window:
+		if desc.label == nil || desc.label == "" {
+			desc.label = "X11 Window"
+		}
+		t.chain.stype = .Surface_Descriptor_From_Xlib_Window
+		desc.next_in_chain = &t.chain
+	case Surface_Descriptor_From_Metal_Layer:
+		if desc.label == nil || desc.label == "" {
+			desc.label = "Metal Layer"
+		}
+		t.chain.stype = .Surface_Descriptor_From_Metal_Layer
+		desc.next_in_chain = &t.chain
+	case Surface_Descriptor_From_Wayland_Surface:
+		if desc.label == nil || desc.label == "" {
+			desc.label = "Wayland Surface"
+		}
+		t.chain.stype = .Surface_Descriptor_From_Wayland_Surface
+		desc.next_in_chain = &t.chain
+	case Surface_Descriptor_From_Android_Native_Window:
+		if desc.label == nil || desc.label == "" {
+			desc.label = "Android Native Window"
+		}
+		t.chain.stype = .Surface_Descriptor_From_Android_Native_Window
+		desc.next_in_chain = &t.chain
+	case Surface_Descriptor_From_Canvas_Html_Selector:
+		if desc.label == nil || desc.label == "" {
+			desc.label = "Canvas Html Selector"
+		}
+		t.chain.stype = .Surface_Descriptor_From_Canvas_Html_Selector
+		desc.next_in_chain = &t.chain
 	}
 
 	surface.ptr = wgpu.instance_create_surface(ptr, &desc)
 
 	if surface.ptr == nil {
-		update_error_message("Failed to acquire surface")
-		return {}, .Internal
+		err = wgpu.Error_Type.Unknown
+		set_and_update_err_data(
+			nil,
+			.Create_Surface,
+			err,
+			"Failed to create surface, for more information check log callback with 'wgpu.set_log_callback'",
+			loc,
+		)
 	}
 
-	return surface, .No_Error
-}
-
-@(private = "file")
-Adapter_Response :: struct {
-	status:  Request_Adapter_Status,
-	adapter: Raw_Adapter,
+	return
 }
 
 // Retrieves an `Adapter` which matches the given options.
 instance_request_adapter :: proc(
 	using self: ^Instance,
 	options: ^Request_Adapter_Options,
+	loc := #caller_location,
 ) -> (
 	adapter: Adapter,
-	err: Error_Type,
+	err: Error,
 ) {
-	res := Adapter_Response{}
-	wgpu.instance_request_adapter(ptr, options, _on_request_adapter_callback, &res)
+	Adapter_Response :: struct {
+		status:  Request_Adapter_Status,
+		message: cstring,
+		adapter: Raw_Adapter,
+	}
+
+	res: Adapter_Response
+
+	request_adapter_callback :: proc "c" (
+		status: Request_Adapter_Status,
+		adapter: Raw_Adapter,
+		message: cstring,
+		user_data: rawptr,
+	) {
+		response := cast(^Adapter_Response)user_data
+
+		response.status = status
+		response.message = message
+
+		if status == .Success {
+			response.adapter = adapter
+		}
+	}
+
+	wgpu.instance_request_adapter(ptr, options, request_adapter_callback, &res)
 
 	if res.status != .Success {
-		return {}, .Unknown
+		err = res.status
+		set_and_update_err_data(nil, .Request_Adapter, err, string(res.message), loc)
+		return
 	}
 
 	adapter.ptr = res.adapter
+	defer if err != nil do wgpu.adapter_release(adapter.ptr)
 
 	// Fill adapter details
 	adapter.features = adapter_get_features(&adapter)
@@ -182,7 +216,11 @@ instance_enumerate_adapters :: proc(
 	using self: ^Instance,
 	backends: Instance_Backend_Flags,
 	allocator := context.allocator,
-) -> []Adapter {
+	loc := #caller_location,
+) -> (
+	adapters: []Adapter,
+	err: Error,
+) {
 	options := Instance_Enumerate_Adapter_Options {
 		backends = backends,
 	}
@@ -190,19 +228,40 @@ instance_enumerate_adapters :: proc(
 	adapter_count: uint = wgpu.instance_enumerate_adapters(ptr, &options, nil)
 
 	if adapter_count == 0 {
-		fmt.print("No compatible adapter found!\n")
-		return {}
+		return
 	}
 
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
-	wgpu_adapters := make([]Raw_Adapter, adapter_count, context.temp_allocator)
-	wgpu.instance_enumerate_adapters(ptr, &options, raw_data(wgpu_adapters))
 
-	adapters := make([]Adapter, adapter_count, allocator)
+	raw_adapters: []Raw_Adapter
+	alloc_err: mem.Allocator_Error
+
+	if raw_adapters, alloc_err = make([]Raw_Adapter, adapter_count, context.temp_allocator);
+	   alloc_err != nil {
+		err = alloc_err
+		set_and_update_err_data(nil, .General, err, "Failed to allocate adapters", loc)
+		return
+	}
+
+	wgpu.instance_enumerate_adapters(ptr, &options, raw_data(raw_adapters))
+
+	if adapters, alloc_err = make([]Adapter, adapter_count, allocator); alloc_err != nil {
+		err = alloc_err
+		set_and_update_err_data(nil, .General, err, "Failed to allocate adapters", loc)
+		return
+	}
+	defer if err != nil {
+		if len(adapters) > 0 {
+			for &a in adapters {
+				if a.ptr != nil do adapter_release(&a)
+			}
+			delete(adapters)
+		}
+	}
 
 	for i: uint = 0; i < adapter_count; i += 1 {
 		adapters[i] = {
-			ptr = wgpu_adapters[i],
+			ptr = raw_adapters[i],
 		}
 
 		adapters[i].features = adapter_get_features(&adapters[i])
@@ -210,7 +269,7 @@ instance_enumerate_adapters :: proc(
 		adapters[i].properties = _adapter_get_properties(raw_adapters[i])
 	}
 
-	return adapters
+	return
 }
 
 // Generates memory report.
@@ -291,22 +350,4 @@ instance_release_and_nil :: proc(using self: ^Instance) {
 	if ptr == nil do return
 	wgpu.instance_release(ptr)
 	ptr = nil
-}
-
-@(private = "file")
-_on_request_adapter_callback :: proc "c" (
-	status: Request_Adapter_Status,
-	adapter: Raw_Adapter,
-	message: cstring,
-	user_data: rawptr,
-) {
-	response := cast(^Adapter_Response)user_data
-	response.status = status
-
-	if status == .Success {
-		response.adapter = adapter
-	} else {
-		context = runtime.default_context()
-		update_error_message(string(message))
-	}
 }

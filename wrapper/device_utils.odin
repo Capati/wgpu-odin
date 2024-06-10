@@ -18,7 +18,7 @@ device_create_buffer_with_data :: proc(
 	descriptor: ^Buffer_Data_Descriptor,
 ) -> (
 	buffer: Buffer,
-	err: Error_Type,
+	err: Error,
 ) {
 	// Skip mapping if the buffer is zero sized
 	if descriptor == nil || descriptor.contents == nil || len(descriptor.contents) == 0 {
@@ -54,8 +54,13 @@ device_create_buffer_with_data :: proc(
 
 	// Synchronously and immediately map a buffer for reading. If the buffer is not
 	// immediately mappable through `mapped_at_creation` or
-	// `buffer->map_async`, will panic.
-	mapped_array_buffer := buffer_get_mapped_range(&buffer, byte, 0, cast(uint)padded_size)
+	// `buffer_map_async`, will panic.
+	mapped_array_buffer := buffer_get_mapped_range(
+		&buffer,
+		byte,
+		0,
+		cast(uint)padded_size,
+	) or_return
 	copy(mapped_array_buffer, descriptor.contents)
 	buffer_unmap(&buffer) or_return
 

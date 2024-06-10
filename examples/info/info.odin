@@ -22,20 +22,14 @@ main :: proc() {
 	}
 
 	instance, instance_err := wgpu.create_instance(&instance_descriptor)
-	if instance_err != .No_Error {
-		fmt.eprintln("ERROR Creating Instance:", wgpu.get_error_message())
-		return
-	}
+	if instance_err != nil do return
 	defer wgpu.instance_release(&instance)
 
 	adapter, adapter_err := wgpu.instance_request_adapter(
 		&instance,
 		&{power_preference = .High_Performance},
 	)
-	if adapter_err != .No_Error {
-		fmt.eprintln("ERROR Creating Adapter:", wgpu.get_error_message())
-		return
-	}
+	if adapter_err != nil do return
 	defer wgpu.adapter_release(&adapter)
 
 	fmt.print("Device information:\n\n")
