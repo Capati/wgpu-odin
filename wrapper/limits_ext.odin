@@ -1,5 +1,48 @@
 package wgpu
 
+// Package
+import wgpu "./../bindings"
+
+// Represents the sets of limits an adapter/device supports.
+Limits :: struct {
+	max_texture_dimension_1d:                        u32,
+	max_texture_dimension_2d:                        u32,
+	max_texture_dimension_3d:                        u32,
+	max_texture_array_layers:                        u32,
+	max_bind_groups:                                 u32,
+	max_bind_groups_plus_vertex_buffers:             u32,
+	max_bindings_per_bind_group:                     u32,
+	max_dynamic_uniform_buffers_per_pipeline_layout: u32,
+	max_dynamic_storage_buffers_per_pipeline_layout: u32,
+	max_sampled_textures_per_shader_stage:           u32,
+	max_samplers_per_shader_stage:                   u32,
+	max_storage_buffers_per_shader_stage:            u32,
+	max_storage_textures_per_shader_stage:           u32,
+	max_uniform_buffers_per_shader_stage:            u32,
+	max_uniform_buffer_binding_size:                 u64,
+	max_storage_buffer_binding_size:                 u64,
+	min_uniform_buffer_offset_alignment:             u32,
+	min_storage_buffer_offset_alignment:             u32,
+	max_vertex_buffers:                              u32,
+	max_buffer_size:                                 u64,
+	max_vertex_attributes:                           u32,
+	max_vertex_buffer_array_stride:                  u32,
+	max_inter_stage_shader_components:               u32,
+	max_inter_stage_shader_variables:                u32,
+	max_color_attachments:                           u32,
+	max_color_attachment_bytes_per_sample:           u32,
+	max_compute_workgroup_storage_size:              u32,
+	max_compute_invocations_per_workgroup:           u32,
+	max_compute_workgroup_size_x:                    u32,
+	max_compute_workgroup_size_y:                    u32,
+	max_compute_workgroup_size_z:                    u32,
+	max_compute_workgroups_per_dimension:            u32,
+
+	// Native limits (extras)
+	max_push_constant_size:                          u32,
+	max_non_sampler_bindings:                        u32,
+}
+
 // This is the set of limits that is guaranteed to work on all modern backends and is
 // guaranteed to be supported by WebGPU. Applications needing more modern features can
 // use this as a reasonable set of limits if they are targeting only desktop and modern
@@ -122,4 +165,53 @@ Downlevel_Webgl2_Limits :: Limits {
 	// Extras
 	max_push_constant_size                          = 0,
 	max_non_sampler_bindings                        = 1_000_000,
+}
+
+@(private)
+limits_merge_webgpu_with_native :: proc(
+	webgpu: wgpu.Limits,
+	native: wgpu.Native_Limits,
+) -> (
+	limits: Limits,
+) {
+	limits = {
+		max_texture_dimension_1d                        = webgpu.max_texture_dimension_1d,
+		max_texture_dimension_2d                        = webgpu.max_texture_dimension_2d,
+		max_texture_dimension_3d                        = webgpu.max_texture_dimension_3d,
+		max_texture_array_layers                        = webgpu.max_texture_array_layers,
+		max_bind_groups                                 = webgpu.max_bind_groups,
+		max_bind_groups_plus_vertex_buffers             = webgpu.max_bind_groups_plus_vertex_buffers,
+		max_bindings_per_bind_group                     = webgpu.max_bindings_per_bind_group,
+		max_dynamic_uniform_buffers_per_pipeline_layout = webgpu.max_dynamic_uniform_buffers_per_pipeline_layout,
+		max_dynamic_storage_buffers_per_pipeline_layout = webgpu.max_dynamic_storage_buffers_per_pipeline_layout,
+		max_sampled_textures_per_shader_stage           = webgpu.max_sampled_textures_per_shader_stage,
+		max_samplers_per_shader_stage                   = webgpu.max_samplers_per_shader_stage,
+		max_storage_buffers_per_shader_stage            = webgpu.max_storage_buffers_per_shader_stage,
+		max_storage_textures_per_shader_stage           = webgpu.max_storage_textures_per_shader_stage,
+		max_uniform_buffers_per_shader_stage            = webgpu.max_uniform_buffers_per_shader_stage,
+		max_uniform_buffer_binding_size                 = webgpu.max_uniform_buffer_binding_size,
+		max_storage_buffer_binding_size                 = webgpu.max_storage_buffer_binding_size,
+		min_uniform_buffer_offset_alignment             = webgpu.min_uniform_buffer_offset_alignment,
+		min_storage_buffer_offset_alignment             = webgpu.min_storage_buffer_offset_alignment,
+		max_vertex_buffers                              = webgpu.max_vertex_buffers,
+		max_buffer_size                                 = webgpu.max_buffer_size,
+		max_vertex_attributes                           = webgpu.max_vertex_attributes,
+		max_vertex_buffer_array_stride                  = webgpu.max_vertex_buffer_array_stride,
+		max_inter_stage_shader_components               = webgpu.max_inter_stage_shader_components,
+		max_inter_stage_shader_variables                = webgpu.max_inter_stage_shader_variables,
+		max_color_attachments                           = webgpu.max_color_attachments,
+		max_color_attachment_bytes_per_sample           = webgpu.max_color_attachment_bytes_per_sample,
+		max_compute_workgroup_storage_size              = webgpu.max_compute_workgroup_storage_size,
+		max_compute_invocations_per_workgroup           = webgpu.max_compute_invocations_per_workgroup,
+		max_compute_workgroup_size_x                    = webgpu.max_compute_workgroup_size_x,
+		max_compute_workgroup_size_y                    = webgpu.max_compute_workgroup_size_y,
+		max_compute_workgroup_size_z                    = webgpu.max_compute_workgroup_size_z,
+		max_compute_workgroups_per_dimension            = webgpu.max_compute_workgroups_per_dimension,
+
+		// Native limits (extras)
+		max_push_constant_size                          = native.max_push_constant_size,
+		max_non_sampler_bindings                        = native.max_non_sampler_bindings,
+	}
+
+	return
 }

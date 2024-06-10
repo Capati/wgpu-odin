@@ -62,45 +62,6 @@ Blend_State_Premultiplied_Alpha_Blending := Blend_State {
 	alpha = Blend_Component_Over,
 }
 
-// Represents the sets of limits an adapter/device supports.
-Limits :: struct {
-	max_texture_dimension_1d:                        u32,
-	max_texture_dimension_2d:                        u32,
-	max_texture_dimension_3d:                        u32,
-	max_texture_array_layers:                        u32,
-	max_bind_groups:                                 u32,
-	max_bind_groups_plus_vertex_buffers:             u32,
-	max_bindings_per_bind_group:                     u32,
-	max_dynamic_uniform_buffers_per_pipeline_layout: u32,
-	max_dynamic_storage_buffers_per_pipeline_layout: u32,
-	max_sampled_textures_per_shader_stage:           u32,
-	max_samplers_per_shader_stage:                   u32,
-	max_storage_buffers_per_shader_stage:            u32,
-	max_storage_textures_per_shader_stage:           u32,
-	max_uniform_buffers_per_shader_stage:            u32,
-	max_uniform_buffer_binding_size:                 u64,
-	max_storage_buffer_binding_size:                 u64,
-	min_uniform_buffer_offset_alignment:             u32,
-	min_storage_buffer_offset_alignment:             u32,
-	max_vertex_buffers:                              u32,
-	max_buffer_size:                                 u64,
-	max_vertex_attributes:                           u32,
-	max_vertex_buffer_array_stride:                  u32,
-	max_inter_stage_shader_components:               u32,
-	max_inter_stage_shader_variables:                u32,
-	max_color_attachments:                           u32,
-	max_color_attachment_bytes_per_sample:           u32,
-	max_compute_workgroup_storage_size:              u32,
-	max_compute_invocations_per_workgroup:           u32,
-	max_compute_workgroup_size_x:                    u32,
-	max_compute_workgroup_size_y:                    u32,
-	max_compute_workgroup_size_z:                    u32,
-	max_compute_workgroups_per_dimension:            u32,
-	// Limits extras
-	max_push_constant_size:                          u32,
-	max_non_sampler_bindings:                        u32,
-}
-
 // Features that are part of the webgpu standard and extension features supported by
 // wgpu when targeting native.
 Feature :: enum c.int {
