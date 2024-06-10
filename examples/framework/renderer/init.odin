@@ -61,7 +61,32 @@ init :: proc(
 	wgpu.set_log_callback(_wgpu_native_log_callback, nil)
 	wgpu.set_log_level(.Warn)
 
-	instance, instance_err := wgpu.create_instance()
+	instance_descriptor: wgpu.Instance_Descriptor
+
+	when core.APPLICATION_TYPE == .Native {
+		// Force backend type config
+		WGPU_BACKEND_TYPE :: #config(WGPU_BACKEND_TYPE, core.STR_UNDEFINED_CONFIG)
+
+		// Try to read WGPU_BACKEND_TYPE config to see if a backend type should be forced
+		if WGPU_BACKEND_TYPE != core.STR_UNDEFINED_CONFIG {
+			// Try to get the backend type from the string configuration
+			backend, backend_ok := reflect.enum_from_name(wgpu.Instance_Backend, WGPU_BACKEND_TYPE)
+
+			if backend_ok {
+				instance_descriptor.backends = {backend}
+			} else {
+				fmt.eprintf(
+					"Backend type [%v] is invalid, possible values are from Instance_Backend (case sensitive): \n\tVulkan,\n\tGL,\n\tMetal,\n\tDX12,\n\tDX11,\n\tBrowser_WebGPU",
+					WGPU_BACKEND_TYPE,
+				)
+
+				err = .Validation
+				return
+			}
+		}
+	}
+
+	instance := wgpu.create_instance(&instance_descriptor, loc) or_return
 	if instance_err != .No_Error {
 		fmt.eprintf(
 			"Failed to create GPU Instance [%v]: %s\n",
@@ -85,32 +110,6 @@ init :: proc(
 		power_preference       = properties.power_preferences,
 		compatible_surface     = gc.surface.ptr,
 		force_fallback_adapter = false,
-	}
-
-	when core.APPLICATION_TYPE == .Wasm {
-		adapter_options.backend_type = .WebGPU
-	}
-
-	when core.APPLICATION_TYPE == .Native {
-		// Force backend type config
-		WGPU_BACKEND_TYPE :: #config(WGPU_BACKEND_TYPE, core.STR_UNDEFINED_CONFIG)
-
-		// Try to read WGPU_BACKEND_TYPE config to see if a backend type should be forced
-		if WGPU_BACKEND_TYPE != core.STR_UNDEFINED_CONFIG {
-			// Try to get the backend type from the string configuration
-			backend, backend_ok := reflect.enum_from_name(wgpu.Backend_Type, WGPU_BACKEND_TYPE)
-
-			if backend_ok {
-				adapter_options.backend_type = backend
-			} else {
-				fmt.eprintf(
-					"Backend type [%v] is invalid, possible values are (case sensitive): \n\tWebGPU\n\tD3D11\n\tD3D12\n\tMetal\n\tVulkan\n\tOpenGL\n\tOpenGLES\n\n",
-					WGPU_BACKEND_TYPE,
-				)
-
-				return nil, .Init_Failed
-			}
-		}
 	}
 
 	adapter, adapter_err := wgpu.instance_request_adapter(&instance, &adapter_options)
