@@ -1,8 +1,8 @@
 # Odin WGPU Examples
 
-All examples uses the wrapper package.
+**All examples uses the wrapper package**.
 
-Tested in Odin: `dev-2024-05:2250eb3e7`.
+Tested in Odin: `dev-2024-06:edcbca51c`.
 
 ## Examples
 
