@@ -1,8 +1,5 @@
 package wgpu
 
-// Core
-import "core:c"
-
 // Package
 import wgpu "./../bindings"
 
