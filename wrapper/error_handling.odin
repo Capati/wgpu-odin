@@ -158,7 +158,7 @@ set_user_data_uncaptured_error_callback :: proc "contextless" (
 @(private = "file", disabled = !WGPU_ENABLE_ERROR_HANDLING)
 _set_and_reset_err_data :: proc "contextless" (
 	err_data: ^Error_Data,
-	loc := #caller_location,
+	loc: runtime.Source_Code_Location,
 ) #no_bounds_check {
 	when MUTEX_ENABLED {
 		sync.guard(&_storage.mutex)
@@ -219,7 +219,10 @@ _update_err_data :: proc(
 }
 
 @(private, disabled = !WGPU_ENABLE_ERROR_HANDLING)
-set_and_reset_err_data :: proc "contextless" (err_data: ^Error_Data, loc := #caller_location) {
+set_and_reset_err_data :: proc "contextless" (
+	err_data: ^Error_Data,
+	loc: runtime.Source_Code_Location,
+) {
 	_set_and_reset_err_data(err_data, loc)
 }
 
@@ -239,7 +242,7 @@ set_and_update_err_data :: proc(
 	type: Error_Data_Type,
 	error: Error,
 	message: string,
-	loc := #caller_location,
+	loc: runtime.Source_Code_Location,
 ) {
 	_set_and_reset_err_data(err_data, loc)
 	_update_err_data(err_data, type, error, message)
