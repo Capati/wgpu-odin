@@ -53,6 +53,10 @@ if "%1" == "learn_wgpu" (
     call :learn_wgpu & goto :end
 )
 
+if "%1" == "texture_arrays" (
+    call :texture_arrays & goto :end
+)
+
 echo Example not recognized.
 goto :end
 
@@ -65,6 +69,7 @@ call :cube_textured
 call :compute
 call :capture
 call :learn_wgpu
+call :texture_arrays
 goto :eof
 
 :info
@@ -93,6 +98,10 @@ goto :eof
 
 :capture
 odin build .\capture %ARGS% %OUT%\capture.exe
+goto :eof
+
+:texture_arrays
+odin build .\texture_arrays %ARGS% %OUT%\texture_arrays.exe
 goto :eof
 
 :learn_wgpu

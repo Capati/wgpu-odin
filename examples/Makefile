@@ -25,7 +25,7 @@ OUT = -out:./build
 
 .PHONY: all
 
-all: info_example triangle_example triangle_msaa_example cube_example cube_textured_example compute_example capture_example learn_wgpu_examples
+all: info_example triangle_example triangle_msaa_example cube_example cube_textured_example compute_example capture_example texture_arrays_example learn_wgpu_examples
 
 info_example:
 	odin build ./info $(ARGS) $(OUT)/info
@@ -47,6 +47,9 @@ compute_example:
 
 capture_example:
 	odin build ./capture $(ARGS) $(OUT)/capture
+
+texture_arrays_example:
+	odin build ./texture_arrays $(ARGS) $(OUT)/texture_arrays
 
 learn_wgpu_examples:
 	odin build ./learn_wgpu/beginner/tutorial1_window $(ARGS) $(OUT)/tutorial1_window
