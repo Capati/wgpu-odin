@@ -190,7 +190,9 @@ main :: proc() {
 		0,
 		uint(staging_buffer.size),
 	)
-	wgpu.device_poll(&device)
+
+	res, res_err := wgpu.device_poll(&device)
+	if res_err != nil do return
 
 	if result == .Success {
 		data, data_err := wgpu.buffer_get_const_mapped_range(

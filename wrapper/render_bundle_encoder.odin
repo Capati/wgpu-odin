@@ -12,7 +12,8 @@ import wgpu "../bindings"
 // Executing a `Render_Bundle` is often more efficient than issuing the underlying commands
 // manually.
 Render_Bundle_Encoder :: struct {
-	ptr: Raw_Render_Bundle_Encoder,
+	ptr:       Raw_Render_Bundle_Encoder,
+	_err_data: ^Error_Data,
 }
 
 // Draws primitives from the active vertex buffer(s).
@@ -79,10 +80,19 @@ render_bundle_encoder_finish :: proc(
 	render_bundle: Render_Bundle,
 	err: Error,
 ) {
+	set_and_reset_err_data(_err_data, loc)
+
 	render_bundle.ptr = wgpu.render_bundle_encoder_finish(ptr, descriptor)
 
+	if err = get_last_error(); err != nil {
+		if render_bundle.ptr != nil {
+			wgpu.render_bundle_release(render_bundle.ptr)
+			return
+		}
+	}
+
 	if render_bundle.ptr == nil {
-		err = wgpu.Error_Type.Unknown
+		err = Error_Type.Unknown
 		set_and_update_err_data(nil, .General, err, "Failed to acquire Render_Bundle", loc)
 	}
 

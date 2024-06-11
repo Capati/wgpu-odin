@@ -78,7 +78,7 @@ init_state :: proc(window: ^sdl.Window) -> (state: State, err: wgpu.Error) {
 
 	state.config = {
 		usage        = {.Render_Attachment},
-		format       = wgpu.surface_get_preferred_format(&state.surface, adapter.ptr),
+		format       = wgpu.surface_get_preferred_format(&state.surface, adapter.ptr) or_return,
 		width        = cast(u32)width,
 		height       = cast(u32)height,
 		present_mode = .Fifo,

@@ -8,7 +8,8 @@ import wgpu "../bindings"
 // A `Compute_Pipeline` object represents a compute pipeline and its single shader stage. It can be
 // created with `device_create_compute_pipeline`.
 Compute_Pipeline :: struct {
-	ptr: Raw_Compute_Pipeline,
+	ptr:       Raw_Compute_Pipeline,
+	_err_data: ^Error_Data,
 }
 
 // Get an object representing the bind group layout at a given index.
@@ -20,11 +21,20 @@ compute_pipeline_get_bind_group_layout :: proc(
 	bind_group_layout: Bind_Group_Layout,
 	err: Error,
 ) {
+	set_and_reset_err_data(_err_data, loc)
+
 	bind_group_layout.ptr = wgpu.compute_pipeline_get_bind_group_layout(ptr, group_index)
 
+	if err = get_last_error(); err != nil {
+		if bind_group_layout.ptr != nil {
+			wgpu.bind_group_layout_release(bind_group_layout.ptr)
+			return
+		}
+	}
+
 	if bind_group_layout.ptr == nil {
-		err = wgpu.Error_Type.Unknown
-		set_and_update_err_data(nil, .Assert, err, "Failed to acquire Bind_Group_Layout", loc)
+		err = Error_Type.Unknown
+		update_error_data(_err_data, .Assert, err, "Failed to acquire Bind_Group_Layout")
 	}
 
 	return

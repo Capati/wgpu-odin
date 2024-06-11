@@ -227,13 +227,25 @@ surface_get_current_texture :: proc(
 surface_get_preferred_format :: proc(
 	using self: ^Surface,
 	adapter: Raw_Adapter,
-) -> Texture_Format {
-	return wgpu.surface_get_preferred_format(ptr, adapter)
+	loc := #caller_location,
+) -> (
+	format: Texture_Format,
+	err: Error,
+) {
+	set_and_reset_err_data(_err_data, loc)
+	format = wgpu.surface_get_preferred_format(ptr, adapter)
+	err = get_last_error()
+
+	return
 }
 
 // Schedule this surface to be presented on the owning surface.
-surface_present :: proc(using self: ^Surface) {
+surface_present :: proc(using self: ^Surface, loc := #caller_location) -> (err: Error) {
+	set_and_reset_err_data(_err_data, loc)
 	wgpu.surface_present(ptr)
+	err = get_last_error()
+
+	return
 }
 
 // Removes the surface configuration. Destroys any textures produced while configured.

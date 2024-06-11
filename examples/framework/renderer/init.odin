@@ -129,7 +129,7 @@ init :: proc(
 
 	size := app.get_size()
 
-	preferred_format := wgpu.surface_get_preferred_format(&gc.surface, adapter.ptr)
+	preferred_format := wgpu.surface_get_preferred_format(&gc.surface, adapter.ptr) or_return
 
 	gc.config = wgpu.Surface_Configuration {
 		usage        = {.Render_Attachment},

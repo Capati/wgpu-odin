@@ -353,8 +353,11 @@ device_create_compute_pipeline :: proc(
 	if err = get_last_error(); err != nil {
 		if compute_pipeline.ptr != nil {
 			wgpu.compute_pipeline_release(compute_pipeline.ptr)
+			return
 		}
 	}
+
+	compute_pipeline._err_data = _err_data
 
 	return
 }
@@ -538,7 +541,10 @@ device_create_render_bundle_encoder :: proc(
 		if render_bundle_encoder.ptr != nil {
 			wgpu.render_bundle_encoder_release(render_bundle_encoder.ptr)
 		}
+		return
 	}
+
+	render_bundle_encoder._err_data = _err_data
 
 	return
 }
@@ -728,7 +734,10 @@ device_create_render_pipeline :: proc(
 		if render_pipeline.ptr != nil {
 			wgpu.render_pipeline_release(render_pipeline.ptr)
 		}
+		return
 	}
+
+	render_pipeline._err_data = _err_data
 
 	return
 }
@@ -894,13 +903,13 @@ device_destroy :: proc(using self: ^Device) {
 
 @(private)
 _device_get_features :: proc(
-	device: Raw_Device,
+	self: ^Device,
 	loc := #caller_location,
 ) -> (
 	features: Features,
 	err: Error,
 ) {
-	count := wgpu.device_enumerate_features(device, nil)
+	count := wgpu.device_enumerate_features(self.ptr, nil)
 
 	if count == 0 do return
 
@@ -914,7 +923,7 @@ _device_get_features :: proc(
 		return
 	}
 
-	wgpu.device_enumerate_features(device, raw_data(raw_features))
+	wgpu.device_enumerate_features(self.ptr, raw_data(raw_features))
 
 	features_slice := transmute([]Raw_Feature_Name)raw_features
 	features = features_slice_to_flags(&features_slice)
@@ -930,7 +939,13 @@ device_get_features :: proc(self: ^Device) -> Features {
 }
 
 @(private)
-_device_get_limits :: proc(device: Raw_Device) -> (limits: Limits) {
+_device_get_limits :: proc(
+	self: ^Device,
+	loc := #caller_location,
+) -> (
+	limits: Limits,
+	err: Error,
+) {
 	native := Supported_Limits_Extras {
 		chain = {stype = SType(Native_SType.Supported_Limits_Extras)},
 	}
@@ -939,7 +954,19 @@ _device_get_limits :: proc(device: Raw_Device) -> (limits: Limits) {
 		next_in_chain = &native.chain,
 	}
 
-	wgpu.device_get_limits(device, &supported)
+	set_and_reset_err_data(self._err_data, loc)
+
+	result := wgpu.device_get_limits(self.ptr, &supported)
+
+	if err = get_last_error(); err != nil {
+		return
+	}
+
+	if !result {
+		err = Error_Type.Unknown
+		update_error_data(self._err_data, .Request_Device, err, "Failed to fill device limits")
+		return
+	}
 
 	limits = limits_merge_webgpu_with_native(supported.limits, native.limits)
 
@@ -1025,6 +1052,14 @@ device_poll :: proc(
 	using self: ^Device,
 	wait: bool = true,
 	wrapped_submission_index: ^Wrapped_Submission_Index = nil,
-) -> bool {
-	return wgpu.device_poll(ptr, wait, wrapped_submission_index)
+	loc := #caller_location,
+) -> (
+	result: bool,
+	err: Error,
+) {
+	set_and_reset_err_data(_err_data, loc)
+	result = wgpu.device_poll(ptr, wait, wrapped_submission_index)
+	err = get_last_error()
+
+	return
 }
