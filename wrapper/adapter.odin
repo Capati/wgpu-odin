@@ -232,9 +232,10 @@ adapter_request_device :: proc(
 					.Request_Device,
 					err,
 					fmt.tprintf(
-						"Required feature [%v] not supported by device [%s].",
+						"Required feature [%v] not supported by device [%s] using [%s].",
 						f,
 						self.properties.name,
+						self.properties.backend_type,
 					),
 					loc,
 				)
