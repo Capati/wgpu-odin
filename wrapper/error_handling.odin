@@ -1,8 +1,10 @@
 package wgpu
 
-// Core
+// Base
 import intr "base:intrinsics"
 import "base:runtime"
+
+// Core
 import "core:fmt"
 import "core:mem"
 import "core:strings"
@@ -13,6 +15,7 @@ import "core:time"
 WGPU_ENABLE_ERROR_HANDLING :: #config(WGPU_ENABLE_ERROR_HANDLING, true)
 WGPU_LOG_ON_ERROR :: #config(WGPU_LOG_ON_ERROR, false)
 WGPU_MUTEX_ON_ERROR :: #config(WGPU_MUTEX_ON_ERROR, false)
+WGPU_PANIC_ON_ERROR :: #config(WGPU_PANIC_ON_ERROR, false)
 
 @(private = "file")
 LOG_ENABLED :: WGPU_ENABLE_ERROR_HANDLING && (ODIN_DEBUG || WGPU_LOG_ON_ERROR)
@@ -213,8 +216,22 @@ _update_err_data :: proc(
 	current_err.error = error
 	current_err.timestamp = time.now()
 
-	when LOG_ENABLED {
+	when LOG_ENABLED && !WGPU_PANIC_ON_ERROR {
 		print_last_error()
+	}
+
+	when WGPU_PANIC_ON_ERROR {
+		fmt.panicf(
+			"\nWGPU error: %s\nError Type: %v | %v\nFile Path: %s:%d\nProcedure: %s\nTimestamp: %v\nThread ID: %d\n",
+			current_err.message,
+			current_err.type,
+			current_err.error,
+			current_err.file_path,
+			current_err.line,
+			current_err.procedure,
+			current_err.timestamp,
+			current_err.thread_id,
+		)
 	}
 }
 
