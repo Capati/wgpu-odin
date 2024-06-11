@@ -163,8 +163,8 @@ render_pass_encoder_set_index_buffer :: proc(
 	using self: ^Render_Pass_Encoder,
 	buffer: Raw_Buffer,
 	format: Index_Format,
-	offset: Buffer_Size,
-	size: Buffer_Size,
+	offset: Buffer_Address = 0,
+	size: Buffer_Size = WHOLE_SIZE,
 ) {
 	wgpu.render_pass_encoder_set_index_buffer(ptr, buffer, format, offset, size)
 }
