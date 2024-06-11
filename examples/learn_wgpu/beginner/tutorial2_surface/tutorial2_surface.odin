@@ -70,7 +70,7 @@ init_state :: proc(window: ^sdl.Window) -> (state: State, err: wgpu.Error) {
 
 	caps := wgpu.surface_get_capabilities(&state.surface, adapter.ptr) or_return
 	defer {
-		wgpu.surface_delete_capabilities(&caps)
+		wgpu.surface_capabilities_free_members(&caps)
 	}
 
 	width, height: i32
