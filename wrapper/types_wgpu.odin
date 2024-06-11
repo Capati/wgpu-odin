@@ -69,6 +69,7 @@ Registry_Report :: wgpu.Registry_Report
 Hub_Report :: wgpu.Hub_Report
 Global_Report :: wgpu.Global_Report
 Instance_Enumerate_Adapter_Options :: wgpu.Instance_Enumerate_Adapter_Options
+Bind_Group_Layout_Entry_Extras :: wgpu.Bind_Group_Layout_Entry_Extras
 
 Log_Callback :: wgpu.Log_Callback
 
