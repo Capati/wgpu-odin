@@ -7,9 +7,9 @@ import wgpu "../bindings"
 //
 // It can be created with `device_create_texture`.
 Texture :: struct {
-	ptr:        Raw_Texture,
-	descriptor: Texture_Descriptor,
-	_err_data:  ^Error_Data,
+	ptr:              Raw_Texture,
+	using descriptor: Texture_Descriptor,
+	_err_data:        ^Error_Data,
 }
 
 // Creates a view of this texture.
@@ -41,47 +41,47 @@ texture_destroy :: proc(using self: ^Texture) {
 
 // Returns the depth or layer count of this `Texture`.
 texture_get_depth_or_array_layers :: proc(using self: ^Texture) -> u32 {
-	return wgpu.texture_get_depth_or_array_layers(ptr)
+	return descriptor.size.depth_or_array_layers
 }
 
 // Returns the dimension of this `Texture`.
 texture_get_dimension :: proc(using self: ^Texture) -> Texture_Dimension {
-	return wgpu.texture_get_dimension(ptr)
+	return descriptor.dimension
 }
 
 // Returns the format of this `Texture`.
 texture_get_format :: proc(using self: ^Texture) -> Texture_Format {
-	return wgpu.texture_get_format(ptr)
+	return descriptor.format
 }
 
 // Returns the height of this `Texture`.
 texture_get_height :: proc(using self: ^Texture) -> u32 {
-	return wgpu.texture_get_height(ptr)
+	return descriptor.size.height
 }
 
 // Returns the `mip_level_count` of this `Texture`.
 texture_get_mip_level_count :: proc(using self: ^Texture) -> u32 {
-	return wgpu.texture_get_mip_level_count(ptr)
+	return descriptor.mip_level_count
 }
 
 // Returns the sample_count of this `Texture`.
 texture_get_sample_count :: proc(using self: ^Texture) -> u32 {
-	return wgpu.texture_get_sample_count(ptr)
+	return descriptor.sample_count
 }
 
 // Returns the allowed usages of this `Texture`.
-texture_get_usage :: proc(using self: ^Texture) -> Texture_Usage {
-	return wgpu.texture_get_usage(ptr)
+texture_get_usage :: proc(using self: ^Texture) -> Texture_Usage_Flags {
+	return descriptor.usage
 }
 
 // Returns the width of this `Texture`.
 texture_get_width :: proc(using self: ^Texture) -> u32 {
-	return wgpu.texture_get_width(ptr)
+	return descriptor.size.width
 }
 
 // Set a debug label for this `Texture`.
-texture_set_label :: proc(using self: ^Texture, label: cstring) {
-	wgpu.texture_set_label(ptr, label)
+texture_set_label :: proc(self: ^Texture, label: cstring) {
+	wgpu.texture_set_label(self.ptr, label)
 }
 
 // Increase the reference count.
