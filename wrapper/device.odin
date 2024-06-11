@@ -34,17 +34,19 @@ Binding_Resource :: union {
 	Raw_Texture_View,
 }
 
-// An element of a `Bind_Group_Descriptor`, consisting of a bindable resource
-// and the slot to bind it to.
-Bind_Group_Entry :: struct {
-	binding:  u32,
-	resource: Binding_Resource,
-}
-
 Bind_Group_Entry_Extras :: struct {
 	buffers:       []Raw_Buffer,
 	samplers:      []Raw_Sampler,
 	texture_views: []Raw_Texture_View,
+}
+
+// An element of a `Bind_Group_Descriptor`, consisting of a bindable resource
+// and the slot to bind it to.
+Bind_Group_Entry :: struct {
+	binding:     u32,
+	resource:    Binding_Resource,
+	extras:      ^Bind_Group_Entry_Extras,
+	_raw_extras: wgpu.Bind_Group_Entry_Extras, // for internal use
 }
 
 // Describes a group of bindings and the resources to be bound.
@@ -54,7 +56,6 @@ Bind_Group_Descriptor :: struct {
 	label:   cstring,
 	layout:  Raw_Bind_Group_Layout,
 	entries: []Bind_Group_Entry,
-	extras:  ^Bind_Group_Entry_Extras,
 }
 
 // Creates a new `Bind_Group`.
@@ -80,7 +81,7 @@ device_create_bind_group :: proc(
 	if entry_count > 0 {
 		entries := make([]wgpu.Bind_Group_Entry, entry_count, context.temp_allocator)
 
-		for v, i in descriptor.entries {
+		for &v, i in descriptor.entries {
 			raw_entry := &entries[i]
 			raw_entry.binding = v.binding
 
@@ -94,34 +95,34 @@ device_create_bind_group :: proc(
 			case Raw_Texture_View:
 				raw_entry.texture_view = res
 			}
+
+			if v.extras != nil {
+				if len(v.extras.buffers) > 0 {
+					v._raw_extras.buffer_count = len(v.extras.buffers)
+					v._raw_extras.buffers = raw_data(v.extras.buffers)
+				}
+
+				if len(v.extras.samplers) > 0 {
+					v._raw_extras.sampler_count = len(v.extras.samplers)
+					v._raw_extras.samplers = raw_data(v.extras.samplers)
+				}
+
+				if len(v.extras.texture_views) > 0 {
+					v._raw_extras.texture_view_count = len(v.extras.texture_views)
+					v._raw_extras.texture_views = raw_data(v.extras.texture_views)
+				}
+
+				if v._raw_extras.buffer_count > 0 ||
+				   v._raw_extras.sampler_count > 0 ||
+				   v._raw_extras.texture_view_count > 0 {
+					v._raw_extras.chain.stype = wgpu.SType(Native_SType.Bind_Group_Entry_Extras)
+					raw_entry.next_in_chain = &v._raw_extras.chain
+				}
+			}
 		}
 
 		desc.entry_count = entry_count
 		desc.entries = raw_data(entries)
-	}
-
-	extras: wgpu.Bind_Group_Entry_Extras
-	extras.chain.stype = wgpu.SType(wgpu.Native_SType.Bind_Group_Entry_Extras)
-
-	if descriptor.extras != nil {
-		if len(descriptor.extras.buffers) > 0 {
-			extras.buffer_count = len(descriptor.extras.buffers)
-			extras.buffers = raw_data(descriptor.extras.buffers)
-		}
-
-		if len(descriptor.extras.samplers) > 0 {
-			extras.sampler_count = len(descriptor.extras.samplers)
-			extras.samplers = raw_data(descriptor.extras.samplers)
-		}
-
-		if len(descriptor.extras.texture_views) > 0 {
-			extras.texture_view_count = len(descriptor.extras.texture_views)
-			extras.texture_views = raw_data(descriptor.extras.texture_views)
-		}
-
-		if extras.buffer_count > 0 || extras.sampler_count > 0 || extras.texture_view_count > 0 {
-			desc.next_in_chain = &extras.chain
-		}
 	}
 
 	set_and_reset_err_data(_err_data, loc)
@@ -148,15 +149,15 @@ Binding_Type :: union {
 // Describes a single binding inside a bind group.
 Bind_Group_Layout_Entry :: struct {
 	binding:    u32,
-	visibility: wgpu.Shader_Stage_Flags,
+	visibility: Shader_Stage_Flags,
 	type:       Binding_Type,
+	extras:     ^Bind_Group_Layout_Entry_Extras,
 }
 
 // Describes a `Bind_Group_Layout`.
 Bind_Group_Layout_Descriptor :: struct {
 	label:   cstring,
 	entries: []Bind_Group_Layout_Entry,
-	extras:  ^wgpu.Bind_Group_Layout_Entry_Extras,
 }
 
 // Creates a `Bind_Group_Layout`.
@@ -191,7 +192,7 @@ device_create_bind_group_layout :: proc(
 	if entry_count > 0 {
 		entries := make([]wgpu.Bind_Group_Layout_Entry, entry_count, context.temp_allocator)
 
-		for v, i in descriptor.entries {
+		for &v, i in descriptor.entries {
 			raw_entry := &entries[i]
 
 			raw_entry.binding = v.binding
@@ -207,17 +208,16 @@ device_create_bind_group_layout :: proc(
 			case wgpu.Storage_Texture_Binding_Layout:
 				raw_entry.storage_texture = e
 			}
+
+
+			if v.extras != nil {
+				v.extras.chain.stype = wgpu.SType(wgpu.Native_SType.Bind_Group_Layout_Entry_Extras)
+				raw_entry.next_in_chain = &v.extras.chain
+			}
 		}
 
 		desc.entry_count = entry_count
 		desc.entries = raw_data(entries)
-	}
-
-	if descriptor.extras != nil {
-		descriptor.extras.chain.stype = wgpu.SType(
-			wgpu.Native_SType.Bind_Group_Layout_Entry_Extras,
-		)
-		desc.next_in_chain = &descriptor.extras.chain
 	}
 
 	set_and_reset_err_data(_err_data, loc)
