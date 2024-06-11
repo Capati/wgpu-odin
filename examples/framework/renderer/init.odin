@@ -125,7 +125,7 @@ init :: proc(
 		context.allocator,
 		loc,
 	) or_return
-	defer wgpu.surface_delete_capabilities(&caps)
+	defer wgpu.surface_capabilities_free_members(&caps)
 
 	size := app.get_size()
 

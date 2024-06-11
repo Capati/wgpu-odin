@@ -92,13 +92,6 @@ surface_configure :: proc(
 	return
 }
 
-// Defines the capabilities of a given surface and adapter.
-Surface_Capabilities :: struct {
-	formats:       []Texture_Format,
-	present_modes: []Present_Mode,
-	alpha_modes:   []Composite_Alpha_Mode,
-}
-
 // Returns the capabilities of the surface when used with the given adapter.
 surface_get_capabilities :: proc(
 	using self: ^Surface,
@@ -188,12 +181,6 @@ surface_get_capabilities :: proc(
 	}
 
 	return
-}
-
-surface_delete_capabilities :: proc(caps: ^Surface_Capabilities) {
-	delete(caps.formats)
-	delete(caps.present_modes)
-	delete(caps.alpha_modes)
 }
 
 // Returns the next texture to be presented by the swapchain for drawing.
