@@ -288,14 +288,23 @@ foreign wgpu_native {
 	render_pass_encoder_end_pipeline_statistics_query :: proc(render_pass_encoder: Render_Pass_Encoder) ---
 }
 
-ARRAY_LAYER_COUNT_UNDEFINED: c.ulong : 0xffffffff
-COPY_STRIDE_UNDEFINED: c.ulong : 0xffffffff
-LIMIT_U32_UNDEFINED: c.ulong : 0xffffffff
-LIMIT_U64_UNDEFINED: c.ulonglong : 0xffffffffffffffff
-MIP_LEVEL_COUNT_UNDEFINED: c.ulong : 0xffffffff
-WGPU_QUERY_SET_INDEX_UNDEFINED: c.ulong : 0xffffffff
-WGPU_WHOLE_MAP_SIZE :: c.SIZE_MAX
-WHOLE_SIZE: c.ulonglong : 0xffffffffffffffff
+// ARRAY_LAYER_COUNT_UNDEFINED: c.ulong : 0xffffffff
+// COPY_STRIDE_UNDEFINED: c.ulong : 0xffffffff
+// LIMIT_U32_UNDEFINED: c.ulong : 0xffffffff
+// LIMIT_U64_UNDEFINED: c.ulonglong : 0xffffffffffffffff
+// MIP_LEVEL_COUNT_UNDEFINED: c.ulong : 0xffffffff
+// WGPU_QUERY_SET_INDEX_UNDEFINED: c.ulong : 0xffffffff
+// WGPU_WHOLE_MAP_SIZE :: c.SIZE_MAX
+// WHOLE_SIZE: c.ulonglong : 0xffffffffffffffff
+
+ARRAY_LAYER_COUNT_UNDEFINED :: ~u32(0)
+COPY_STRIDE_UNDEFINED :: ~u32(0)
+LIMIT_U32_UNDEFINED :: ~u32(0)
+LIMIT_U64_UNDEFINED :: ~u64(0)
+MIP_LEVEL_COUNT_UNDEFINED :: ~u32(0)
+QUERY_SET_INDEX_UNDEFINED :: ~u32(0)
+WHOLE_MAP_SIZE :: c.SIZE_MAX
+WHOLE_SIZE :: ~u64(0)
 
 FLAGS :: c.uint32_t
 
