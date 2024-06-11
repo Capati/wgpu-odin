@@ -163,7 +163,9 @@ main :: proc() {
 		fmt.printf("Buffer map status: %v\n", status)
 	}
 	wgpu.buffer_map_async(&output_buffer, {.Read}, handle_buffer_map, nil, 0, buffer_size)
-	wgpu.device_poll(&device)
+
+	res, res_err := wgpu.device_poll(&device)
+	if res_err != nil do return
 
 	data, data_err := wgpu.buffer_get_const_mapped_range(&output_buffer, byte, 0, buffer_size)
 	if data_err != nil do return

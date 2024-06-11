@@ -28,8 +28,15 @@ queue_on_submitted_work_done :: proc(
 	using self: ^Queue,
 	callback: Queue_Work_Done_Callback,
 	data: rawptr = nil,
+	loc := #caller_location,
+) -> (
+	err: Error,
 ) {
+	set_and_reset_err_data(_err_data, loc)
 	wgpu.queue_on_submitted_work_done(ptr, callback, data)
+	err = get_last_error()
+
+	return
 }
 
 // Set debug label.

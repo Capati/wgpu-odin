@@ -23,13 +23,13 @@ Adapter :: struct {
 
 @(private)
 _adapter_get_features :: proc(
-	adapter: Raw_Adapter,
+	self: ^Adapter,
 	loc := #caller_location,
 ) -> (
 	features: Features,
 	err: Error,
 ) {
-	count := wgpu.adapter_enumerate_features(adapter, nil)
+	count := wgpu.adapter_enumerate_features(self.ptr, nil)
 
 	if count == 0 do return
 
@@ -43,7 +43,7 @@ _adapter_get_features :: proc(
 		return
 	}
 
-	wgpu.adapter_enumerate_features(adapter, raw_data(raw_features))
+	wgpu.adapter_enumerate_features(self.ptr, raw_data(raw_features))
 
 	features_slice := transmute([]Raw_Feature_Name)raw_features
 	features = features_slice_to_flags(&features_slice)
@@ -59,7 +59,13 @@ adapter_get_features :: proc(self: ^Adapter) -> Features {
 }
 
 @(private)
-_adapter_get_limits :: proc(adapter: Raw_Adapter) -> (limits: Limits) {
+_adapter_get_limits :: proc(
+	self: ^Adapter,
+	loc := #caller_location,
+) -> (
+	limits: Limits,
+	err: Error,
+) {
 	native := Supported_Limits_Extras {
 		chain = {stype = SType(Native_SType.Supported_Limits_Extras)},
 	}
@@ -68,7 +74,15 @@ _adapter_get_limits :: proc(adapter: Raw_Adapter) -> (limits: Limits) {
 		next_in_chain = &native.chain,
 	}
 
-	wgpu.adapter_get_limits(adapter, &supported)
+	set_and_reset_err_data(nil, loc)
+
+	result := wgpu.adapter_get_limits(self.ptr, &supported)
+
+	if !result {
+		err = Error_Type.Unknown
+		update_error_data(nil, .Request_Adapter, err, "Failed to fill adapter limits")
+		return
+	}
 
 	limits = limits_merge_webgpu_with_native(supported.limits, native.limits)
 
@@ -84,8 +98,26 @@ adapter_get_limits :: proc(self: ^Adapter) -> Limits {
 }
 
 @(private)
-_adapter_get_properties :: proc(adapter: Raw_Adapter) -> (properties: Adapter_Properties) {
-	wgpu.adapter_get_properties(adapter, &properties)
+_adapter_get_properties :: proc(
+	self: ^Adapter,
+	loc := #caller_location,
+) -> (
+	properties: Adapter_Properties,
+	err: Error,
+) {
+	wgpu.adapter_get_properties(self.ptr, &properties)
+
+	if properties == {} {
+		err = Error_Type.Unknown
+		set_and_update_err_data(
+			nil,
+			.Request_Adapter,
+			err,
+			"Failed to fill adapter properties",
+			loc,
+		)
+	}
+
 	return
 }
 
@@ -172,8 +204,8 @@ _adapter_request_device :: proc(
 		)
 	}
 
-	device.features = _device_get_features(device.ptr, loc) or_return
-	device.limits = _device_get_limits(device.ptr)
+	device.features = _device_get_features(&device, loc) or_return
+	device.limits = _device_get_limits(&device, loc) or_return
 
 	queue = Queue {
 		ptr       = wgpu.device_get_queue(res.device),

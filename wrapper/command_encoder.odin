@@ -105,8 +105,8 @@ command_encoder_begin_render_pass :: proc(
 command_encoder_clear_buffer :: proc(
 	using self: ^Command_Encoder,
 	buffer: Raw_Buffer,
-	offset: u64 = 0,
-	size: u64 = 0,
+	offset: u64,
+	size: u64,
 	loc := #caller_location,
 ) -> (
 	err: Error,
