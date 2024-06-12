@@ -16,6 +16,7 @@ Buffer_Data_Descriptor :: struct {
 device_create_buffer_with_data :: proc(
 	using self: ^Device,
 	descriptor: ^Buffer_Data_Descriptor,
+	loc := #caller_location,
 ) -> (
 	buffer: Buffer,
 	err: Error,
@@ -29,7 +30,7 @@ device_create_buffer_with_data :: proc(
 			mapped_at_creation = false,
 		}
 
-		return device_create_buffer(self, &buffer_descriptor)
+		return device_create_buffer(self, &buffer_descriptor, loc)
 	}
 
 	unpadded_size := cast(Buffer_Address)len(descriptor.contents)
@@ -50,7 +51,7 @@ device_create_buffer_with_data :: proc(
 		mapped_at_creation = true,
 	}
 
-	buffer = device_create_buffer(self, &buffer_descriptor) or_return
+	buffer = device_create_buffer(self, &buffer_descriptor, loc) or_return
 
 	// Synchronously and immediately map a buffer for reading. If the buffer is not
 	// immediately mappable through `mapped_at_creation` or
@@ -60,9 +61,10 @@ device_create_buffer_with_data :: proc(
 		byte,
 		0,
 		cast(uint)padded_size,
+		loc,
 	) or_return
 	copy(mapped_array_buffer, descriptor.contents)
-	buffer_unmap(&buffer) or_return
+	buffer_unmap(&buffer, loc) or_return
 
 	return
 }
