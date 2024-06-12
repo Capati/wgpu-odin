@@ -845,6 +845,13 @@ Texture_Usage :: enum FLAGS {
 }
 Texture_Usage_Flags :: bit_set[Texture_Usage;FLAGS]
 Texture_Usage_Flags_None :: Texture_Usage_Flags{}
+Texture_Usage_Flags_All :: Texture_Usage_Flags {
+	.Copy_Src,
+	.Copy_Dst,
+	.Texture_Binding,
+	.Storage_Binding,
+	.Render_Attachment,
+}
 
 Chained_Struct :: struct {
 	next:  ^Chained_Struct,
