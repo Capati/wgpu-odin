@@ -69,11 +69,110 @@ device_create_buffer_with_data :: proc(
 	return
 }
 
-// TODO: Upload an entire texture and its mipmaps from a source buffer.
+// Order in which texture data is laid out in memory.
+Texture_Data_Order :: enum {
+	Layer_Major, // default
+	Mip_Major,
+}
+
+// Upload an entire texture and its mipmaps from a source buffer.
 device_create_texture_with_data :: proc(
 	self: ^Device,
 	queue: ^Queue,
-	descriptor: ^Texture_Descriptor,
+	desc: ^Texture_Descriptor,
+	order: Texture_Data_Order,
 	data: []byte,
+	loc := #caller_location,
+) -> (
+	texture: Texture,
+	err: Error,
 ) {
+	// Implicitly add the .Copy_Dst usage
+	if .Copy_Dst not_in desc.usage {
+		desc.usage += {.Copy_Dst}
+	}
+
+	texture = device_create_texture(self, desc, loc) or_return
+	defer if err != nil do texture_release(&texture)
+
+	// Will return 0 only if it's a combined depth-stencil format
+	// If so, default to 4, validation will fail later anyway since the depth or stencil
+	// aspect needs to be written to individually
+	block_size := texture_format_block_size(desc.format)
+	if block_size == 0 do block_size = 4
+	block_width, block_height := texture_format_block_dimensions(desc.format)
+	layer_iterations := texture_descriptor_array_layer_count(desc)
+
+	outer_iteration, inner_iteration: u32
+
+	switch order {
+	case .Layer_Major:
+		outer_iteration = layer_iterations
+		inner_iteration = desc.mip_level_count
+	case .Mip_Major:
+		outer_iteration = desc.mip_level_count
+		inner_iteration = layer_iterations
+	}
+
+	binary_offset: u32 = 0
+	for outer in 0 ..< outer_iteration {
+		for inner in 0 ..< inner_iteration {
+			layer, mip: u32
+			switch order {
+			case .Layer_Major:
+				layer = outer
+				mip = inner
+			case .Mip_Major:
+				layer = inner
+				mip = outer
+			}
+
+			mip_size, mip_size_ok := texture_descriptor_mip_level_size(desc, mip)
+			assert(mip_size_ok, "Invalid mip level")
+			// if !mip_size_ok {
+			// 	err = Error_Type.Validation
+			// 	set_and_update_err_data(self._err_data, .Assert, err, "Invalid mip level", loc)
+			// 	return
+			// }
+
+			// copying layers separately
+			if desc.dimension != .D3 {
+				mip_size.depth_or_array_layers = 1
+			}
+
+			// When uploading mips of compressed textures and the mip is supposed to be
+			// a size that isn't a multiple of the block size, the mip needs to be uploaded
+			// as its "physical size" which is the size rounded up to the nearest block size.
+			mip_physical := extent_3d_physical_size(mip_size, desc.format)
+
+			// All these calculations are performed on the physical size as that's the
+			// data that exists in the buffer.
+			width_blocks := mip_physical.width / block_width
+			height_blocks := mip_physical.height / block_height
+
+			bytes_per_row := width_blocks * block_size
+			data_size := bytes_per_row * height_blocks * mip_size.depth_or_array_layers
+
+			end_offset := binary_offset + data_size
+			assert(end_offset <= u32(len(data)), "Buffer too small")
+			// if end_offset > u32(len(data)) {
+			// 	err = Error_Type.Validation
+			// 	set_and_update_err_data(self._err_data, .Assert, err, "Buffer too small", loc)
+			// 	return
+			// }
+
+			queue_write_texture(
+				queue,
+				&{texture = texture.ptr, mip_level = mip, origin = {0, 0, layer}, aspect = .All},
+				data[binary_offset:end_offset],
+				&{offset = 0, bytes_per_row = bytes_per_row, rows_per_image = height_blocks},
+				&mip_physical,
+				loc,
+			) or_return
+
+			binary_offset = end_offset
+		}
+	}
+
+	return
 }
