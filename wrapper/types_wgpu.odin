@@ -131,6 +131,7 @@ Shader_Stage_Flags_None :: wgpu.Shader_Stage_Flags_None
 Texture_Usage :: wgpu.Texture_Usage
 Texture_Usage_Flags :: wgpu.Texture_Usage_Flags
 Texture_Usage_Flags_None :: wgpu.Texture_Usage_Flags_None
+Texture_Usage_Flags_All :: wgpu.Texture_Usage_Flags_All
 
 Buffer_Map_Callback :: wgpu.Buffer_Map_Callback
 Compilation_Info_Callback :: wgpu.Compilation_Info_Callback
