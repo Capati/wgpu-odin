@@ -16,17 +16,20 @@ import wgpu "../bindings"
 // Does not have to be kept alive.
 Adapter :: struct {
 	ptr:        Raw_Adapter,
-	features:   Features,
+	features:   Adapter_Features,
 	limits:     Limits,
 	properties: Adapter_Properties,
 }
+
+// Features that are available by the adapter.
+Adapter_Features :: distinct Features
 
 @(private)
 _adapter_get_features :: proc(
 	self: ^Adapter,
 	loc := #caller_location,
 ) -> (
-	features: Features,
+	features: Adapter_Features,
 	err: Error,
 ) {
 	count := wgpu.adapter_enumerate_features(self.ptr, nil)
@@ -46,7 +49,7 @@ _adapter_get_features :: proc(
 	wgpu.adapter_enumerate_features(self.ptr, raw_data(raw_features))
 
 	features_slice := transmute([]Raw_Feature_Name)raw_features
-	features = features_slice_to_flags(&features_slice)
+	features = cast(Adapter_Features)features_slice_to_flags(&features_slice)
 
 	return
 }
@@ -54,7 +57,7 @@ _adapter_get_features :: proc(
 // List all features that are supported with this adapter.
 //
 // Features must be explicitly requested in `adapter_request_device` in order to use them.
-adapter_get_features :: proc(self: ^Adapter) -> Features {
+adapter_get_features :: proc(self: ^Adapter) -> Adapter_Features {
 	return self.features // filled on request adapter
 }
 

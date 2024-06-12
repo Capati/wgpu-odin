@@ -15,10 +15,13 @@ import wgpu "../bindings"
 // A device may be requested from an adapter with `adapter_request_device`.
 Device :: struct {
 	ptr:       Raw_Device,
-	features:  Features,
+	features:  Device_Features,
 	limits:    Limits,
 	_err_data: ^Error_Data,
 }
+
+// Features that are supported and enabled on device creation.
+Device_Features :: distinct Features
 
 // Describes the segment of a buffer to bind.
 Buffer_Binding :: struct {
@@ -906,7 +909,7 @@ _device_get_features :: proc(
 	self: ^Device,
 	loc := #caller_location,
 ) -> (
-	features: Features,
+	features: Device_Features,
 	err: Error,
 ) {
 	count := wgpu.device_enumerate_features(self.ptr, nil)
@@ -926,7 +929,7 @@ _device_get_features :: proc(
 	wgpu.device_enumerate_features(self.ptr, raw_data(raw_features))
 
 	features_slice := transmute([]Raw_Feature_Name)raw_features
-	features = features_slice_to_flags(&features_slice)
+	features = cast(Device_Features)features_slice_to_flags(&features_slice)
 
 	return
 }
@@ -934,7 +937,7 @@ _device_get_features :: proc(
 // List all features that may be used with this device.
 //
 // Functions may panic if you use unsupported features.
-device_get_features :: proc(self: ^Device) -> Features {
+device_get_features :: proc(self: ^Device) -> Device_Features {
 	return self.features // filled on request device
 }
 
