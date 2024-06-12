@@ -7,9 +7,9 @@ import wgpu "../bindings"
 
 // Print adapter information (name, driver, type and backend).
 adapter_print_info :: proc(using self: ^Adapter) {
-	fmt.printf("%s\n", properties.name)
+	fmt.printf("%s\n", info.name)
 
-	driver_description: cstring = properties.driver_description
+	driver_description: cstring = info.driver_description
 
 	if driver_description == nil || driver_description == "" {
 		driver_description = "Unknown"
@@ -19,7 +19,7 @@ adapter_print_info :: proc(using self: ^Adapter) {
 
 	adapter_type: cstring = ""
 
-	switch properties.adapter_type {
+	switch info.adapter_type {
 	case wgpu.Adapter_Type.Discrete_GPU:
 		adapter_type = "Discrete GPU with separate CPU/GPU memory"
 	case wgpu.Adapter_Type.Integrated_GPU:
@@ -34,7 +34,7 @@ adapter_print_info :: proc(using self: ^Adapter) {
 
 	backend_type: cstring
 
-	#partial switch properties.backend_type {
+	#partial switch info.backend_type {
 	case wgpu.Backend_Type.Null:
 		backend_type = "Empty"
 	case wgpu.Backend_Type.WebGPU:

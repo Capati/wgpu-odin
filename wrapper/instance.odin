@@ -206,7 +206,7 @@ instance_request_adapter :: proc(
 	// Fill adapter details
 	adapter.features = _adapter_get_features(&adapter, loc) or_return
 	adapter.limits = _adapter_get_limits(&adapter, loc) or_return
-	adapter.properties = _adapter_get_properties(&adapter) or_return
+	adapter.info = _adapter_get_info(&adapter) or_return
 
 	return
 }
@@ -266,7 +266,7 @@ instance_enumerate_adapters :: proc(
 
 		adapters[i].features = _adapter_get_features(&adapters[i], loc) or_return
 		adapters[i].limits = _adapter_get_limits(&adapters[i], loc) or_return
-		adapters[i].properties = _adapter_get_properties(&adapters[i]) or_return
+		adapters[i].info = _adapter_get_info(&adapters[i]) or_return
 	}
 
 	return

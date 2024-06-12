@@ -15,10 +15,10 @@ import wgpu "../bindings"
 //
 // Does not have to be kept alive.
 Adapter :: struct {
-	ptr:        Raw_Adapter,
-	features:   Adapter_Features,
-	limits:     Limits,
-	properties: Adapter_Properties,
+	ptr:      Raw_Adapter,
+	features: Adapter_Features,
+	limits:   Limits,
+	info:     Adapter_Info,
 }
 
 // Features that are available by the adapter.
@@ -101,32 +101,26 @@ adapter_get_limits :: proc(self: ^Adapter) -> Limits {
 }
 
 @(private)
-_adapter_get_properties :: proc(
+_adapter_get_info :: proc(
 	self: ^Adapter,
 	loc := #caller_location,
 ) -> (
-	properties: Adapter_Properties,
+	info: Adapter_Info,
 	err: Error,
 ) {
-	wgpu.adapter_get_properties(self.ptr, &properties)
+	wgpu.adapter_get_properties(self.ptr, &info)
 
-	if properties == {} {
+	if info == {} {
 		err = Error_Type.Unknown
-		set_and_update_err_data(
-			nil,
-			.Request_Adapter,
-			err,
-			"Failed to fill adapter properties",
-			loc,
-		)
+		set_and_update_err_data(nil, .Request_Adapter, err, "Failed to fill adapter info", loc)
 	}
 
 	return
 }
 
 // Get info about the adapter itself.
-adapter_get_properties :: proc(self: ^Adapter) -> Adapter_Properties {
-	return self.properties // filled on request adapter
+adapter_get_info :: proc(self: ^Adapter) -> Adapter_Info {
+	return self.info // filled on request adapter
 }
 
 // Check if adapter support all features in the given flags.
@@ -269,8 +263,8 @@ adapter_request_device :: proc(
 					fmt.tprintf(
 						"Required feature [%v] not supported by device [%s] using [%s].",
 						f,
-						self.properties.name,
-						self.properties.backend_type,
+						self.info.name,
+						self.info.backend_type,
 					),
 					loc,
 				)
@@ -337,7 +331,7 @@ adapter_request_device :: proc(
 		}
 
 		// This limit only affects the d3d12 backend.
-		if self.properties.backend_type == .D3D12 {
+		if self.info.backend_type == .D3D12 {
 			// TODO(Capati): Make sure a non zero value is set or the application can crash.
 			if required_limits_extras.limits.max_non_sampler_bindings == 0 {
 				required_limits_extras.limits.max_non_sampler_bindings = 1_000_000
@@ -376,6 +370,8 @@ adapter_reference :: proc(using self: ^Adapter) {
 // Release the `Adapter`.
 @(private = "file")
 _adapter_release :: proc(using self: ^Adapter) {
+	// TODO(Capati): Wait for upstream update
+	// wgpu.adapter_info_free_members(&info)
 	wgpu.adapter_release(ptr)
 }
 

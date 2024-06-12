@@ -146,7 +146,7 @@ Request_Device_Callback :: wgpu.Request_Device_Callback
 
 Chained_Struct :: wgpu.Chained_Struct
 Chained_Struct_Out :: wgpu.Chained_Struct_Out
-Adapter_Properties :: wgpu.Adapter_Properties
+Adapter_Info :: wgpu.Adapter_Properties
 // Bind_Group_Entry :: wgpu.Bind_Group_Entry
 Blend_Component :: wgpu.Blend_Component
 Buffer_Binding_Layout :: wgpu.Buffer_Binding_Layout
