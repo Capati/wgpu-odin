@@ -58,7 +58,7 @@ init_state :: proc(window: ^sdl.Window) -> (state: State, err: wgpu.Error) {
 	defer wgpu.adapter_release(&adapter)
 
 	device_descriptor := wgpu.Device_Descriptor {
-		label           = adapter.properties.name,
+		label           = adapter.info.name,
 		required_limits = wgpu.Default_Limits,
 	}
 

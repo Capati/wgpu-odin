@@ -42,7 +42,7 @@ main :: proc() {
 	// `features` being the available features.
 	device, queue, device_err := wgpu.adapter_request_device(
 		&adapter,
-		&wgpu.Device_Descriptor{label = adapter.properties.name},
+		&wgpu.Device_Descriptor{label = adapter.info.name},
 	)
 	if device_err != nil do return
 	defer {
