@@ -16,6 +16,7 @@ WHOLE_MAP_SIZE :: wgpu.WHOLE_MAP_SIZE
 WHOLE_SIZE :: wgpu.WHOLE_SIZE
 
 FLAGS :: wgpu.FLAGS
+ENUM_SIZE :: wgpu.ENUM_SIZE
 
 Raw_Adapter :: wgpu.Adapter
 Raw_Bind_Group :: wgpu.Bind_Group

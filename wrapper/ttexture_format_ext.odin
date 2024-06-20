@@ -153,7 +153,7 @@ texture_format_required_features :: proc(self: Texture_Format) -> Features {
 	return {}
 }
 
-Texture_Usage_Feature :: enum FLAGS {
+Texture_Usage_Feature :: enum ENUM_SIZE {
 	Filterable,
 	Multisample_X2,
 	Multisample_X4,
@@ -208,7 +208,7 @@ texture_format_sample_type :: proc(
 	depth := Texture_Sample_Type.Depth
 	_uint := Texture_Sample_Type.Uint
 	sint := Texture_Sample_Type.Sint
-
+	
 	// odinfmt: disable
 	#partial switch self {
 	case .R8_Unorm, .R8_Snorm, .Rg8_Unorm, .Rg8_Snorm, .Rgba8_Unorm, .Rgba8_Unorm_Srgb,
@@ -294,7 +294,7 @@ texture_format_guaranteed_format_features :: proc(
 
 	flags: Texture_Usage_Feature_Flags
 	allowed_usages: Texture_Usage_Flags
-
+	
 	// odinfmt: disable
 	#partial switch self {
 	case .R8_Unorm: flags = msaa_resolve; allowed_usages = attachment
@@ -421,7 +421,7 @@ texture_format_block_size :: proc(
 	aspect: Maybe(Texture_Aspect) = nil,
 ) -> u32 {
 	_aspect, aspect_ok := aspect.?
-
+	
 	// odinfmt: disable
 	#partial switch self {
 	case .R8_Unorm, .R8_Snorm, .R8_Uint, .R8_Sint:
@@ -609,7 +609,7 @@ texture_format_components :: proc(self: Texture_Format) -> u8 {
 // Strips the `Srgb` suffix from the given texture format.
 texture_format_remove_srgb_suffix :: proc(self: Texture_Format) -> (ret: Texture_Format) {
 	ret = self
-
+	
 	// odinfmt: disable
 	#partial switch self {
 	case .Rgba8_Unorm_Srgb: return .Rgba8_Unorm
@@ -644,7 +644,7 @@ texture_format_remove_srgb_suffix :: proc(self: Texture_Format) -> (ret: Texture
 // Adds an `Srgb` suffix to the given texture format, if the format supports it.
 texture_format_add_srgb_suffix :: proc(self: Texture_Format) -> (ret: Texture_Format) {
 	ret = self
-
+	
 	// odinfmt: disable
 	#partial switch self {
 	case .Rgba8_Unorm: return .Rgba8_Unorm_Srgb
