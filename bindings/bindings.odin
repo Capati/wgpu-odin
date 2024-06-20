@@ -32,7 +32,7 @@ when ODIN_OS == .Windows {
 
 import "core:c"
 
-Native_SType :: enum FLAGS {
+Native_SType :: enum ENUM_SIZE {
 	Device_Extras                  = 0x00030001,
 	Required_Limits_Extras         = 0x00030002,
 	Pipeline_Layout_Extras         = 0x00030003,
@@ -45,7 +45,7 @@ Native_SType :: enum FLAGS {
 	Surface_Configuration_Extras   = 0x0003000A,
 }
 
-Native_Feature :: enum FLAGS {
+Native_Feature :: enum ENUM_SIZE {
 	Push_Constants                                                = 0x00030001,
 	Texture_Adapter_Specific_Format_Features                      = 0x00030002,
 	Multi_Draw_Indirect                                           = 0x00030003,
@@ -58,7 +58,7 @@ Native_Feature :: enum FLAGS {
 	Partially_Bound_Binding_Array                                 = 0x0003000A,
 }
 
-Log_Level :: enum FLAGS {
+Log_Level :: enum ENUM_SIZE {
 	Off,
 	Error,
 	Warn,
@@ -67,7 +67,7 @@ Log_Level :: enum FLAGS {
 	Trace,
 }
 
-Instance_Backend :: enum FLAGS {
+Instance_Backend :: enum ENUM_SIZE {
 	Vulkan,
 	GL,
 	Metal,
@@ -79,7 +79,7 @@ Instance_Backend_Flags :: bit_set[Instance_Backend;FLAGS]
 Instance_Backend_Primary :: Instance_Backend_Flags{.Vulkan, .Metal, .DX12, .Browser_WebGPU}
 Instance_Backend_Secondary :: Instance_Backend_Flags{.GL, .DX11}
 
-Instance_Flag :: enum FLAGS {
+Instance_Flag :: enum ENUM_SIZE {
 	Default,
 	Debug,
 	Validation,
@@ -87,20 +87,20 @@ Instance_Flag :: enum FLAGS {
 }
 Instance_Flags :: bit_set[Instance_Flag;FLAGS]
 
-Dx12_Compiler :: enum FLAGS {
+Dx12_Compiler :: enum ENUM_SIZE {
 	Undefined,
 	Fxc,
 	Dxc,
 }
 
-Gles3_Minor_Version :: enum FLAGS {
+Gles3_Minor_Version :: enum ENUM_SIZE {
 	Automatic,
 	Version_0,
 	Version_1,
 	Version_2,
 }
 
-Pipeline_Statistic_Name :: enum FLAGS {
+Pipeline_Statistic_Name :: enum ENUM_SIZE {
 	Vertex_Shader_Invocations,
 	Clipper_Invocations,
 	Clipper_Primitives_Out,
@@ -108,7 +108,7 @@ Pipeline_Statistic_Name :: enum FLAGS {
 	Compute_Shader_Invocations,
 }
 
-Native_Query_Type :: enum FLAGS {
+Native_Query_Type :: enum ENUM_SIZE {
 	Pipeline_Statistics = 0x00030000,
 }
 
@@ -288,25 +288,18 @@ foreign wgpu_native {
 	render_pass_encoder_end_pipeline_statistics_query :: proc(render_pass_encoder: Render_Pass_Encoder) ---
 }
 
-// ARRAY_LAYER_COUNT_UNDEFINED: c.ulong : 0xffffffff
-// COPY_STRIDE_UNDEFINED: c.ulong : 0xffffffff
-// LIMIT_U32_UNDEFINED: c.ulong : 0xffffffff
-// LIMIT_U64_UNDEFINED: c.ulonglong : 0xffffffffffffffff
-// MIP_LEVEL_COUNT_UNDEFINED: c.ulong : 0xffffffff
-// WGPU_QUERY_SET_INDEX_UNDEFINED: c.ulong : 0xffffffff
-// WGPU_WHOLE_MAP_SIZE :: c.SIZE_MAX
-// WHOLE_SIZE: c.ulonglong : 0xffffffffffffffff
+ARRAY_LAYER_COUNT_UNDEFINED :: max(u32)
+COPY_STRIDE_UNDEFINED :: max(u32)
+DEPTH_SLICE_UNDEFINED :: max(u32)
+LIMIT_U32_UNDEFINED :: max(u32)
+LIMIT_U64_UNDEFINED :: max(u64)
+MIP_LEVEL_COUNT_UNDEFINED :: max(u32)
+QUERY_SET_INDEX_UNDEFINED :: max(u32)
+WHOLE_MAP_SIZE :: max(uint)
+WHOLE_SIZE :: max(u64)
 
-ARRAY_LAYER_COUNT_UNDEFINED :: ~u32(0)
-COPY_STRIDE_UNDEFINED :: ~u32(0)
-LIMIT_U32_UNDEFINED :: ~u32(0)
-LIMIT_U64_UNDEFINED :: ~u64(0)
-MIP_LEVEL_COUNT_UNDEFINED :: ~u32(0)
-QUERY_SET_INDEX_UNDEFINED :: ~u32(0)
-WHOLE_MAP_SIZE :: c.SIZE_MAX
-WHOLE_SIZE :: ~u64(0)
-
-FLAGS :: c.uint32_t
+FLAGS :: u32
+ENUM_SIZE :: u32
 
 Handle :: rawptr
 
@@ -333,20 +326,20 @@ Surface :: distinct Handle
 Texture :: distinct Handle
 Texture_View :: distinct Handle
 
-Adapter_Type :: enum FLAGS {
+Adapter_Type :: enum ENUM_SIZE {
 	Discrete_GPU,
 	Integrated_GPU,
 	CPU,
 	Unknown,
 }
 
-Address_Mode :: enum FLAGS {
+Address_Mode :: enum ENUM_SIZE {
 	Repeat,
 	Mirror_Repeat,
 	Clamp_To_Edge,
 }
 
-Backend_Type :: enum FLAGS {
+Backend_Type :: enum ENUM_SIZE {
 	Undefined,
 	Null,
 	WebGPU,
@@ -358,7 +351,7 @@ Backend_Type :: enum FLAGS {
 	OpenGLES,
 }
 
-Blend_Factor :: enum FLAGS {
+Blend_Factor :: enum ENUM_SIZE {
 	Zero,
 	One,
 	Src,
@@ -374,7 +367,7 @@ Blend_Factor :: enum FLAGS {
 	One_Minus_Constant,
 }
 
-Blend_Operation :: enum FLAGS {
+Blend_Operation :: enum ENUM_SIZE {
 	Add,
 	Subtract,
 	Reverse_Subtract,
@@ -382,14 +375,14 @@ Blend_Operation :: enum FLAGS {
 	Max,
 }
 
-Buffer_Binding_Type :: enum FLAGS {
+Buffer_Binding_Type :: enum ENUM_SIZE {
 	Undefined,
 	Uniform,
 	Storage,
 	Read_Only_Storage,
 }
 
-Buffer_Map_Async_Status :: enum FLAGS {
+Buffer_Map_Async_Status :: enum ENUM_SIZE {
 	Success,
 	Validation_Error,
 	Error,
@@ -402,13 +395,13 @@ Buffer_Map_Async_Status :: enum FLAGS {
 	Size_Out_Of_Range,
 }
 
-Buffer_Map_State :: enum FLAGS {
+Buffer_Map_State :: enum ENUM_SIZE {
 	Unmapped,
 	Pending,
 	Mapped,
 }
 
-Compare_Function :: enum FLAGS {
+Compare_Function :: enum ENUM_SIZE {
 	Undefined,
 	Never,
 	Less,
@@ -420,20 +413,20 @@ Compare_Function :: enum FLAGS {
 	Always,
 }
 
-Compilation_Info_Request_Status :: enum FLAGS {
+Compilation_Info_Request_Status :: enum ENUM_SIZE {
 	Success,
 	Error,
 	Device_Lost,
 	Unknown,
 }
 
-Compilation_Message_Type :: enum FLAGS {
+Compilation_Message_Type :: enum ENUM_SIZE {
 	Error,
 	Warning,
 	Info,
 }
 
-Composite_Alpha_Mode :: enum FLAGS {
+Composite_Alpha_Mode :: enum ENUM_SIZE {
 	Auto,
 	Opaque,
 	Premultiplied,
@@ -441,7 +434,7 @@ Composite_Alpha_Mode :: enum FLAGS {
 	Inherit,
 }
 
-Create_Pipeline_Async_Status :: enum FLAGS {
+Create_Pipeline_Async_Status :: enum ENUM_SIZE {
 	Success,
 	Validation_Error,
 	Internal_Error,
@@ -450,25 +443,25 @@ Create_Pipeline_Async_Status :: enum FLAGS {
 	Unknown,
 }
 
-Cull_Mode :: enum FLAGS {
+Cull_Mode :: enum ENUM_SIZE {
 	None,
 	Front,
 	Back,
 }
 
-Device_Lost_Reason :: enum FLAGS {
+Device_Lost_Reason :: enum ENUM_SIZE {
 	Undefined,
 	Unknown,
 	Destroyed,
 }
 
-Error_Filter :: enum FLAGS {
+Error_Filter :: enum ENUM_SIZE {
 	Validation,
 	Out_Of_Memory,
 	Internal,
 }
 
-Error_Type :: enum FLAGS {
+Error_Type :: enum ENUM_SIZE {
 	No_Error,
 	Validation,
 	Out_Of_Memory,
@@ -477,7 +470,7 @@ Error_Type :: enum FLAGS {
 	Device_Lost,
 }
 
-Feature_Name :: enum FLAGS {
+Feature_Name :: enum ENUM_SIZE {
 	Undefined                  = 0x00000000,
 	Depth_Clip_Control         = 0x00000001,
 	Depth32_Float_Stencil8     = 0x00000002,
@@ -492,47 +485,47 @@ Feature_Name :: enum FLAGS {
 	Float32_Filterable         = 0x0000000B,
 }
 
-Filter_Mode :: enum FLAGS {
+Filter_Mode :: enum ENUM_SIZE {
 	Nearest,
 	Linear,
 }
 
-Front_Face :: enum FLAGS {
+Front_Face :: enum ENUM_SIZE {
 	CCW,
 	CW,
 }
 
-Index_Format :: enum FLAGS {
+Index_Format :: enum ENUM_SIZE {
 	Undefined,
 	Uint16,
 	Uint32,
 }
 
-Load_Op :: enum FLAGS {
+Load_Op :: enum ENUM_SIZE {
 	Undefined,
 	Clear,
 	Load,
 }
 
-Mipmap_Filter_Mode :: enum FLAGS {
+Mipmap_Filter_Mode :: enum ENUM_SIZE {
 	Nearest,
 	Linear,
 }
 
-Power_Preference :: enum FLAGS {
+Power_Preference :: enum ENUM_SIZE {
 	Undefined,
 	Low_Power,
 	High_Performance,
 }
 
-Present_Mode :: enum FLAGS {
+Present_Mode :: enum ENUM_SIZE {
 	Fifo,
 	Fifo_Relaxed,
 	Immediate,
 	Mailbox,
 }
 
-Primitive_Topology :: enum FLAGS {
+Primitive_Topology :: enum ENUM_SIZE {
 	Point_List,
 	Line_List,
 	Line_Strip,
@@ -540,32 +533,32 @@ Primitive_Topology :: enum FLAGS {
 	Triangle_Strip,
 }
 
-Query_Type :: enum FLAGS {
+Query_Type :: enum ENUM_SIZE {
 	Occlusion,
 	Query_Type_Timestamp,
 }
 
-Queue_Work_Done_Status :: enum FLAGS {
+Queue_Work_Done_Status :: enum ENUM_SIZE {
 	Success,
 	Error,
 	Unknown,
 	Device_Lost,
 }
 
-Request_Adapter_Status :: enum FLAGS {
+Request_Adapter_Status :: enum ENUM_SIZE {
 	Success,
 	Unavailable,
 	Error,
 	Unknown,
 }
 
-Request_Device_Status :: enum FLAGS {
+Request_Device_Status :: enum ENUM_SIZE {
 	Success,
 	Error,
 	Unknown,
 }
 
-SType :: enum FLAGS {
+SType :: enum ENUM_SIZE {
 	Invalid,
 	Surface_Descriptor_From_Metal_Layer,
 	Surface_Descriptor_From_Windows_HWND,
@@ -580,14 +573,14 @@ SType :: enum FLAGS {
 	Render_Pass_Descriptor_Max_Draw_Count,
 }
 
-Sampler_Binding_Type :: enum FLAGS {
+Sampler_Binding_Type :: enum ENUM_SIZE {
 	Undefined,
 	Filtering,
 	Non_Filtering,
 	Comparison,
 }
 
-Stencil_Operation :: enum FLAGS {
+Stencil_Operation :: enum ENUM_SIZE {
 	Keep,
 	Zero,
 	Replace,
@@ -598,20 +591,20 @@ Stencil_Operation :: enum FLAGS {
 	Decrement_Wrap,
 }
 
-Storage_Texture_Access :: enum FLAGS {
+Storage_Texture_Access :: enum ENUM_SIZE {
 	Undefined,
 	Write_Only,
 	Read_Only,
 	Read_Write,
 }
 
-Store_Op :: enum FLAGS {
+Store_Op :: enum ENUM_SIZE {
 	Undefined,
 	Store,
 	Discard,
 }
 
-Surface_Get_Current_Texture_Status :: enum FLAGS {
+Surface_Get_Current_Texture_Status :: enum ENUM_SIZE {
 	Success,
 	Timeout,
 	Outdated,
@@ -620,26 +613,26 @@ Surface_Get_Current_Texture_Status :: enum FLAGS {
 	Device_Lost,
 }
 
-Texture_Aspect :: enum FLAGS {
+Texture_Aspect :: enum ENUM_SIZE {
 	All,
 	Stencil_Only,
 	Depth_Only,
 }
 
-Texture_Component_Type :: enum FLAGS {
+Texture_Component_Type :: enum ENUM_SIZE {
 	Float,
 	Sint,
 	Uint,
 	Depth_Comparison,
 }
 
-Texture_Dimension :: enum FLAGS {
+Texture_Dimension :: enum ENUM_SIZE {
 	D1,
 	D2,
 	D3,
 }
 
-Texture_Format :: enum FLAGS {
+Texture_Format :: enum ENUM_SIZE {
 	Undefined               = 0x00000000,
 	R8_Unorm                = 0x00000001,
 	R8_Snorm                = 0x00000002,
@@ -738,7 +731,7 @@ Texture_Format :: enum FLAGS {
 	Astc12x12_Unorm_Srgb    = 0x0000005F,
 }
 
-Texture_Sample_Type :: enum FLAGS {
+Texture_Sample_Type :: enum ENUM_SIZE {
 	Undefined,
 	Float,
 	Unfilterable_Float,
@@ -747,7 +740,7 @@ Texture_Sample_Type :: enum FLAGS {
 	Uint,
 }
 
-Texture_View_Dimension :: enum FLAGS {
+Texture_View_Dimension :: enum ENUM_SIZE {
 	Undefined,
 	D1,
 	D2,
@@ -757,7 +750,7 @@ Texture_View_Dimension :: enum FLAGS {
 	D3,
 }
 
-Vertex_Format :: enum FLAGS {
+Vertex_Format :: enum ENUM_SIZE {
 	Undefined,
 	Uint8x2,
 	Uint8x4,
@@ -791,13 +784,13 @@ Vertex_Format :: enum FLAGS {
 	Sint32x4,
 }
 
-Vertex_Step_Mode :: enum FLAGS {
+Vertex_Step_Mode :: enum ENUM_SIZE {
 	Vertex,
 	Instance,
 	Vertex_Buffer_Not_Used,
 }
 
-Buffer_Usage :: enum FLAGS {
+Buffer_Usage :: enum ENUM_SIZE {
 	Map_Read,
 	Map_Write,
 	Copy_Src,
@@ -812,7 +805,7 @@ Buffer_Usage :: enum FLAGS {
 Buffer_Usage_Flags :: bit_set[Buffer_Usage;FLAGS]
 Buffer_Usage_Flags_None :: Buffer_Usage_Flags{}
 
-Color_Write_Mask :: enum FLAGS {
+Color_Write_Mask :: enum ENUM_SIZE {
 	Red,
 	Green,
 	Blue,
@@ -822,13 +815,13 @@ Color_Write_Mask_Flags :: bit_set[Color_Write_Mask;FLAGS]
 Color_Write_Mask_None :: Color_Write_Mask_Flags{}
 Color_Write_Mask_All :: Color_Write_Mask_Flags{.Red, .Green, .Blue, .Alpha}
 
-Map_Mode :: enum FLAGS {
+Map_Mode :: enum ENUM_SIZE {
 	Read,
 	Write,
 }
 Map_Mode_Flags :: bit_set[Map_Mode;FLAGS]
 
-Shader_Stage :: enum FLAGS {
+Shader_Stage :: enum ENUM_SIZE {
 	Vertex,
 	Fragment,
 	Compute,
@@ -836,7 +829,7 @@ Shader_Stage :: enum FLAGS {
 Shader_Stage_Flags :: bit_set[Shader_Stage;FLAGS]
 Shader_Stage_Flags_None :: Shader_Stage_Flags{}
 
-Texture_Usage :: enum FLAGS {
+Texture_Usage :: enum ENUM_SIZE {
 	Copy_Src,
 	Copy_Dst,
 	Texture_Binding,
