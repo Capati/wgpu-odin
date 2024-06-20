@@ -30,263 +30,6 @@ when ODIN_OS == .Windows {
 	foreign import wgpu_native "system:wgpu_native"
 }
 
-Native_SType :: enum ENUM_SIZE {
-	Device_Extras                  = 0x00030001,
-	Required_Limits_Extras         = 0x00030002,
-	Pipeline_Layout_Extras         = 0x00030003,
-	Shader_Module_Glsl_Descriptor  = 0x00030004,
-	Supported_Limits_Extras        = 0x00030005,
-	Instance_Extras                = 0x00030006,
-	Bind_Group_Entry_Extras        = 0x00030007,
-	Bind_Group_Layout_Entry_Extras = 0x00030008,
-	Query_Set_Descriptor_Extras    = 0x00030009,
-	Surface_Configuration_Extras   = 0x0003000A,
-}
-
-Native_Feature :: enum ENUM_SIZE {
-	Push_Constants                                                = 0x00030001,
-	Texture_Adapter_Specific_Format_Features                      = 0x00030002,
-	Multi_Draw_Indirect                                           = 0x00030003,
-	Multi_Draw_Indirect_Count                                     = 0x00030004,
-	Vertex_Writable_Storage                                       = 0x00030005,
-	Texture_Binding_Array                                         = 0x00030006,
-	Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing = 0x00030007,
-	Pipeline_Statistics_Query                                     = 0x00030008,
-	Storage_Resource_Binding_Array                                = 0x00030009,
-	Partially_Bound_Binding_Array                                 = 0x0003000A,
-}
-
-Log_Level :: enum ENUM_SIZE {
-	Off,
-	Error,
-	Warn,
-	Info,
-	Debug,
-	Trace,
-}
-
-Instance_Backend :: enum ENUM_SIZE {
-	Vulkan,
-	GL,
-	Metal,
-	DX12,
-	DX11,
-	Browser_WebGPU,
-}
-Instance_Backend_Flags :: bit_set[Instance_Backend;FLAGS]
-Instance_Backend_All :: Instance_Backend_Flags{}
-Instance_Backend_Primary :: Instance_Backend_Flags{.Vulkan, .Metal, .DX12, .Browser_WebGPU}
-Instance_Backend_Secondary :: Instance_Backend_Flags{.GL, .DX11}
-
-Instance_Flag :: enum ENUM_SIZE {
-	Debug,
-	Validation,
-	Discard_Hal_Labels,
-}
-Instance_Flags :: bit_set[Instance_Flag;FLAGS]
-Instance_Flags_Default :: Instance_Flags{}
-
-Dx12_Compiler :: enum ENUM_SIZE {
-	Undefined,
-	Fxc,
-	Dxc,
-}
-
-Gles3_Minor_Version :: enum ENUM_SIZE {
-	Automatic,
-	Version_0,
-	Version_1,
-	Version_2,
-}
-
-Pipeline_Statistic_Name :: enum ENUM_SIZE {
-	Vertex_Shader_Invocations,
-	Clipper_Invocations,
-	Clipper_Primitives_Out,
-	Fragment_Shader_Invocations,
-	Compute_Shader_Invocations,
-}
-
-Native_Query_Type :: enum ENUM_SIZE {
-	Pipeline_Statistics = 0x00030000,
-}
-
-Instance_Extras :: struct {
-	chain:                Chained_Struct,
-	backends:             Instance_Backend_Flags,
-	flags:                Instance_Flags,
-	dx12_shader_compiler: Dx12_Compiler,
-	gles3_minor_version:  Gles3_Minor_Version,
-	dxil_path:            cstring,
-	dxc_path:             cstring,
-}
-
-Device_Extras :: struct {
-	chain:      Chained_Struct,
-	trace_path: cstring,
-}
-
-Native_Limits :: struct {
-	max_push_constant_size:   u32,
-	max_non_sampler_bindings: u32,
-}
-
-Required_Limits_Extras :: struct {
-	chain:  Chained_Struct,
-	limits: Native_Limits,
-}
-
-Supported_Limits_Extras :: struct {
-	chain:  Chained_Struct_Out,
-	limits: Native_Limits,
-}
-
-Push_Constant_Range :: struct {
-	stages: Shader_Stage_Flags,
-	start:  u32,
-	end:    u32,
-}
-
-Pipeline_Layout_Extras :: struct {
-	chain:                     Chained_Struct,
-	push_constant_range_count: uint,
-	push_constant_ranges:      ^Push_Constant_Range,
-}
-
-Submission_Index :: distinct u64
-
-Wrapped_Submission_Index :: struct {
-	queue:            Queue,
-	submission_index: Submission_Index,
-}
-
-Shader_Define :: struct {
-	name:  cstring,
-	value: cstring,
-}
-
-Shader_Module_Glsl_Descriptor :: struct {
-	chain:        Chained_Struct,
-	stage:        Shader_Stage,
-	code:         cstring,
-	define_count: u32,
-	defines:      ^Shader_Define,
-}
-
-Registry_Report :: struct {
-	num_allocated:          uint,
-	num_kept_from_user:     uint,
-	num_released_from_user: uint,
-	num_error:              uint,
-	element_size:           uint,
-}
-
-Hub_Report :: struct {
-	adapters:           Registry_Report,
-	devices:            Registry_Report,
-	queues:             Registry_Report,
-	pipeline_layouts:   Registry_Report,
-	shader_modules:     Registry_Report,
-	bind_group_layouts: Registry_Report,
-	bind_groups:        Registry_Report,
-	command_buffers:    Registry_Report,
-	render_bundles:     Registry_Report,
-	render_pipelines:   Registry_Report,
-	compute_pipelines:  Registry_Report,
-	query_sets:         Registry_Report,
-	buffers:            Registry_Report,
-	textures:           Registry_Report,
-	texture_views:      Registry_Report,
-	samplers:           Registry_Report,
-}
-
-Global_Report :: struct {
-	surfaces:     Registry_Report,
-	backend_type: Backend_Type,
-	vulkan:       Hub_Report,
-	metal:        Hub_Report,
-	dx12:         Hub_Report,
-	gl:           Hub_Report,
-}
-
-Instance_Enumerate_Adapter_Options :: struct {
-	next_int_chain: ^Chained_Struct,
-	backends:       Instance_Backend_Flags,
-}
-
-Bind_Group_Entry_Extras :: struct {
-	chain:              Chained_Struct,
-	buffers:            ^Buffer,
-	buffer_count:       uint,
-	samplers:           ^Sampler,
-	sampler_count:      uint,
-	texture_views:      ^Texture_View,
-	texture_view_count: uint,
-}
-
-Bind_Group_Layout_Entry_Extras :: struct {
-	chain: Chained_Struct,
-	count: u32,
-}
-
-Query_Set_Descriptor_Extras :: struct {
-	chain:                    Chained_Struct,
-	pipeline_statistics:      ^Pipeline_Statistic_Name,
-	pipeline_statistic_count: uint,
-}
-
-Surface_Configuration_Extras :: struct {
-	chain:                         Chained_Struct,
-	desired_maximum_frame_latency: bool,
-}
-
-Log_Callback :: #type proc "c" (level: Log_Level, message: cstring, user_data: rawptr)
-
-foreign wgpu_native {
-	@(link_name = "wgpuGenerateReport")
-	generate_report :: proc(instance: Instance, report: ^Global_Report) ---
-
-	@(link_name = "wgpuInstanceEnumerateAdapters")
-	instance_enumerate_adapters :: proc(instance: Instance, options: ^Instance_Enumerate_Adapter_Options, adapters: [^]Adapter) -> uint ---
-
-	@(link_name = "wgpuQueueSubmitForIndex")
-	queue_submit_for_index :: proc(queue: Queue, command_count: uint, commands: ^Command_Buffer) -> Submission_Index ---
-
-	@(link_name = "wgpuDevicePoll")
-	device_poll :: proc(device: Device, wait: bool, wrapped_submission_index: ^Wrapped_Submission_Index) -> bool ---
-
-	@(link_name = "wgpuSetLogCallback")
-	set_log_callback :: proc(callback: Log_Callback, user_data: rawptr) ---
-
-	@(link_name = "wgpuSetLogLevel")
-	set_log_level :: proc(level: Log_Level) ---
-
-	@(link_name = "wgpuGetVersion")
-	get_version :: proc() -> u32 ---
-
-	@(link_name = "wgpuRenderPassEncoderSetPushConstants")
-	render_pass_encoder_set_push_constants :: proc(encoder: Render_Pass_Encoder, stages: Shader_Stage_Flags, offset: u32, size_bytes: u32, data: rawptr) ---
-
-	@(link_name = "wgpuRenderPassEncoderMultiDrawIndirect")
-	render_pass_encoder_multi_draw_indirect :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: u64, count: u32) ---
-	@(link_name = "wgpuRenderPassEncoderMultiDrawIndexedIndirect")
-	render_pass_encoder_multi_draw_indexed_indirect :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: u64, count: u32) ---
-
-	@(link_name = "wgpuRenderPassEncoderMultiDrawIndirectCount")
-	render_pass_encoder_multi_draw_indirect_count :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: u64, count_buffer: Buffer, count_buffer_offset, max_count: u32) ---
-	@(link_name = "wgpuRenderPassEncoderMultiDrawIndexedIndirectCount")
-	render_pass_encoder_multi_draw_indexed_indirect_count :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: u64, count_buffer: Buffer, count_buffer_offset, max_count: u32) ---
-
-	@(link_name = "wgpuComputePassEncoderBeginPipelineStatisticsQuery")
-	compute_pass_encoder_begin_pipeline_statistics_query :: proc(compute_pass_encoder: Compute_Pass_Encoder, query_set: Query_Set, query_index: u32) ---
-	@(link_name = "wgpuComputePassEncoderEndPipelineStatisticsQuery")
-	compute_pass_encoder_end_pipeline_statistics_query :: proc(compute_pass_encoder: Compute_Pass_Encoder) ---
-	@(link_name = "wgpuRenderPassEncoderBeginPipelineStatisticsQuery")
-	render_pass_encoder_begin_pipeline_statistics_query :: proc(render_pass_encoder: Render_Pass_Encoder, query_set: Query_Set, query_index: u32) ---
-	@(link_name = "wgpuRenderPassEncoderEndPipelineStatisticsQuery")
-	render_pass_encoder_end_pipeline_statistics_query :: proc(render_pass_encoder: Render_Pass_Encoder) ---
-}
-
 ARRAY_LAYER_COUNT_UNDEFINED :: max(u32)
 COPY_STRIDE_UNDEFINED :: max(u32)
 DEPTH_SLICE_UNDEFINED :: max(u32)
@@ -1453,7 +1196,7 @@ Device_Lost_Callback :: #type proc "c" (
 
 Error_Callback :: #type proc "c" (type: Error_Type, message: cstring, user_data: rawptr)
 
-Proc :: #type proc(self: rawptr)
+Proc :: #type proc "c" ()
 
 Queue_Work_Done_Callback :: #type proc "c" (status: Queue_Work_Done_Status, user_data: rawptr)
 
@@ -1471,6 +1214,7 @@ Request_Device_Callback :: #type proc "c" (
 	user_data: rawptr,
 )
 
+@(default_calling_convention = "c")
 foreign wgpu_native {
 	@(link_name = "wgpuCreateInstance")
 	create_instance :: proc(descriptor: ^Instance_Descriptor) -> Instance ---
@@ -1478,7 +1222,6 @@ foreign wgpu_native {
 	get_proc_address :: proc(device: Device, proc_name: cstring) -> Proc ---
 
 	// Methods of Adapter
-
 
 	@(link_name = "wgpuAdapterEnumerateFeatures")
 	adapter_enumerate_features :: proc(adapter: Adapter, features: ^Feature_Name) -> uint ---
@@ -1497,7 +1240,6 @@ foreign wgpu_native {
 
 	// Methods of Bind_Group
 
-
 	@(link_name = "wgpuBindGroupSetLabel")
 	bind_group_set_label :: proc(bind_group: Bind_Group, label: cstring) ---
 	@(link_name = "wgpuBindGroupReference")
@@ -1505,9 +1247,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuBindGroupRelease")
 	bind_group_release :: proc(bind_group: Bind_Group) ---
 
-
-	// Methods of BindGroupLayout
-
+	// Methods of Bind_Group_Layout
 
 	@(link_name = "wgpuBindGroupLayoutSetLabel")
 	bind_group_layout_set_label :: proc(bind_group_layout: Bind_Group_Layout, label: cstring) ---
@@ -1517,7 +1257,6 @@ foreign wgpu_native {
 	bind_group_layout_release :: proc(bind_group_layout: Bind_Group_Layout) ---
 
 	// Methods of Buffer
-
 
 	@(link_name = "wgpuBufferDestroy")
 	buffer_destroy :: proc(buffer: Buffer) ---
@@ -1542,8 +1281,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuBufferRelease")
 	buffer_release :: proc(buffer: Buffer) ---
 
-	// Methods of CommandBuffer
-
+	// Methods of Command_Buffer
 
 	@(link_name = "wgpuCommandBufferSetLabel")
 	command_buffer_set_label :: proc(command_buffer: Command_Buffer, label: cstring) ---
@@ -1552,8 +1290,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuCommandBufferRelease")
 	command_buffer_release :: proc(command_buffer: Command_Buffer) ---
 
-	// Methods of CommandEncoder
-
+	// Methods of Command_Encoder
 
 	@(link_name = "wgpuCommandEncoderBeginComputePass")
 	command_encoder_begin_compute_pass :: proc(command_encoder: Command_Encoder, descriptor: ^Compute_Pass_Descriptor) -> Compute_Pass_Encoder ---
@@ -1588,8 +1325,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuCommandEncoderRelease")
 	command_encoder_release :: proc(command_encoder: Command_Encoder) ---
 
-	// Methods of ComputePassEncoder
-
+	// Methods of Compute_Pass_Encoder
 
 	@(link_name = "wgpuComputePassEncoderDispatchWorkgroups")
 	compute_pass_encoder_dispatch_workgroups :: proc(compute_pass_encoder: Compute_Pass_Encoder, workgroup_count_x, workgroup_count_y, workgroup_count_z: u32) ---
@@ -1614,8 +1350,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuComputePassEncoderRelease")
 	compute_pass_encoder_release :: proc(compute_pass_encoder: Compute_Pass_Encoder) ---
 
-	// Methods of ComputePipeline
-
+	// Methods of Compute_Pipeline
 
 	@(link_name = "wgpuComputePipelineGetBindGroupLayout")
 	compute_pipeline_get_bind_group_layout :: proc(compute_pipeline: Compute_Pipeline, groupIndex: u32) -> Bind_Group_Layout ---
@@ -1627,7 +1362,6 @@ foreign wgpu_native {
 	compute_pipeline_release :: proc(compute_pipeline: Compute_Pipeline) ---
 
 	// Methods of Device
-
 
 	@(link_name = "wgpuDeviceCreateBindGroup")
 	device_create_bind_group :: proc(device: Device, descriptor: ^Bind_Group_Descriptor) -> Bind_Group ---
@@ -1684,7 +1418,6 @@ foreign wgpu_native {
 
 	// Methods of Instance
 
-
 	@(link_name = "wgpuInstanceCreateSurface")
 	instance_create_surface :: proc(instance: Instance, descriptor: ^Surface_Descriptor) -> Surface ---
 	@(link_name = "wgpuInstanceProcessEvents")
@@ -1696,8 +1429,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuInstanceRelease")
 	instance_release :: proc(instance: Instance) ---
 
-	// Methods of PipelineLayout
-
+	// Methods of Pipeline_Layout
 
 	@(link_name = "wgpuPipelineLayoutSetLabel")
 	pipeline_layout_set_label :: proc(pipeline_layout: Pipeline_Layout, label: cstring) ---
@@ -1706,8 +1438,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuPipelineLayoutRelease")
 	pipeline_layout_release :: proc(pipeline_layout: Pipeline_Layout) ---
 
-	// Methods of QuerySet
-
+	// Methods of Query_Set
 
 	@(link_name = "wgpuQuerySetDestroy")
 	query_set_destroy :: proc(query_set: Query_Set) ---
@@ -1724,7 +1455,6 @@ foreign wgpu_native {
 
 	// Methods of Queue
 
-
 	@(link_name = "wgpuQueueOnSubmittedWorkDone")
 	queue_on_submitted_work_done :: proc(queue: Queue, callback: Queue_Work_Done_Callback, user_data: rawptr) ---
 	@(link_name = "wgpuQueueSetLabel")
@@ -1740,8 +1470,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuQueueRelease")
 	queue_release :: proc(queue: Queue) ---
 
-	// Methods of RenderBundle
-
+	// Methods of Render_Bundle
 
 	@(link_name = "wgpuRenderBundleSetLabel")
 	render_bundle_set_label :: proc(render_bundle: Render_Bundle, label: cstring) ---
@@ -1750,9 +1479,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuRenderBundleRelease")
 	render_bundle_release :: proc(render_bundle: Render_Bundle) ---
 
-
-	// Methods of RenderBundleEncoder
-
+	// Methods of Render_Bundle_Encoder
 
 	@(link_name = "wgpuRenderBundleEncoderDraw")
 	render_bundle_encoder_draw :: proc(render_bundle_encoder: Render_Bundle_Encoder, vertex_count, instance_count, first_vertex, first_instance: u32) ---
@@ -1785,8 +1512,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuRenderBundleEncoderRelease")
 	render_bundle_encoder_release :: proc(render_bundle_encoder: Render_Bundle_Encoder) ---
 
-	// Methods of RenderPassEncoder
-
+	// Methods of Render_Pass_Encoder
 
 	@(link_name = "wgpuRenderPassEncoderBeginOcclusionQuery")
 	render_pass_encoder_begin_occlusion_query :: proc(render_pass_encoder: Render_Pass_Encoder, query_index: u32) ---
@@ -1833,8 +1559,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuRenderPassEncoderRelease")
 	render_pass_encoder_release :: proc(render_pass_encoder: Render_Pass_Encoder) ---
 
-	// Methods of RenderPipeline
-
+	// Methods of Render_Pipeline
 
 	@(link_name = "wgpuRenderPipelineGetBindGroupLayout")
 	render_pipeline_get_bind_group_layout :: proc(render_pipeline: Render_Pipeline, group_index: u32) -> Bind_Group_Layout ---
@@ -1847,7 +1572,6 @@ foreign wgpu_native {
 
 	// Methods of Sampler
 
-
 	@(link_name = "wgpuSamplerSetLabel")
 	sampler_set_label :: proc(sampler: Sampler, label: cstring) ---
 	@(link_name = "wgpuSamplerReference")
@@ -1855,8 +1579,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuSamplerRelease")
 	sampler_release :: proc(sampler: Sampler) ---
 
-	// Methods of ShaderModule
-
+	// Methods of Shader_Module
 
 	@(link_name = "wgpuShaderModuleGetCompilationInfo")
 	shader_module_get_compilation_info :: proc(shader_module: Shader_Module, callback: Compilation_Info_Callback, user_data: rawptr) ---
@@ -1868,7 +1591,6 @@ foreign wgpu_native {
 	shader_module_release :: proc(shader_module: Shader_Module) ---
 
 	// Methods of Surface
-
 
 	@(link_name = "wgpuSurfaceConfigure")
 	surface_configure :: proc(surface: Surface, config: ^Surface_Configuration) ---
@@ -1887,14 +1609,12 @@ foreign wgpu_native {
 	@(link_name = "wgpuSurfaceRelease")
 	surface_release :: proc(surface: Surface) ---
 
-	// Methods of SurfaceCapabilities
-
+	// Methods of Surface_Capabilities
 
 	@(link_name = "wgpuSurfaceCapabilitiesFreeMembers")
 	surface_capabilities_free_members :: proc(capabilities: Surface_Capabilities) ---
 
 	// Methods of Texture
-
 
 	@(link_name = "wgpuTextureCreateView")
 	texture_create_view :: proc(texture: Texture, descriptor: ^Texture_View_Descriptor) -> Texture_View ---
@@ -1923,8 +1643,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuTextureRelease")
 	texture_release :: proc(texture: Texture) ---
 
-	// Methods of TextureView
-
+	// Methods of Texture_View
 
 	@(link_name = "wgpuTextureViewSetLabel")
 	texture_view_set_label :: proc(texture_view: Texture_View, label: cstring) ---
