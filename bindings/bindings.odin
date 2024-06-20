@@ -299,7 +299,7 @@ WHOLE_MAP_SIZE :: max(uint)
 WHOLE_SIZE :: max(u64)
 
 FLAGS :: u32
-ENUM_SIZE :: u32
+ENUM_SIZE :: i32
 
 Handle :: rawptr
 
