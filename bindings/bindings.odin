@@ -30,8 +30,6 @@ when ODIN_OS == .Windows {
 	foreign import wgpu_native "system:wgpu_native"
 }
 
-import "core:c"
-
 Native_SType :: enum ENUM_SIZE {
 	Device_Extras                  = 0x00030001,
 	Required_Limits_Extras         = 0x00030002,
@@ -129,8 +127,8 @@ Device_Extras :: struct {
 }
 
 Native_Limits :: struct {
-	max_push_constant_size:   c.uint32_t,
-	max_non_sampler_bindings: c.uint32_t,
+	max_push_constant_size:   u32,
+	max_non_sampler_bindings: u32,
 }
 
 Required_Limits_Extras :: struct {
@@ -145,17 +143,17 @@ Supported_Limits_Extras :: struct {
 
 Push_Constant_Range :: struct {
 	stages: Shader_Stage_Flags,
-	start:  c.uint32_t,
-	end:    c.uint32_t,
+	start:  u32,
+	end:    u32,
 }
 
 Pipeline_Layout_Extras :: struct {
 	chain:                     Chained_Struct,
-	push_constant_range_count: c.size_t,
+	push_constant_range_count: uint,
 	push_constant_ranges:      ^Push_Constant_Range,
 }
 
-Submission_Index :: c.uint64_t
+Submission_Index :: distinct u64
 
 Wrapped_Submission_Index :: struct {
 	queue:            Queue,
@@ -171,16 +169,16 @@ Shader_Module_Glsl_Descriptor :: struct {
 	chain:        Chained_Struct,
 	stage:        Shader_Stage,
 	code:         cstring,
-	define_count: c.uint32_t,
+	define_count: u32,
 	defines:      ^Shader_Define,
 }
 
 Registry_Report :: struct {
-	num_allocated:          c.size_t,
-	num_kept_from_user:     c.size_t,
-	num_released_from_user: c.size_t,
-	num_error:              c.size_t,
-	element_size:           c.size_t,
+	num_allocated:          uint,
+	num_kept_from_user:     uint,
+	num_released_from_user: uint,
+	num_error:              uint,
+	element_size:           uint,
 }
 
 Hub_Report :: struct {
@@ -219,22 +217,22 @@ Instance_Enumerate_Adapter_Options :: struct {
 Bind_Group_Entry_Extras :: struct {
 	chain:              Chained_Struct,
 	buffers:            ^Buffer,
-	buffer_count:       c.size_t,
+	buffer_count:       uint,
 	samplers:           ^Sampler,
-	sampler_count:      c.size_t,
+	sampler_count:      uint,
 	texture_views:      ^Texture_View,
-	texture_view_count: c.size_t,
+	texture_view_count: uint,
 }
 
 Bind_Group_Layout_Entry_Extras :: struct {
 	chain: Chained_Struct,
-	count: c.uint32_t,
+	count: u32,
 }
 
 Query_Set_Descriptor_Extras :: struct {
 	chain:                    Chained_Struct,
 	pipeline_statistics:      ^Pipeline_Statistic_Name,
-	pipeline_statistic_count: c.size_t,
+	pipeline_statistic_count: uint,
 }
 
 Surface_Configuration_Extras :: struct {
@@ -249,10 +247,10 @@ foreign wgpu_native {
 	generate_report :: proc(instance: Instance, report: ^Global_Report) ---
 
 	@(link_name = "wgpuInstanceEnumerateAdapters")
-	instance_enumerate_adapters :: proc(instance: Instance, options: ^Instance_Enumerate_Adapter_Options, adapters: [^]Adapter) -> c.size_t ---
+	instance_enumerate_adapters :: proc(instance: Instance, options: ^Instance_Enumerate_Adapter_Options, adapters: [^]Adapter) -> uint ---
 
 	@(link_name = "wgpuQueueSubmitForIndex")
-	queue_submit_for_index :: proc(queue: Queue, command_count: c.size_t, commands: ^Command_Buffer) -> Submission_Index ---
+	queue_submit_for_index :: proc(queue: Queue, command_count: uint, commands: ^Command_Buffer) -> Submission_Index ---
 
 	@(link_name = "wgpuDevicePoll")
 	device_poll :: proc(device: Device, wait: bool, wrapped_submission_index: ^Wrapped_Submission_Index) -> bool ---
@@ -264,27 +262,27 @@ foreign wgpu_native {
 	set_log_level :: proc(level: Log_Level) ---
 
 	@(link_name = "wgpuGetVersion")
-	get_version :: proc() -> c.uint32_t ---
+	get_version :: proc() -> u32 ---
 
 	@(link_name = "wgpuRenderPassEncoderSetPushConstants")
-	render_pass_encoder_set_push_constants :: proc(encoder: Render_Pass_Encoder, stages: Shader_Stage_Flags, offset: c.uint32_t, size_bytes: c.uint32_t, data: rawptr) ---
+	render_pass_encoder_set_push_constants :: proc(encoder: Render_Pass_Encoder, stages: Shader_Stage_Flags, offset: u32, size_bytes: u32, data: rawptr) ---
 
 	@(link_name = "wgpuRenderPassEncoderMultiDrawIndirect")
-	render_pass_encoder_multi_draw_indirect :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: c.uint64_t, count: c.uint32_t) ---
+	render_pass_encoder_multi_draw_indirect :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: u64, count: u32) ---
 	@(link_name = "wgpuRenderPassEncoderMultiDrawIndexedIndirect")
-	render_pass_encoder_multi_draw_indexed_indirect :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: c.uint64_t, count: c.uint32_t) ---
+	render_pass_encoder_multi_draw_indexed_indirect :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: u64, count: u32) ---
 
 	@(link_name = "wgpuRenderPassEncoderMultiDrawIndirectCount")
-	render_pass_encoder_multi_draw_indirect_count :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: c.uint64_t, count_buffer: Buffer, count_buffer_offset, max_count: c.uint32_t) ---
+	render_pass_encoder_multi_draw_indirect_count :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: u64, count_buffer: Buffer, count_buffer_offset, max_count: u32) ---
 	@(link_name = "wgpuRenderPassEncoderMultiDrawIndexedIndirectCount")
-	render_pass_encoder_multi_draw_indexed_indirect_count :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: c.uint64_t, count_buffer: Buffer, count_buffer_offset, max_count: c.uint32_t) ---
+	render_pass_encoder_multi_draw_indexed_indirect_count :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: u64, count_buffer: Buffer, count_buffer_offset, max_count: u32) ---
 
 	@(link_name = "wgpuComputePassEncoderBeginPipelineStatisticsQuery")
-	compute_pass_encoder_begin_pipeline_statistics_query :: proc(compute_pass_encoder: Compute_Pass_Encoder, query_set: Query_Set, query_index: c.uint32_t) ---
+	compute_pass_encoder_begin_pipeline_statistics_query :: proc(compute_pass_encoder: Compute_Pass_Encoder, query_set: Query_Set, query_index: u32) ---
 	@(link_name = "wgpuComputePassEncoderEndPipelineStatisticsQuery")
 	compute_pass_encoder_end_pipeline_statistics_query :: proc(compute_pass_encoder: Compute_Pass_Encoder) ---
 	@(link_name = "wgpuRenderPassEncoderBeginPipelineStatisticsQuery")
-	render_pass_encoder_begin_pipeline_statistics_query :: proc(render_pass_encoder: Render_Pass_Encoder, query_set: Query_Set, query_index: c.uint32_t) ---
+	render_pass_encoder_begin_pipeline_statistics_query :: proc(render_pass_encoder: Render_Pass_Encoder, query_set: Query_Set, query_index: u32) ---
 	@(link_name = "wgpuRenderPassEncoderEndPipelineStatisticsQuery")
 	render_pass_encoder_end_pipeline_statistics_query :: proc(render_pass_encoder: Render_Pass_Encoder) ---
 }
@@ -859,10 +857,10 @@ Chained_Struct_Out :: struct {
 
 Adapter_Properties :: struct {
 	next_in_chain:      ^Chained_Struct_Out,
-	vendor_id:          c.uint32_t,
+	vendor_id:          u32,
 	vendor_name:        cstring,
 	architecture:       cstring,
-	device_id:          c.uint32_t,
+	device_id:          u32,
 	name:               cstring,
 	driver_description: cstring,
 	adapter_type:       Adapter_Type,
@@ -871,10 +869,10 @@ Adapter_Properties :: struct {
 
 Bind_Group_Entry :: struct {
 	next_in_chain: ^Chained_Struct,
-	binding:       c.uint32_t,
+	binding:       u32,
 	buffer:        Buffer,
-	offset:        c.uint64_t,
-	size:          c.uint64_t,
+	offset:        u64,
+	size:          u64,
 	sampler:       Sampler,
 	texture_view:  Texture_View,
 }
@@ -889,22 +887,22 @@ Buffer_Binding_Layout :: struct {
 	next_in_chain:      ^Chained_Struct,
 	type:               Buffer_Binding_Type,
 	has_dynamic_offset: bool,
-	min_binding_size:   c.uint64_t,
+	min_binding_size:   u64,
 }
 
 Buffer_Descriptor :: struct {
 	next_in_chain:      ^Chained_Struct,
 	label:              cstring,
 	usage:              Buffer_Usage_Flags,
-	size:               c.uint64_t,
+	size:               u64,
 	mapped_at_creation: bool,
 }
 
 Color :: struct {
-	r: c.double,
-	g: c.double,
-	b: c.double,
-	a: c.double,
+	r: f64,
+	g: f64,
+	b: f64,
+	a: f64,
 }
 
 Command_Buffer_Descriptor :: struct {
@@ -921,31 +919,31 @@ Compilation_Message :: struct {
 	next_in_chain:  ^Chained_Struct,
 	message:        cstring,
 	type:           Compilation_Message_Type,
-	line_num:       c.uint64_t,
-	line_pos:       c.uint64_t,
-	offset:         c.uint64_t,
-	length:         c.uint64_t,
-	utf16_line_pos: c.uint64_t,
-	utf16_offset:   c.uint64_t,
-	utf16_length:   c.uint64_t,
+	line_num:       u64,
+	line_pos:       u64,
+	offset:         u64,
+	length:         u64,
+	utf16_line_pos: u64,
+	utf16_offset:   u64,
+	utf16_length:   u64,
 }
 
 Compute_Pass_Timestamp_Writes :: struct {
 	query_set:                     Query_Set,
-	beginning_of_pass_write_index: c.uint32_t,
-	end_of_pass_write_index:       c.uint32_t,
+	beginning_of_pass_write_index: u32,
+	end_of_pass_write_index:       u32,
 }
 
 Constant_Entry :: struct {
 	next_in_chain: ^Chained_Struct,
 	key:           cstring,
-	value:         c.double,
+	value:         f64,
 }
 
 Extent_3D :: struct {
-	width:                 c.uint32_t,
-	height:                c.uint32_t,
-	depth_or_array_layers: c.uint32_t,
+	width:                 u32,
+	height:                u32,
+	depth_or_array_layers: u32,
 }
 
 Instance_Descriptor :: struct {
@@ -953,57 +951,57 @@ Instance_Descriptor :: struct {
 }
 
 Limits :: struct {
-	max_texture_dimension_1d:                        c.uint32_t,
-	max_texture_dimension_2d:                        c.uint32_t,
-	max_texture_dimension_3d:                        c.uint32_t,
-	max_texture_array_layers:                        c.uint32_t,
-	max_bind_groups:                                 c.uint32_t,
-	max_bind_groups_plus_vertex_buffers:             c.uint32_t,
-	max_bindings_per_bind_group:                     c.uint32_t,
-	max_dynamic_uniform_buffers_per_pipeline_layout: c.uint32_t,
-	max_dynamic_storage_buffers_per_pipeline_layout: c.uint32_t,
-	max_sampled_textures_per_shader_stage:           c.uint32_t,
-	max_samplers_per_shader_stage:                   c.uint32_t,
-	max_storage_buffers_per_shader_stage:            c.uint32_t,
-	max_storage_textures_per_shader_stage:           c.uint32_t,
-	max_uniform_buffers_per_shader_stage:            c.uint32_t,
-	max_uniform_buffer_binding_size:                 c.uint64_t,
-	max_storage_buffer_binding_size:                 c.uint64_t,
-	min_uniform_buffer_offset_alignment:             c.uint32_t,
-	min_storage_buffer_offset_alignment:             c.uint32_t,
-	max_vertex_buffers:                              c.uint32_t,
-	max_buffer_size:                                 c.uint64_t,
-	max_vertex_attributes:                           c.uint32_t,
-	max_vertex_buffer_array_stride:                  c.uint32_t,
-	max_inter_stage_shader_components:               c.uint32_t,
-	max_inter_stage_shader_variables:                c.uint32_t,
-	max_color_attachments:                           c.uint32_t,
-	max_color_attachment_bytes_per_sample:           c.uint32_t,
-	max_compute_workgroup_storage_size:              c.uint32_t,
-	max_compute_invocations_per_workgroup:           c.uint32_t,
-	max_compute_workgroup_size_x:                    c.uint32_t,
-	max_compute_workgroup_size_y:                    c.uint32_t,
-	max_compute_workgroup_size_z:                    c.uint32_t,
-	max_compute_workgroups_per_dimension:            c.uint32_t,
+	max_texture_dimension_1d:                        u32,
+	max_texture_dimension_2d:                        u32,
+	max_texture_dimension_3d:                        u32,
+	max_texture_array_layers:                        u32,
+	max_bind_groups:                                 u32,
+	max_bind_groups_plus_vertex_buffers:             u32,
+	max_bindings_per_bind_group:                     u32,
+	max_dynamic_uniform_buffers_per_pipeline_layout: u32,
+	max_dynamic_storage_buffers_per_pipeline_layout: u32,
+	max_sampled_textures_per_shader_stage:           u32,
+	max_samplers_per_shader_stage:                   u32,
+	max_storage_buffers_per_shader_stage:            u32,
+	max_storage_textures_per_shader_stage:           u32,
+	max_uniform_buffers_per_shader_stage:            u32,
+	max_uniform_buffer_binding_size:                 u64,
+	max_storage_buffer_binding_size:                 u64,
+	min_uniform_buffer_offset_alignment:             u32,
+	min_storage_buffer_offset_alignment:             u32,
+	max_vertex_buffers:                              u32,
+	max_buffer_size:                                 u64,
+	max_vertex_attributes:                           u32,
+	max_vertex_buffer_array_stride:                  u32,
+	max_inter_stage_shader_components:               u32,
+	max_inter_stage_shader_variables:                u32,
+	max_color_attachments:                           u32,
+	max_color_attachment_bytes_per_sample:           u32,
+	max_compute_workgroup_storage_size:              u32,
+	max_compute_invocations_per_workgroup:           u32,
+	max_compute_workgroup_size_x:                    u32,
+	max_compute_workgroup_size_y:                    u32,
+	max_compute_workgroup_size_z:                    u32,
+	max_compute_workgroups_per_dimension:            u32,
 }
 
 Multisample_State :: struct {
 	next_in_chain:             ^Chained_Struct,
-	count:                     c.uint32_t,
-	mask:                      c.uint32_t,
+	count:                     u32,
+	mask:                      u32,
 	alpha_to_coverage_enabled: bool,
 }
 
 Origin_3D :: struct {
-	x: c.uint32_t,
-	y: c.uint32_t,
-	z: c.uint32_t,
+	x: u32,
+	y: u32,
+	z: u32,
 }
 
 Pipeline_Layout_Descriptor :: struct {
 	next_in_chain:           ^Chained_Struct,
 	label:                   cstring,
-	bind_group_layout_count: c.size_t,
+	bind_group_layout_count: uint,
 	bind_group_layouts:      ^Bind_Group_Layout,
 }
 
@@ -1024,7 +1022,7 @@ Query_Set_Descriptor :: struct {
 	next_in_chain: ^Chained_Struct,
 	label:         cstring,
 	type:          Query_Type,
-	count:         c.uint32_t,
+	count:         u32,
 }
 
 Queue_Descriptor :: struct {
@@ -1040,10 +1038,10 @@ Render_Bundle_Descriptor :: struct {
 Render_Bundle_Encoder_Descriptor :: struct {
 	next_in_chain:        ^Chained_Struct,
 	label:                cstring,
-	color_format_count:   c.size_t,
+	color_format_count:   uint,
 	color_formats:        ^Texture_Format,
 	depth_stencil_format: Texture_Format,
-	sample_count:         c.uint32_t,
+	sample_count:         u32,
 	depth_read_only:      bool,
 	stencil_read_only:    bool,
 }
@@ -1052,23 +1050,23 @@ Render_Pass_Depth_Stencil_Attachment :: struct {
 	view:                Texture_View,
 	depth_load_op:       Load_Op,
 	depth_store_op:      Store_Op,
-	depth_clear_value:   c.float,
+	depth_clear_value:   f32,
 	depth_read_only:     bool,
 	stencil_load_op:     Load_Op,
 	stencil_store_op:    Store_Op,
-	stencil_clear_value: c.uint32_t,
+	stencil_clear_value: u32,
 	stencil_read_only:   bool,
 }
 
 Render_Pass_Descriptor_Max_Draw_Count :: struct {
 	chain:          Chained_Struct,
-	max_draw_count: c.uint64_t,
+	max_draw_count: u64,
 }
 
 Render_Pass_Timestamp_Writes :: struct {
 	query_set:                     Query_Set,
-	beginning_of_pass_write_index: c.uint32_t,
-	end_of_pass_write_index:       c.uint32_t,
+	beginning_of_pass_write_index: u32,
+	end_of_pass_write_index:       u32,
 }
 
 Request_Adapter_Options :: struct {
@@ -1093,10 +1091,10 @@ Sampler_Descriptor :: struct {
 	mag_filter:     Filter_Mode,
 	min_filter:     Filter_Mode,
 	mipmap_filter:  Mipmap_Filter_Mode,
-	lod_min_clamp:  c.float,
-	lod_max_clamp:  c.float,
+	lod_min_clamp:  f32,
+	lod_max_clamp:  f32,
 	compare:        Compare_Function,
-	max_anisotropy: c.uint16_t,
+	max_anisotropy: u16,
 }
 
 Shader_Module_Compilation_Hint :: struct {
@@ -1107,8 +1105,8 @@ Shader_Module_Compilation_Hint :: struct {
 
 Shader_Module_SPIRV_Descriptor :: struct {
 	chain:     Chained_Struct,
-	code_size: c.uint32_t,
-	code:      ^c.uint32_t,
+	code_size: u32,
+	code:      ^u32,
 }
 
 Shader_Module_WGSL_Descriptor :: struct {
@@ -1132,11 +1130,11 @@ Storage_Texture_Binding_Layout :: struct {
 
 Surface_Capabilities :: struct {
 	next_in_chain:      ^Chained_Struct_Out,
-	format_count:       c.size_t,
+	format_count:       uint,
 	formats:            ^Texture_Format,
-	present_mode_count: c.size_t,
+	present_mode_count: uint,
 	present_modes:      ^Present_Mode,
-	alpha_mode_count:   c.size_t,
+	alpha_mode_count:   uint,
 	alpha_modes:        ^Composite_Alpha_Mode,
 }
 
@@ -1145,11 +1143,11 @@ Surface_Configuration :: struct {
 	device:            Device,
 	format:            Texture_Format,
 	usage:             Texture_Usage_Flags,
-	view_format_count: c.size_t,
+	view_format_count: uint,
 	view_formats:      ^Texture_Format,
 	alpha_mode:        Composite_Alpha_Mode,
-	width:             c.uint32_t,
-	height:            c.uint32_t,
+	width:             u32,
+	height:            u32,
 	present_mode:      Present_Mode,
 }
 
@@ -1188,13 +1186,13 @@ Surface_Descriptor_From_Windows_HWND :: struct {
 Surface_Descriptor_From_Xcb_Window :: struct {
 	chain:      Chained_Struct,
 	connection: rawptr,
-	window:     c.uint32_t,
+	window:     u32,
 }
 
 Surface_Descriptor_From_Xlib_Window :: struct {
 	chain:   Chained_Struct,
 	display: rawptr,
-	window:  c.uint64_t,
+	window:  u64,
 }
 
 Surface_Texture :: struct {
@@ -1212,9 +1210,9 @@ Texture_Binding_Layout :: struct {
 
 Texture_Data_Layout :: struct {
 	next_in_chain:  ^Chained_Struct,
-	offset:         c.uint64_t,
-	bytes_per_row:  c.uint32_t,
-	rows_per_image: c.uint32_t,
+	offset:         u64,
+	bytes_per_row:  u32,
+	rows_per_image: u32,
 }
 
 Texture_View_Descriptor :: struct {
@@ -1222,30 +1220,30 @@ Texture_View_Descriptor :: struct {
 	label:             cstring,
 	format:            Texture_Format,
 	dimension:         Texture_View_Dimension,
-	base_mip_level:    c.uint32_t,
-	mip_level_count:   c.uint32_t,
-	base_array_layer:  c.uint32_t,
-	array_layer_count: c.uint32_t,
+	base_mip_level:    u32,
+	mip_level_count:   u32,
+	base_array_layer:  u32,
+	array_layer_count: u32,
 	aspect:            Texture_Aspect,
 }
 
 Vertex_Attribute :: struct {
 	format:          Vertex_Format,
-	offset:          c.uint64_t,
-	shader_location: c.uint32_t,
+	offset:          u64,
+	shader_location: u32,
 }
 
 Bind_Group_Descriptor :: struct {
 	next_in_chain: ^Chained_Struct,
 	label:         cstring,
 	layout:        Bind_Group_Layout,
-	entry_count:   c.size_t,
+	entry_count:   uint,
 	entries:       ^Bind_Group_Entry,
 }
 
 Bind_Group_Layout_Entry :: struct {
 	next_in_chain:   ^Chained_Struct,
-	binding:         c.uint32_t,
+	binding:         u32,
 	visibility:      Shader_Stage_Flags,
 	buffer:          Buffer_Binding_Layout,
 	sampler:         Sampler_Binding_Layout,
@@ -1260,7 +1258,7 @@ Blend_State :: struct {
 
 Compilation_Info :: struct {
 	next_in_chain: ^Chained_Struct,
-	message_count: c.size_t,
+	message_count: uint,
 	messages:      ^Compilation_Message,
 }
 
@@ -1277,11 +1275,11 @@ Depth_Stencil_State :: struct {
 	depth_compare:          Compare_Function,
 	stencil_front:          Stencil_Face_State,
 	stencil_back:           Stencil_Face_State,
-	stencil_read_mask:      c.uint32_t,
-	stencil_write_mask:     c.uint32_t,
-	depth_bias:             c.int32_t,
-	depth_bias_slope_scale: c.float,
-	depth_bias_clamp:       c.float,
+	stencil_read_mask:      u32,
+	stencil_write_mask:     u32,
+	depth_bias:             i32,
+	depth_bias_slope_scale: f32,
+	depth_bias_clamp:       f32,
 }
 
 Image_Copy_Buffer :: struct {
@@ -1293,7 +1291,7 @@ Image_Copy_Buffer :: struct {
 Image_Copy_Texture :: struct {
 	next_in_chain: ^Chained_Struct,
 	texture:       Texture,
-	mip_level:     c.uint32_t,
+	mip_level:     u32,
 	origin:        Origin_3D,
 	aspect:        Texture_Aspect,
 }
@@ -1302,7 +1300,7 @@ Programmable_Stage_Descriptor :: struct {
 	next_in_chain:  ^Chained_Struct,
 	module:         Shader_Module,
 	entry_point:    cstring,
-	constant_count: c.size_t,
+	constant_count: uint,
 	constants:      ^Constant_Entry,
 }
 
@@ -1323,7 +1321,7 @@ Required_Limits :: struct {
 Shader_Module_Descriptor :: struct {
 	next_in_chain: ^Chained_Struct,
 	label:         cstring,
-	hint_count:    c.size_t,
+	hint_count:    uint,
 	hints:         ^Shader_Module_Compilation_Hint,
 }
 
@@ -1339,23 +1337,23 @@ Texture_Descriptor :: struct {
 	dimension:         Texture_Dimension,
 	size:              Extent_3D,
 	format:            Texture_Format,
-	mip_level_count:   c.uint32_t,
-	sample_count:      c.uint32_t,
-	view_format_count: c.size_t,
+	mip_level_count:   u32,
+	sample_count:      u32,
+	view_format_count: uint,
 	view_formats:      ^Texture_Format,
 }
 
 Vertex_Buffer_Layout :: struct {
-	array_stride:    c.uint64_t,
+	array_stride:    u64,
 	step_mode:       Vertex_Step_Mode,
-	attribute_count: c.size_t,
+	attribute_count: uint,
 	attributes:      ^Vertex_Attribute,
 }
 
 Bind_Group_Layout_Descriptor :: struct {
 	next_in_chain: ^Chained_Struct,
 	label:         cstring,
-	entry_count:   c.size_t,
+	entry_count:   uint,
 	entries:       ^Bind_Group_Layout_Entry,
 }
 
@@ -1376,7 +1374,7 @@ Compute_Pipeline_Descriptor :: struct {
 Device_Descriptor :: struct {
 	next_in_chain:          ^Chained_Struct,
 	label:                  cstring,
-	required_feature_count: c.size_t,
+	required_feature_count: uint,
 	required_features:      [^]Feature_Name,
 	required_limits:        ^Required_Limits,
 	default_queue:          Queue_Descriptor,
@@ -1387,7 +1385,7 @@ Device_Descriptor :: struct {
 Render_Pass_Descriptor :: struct {
 	next_in_chain:            ^Chained_Struct,
 	label:                    cstring,
-	color_attachment_count:   c.size_t,
+	color_attachment_count:   uint,
 	color_attachments:        ^Render_Pass_Color_Attachment,
 	depth_stencil_attachment: ^Render_Pass_Depth_Stencil_Attachment,
 	occlusion_query_set:      Query_Set,
@@ -1398,9 +1396,9 @@ Vertex_State :: struct {
 	next_in_chain:  ^Chained_Struct,
 	module:         Shader_Module,
 	entry_point:    cstring,
-	constant_count: c.size_t,
+	constant_count: uint,
 	constants:      ^Constant_Entry,
-	buffer_count:   c.size_t,
+	buffer_count:   uint,
 	buffers:        ^Vertex_Buffer_Layout,
 }
 
@@ -1408,9 +1406,9 @@ Fragment_State :: struct {
 	next_in_chain:  ^Chained_Struct,
 	module:         Shader_Module,
 	entry_point:    cstring,
-	constant_count: c.size_t,
+	constant_count: uint,
 	constants:      ^Constant_Entry,
-	target_count:   c.size_t,
+	target_count:   uint,
 	targets:        ^Color_Target_State,
 }
 
@@ -1483,13 +1481,13 @@ foreign wgpu_native {
 
 
 	@(link_name = "wgpuAdapterEnumerateFeatures")
-	adapter_enumerate_features :: proc(adapter: Adapter, features: ^Feature_Name) -> c.size_t ---
+	adapter_enumerate_features :: proc(adapter: Adapter, features: ^Feature_Name) -> uint ---
 	@(link_name = "wgpuAdapterGetLimits")
-	adapter_get_limits :: proc(adapter: Adapter, limits: ^Supported_Limits) -> c.bool ---
+	adapter_get_limits :: proc(adapter: Adapter, limits: ^Supported_Limits) -> b32 ---
 	@(link_name = "wgpuAdapterGetProperties")
 	adapter_get_properties :: proc(adapter: Adapter, properties: ^Adapter_Properties) ---
 	@(link_name = "wgpuAdapterHasFeature")
-	adapter_has_feature :: proc(adapter: Adapter, feature: Feature_Name) -> c.bool ---
+	adapter_has_feature :: proc(adapter: Adapter, feature: Feature_Name) -> b32 ---
 	@(link_name = "wgpuAdapterRequestDevice")
 	adapter_request_device :: proc(adapter: Adapter, descriptor: ^Device_Descriptor, callback: Request_Device_Callback, user_data: rawptr) ---
 	@(link_name = "wgpuAdapterReference")
@@ -1524,17 +1522,17 @@ foreign wgpu_native {
 	@(link_name = "wgpuBufferDestroy")
 	buffer_destroy :: proc(buffer: Buffer) ---
 	@(link_name = "wgpuBufferGetConstMappedRange")
-	buffer_get_const_mapped_range :: proc(buffer: Buffer, offset, size: c.size_t) -> rawptr ---
+	buffer_get_const_mapped_range :: proc(buffer: Buffer, offset, size: uint) -> rawptr ---
 	@(link_name = "wgpuBufferGetMapState")
 	buffer_get_map_state :: proc(buffer: Buffer) -> Buffer_Map_State ---
 	@(link_name = "wgpuBufferGetMappedRange")
-	buffer_get_mapped_range :: proc(buffer: Buffer, offset, size: c.size_t) -> rawptr ---
+	buffer_get_mapped_range :: proc(buffer: Buffer, offset, size: uint) -> rawptr ---
 	@(link_name = "wgpuBufferGetSize")
-	buffer_get_size :: proc(buffer: Buffer) -> c.uint64_t ---
+	buffer_get_size :: proc(buffer: Buffer) -> u64 ---
 	@(link_name = "wgpuBufferGetUsage")
 	buffer_get_usage :: proc(buffer: Buffer) -> Buffer_Usage ---
 	@(link_name = "wgpuBufferMapAsync")
-	buffer_map_async :: proc(buffer: Buffer, mode: Map_Mode_Flags, offset, size: c.size_t, callback: Buffer_Map_Callback, user_data: rawptr) ---
+	buffer_map_async :: proc(buffer: Buffer, mode: Map_Mode_Flags, offset, size: uint, callback: Buffer_Map_Callback, user_data: rawptr) ---
 	@(link_name = "wgpuBufferSetLabel")
 	buffer_set_label :: proc(buffer: Buffer, label: cstring) ---
 	@(link_name = "wgpuBufferUnmap")
@@ -1562,9 +1560,9 @@ foreign wgpu_native {
 	@(link_name = "wgpuCommandEncoderBeginRenderPass")
 	command_encoder_begin_render_pass :: proc(command_encoder: Command_Encoder, descriptor: ^Render_Pass_Descriptor) -> Render_Pass_Encoder ---
 	@(link_name = "wgpuCommandEncoderClearBuffer")
-	command_encoder_clear_buffer :: proc(command_encoder: Command_Encoder, buffer: Buffer, offset, size: c.uint64_t) ---
+	command_encoder_clear_buffer :: proc(command_encoder: Command_Encoder, buffer: Buffer, offset, size: u64) ---
 	@(link_name = "wgpuCommandEncoderCopyBufferToBuffer")
-	command_encoder_copy_buffer_to_buffer :: proc(command_encoder: Command_Encoder, source: Buffer, sourceOffset: c.uint64_t, destination: Buffer, destinationOffset: c.uint64_t, size: c.uint64_t) ---
+	command_encoder_copy_buffer_to_buffer :: proc(command_encoder: Command_Encoder, source: Buffer, sourceOffset: u64, destination: Buffer, destinationOffset: u64, size: u64) ---
 	@(link_name = "wgpuCommandEncoderCopyBufferToTexture")
 	command_encoder_copy_buffer_to_texture :: proc(command_encoder: Command_Encoder, source: ^Image_Copy_Buffer, destination: ^Image_Copy_Texture, copy_size: ^Extent_3D) ---
 	@(link_name = "wgpuCommandEncoderCopyTextureToBuffer")
@@ -1580,11 +1578,11 @@ foreign wgpu_native {
 	@(link_name = "wgpuCommandEncoderPushDebugGroup")
 	command_encoder_push_debug_group :: proc(command_encoder: Command_Encoder, group_label: cstring) ---
 	@(link_name = "wgpuCommandEncoderResolveQuerySet")
-	command_encoder_resolve_query_set :: proc(command_encoder: Command_Encoder, query_set: Query_Set, first_query: c.uint32_t, query_count: c.uint32_t, destination: Buffer, destination_offset: c.uint64_t) ---
+	command_encoder_resolve_query_set :: proc(command_encoder: Command_Encoder, query_set: Query_Set, first_query: u32, query_count: u32, destination: Buffer, destination_offset: u64) ---
 	@(link_name = "wgpuCommandEncoderSetLabel")
 	command_encoder_set_label :: proc(command_encoder: Command_Encoder, label: cstring) ---
 	@(link_name = "wgpuCommandEncoderWriteTimestamp")
-	command_encoder_write_timestamp :: proc(command_encoder: Command_Encoder, query_set: Query_Set, query_index: c.uint32_t) ---
+	command_encoder_write_timestamp :: proc(command_encoder: Command_Encoder, query_set: Query_Set, query_index: u32) ---
 	@(link_name = "wgpuCommandEncoderReference")
 	command_encoder_reference :: proc(command_encoder: Command_Encoder) ---
 	@(link_name = "wgpuCommandEncoderRelease")
@@ -1594,9 +1592,9 @@ foreign wgpu_native {
 
 
 	@(link_name = "wgpuComputePassEncoderDispatchWorkgroups")
-	compute_pass_encoder_dispatch_workgroups :: proc(compute_pass_encoder: Compute_Pass_Encoder, workgroup_count_x, workgroup_count_y, workgroup_count_z: c.uint32_t) ---
+	compute_pass_encoder_dispatch_workgroups :: proc(compute_pass_encoder: Compute_Pass_Encoder, workgroup_count_x, workgroup_count_y, workgroup_count_z: u32) ---
 	@(link_name = "wgpuComputePassEncoderDispatchWorkgroupsIndirect")
-	compute_pass_encoder_dispatch_workgroups_indirect :: proc(compute_pass_encoder: Compute_Pass_Encoder, indirect_buffer: Buffer, indirect_offset: c.uint64_t) ---
+	compute_pass_encoder_dispatch_workgroups_indirect :: proc(compute_pass_encoder: Compute_Pass_Encoder, indirect_buffer: Buffer, indirect_offset: u64) ---
 	@(link_name = "wgpuComputePassEncoderEnd")
 	compute_pass_encoder_end :: proc(compute_pass_encoder: Compute_Pass_Encoder) ---
 	@(link_name = "wgpuComputePassEncoderInsertDebugMarker")
@@ -1606,7 +1604,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuComputePassEncoderPushDebugGroup")
 	compute_pass_encoder_push_debug_group :: proc(compute_pass_encoder: Compute_Pass_Encoder, group_label: cstring) ---
 	@(link_name = "wgpuComputePassEncoderSetBindGroup")
-	compute_pass_encoder_set_bind_group :: proc(compute_pass_encoder: Compute_Pass_Encoder, group_index: c.uint32_t, group: Bind_Group, dynamic_offset_count: c.size_t, dynamic_offsets: ^c.uint32_t) ---
+	compute_pass_encoder_set_bind_group :: proc(compute_pass_encoder: Compute_Pass_Encoder, group_index: u32, group: Bind_Group, dynamic_offset_count: uint, dynamic_offsets: ^u32) ---
 	@(link_name = "wgpuComputePassEncoderSetLabel")
 	compute_pass_encoder_set_label :: proc(compute_pass_encoder: Compute_Pass_Encoder, label: cstring) ---
 	@(link_name = "wgpuComputePassEncoderSetPipeline")
@@ -1620,7 +1618,7 @@ foreign wgpu_native {
 
 
 	@(link_name = "wgpuComputePipelineGetBindGroupLayout")
-	compute_pipeline_get_bind_group_layout :: proc(compute_pipeline: Compute_Pipeline, groupIndex: c.uint32_t) -> Bind_Group_Layout ---
+	compute_pipeline_get_bind_group_layout :: proc(compute_pipeline: Compute_Pipeline, groupIndex: u32) -> Bind_Group_Layout ---
 	@(link_name = "wgpuComputePipelineSetLabel")
 	compute_pipeline_set_label :: proc(compute_pipeline: Compute_Pipeline, label: cstring) ---
 	@(link_name = "wgpuComputePipelineReference")
@@ -1662,15 +1660,15 @@ foreign wgpu_native {
 	@(link_name = "wgpuDeviceDestroy")
 	device_destroy :: proc(device: Device) ---
 	@(link_name = "wgpuDeviceEnumerateFeatures")
-	device_enumerate_features :: proc(device: Device, features: ^Feature_Name) -> c.size_t ---
+	device_enumerate_features :: proc(device: Device, features: ^Feature_Name) -> uint ---
 	@(link_name = "wgpuDeviceGetLimits")
-	device_get_limits :: proc(device: Device, limits: ^Supported_Limits) -> c.bool ---
+	device_get_limits :: proc(device: Device, limits: ^Supported_Limits) -> b32 ---
 	@(link_name = "wgpuDeviceGetQueue")
 	device_get_queue :: proc(device: Device) -> Queue ---
 	@(link_name = "wgpuDeviceHasFeature")
-	device_has_feature :: proc(device: Device, feature: Feature_Name) -> c.bool ---
+	device_has_feature :: proc(device: Device, feature: Feature_Name) -> b32 ---
 	@(link_name = "wgpuDevicePopErrorScope")
-	device_pop_error_scope :: proc(device: Device, callback: Error_Callback, user_data: rawptr) -> c.bool ---
+	device_pop_error_scope :: proc(device: Device, callback: Error_Callback, user_data: rawptr) -> b32 ---
 	@(link_name = "wgpuDevicePushErrorScope")
 	device_push_error_scope :: proc(device: Device, filter: Error_Filter) ---
 	@(link_name = "wgpuDeviceSetDeviceLostCallback")
@@ -1714,7 +1712,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuQuerySetDestroy")
 	query_set_destroy :: proc(query_set: Query_Set) ---
 	@(link_name = "wgpuQuerySetGetCount")
-	query_set_get_count :: proc(query_set: Query_Set) -> c.uint32_t ---
+	query_set_get_count :: proc(query_set: Query_Set) -> u32 ---
 	@(link_name = "wgpuQuerySetGetType")
 	query_set_get_type :: proc(query_set: Query_Set) -> Query_Type ---
 	@(link_name = "wgpuQuerySetSetLabel")
@@ -1732,11 +1730,11 @@ foreign wgpu_native {
 	@(link_name = "wgpuQueueSetLabel")
 	queue_set_label :: proc(queue: Queue, label: cstring) ---
 	@(link_name = "wgpuQueueSubmit")
-	queue_submit :: proc(queue: Queue, commandCount: c.size_t, commands: ^Command_Buffer) ---
+	queue_submit :: proc(queue: Queue, commandCount: uint, commands: ^Command_Buffer) ---
 	@(link_name = "wgpuQueueWriteBuffer")
-	queue_write_buffer :: proc(queue: Queue, buffer: Buffer, bufferOffset: c.uint64_t, data: rawptr, size: c.size_t) ---
+	queue_write_buffer :: proc(queue: Queue, buffer: Buffer, bufferOffset: u64, data: rawptr, size: uint) ---
 	@(link_name = "wgpuQueueWriteTexture")
-	queue_write_texture :: proc(queue: Queue, destination: ^Image_Copy_Texture, data: rawptr, data_size: c.size_t, data_layout: ^Texture_Data_Layout, write_size: ^Extent_3D) ---
+	queue_write_texture :: proc(queue: Queue, destination: ^Image_Copy_Texture, data: rawptr, data_size: uint, data_layout: ^Texture_Data_Layout, write_size: ^Extent_3D) ---
 	@(link_name = "wgpuQueueReference")
 	queue_reference :: proc(queue: Queue) ---
 	@(link_name = "wgpuQueueRelease")
@@ -1757,13 +1755,13 @@ foreign wgpu_native {
 
 
 	@(link_name = "wgpuRenderBundleEncoderDraw")
-	render_bundle_encoder_draw :: proc(render_bundle_encoder: Render_Bundle_Encoder, vertex_count, instance_count, first_vertex, first_instance: c.uint32_t) ---
+	render_bundle_encoder_draw :: proc(render_bundle_encoder: Render_Bundle_Encoder, vertex_count, instance_count, first_vertex, first_instance: u32) ---
 	@(link_name = "wgpuRenderBundleEncoderDrawIndexed")
-	render_bundle_encoder_draw_indexed :: proc(render_bundle_encoder: Render_Bundle_Encoder, index_count, instance_count, first_index: c.uint32_t, base_vertex: c.int32_t, first_instance: c.uint32_t) ---
+	render_bundle_encoder_draw_indexed :: proc(render_bundle_encoder: Render_Bundle_Encoder, index_count, instance_count, first_index: u32, base_vertex: i32, first_instance: u32) ---
 	@(link_name = "wgpuRenderBundleEncoderDrawIndexedIndirect")
-	render_bundle_encoder_draw_indexed_indirect :: proc(render_bundle_encoder: Render_Bundle_Encoder, indirect_buffer: Buffer, indirect_offset: c.uint64_t) ---
+	render_bundle_encoder_draw_indexed_indirect :: proc(render_bundle_encoder: Render_Bundle_Encoder, indirect_buffer: Buffer, indirect_offset: u64) ---
 	@(link_name = "wgpuRenderBundleEncoderDrawIndirect")
-	render_bundle_encoder_draw_indirect :: proc(render_bundle_encoder: Render_Bundle_Encoder, indirect_buffer: Buffer, indirect_offset: c.uint64_t) ---
+	render_bundle_encoder_draw_indirect :: proc(render_bundle_encoder: Render_Bundle_Encoder, indirect_buffer: Buffer, indirect_offset: u64) ---
 	@(link_name = "wgpuRenderBundleEncoderFinish")
 	render_bundle_encoder_finish :: proc(render_bundle_encoder: Render_Bundle_Encoder, descriptor: ^Render_Bundle_Descriptor) -> Render_Bundle ---
 	@(link_name = "wgpuRenderBundleEncoderInsertDebugMarker")
@@ -1773,15 +1771,15 @@ foreign wgpu_native {
 	@(link_name = "wgpuRenderBundleEncoderPushDebugGroup")
 	render_bundle_encoder_push_debug_group :: proc(render_bundle_encoder: Render_Bundle_Encoder, group_label: cstring) ---
 	@(link_name = "wgpuRenderBundleEncoderSetBindGroup")
-	render_bundle_encoder_set_bind_group :: proc(render_bundle_encoder: Render_Bundle_Encoder, group_index: c.uint32_t, group: Bind_Group, dynamic_offset_count: c.size_t, dynamic_offsets: ^c.uint32_t) ---
+	render_bundle_encoder_set_bind_group :: proc(render_bundle_encoder: Render_Bundle_Encoder, group_index: u32, group: Bind_Group, dynamic_offset_count: uint, dynamic_offsets: ^u32) ---
 	@(link_name = "wgpuRenderBundleEncoderSetIndexBuffer")
-	render_bundle_encoder_set_index_buffer :: proc(render_bundle_encoder: Render_Bundle_Encoder, buffer: Buffer, format: Index_Format, offset: c.uint64_t, size: c.uint64_t) ---
+	render_bundle_encoder_set_index_buffer :: proc(render_bundle_encoder: Render_Bundle_Encoder, buffer: Buffer, format: Index_Format, offset: u64, size: u64) ---
 	@(link_name = "wgpuRenderBundleEncoderSetLabel")
 	render_bundle_encoder_set_label :: proc(render_bundle_encoder: Render_Bundle_Encoder, label: cstring) ---
 	@(link_name = "wgpuRenderBundleEncoderSetPipeline")
 	render_bundle_encoder_set_pipeline :: proc(render_bundle_encoder: Render_Bundle_Encoder, pipeline: Render_Pipeline) ---
 	@(link_name = "wgpuRenderBundleEncoderSetVertexBuffer")
-	render_bundle_encoder_set_vertex_buffer :: proc(render_bundle_encoder: Render_Bundle_Encoder, slot: c.uint32_t, buffer: Buffer, offset, size: c.uint64_t) ---
+	render_bundle_encoder_set_vertex_buffer :: proc(render_bundle_encoder: Render_Bundle_Encoder, slot: u32, buffer: Buffer, offset, size: u64) ---
 	@(link_name = "wgpuRenderBundleEncoderReference")
 	render_bundle_encoder_reference :: proc(render_bundle_encoder: Render_Bundle_Encoder) ---
 	@(link_name = "wgpuRenderBundleEncoderRelease")
@@ -1791,21 +1789,21 @@ foreign wgpu_native {
 
 
 	@(link_name = "wgpuRenderPassEncoderBeginOcclusionQuery")
-	render_pass_encoder_begin_occlusion_query :: proc(render_pass_encoder: Render_Pass_Encoder, query_index: c.uint32_t) ---
+	render_pass_encoder_begin_occlusion_query :: proc(render_pass_encoder: Render_Pass_Encoder, query_index: u32) ---
 	@(link_name = "wgpuRenderPassEncoderDraw")
-	render_pass_encoder_draw :: proc(render_pass_encoder: Render_Pass_Encoder, vertex_count, instance_count, first_vertex, firstInstance: c.uint32_t) ---
+	render_pass_encoder_draw :: proc(render_pass_encoder: Render_Pass_Encoder, vertex_count, instance_count, first_vertex, firstInstance: u32) ---
 	@(link_name = "wgpuRenderPassEncoderDrawIndexed")
-	render_pass_encoder_draw_indexed :: proc(render_pass_encoder: Render_Pass_Encoder, index_count, instance_count, firstIndex: c.uint32_t, base_vertex: c.int32_t, first_instance: c.uint32_t) ---
+	render_pass_encoder_draw_indexed :: proc(render_pass_encoder: Render_Pass_Encoder, index_count, instance_count, firstIndex: u32, base_vertex: i32, first_instance: u32) ---
 	@(link_name = "wgpuRenderPassEncoderDrawIndexedIndirect")
-	render_pass_encoder_draw_indexed_indirect :: proc(render_pass_encoder: Render_Pass_Encoder, indirect_buffer: Buffer, indirect_offset: c.uint64_t) ---
+	render_pass_encoder_draw_indexed_indirect :: proc(render_pass_encoder: Render_Pass_Encoder, indirect_buffer: Buffer, indirect_offset: u64) ---
 	@(link_name = "wgpuRenderPassEncoderDrawIndirect")
-	render_pass_encoder_draw_indirect :: proc(render_pass_encoder: Render_Pass_Encoder, indirect_buffer: Buffer, indirect_offset: c.uint64_t) ---
+	render_pass_encoder_draw_indirect :: proc(render_pass_encoder: Render_Pass_Encoder, indirect_buffer: Buffer, indirect_offset: u64) ---
 	@(link_name = "wgpuRenderPassEncoderEnd")
 	render_pass_encoder_end :: proc(render_pass_encoder: Render_Pass_Encoder) ---
 	@(link_name = "wgpuRenderPassEncoderEndOcclusionQuery")
 	render_pass_encoder_end_occlusion_query :: proc(render_pass_encoder: Render_Pass_Encoder) ---
 	@(link_name = "wgpuRenderPassEncoderExecuteBundles")
-	render_pass_encoder_execute_bundles :: proc(render_pass_encoder: Render_Pass_Encoder, bundle_count: c.size_t, bundles: ^Render_Bundle) ---
+	render_pass_encoder_execute_bundles :: proc(render_pass_encoder: Render_Pass_Encoder, bundle_count: uint, bundles: ^Render_Bundle) ---
 	@(link_name = "wgpuRenderPassEncoderInsertDebugMarker")
 	render_pass_encoder_insert_debug_marker :: proc(render_pass_encoder: Render_Pass_Encoder, marker_label: cstring) ---
 	@(link_name = "wgpuRenderPassEncoderPopDebugGroup")
@@ -1813,23 +1811,23 @@ foreign wgpu_native {
 	@(link_name = "wgpuRenderPassEncoderPushDebugGroup")
 	render_pass_encoder_push_debug_group :: proc(render_pass_encoder: Render_Pass_Encoder, group_label: cstring) ---
 	@(link_name = "wgpuRenderPassEncoderSetBindGroup")
-	render_pass_encoder_set_bind_group :: proc(render_pass_encoder: Render_Pass_Encoder, group_index: c.uint32_t, group: Bind_Group, dynamic_offset_count: c.size_t, dynamic_offsets: ^c.uint32_t) ---
+	render_pass_encoder_set_bind_group :: proc(render_pass_encoder: Render_Pass_Encoder, group_index: u32, group: Bind_Group, dynamic_offset_count: uint, dynamic_offsets: ^u32) ---
 	@(link_name = "wgpuRenderPassEncoderSetBlendConstant")
 	render_pass_encoder_set_blend_constant :: proc(render_pass_encoder: Render_Pass_Encoder, color: ^Color) ---
 	@(link_name = "wgpuRenderPassEncoderSetIndexBuffer")
-	render_pass_encoder_set_index_buffer :: proc(render_pass_encoder: Render_Pass_Encoder, buffer: Buffer, format: Index_Format, offset, size: c.uint64_t) ---
+	render_pass_encoder_set_index_buffer :: proc(render_pass_encoder: Render_Pass_Encoder, buffer: Buffer, format: Index_Format, offset, size: u64) ---
 	@(link_name = "wgpuRenderPassEncoderSetLabel")
 	render_pass_encoder_set_label :: proc(render_pass_encoder: Render_Pass_Encoder, label: cstring) ---
 	@(link_name = "wgpuRenderPassEncoderSetPipeline")
 	render_pass_encoder_set_pipeline :: proc(render_pass_encoder: Render_Pass_Encoder, pipeline: Render_Pipeline) ---
 	@(link_name = "wgpuRenderPassEncoderSetScissorRect")
-	render_pass_encoder_set_scissor_rect :: proc(render_pass_encoder: Render_Pass_Encoder, x, y, width, height: c.uint32_t) ---
+	render_pass_encoder_set_scissor_rect :: proc(render_pass_encoder: Render_Pass_Encoder, x, y, width, height: u32) ---
 	@(link_name = "wgpuRenderPassEncoderSetStencilReference")
-	render_pass_encoder_set_stencil_reference :: proc(render_pass_encoder: Render_Pass_Encoder, reference: c.uint32_t) ---
+	render_pass_encoder_set_stencil_reference :: proc(render_pass_encoder: Render_Pass_Encoder, reference: u32) ---
 	@(link_name = "wgpuRenderPassEncoderSetVertexBuffer")
-	render_pass_encoder_set_vertex_buffer :: proc(render_pass_encoder: Render_Pass_Encoder, slot: c.uint32_t, buffer: Buffer, offset, size: c.uint64_t) ---
+	render_pass_encoder_set_vertex_buffer :: proc(render_pass_encoder: Render_Pass_Encoder, slot: u32, buffer: Buffer, offset, size: u64) ---
 	@(link_name = "wgpuRenderPassEncoderSetViewport")
-	render_pass_encoder_set_viewport :: proc(render_pass_encoder: Render_Pass_Encoder, x, y, width, height, min_depth, max_depth: c.float) ---
+	render_pass_encoder_set_viewport :: proc(render_pass_encoder: Render_Pass_Encoder, x, y, width, height, min_depth, max_depth: f32) ---
 	@(link_name = "wgpuRenderPassEncoderReference")
 	render_pass_encoder_reference :: proc(render_pass_encoder: Render_Pass_Encoder) ---
 	@(link_name = "wgpuRenderPassEncoderRelease")
@@ -1839,7 +1837,7 @@ foreign wgpu_native {
 
 
 	@(link_name = "wgpuRenderPipelineGetBindGroupLayout")
-	render_pipeline_get_bind_group_layout :: proc(render_pipeline: Render_Pipeline, group_index: c.uint32_t) -> Bind_Group_Layout ---
+	render_pipeline_get_bind_group_layout :: proc(render_pipeline: Render_Pipeline, group_index: u32) -> Bind_Group_Layout ---
 	@(link_name = "wgpuRenderPipelineSetLabel")
 	render_pipeline_set_label :: proc(render_pipeline: Render_Pipeline, label: cstring) ---
 	@(link_name = "wgpuRenderPipelineReference")
@@ -1903,21 +1901,21 @@ foreign wgpu_native {
 	@(link_name = "wgpuTextureDestroy")
 	texture_destroy :: proc(texture: Texture) ---
 	@(link_name = "wgpuTextureGetDepthOrArrayLayers")
-	texture_get_depth_or_array_layers :: proc(texture: Texture) -> c.uint32_t ---
+	texture_get_depth_or_array_layers :: proc(texture: Texture) -> u32 ---
 	@(link_name = "wgpuTextureGetDimension")
 	texture_get_dimension :: proc(texture: Texture) -> Texture_Dimension ---
 	@(link_name = "wgpuTextureGetFormat")
 	texture_get_format :: proc(texture: Texture) -> Texture_Format ---
 	@(link_name = "wgpuTextureGetHeight")
-	texture_get_height :: proc(texture: Texture) -> c.uint32_t ---
+	texture_get_height :: proc(texture: Texture) -> u32 ---
 	@(link_name = "wgpuTextureGetMipLevelCount")
-	texture_get_mip_level_count :: proc(texture: Texture) -> c.uint32_t ---
+	texture_get_mip_level_count :: proc(texture: Texture) -> u32 ---
 	@(link_name = "wgpuTextureGetSampleCount")
-	texture_get_sample_count :: proc(texture: Texture) -> c.uint32_t ---
+	texture_get_sample_count :: proc(texture: Texture) -> u32 ---
 	@(link_name = "wgpuTextureGetUsage")
 	texture_get_usage :: proc(texture: Texture) -> Texture_Usage ---
 	@(link_name = "wgpuTextureGetWidth")
-	texture_get_width :: proc(texture: Texture) -> c.uint32_t ---
+	texture_get_width :: proc(texture: Texture) -> u32 ---
 	@(link_name = "wgpuTextureSetLabel")
 	texture_set_label :: proc(texture: Texture, label: cstring) ---
 	@(link_name = "wgpuTextureReference")
