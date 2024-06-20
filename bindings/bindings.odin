@@ -76,16 +76,17 @@ Instance_Backend :: enum ENUM_SIZE {
 	Browser_WebGPU,
 }
 Instance_Backend_Flags :: bit_set[Instance_Backend;FLAGS]
+Instance_Backend_All :: Instance_Backend_Flags{}
 Instance_Backend_Primary :: Instance_Backend_Flags{.Vulkan, .Metal, .DX12, .Browser_WebGPU}
 Instance_Backend_Secondary :: Instance_Backend_Flags{.GL, .DX11}
 
 Instance_Flag :: enum ENUM_SIZE {
-	Default,
 	Debug,
 	Validation,
 	Discard_Hal_Labels,
 }
 Instance_Flags :: bit_set[Instance_Flag;FLAGS]
+Instance_Flags_Default :: Instance_Flags{}
 
 Dx12_Compiler :: enum ENUM_SIZE {
 	Undefined,
