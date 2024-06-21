@@ -40,14 +40,18 @@ To make this repository easy to maintain and light to download, I decided to not
  ┃ ┃ ┗ 📜libwgpu_native.a
  ┣ 📂windows
  ┃ ┣ 📂i686
- ┃ ┃ ┗ 📜wgpu_native.dll.lib
+ ┃ ┃ ┃ 📜wgpu_native.dll.lib
+ ┃ ┃ ┗ 📜wgpu_native.lib
  ┃ ┗ 📂x86_64
- ┃ ┃ ┗ 📜wgpu_native.dll.lib
+ ┃ ┃ ┃ 📜wgpu_native.dll.lib
+ ┃ ┃ ┗ 📜wgpu_native.lib
 ```
 
 Check the foreign import in the file [bindings.odin](./bindings/bindings.odin) for more details. For example, download `wgpu-windows-x86_64-release.zip` and copy `wgpu_native.dll.lib` to the folder `bindings/lib/windows/x86_64/`.
 
-On Windows the linking is dynamic, you need `wgpu_native.dll` along side your executable. Both Linux and Mac are statically linked for ease of use.
+On Windows the linking is dynamic by default, you need `wgpu_native.dll` along side your executable. To build statically, set the config `WGPU_SHARED` to `false` (this option only affects Windows).
+
+Both Linux and Mac by default are statically linked for ease of use, but you can link against system.
 
 ### Link against system
 

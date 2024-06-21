@@ -14,7 +14,7 @@ ARGS = -o:speed \
 endif
 
 # Set the default linking
-USE_SYSTEM_LIBRARIES ?= true
+USE_SYSTEM_LIBRARIES ?= false
 ARGS := $(ARGS) -define:WGPU_USE_SYSTEM_LIBRARIES=$(USE_SYSTEM_LIBRARIES)
 
 ifeq ($(shell uname -s),Darwin)
