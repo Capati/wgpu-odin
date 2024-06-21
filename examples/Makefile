@@ -9,7 +9,7 @@ else
 ARGS = -o:speed \
     -disable-assert \
     -no-bounds-check \
-    -define:CHECK_TO_BYTES=false \
+    -define:WGPU_CHECK_TO_BYTES=false \
     -define:WGPU_ENABLE_ERROR_HANDLING=false
 endif
 
