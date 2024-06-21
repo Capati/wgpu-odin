@@ -1,34 +1,76 @@
 package wgpu_bindings
 
+// odinfmt: disable
+@(private) WGPU_SHARED :: #config(WGPU_SHARED, true)
+@(private) WGPU_USE_SYSTEM_LIBRARIES :: #config(WGPU_USE_SYSTEM_LIBRARIES, false)
+
 when ODIN_OS == .Windows {
-	when ODIN_ARCH == .amd64 {
-		foreign import wgpu_native "./lib/windows/x86_64/wgpu_native.dll.lib"
+	when ODIN_ARCH == .amd64 do ARCH :: "x86_64"
+	else when ODIN_ARCH == .i386 do ARCH :: "i386"
+	else do #panic("Unsupported WGPU Native architecture")
+
+	@(private) EXT  :: ".dll.lib" when WGPU_SHARED else ".lib"
+	@(private) LIB  :: "lib/windows/" + ARCH + "/wgpu_native" + EXT
+
+	when !#exists(LIB) {
+		#panic("Could not find the compiled WGPU Native library at '" + #directory + LIB + "'")
+	}
+
+	when WGPU_SHARED {
+		foreign import wgpu_native {LIB}
 	} else {
-		foreign import wgpu_native "./lib/windows/i686/wgpu_native.dll.lib"
+		foreign import wgpu_native {
+			LIB,
+			"system:gdi32.lib",
+			"system:dxgi.lib",
+			"system:d3dcompiler.lib",
+			"system:opengl32.lib",
+			"system:user32.lib",
+			"system:dwmapi.lib",
+			"system:bcrypt.lib",
+			"system:ws2_32.lib",
+			"system:userenv.lib",
+			"system:dbghelp.lib",
+			"system:advapi32.lib",
+			"system:ntdll.lib",
+		}
 	}
 } else when ODIN_OS == .Darwin {
-	when #config(WGPU_USE_SYSTEM_LIBRARIES, false) {
+	when WGPU_USE_SYSTEM_LIBRARIES {
 		foreign import wgpu_native "system:wgpu_native"
-	} else when ODIN_ARCH == .arm64 {
-		foreign import wgpu_native "lib/mac_os/arch64/libwgpu_native.a"
-	} else when ODIN_ARCH == .amd64 {
-		foreign import wgpu_native "lib/mac_os/x86_64/libwgpu_native.a"
 	} else {
-		foreign import wgpu_native "system:wgpu_native"
+		when ODIN_ARCH == .amd64 do ARCH :: "x86_64"
+		else when ODIN_ARCH == .arm64 do ARCH :: "aarch64"
+		else do #panic("Unsupported WGPU Native architecture")
+
+		@(private) LIB  :: "lib/mac_os/" + ARCH + "/libwgpu_native.a"
+
+		when !#exists(LIB) {
+			#panic("Could not find the compiled WGPU Native library at '" + #directory + LIB + "'")
+		}
+
+		foreign import wgpu_native {LIB}
 	}
 } else when ODIN_OS == .Linux {
-	when #config(WGPU_USE_SYSTEM_LIBRARIES, false) {
+	when WGPU_USE_SYSTEM_LIBRARIES {
 		foreign import wgpu_native "system:wgpu_native"
-	} else when ODIN_ARCH == .arm64 {
-		foreign import wgpu_native "lib/linux/arch64/libwgpu_native.a"
-	} else when ODIN_ARCH == .amd64 {
-		foreign import wgpu_native "lib/linux/x86_64/libwgpu_native.a"
 	} else {
-		foreign import wgpu_native "system:wgpu_native"
+		when ODIN_ARCH == .amd64 do ARCH :: "x86_64"
+		else when ODIN_ARCH == .arm64 do ARCH :: "aarch64"
+		else do #panic("Unsupported WGPU Native architecture")
+
+		@(private) LIB  :: "lib/linux/" + ARCH + "/libwgpu_native.a"
+
+		when !#exists(LIB) {
+			#panic("Could not find the compiled WGPU Native library at '" + #directory + LIB + "'")
+		}
+
+		foreign import wgpu_native {LIB}
 	}
 } else {
 	foreign import wgpu_native "system:wgpu_native"
 }
+// odinfmt: enable
 
 ARRAY_LAYER_COUNT_UNDEFINED :: max(u32)
 COPY_STRIDE_UNDEFINED :: max(u32)
