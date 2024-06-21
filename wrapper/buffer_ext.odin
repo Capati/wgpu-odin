@@ -7,7 +7,7 @@ import "core:slice"
 
 from_bytes :: slice.reinterpret
 
-CHECK_TO_BYTES :: #config(WGPU_CHECK_TO_BYTES, true)
+WGPU_CHECK_TO_BYTES :: #config(WGPU_CHECK_TO_BYTES, true)
 
 @(private = "file")
 can_be_bytes :: proc(T: typeid) -> bool {
@@ -51,7 +51,7 @@ can_be_bytes :: proc(T: typeid) -> bool {
 }
 
 dynamic_array_to_bytes :: proc(arr: $T/[dynamic]$E) -> []u8 {
-	when CHECK_TO_BYTES {
+	when WGPU_CHECK_TO_BYTES {
 		if can_be_bytes(E) {
 			return slice.to_bytes(arr[:])
 		} else do fmt.panicf("Cannot fully convert to bytes: %v", typeid_of(T))
@@ -61,7 +61,7 @@ dynamic_array_to_bytes :: proc(arr: $T/[dynamic]$E) -> []u8 {
 }
 
 slice_to_bytes :: proc(s: $T/[]$E) -> []u8 {
-	when CHECK_TO_BYTES {
+	when WGPU_CHECK_TO_BYTES {
 		if can_be_bytes(E) {
 			return slice.to_bytes(s)
 		} else do fmt.panicf("Cannot fully convert to bytes: %v", typeid_of(T))
@@ -81,7 +81,7 @@ map_to_bytes :: proc(m: $T/map[$K]$V) -> []u8 {
 }
 
 any_to_bytes :: proc(v: any) -> []u8 {
-	when CHECK_TO_BYTES {
+	when WGPU_CHECK_TO_BYTES {
 		if can_be_bytes(v.id) {
 			return reflect.as_bytes(v)
 		} else do fmt.panicf("Cannot fully convert to bytes: %v", v.id)
