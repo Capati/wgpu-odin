@@ -101,14 +101,7 @@ queue_submit_for_index :: proc {
 	queue_submit_for_index_empty,
 }
 
-// Schedule a data write into `buffer` starting at `offset`.
-//
-// This method is intended to have low performance costs. As such, the write is not immediately
-// submitted, and instead enqueued internally to happen at the start of the next `queue_submit`
-// call.
-//
-// This method fails if `data` overruns the size of `buffer` starting at `offset`.
-queue_write_buffer :: proc(
+queue_write_buffer_bytes :: proc(
 	using self: ^Queue,
 	buffer: Raw_Buffer,
 	offset: Buffer_Address,
@@ -128,6 +121,41 @@ queue_write_buffer :: proc(
 	err = get_last_error()
 
 	return
+}
+
+queue_write_buffer_raw :: proc(
+	using self: ^Queue,
+	buffer: Raw_Buffer,
+	offset: Buffer_Address,
+	data: rawptr,
+	size: uint,
+	loc := #caller_location,
+) -> (
+	err: Error,
+) {
+	set_and_reset_err_data(_err_data, loc)
+
+	if size == 0 {
+		wgpu.queue_write_buffer(ptr, buffer, offset, nil, 0)
+	} else {
+		wgpu.queue_write_buffer(ptr, buffer, offset, data, size)
+	}
+
+	err = get_last_error()
+
+	return
+}
+
+// Schedule a data write into `buffer` starting at `offset`.
+//
+// This method is intended to have low performance costs. As such, the write is not immediately
+// submitted, and instead enqueued internally to happen at the start of the next `queue_submit`
+// call.
+//
+// This method fails if `data` overruns the size of `buffer` starting at `offset`.
+queue_write_buffer :: proc {
+	queue_write_buffer_bytes,
+	queue_write_buffer_raw,
 }
 
 // Schedule a write of some data into a texture.
