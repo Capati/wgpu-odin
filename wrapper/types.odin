@@ -29,6 +29,17 @@ Query_Set_Max_Queries: u32 : 8192
 // Size of a single piece of query data.
 Query_Size: u32 : 8
 
+Blend_Component_Normal := Blend_Component {
+	operation  = .Add,
+	src_factor = .Src_Alpha,
+	dst_factor = .One_Minus_Src_Alpha,
+}
+
+Blend_State_Normal := Blend_State {
+	color = Blend_Component_Normal,
+	alpha = Blend_Component_Normal,
+}
+
 Blend_Component_Replace := Blend_Component {
 	operation  = .Add,
 	src_factor = .One,
