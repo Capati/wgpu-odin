@@ -23,10 +23,11 @@ Renderer :: struct {
 }
 
 Renderer_Properties :: struct {
-	power_preferences: wgpu.Power_Preference,
-	optional_features: wgpu.Features,
-	required_features: wgpu.Features,
-	required_limits:   wgpu.Limits,
+	power_preferences:        wgpu.Power_Preference,
+	optional_features:        wgpu.Features,
+	required_features:        wgpu.Features,
+	required_limits:          wgpu.Limits,
+	remove_srgb_from_surface: bool,
 }
 
 Default_Render_Properties :: Renderer_Properties {
@@ -129,7 +130,11 @@ init :: proc(
 
 	size := app.get_size()
 
-	preferred_format := wgpu.surface_get_preferred_format(&gc.surface, adapter.ptr) or_return
+	preferred_format := caps.formats[0]
+
+	if properties.remove_srgb_from_surface {
+		preferred_format = wgpu.texture_format_remove_srgb_suffix(preferred_format)
+	}
 
 	gc.config = wgpu.Surface_Configuration {
 		usage        = {.Render_Attachment},
