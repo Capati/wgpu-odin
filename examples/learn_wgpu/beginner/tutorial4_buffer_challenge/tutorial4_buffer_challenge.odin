@@ -274,18 +274,17 @@ main :: proc() {
 	fmt.printf("Entering main loop...\n\n")
 
 	main_loop: for {
-		iter := app.process_events()
-
-		for iter->has_next() {
-			#partial switch event in iter->next() {
+		event: events.Event
+		for app.poll_events(&event) {
+			#partial switch &ev in event {
 			case events.Quit_Event:
 				break main_loop
 			case events.Key_Press_Event:
-				if event.key == .Space do state.use_complex = true
+				if ev.key == .Space do state.use_complex = true
 			case events.Key_Release_Event:
-				if event.key == .Space do state.use_complex = false
+				if ev.key == .Space do state.use_complex = false
 			case events.Framebuffer_Resize_Event:
-				err := resize_surface(&state, {event.width, event.height})
+				err := resize_surface(&state, {ev.width, ev.height})
 				if err != nil do break main_loop
 			}
 		}

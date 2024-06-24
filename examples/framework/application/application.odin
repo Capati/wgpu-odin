@@ -29,8 +29,17 @@ is_initialized :: proc() -> bool {
 	return _initialized
 }
 
-process_events :: proc() -> events.Event_List {
+process_events :: proc() -> ^events.Event_List {
 	return app.process_events()
+}
+
+poll_events :: proc(event: ^events.Event) -> (has_next: bool) {
+	event_list := process_events()
+	if events.is_empty(event_list) {
+		return false
+	}
+	event^ = events.pop(event_list)
+	return true
 }
 
 push_event :: proc(event: events.Event) {

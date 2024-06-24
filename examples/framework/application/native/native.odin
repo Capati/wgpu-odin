@@ -30,7 +30,7 @@ Display_Mode :: enum {
 
 Native_Application :: struct {
 	using properties: Native_Properties,
-	events:           events.Event_Queue,
+	events:           events.Event_List,
 	window:           ^sdl.Window,
 	system_info:      Platform_Info,
 }
@@ -196,7 +196,12 @@ init :: proc(properties: Native_Properties) -> (err: core.Application_Error) {
 	return
 }
 
-process_events :: proc() -> events.Event_List {
+process_events :: proc() -> ^events.Event_List {
+	// Process pending events...
+	if _ctx.events.len > 0 {
+		return &_ctx.events
+	}
+
 	e: sdl.Event
 
 	for sdl.PollEvent(&e) {
@@ -244,11 +249,11 @@ process_events :: proc() -> events.Event_List {
 		}
 	}
 
-	return events.create_event_list(&_ctx.events)
+	return &_ctx.events
 }
 
 push_event :: proc(event: events.Event) {
-	events.push_event(&_ctx.events, event)
+	events.push(&_ctx.events, event)
 }
 
 get_size :: proc() -> Physical_Size {
