@@ -138,14 +138,13 @@ main :: proc() {
 	fmt.printf("Entering main loop...\n\n")
 
 	main_loop: for {
-		iter := app.process_events()
-
-		for iter->has_next() {
-			#partial switch event in iter->next() {
+		event: events.Event
+		for app.poll_events(&event) {
+			#partial switch &ev in event {
 			case events.Quit_Event:
 				break main_loop
 			case events.Framebuffer_Resize_Event:
-				err := resize_surface(&state, {event.width, event.height})
+				err := resize_surface(&state, {ev.width, ev.height})
 				if err != nil do break main_loop
 			}
 		}

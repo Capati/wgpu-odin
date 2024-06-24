@@ -1,11 +1,11 @@
 package events
 
 // Core
-import "base:runtime"
 import "core:container/queue"
+import "core:mem"
 
 // Default events queue capacity
-DEFAULT_EVENTS_CAPACITY :: #config(DEFAULT_EVENTS_CAPACITY, 2048)
+DEFAULT_EVENTS_CAPACITY :: #config(DEFAULT_EVENTS_CAPACITY, 64)
 
 Event :: union #no_nil {
 	Key_Press_Event,
@@ -21,14 +21,14 @@ Event :: union #no_nil {
 }
 
 // FIFO Queue
-Event_Queue :: distinct queue.Queue(Event)
+Event_List :: distinct queue.Queue(Event)
 
 init_events :: proc(
 	capacity := DEFAULT_EVENTS_CAPACITY,
 	allocator := context.allocator,
 ) -> (
-	out: Event_Queue,
-	err: runtime.Allocator_Error,
+	out: Event_List,
+	err: mem.Allocator_Error,
 ) {
 	if err = queue.init(&out, capacity, allocator); err != .None {
 		return {}, err
@@ -36,6 +36,18 @@ init_events :: proc(
 	return
 }
 
-push_event :: proc(self: ^Event_Queue, event: Event) {
-	queue.push_back(self, event)
+push :: proc(self: ^Event_List, event: Event) {
+	queue.push_front(self, event)
+}
+
+pop :: proc(self: ^Event_List) -> Event {
+	return queue.pop_back(self)
+}
+
+has_next :: proc(self: ^Event_List) -> bool {
+	return self.len > 0
+}
+
+is_empty :: proc(self: ^Event_List) -> bool {
+	return self.len == 0
 }
