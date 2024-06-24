@@ -248,7 +248,7 @@ main :: proc() {
 
 	main_loop: for {
 		event: events.Event
-		for app.poll_events(&event) {
+		for app.poll_event(&event) {
 			#partial switch &ev in event {
 			case events.Quit_Event:
 				break main_loop
