@@ -207,7 +207,7 @@ Query_Set_Descriptor_Extras :: struct {
 
 Surface_Configuration_Extras :: struct {
 	chain:                         Chained_Struct,
-	desired_maximum_frame_latency: bool,
+	desired_maximum_frame_latency: u32,
 }
 
 Log_Callback :: #type proc "c" (level: Log_Level, message: cstring, user_data: rawptr)
