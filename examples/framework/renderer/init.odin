@@ -23,11 +23,12 @@ Renderer :: struct {
 }
 
 Renderer_Properties :: struct {
-	power_preferences:        wgpu.Power_Preference,
-	optional_features:        wgpu.Features,
-	required_features:        wgpu.Features,
-	required_limits:          wgpu.Limits,
-	remove_srgb_from_surface: bool,
+	power_preferences:             wgpu.Power_Preference,
+	optional_features:             wgpu.Features,
+	required_features:             wgpu.Features,
+	required_limits:               wgpu.Limits,
+	remove_srgb_from_surface:      bool,
+	desired_maximum_frame_latency: u32,
 }
 
 Default_Render_Properties :: Renderer_Properties {
@@ -137,12 +138,13 @@ init :: proc(
 	}
 
 	gc.config = wgpu.Surface_Configuration {
-		usage        = {.Render_Attachment},
-		format       = preferred_format,
-		width        = size.width,
-		height       = size.height,
+		usage = {.Render_Attachment},
+		format = preferred_format,
+		width = size.width,
+		height = size.height,
 		present_mode = .Fifo,
-		alpha_mode   = caps.alpha_modes[0],
+		alpha_mode = caps.alpha_modes[0],
+		extras = {desired_maximum_frame_latency = properties.desired_maximum_frame_latency},
 	}
 
 	wgpu.surface_configure(&gc.surface, &gc.device, &gc.config) or_return

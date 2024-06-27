@@ -19,7 +19,7 @@ Surface :: struct {
 }
 
 Surface_Configuration_Extras :: struct {
-	desired_maximum_frame_latency: bool,
+	desired_maximum_frame_latency: u32,
 }
 
 // Describes a `Surface`.
@@ -72,10 +72,10 @@ surface_configure :: proc(
 
 	extras: wgpu.Surface_Configuration_Extras
 
-	if config.extras.desired_maximum_frame_latency {
+	if config.extras.desired_maximum_frame_latency > 0 {
 		extras.chain.next = nil
 		extras.chain.stype = wgpu.SType(wgpu.Native_SType.Surface_Configuration_Extras)
-		extras.desired_maximum_frame_latency = true
+		extras.desired_maximum_frame_latency = config.extras.desired_maximum_frame_latency
 		cfg.next_in_chain = &extras.chain
 	}
 
