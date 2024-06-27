@@ -27,6 +27,7 @@ Renderer_Properties :: struct {
 	optional_features:             wgpu.Features,
 	required_features:             wgpu.Features,
 	required_limits:               wgpu.Limits,
+	present_mode:                  wgpu.Present_Mode,
 	remove_srgb_from_surface:      bool,
 	desired_maximum_frame_latency: u32,
 }
@@ -142,7 +143,7 @@ init :: proc(
 		format = preferred_format,
 		width = size.width,
 		height = size.height,
-		present_mode = .Fifo,
+		present_mode = properties.present_mode,
 		alpha_mode = caps.alpha_modes[0],
 		extras = {desired_maximum_frame_latency = properties.desired_maximum_frame_latency},
 	}
