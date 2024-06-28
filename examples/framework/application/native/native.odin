@@ -230,10 +230,10 @@ process_events :: proc() -> ^events.Event_List {
 			push_event(cast(events.Mouse_Release_Event)get_mouse_state(e.button))
 
 		case .MOUSEMOTION:
-			push_event(events.Mouse_Motion_Event{f64(e.motion.x), f64(e.motion.y)})
+			push_event(events.Mouse_Motion_Event{e.motion.x, e.motion.y})
 
 		case .MOUSEWHEEL:
-			push_event(events.Mouse_Scroll_Event{f64(e.wheel.x), f64(e.wheel.y)})
+			push_event(events.Mouse_Scroll_Event{e.wheel.x, e.wheel.y})
 
 		case .WINDOWEVENT:
 			#partial switch (e.window.event) {

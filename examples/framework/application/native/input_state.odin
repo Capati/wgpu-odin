@@ -33,7 +33,7 @@ get_mouse_state :: proc(button: sdl.MouseButtonEvent) -> (mouse_event: events.Mo
 	}
 
 	mouse_event.mods = get_mod_state(sdl.GetModState())
-	mouse_event.pos = {f64(button.x), f64(button.y)}
+	mouse_event.pos = {button.x, button.y}
 
 	return
 }
