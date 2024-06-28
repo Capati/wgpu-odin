@@ -8,6 +8,7 @@ import "core:mem"
 DEFAULT_EVENTS_CAPACITY :: #config(DEFAULT_EVENTS_CAPACITY, 64)
 
 Event :: union #no_nil {
+	Text_Input_Event,
 	Key_Press_Event,
 	Key_Release_Event,
 	Mouse_Motion_Event,

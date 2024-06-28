@@ -209,6 +209,11 @@ process_events :: proc() -> ^events.Event_List {
 		case .QUIT:
 			push_event(events.Quit_Event(true))
 
+		case .TEXTINPUT:
+			ev: events.Text_Input_Event
+			copy(ev.buf[:], e.text.text[:])
+			push_event(ev)
+
 		case .KEYDOWN:
 			if e.key.keysym.scancode == .ESCAPE {
 				push_event(events.Quit_Event(true))
