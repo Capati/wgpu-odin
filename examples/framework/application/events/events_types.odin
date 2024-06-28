@@ -29,7 +29,7 @@ Key_Press_Event :: distinct Key_Event
 Key_Release_Event :: distinct Key_Event
 
 Position :: struct {
-	x, y: f64,
+	x, y: i32,
 }
 
 Mouse_Motion_Event :: distinct Position
