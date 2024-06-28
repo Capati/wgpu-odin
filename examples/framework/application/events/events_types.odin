@@ -14,6 +14,11 @@ Key_Mods :: struct {
 	mode:        bool,
 }
 
+Text_Input_Event :: struct {
+	buf: [32]u8,
+	ch:  string,
+}
+
 Key_Event :: struct {
 	key:    Key,
 	repeat: bool,
