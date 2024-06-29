@@ -20,7 +20,7 @@ Command_Encoder :: struct {
 // This function returns a `Compute_Pass_Encoder` object which records a single render pass.
 command_encoder_begin_compute_pass :: proc(
 	using self: ^Command_Encoder,
-	descriptor: ^Compute_Pass_Descriptor,
+	descriptor: ^Compute_Pass_Descriptor = nil,
 	loc := #caller_location,
 ) -> (
 	compute_pass: Compute_Pass_Encoder,
