@@ -60,6 +60,7 @@ init :: proc(
 	wgpu.set_log_level(.Warn)
 
 	instance_descriptor: wgpu.Instance_Descriptor
+	instance_descriptor.backends = wgpu.Instance_Backend_Primary
 
 	when core.APPLICATION_TYPE == .Native {
 		// Force backend type config
