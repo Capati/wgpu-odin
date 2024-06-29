@@ -356,8 +356,8 @@ device_create_compute_pipeline :: proc(
 	if err = get_last_error(); err != nil {
 		if compute_pipeline.ptr != nil {
 			wgpu.compute_pipeline_release(compute_pipeline.ptr)
-			return
 		}
+		return
 	}
 
 	compute_pipeline._err_data = _err_data
