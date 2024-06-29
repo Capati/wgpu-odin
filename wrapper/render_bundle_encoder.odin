@@ -87,8 +87,8 @@ render_bundle_encoder_finish :: proc(
 	if err = get_last_error(); err != nil {
 		if render_bundle.ptr != nil {
 			wgpu.render_bundle_release(render_bundle.ptr)
-			return
 		}
+		return
 	}
 
 	if render_bundle.ptr == nil {

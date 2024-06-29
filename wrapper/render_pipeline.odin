@@ -28,8 +28,8 @@ render_pipeline_get_bind_group_layout :: proc(
 	if err = get_last_error(); err != nil {
 		if bind_group_layout.ptr != nil {
 			wgpu.bind_group_layout_release(bind_group_layout.ptr)
-			return
 		}
+		return
 	}
 
 	if bind_group_layout.ptr == nil {
