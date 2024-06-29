@@ -285,15 +285,16 @@ instance_process_events :: proc(self: ^Instance) {
 }
 
 // Print memory report.
-instance_print_report :: proc(using self: ^Instance) {
+instance_print_report :: proc(using self: ^Instance, backend_type: Backend_Type = .Undefined) {
 	report := instance_generate_report(self)
 
-	print_registry_report :: proc(report: Registry_Report, prefix: cstring) {
+	print_registry_report :: proc(report: Registry_Report, prefix: cstring, separator := true) {
 		fmt.printf("\t%snum_allocated = %d\n", prefix, report.num_allocated)
 		fmt.printf("\t%snum_kept_from_user = %d\n", prefix, report.num_kept_from_user)
 		fmt.printf("\t%snum_released_from_user = %d\n", prefix, report.num_released_from_user)
 		fmt.printf("\t%snum_error = %d\n", prefix, report.num_error)
 		fmt.printf("\t%selement_size = %d\n", prefix, report.element_size)
+		if separator do fmt.printf("\t----------\n")
 	}
 
 	print_hub_report :: proc(report: Hub_Report, prefix: cstring) {
@@ -311,15 +312,17 @@ instance_print_report :: proc(using self: ^Instance) {
 		print_registry_report(report.query_sets, "query_sets.")
 		print_registry_report(report.textures, "textures.")
 		print_registry_report(report.texture_views, "texture_views.")
-		print_registry_report(report.samplers, "samplers.")
+		print_registry_report(report.samplers, "samplers.", false)
 	}
 
 	fmt.print("Global_Report {\n")
 
 	fmt.print("  Surfaces:\n")
-	print_registry_report(report.surfaces, "Surfaces:")
+	print_registry_report(report.surfaces, "Surfaces:", false)
 
-	#partial switch report.backend_type {
+	backend_type := backend_type if backend_type != .Undefined else report.backend_type
+
+	#partial switch backend_type {
 	case .D3D12:
 		print_hub_report(report.dx12, "D3D12")
 	case .Metal:
@@ -329,7 +332,7 @@ instance_print_report :: proc(using self: ^Instance) {
 	case .OpenGL:
 		print_hub_report(report.gl, "OpenGL")
 	case:
-		fmt.printf("%s - Invalid backend type: %v", #procedure, report.backend_type)
+		fmt.printf("%s - Invalid backend type: %v", #procedure, backend_type)
 	}
 
 	fmt.print("}\n")
