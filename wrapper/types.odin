@@ -29,43 +29,60 @@ Query_Set_Max_Queries: u32 : 8192
 // Size of a single piece of query data.
 Query_Size: u32 : 8
 
+// Standard blending state that blends source and destination based on source alpha.
 Blend_Component_Normal := Blend_Component {
 	operation  = .Add,
 	src_factor = .Src_Alpha,
 	dst_factor = .One_Minus_Src_Alpha,
 }
 
-Blend_State_Normal := Blend_State {
-	color = Blend_Component_Normal,
-	alpha = Blend_Component_Normal,
-}
-
+// Default blending state that replaces destination with the source.
 Blend_Component_Replace := Blend_Component {
 	operation  = .Add,
 	src_factor = .One,
 	dst_factor = .Zero,
 }
 
+// Blend state of (1 * src) + ((1 - src_alpha) * dst)
 Blend_Component_Over := Blend_Component {
 	operation  = .Add,
 	src_factor = .One,
 	dst_factor = .One_Minus_Src_Alpha,
 }
 
+Default_Blend_Component := Blend_Component_Replace
+
+// Returns `true` if the state relies on the constant color, which is
+// set independently on a render command encoder.
+blend_component_uses_constant :: proc(using self: ^Blend_Component) -> bool {
+	return(
+		src_factor == .Constant ||
+		src_factor == .One_Minus_Constant ||
+		dst_factor == .Constant ||
+		dst_factor == .One_Minus_Constant \
+	)
+}
+
+// Blend mode that uses alpha blending for both color and alpha channels.
+Blend_State_Normal := Blend_State {
+	color = Blend_Component_Normal,
+	alpha = Blend_Component_Normal,
+}
+
+// Blend mode that does no color blending, just overwrites the output with the contents
+// of the shader.
 Blend_State_Replace := Blend_State {
 	color = Blend_Component_Replace,
 	alpha = Blend_Component_Replace,
 }
 
+// Blend mode that does standard alpha blending with non-premultiplied alpha.
 Blend_State_Alpha_Blending := Blend_State {
-	color = Blend_Component {
-		operation = .Add,
-		src_factor = .Src_Alpha,
-		dst_factor = .One_Minus_Src_Alpha,
-	},
+	color = Blend_Component_Normal,
 	alpha = Blend_Component_Over,
 }
 
+// Blend mode that does standard alpha blending with premultiplied alpha.
 Blend_State_Premultiplied_Alpha_Blending := Blend_State {
 	color = Blend_Component_Over,
 	alpha = Blend_Component_Over,
