@@ -49,7 +49,7 @@ device_load_wgsl_shader_module :: proc(
 	data, data_ok := os.read_entire_file(string(path), context.temp_allocator)
 
 	if !data_ok {
-		err = System_Error.Read_Entire_File
+		err = .Read_File_Failed
 		error_message := fmt.tprintf("Failed to load WGSL shader file: [%s]", path)
 		set_and_update_err_data(_err_data, .Shader, err, error_message, loc)
 		return
@@ -82,7 +82,7 @@ device_load_spirv_shader_module :: proc(
 	data, data_ok := os.read_entire_file(string(path), context.temp_allocator)
 
 	if !data_ok {
-		err = System_Error.Read_Entire_File
+		err = .Read_File_Failed
 		error_message := fmt.tprintf("Failed to load SPIRV shader file: [%s]", path)
 		set_and_update_err_data(_err_data, .Shader, err, error_message, loc)
 		return
