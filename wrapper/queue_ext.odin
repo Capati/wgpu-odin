@@ -158,7 +158,7 @@ queue_copy_image_to_texture_image_path :: proc(
 	}
 	defer stbi.image_free(data)
 
-	total_size := int(width * height * channels * i32(bytes_per_channel))
+	total_size := int(width * height * channels)
 
 	typed_data: Image_Data_Type
 
@@ -206,14 +206,21 @@ queue_copy_image_to_texture_image :: proc(
 		bytes_per_channel = 2
 	}
 
-	total_size := int(image.width * image.height * image.channels * bytes_per_channel)
+	total_size := image.width * image.height * image.channels
+
+	typed_data: Image_Data_Type
+	if bytes_per_channel == 1 {
+		typed_data = mem.slice_ptr(raw_data(image.pixels.buf[:]), total_size)
+	} else {
+		typed_data = mem.slice_ptr(cast([^]u16)raw_data(image.pixels.buf[:]), total_size)
+	}
 
 	image_data := Image_Data {
 		width             = image.width,
 		height            = image.height,
 		channels          = image.channels,
 		bytes_per_channel = bytes_per_channel,
-		data              = mem.slice_ptr(raw_data(image.pixels.buf[:]), total_size),
+		data              = typed_data,
 	}
 
 	texture = queue_copy_image_to_texture_image_data(
@@ -275,44 +282,53 @@ _convert_image_data :: proc(
 	data: []byte,
 	err: Error,
 ) {
-	current_data: []byte
-
-	switch d in image_data.data {
-	case []byte:
-		current_data = d
-	case []u16:
-		current_data = to_bytes(d)
-	case []f32:
-		current_data = to_bytes(d)
-	}
+	total_pixels := image_data.width * image_data.height
+	bytes_per_pixel := image_data.channels * image_data.bytes_per_channel
 
 	if image_data.channels == 3 {
 		// Convert RGB to RGBA
-		pixel_size := image_data.channels * image_data.bytes_per_channel
-		new_pixel_size := 4 * image_data.bytes_per_channel
-		data = make(
-			[]byte,
-			image_data.width * image_data.height * new_pixel_size,
-			allocator,
-		) or_return
+		new_bytes_per_pixel := 4 * image_data.bytes_per_channel
+		data = make([]byte, total_pixels * new_bytes_per_pixel, allocator) or_return
 
-		for y in 0 ..< image_data.height {
-			for x in 0 ..< image_data.width {
-				src_idx := (y * image_data.width + x) * pixel_size
-				dst_idx := (y * image_data.width + x) * new_pixel_size
-				copy(data[dst_idx:], current_data[src_idx:src_idx + pixel_size])
-				if image_data.bytes_per_channel == 1 {
-					data[dst_idx + 3] = 255 // Full alpha for 8-bit
-				} else {
-					(^u16)(&data[dst_idx + 6])^ = 65535 // Full alpha for 16-bit
+		switch src in image_data.data {
+		case []byte:
+			for i in 0 ..< total_pixels {
+				src_idx := i * bytes_per_pixel
+				dst_idx := i * new_bytes_per_pixel
+				copy(data[dst_idx:], src[src_idx:src_idx + bytes_per_pixel])
+				data[dst_idx + 3] = 255 // Full alpha for 8-bit
+			}
+		case []u16:
+			for i in 0 ..< total_pixels {
+				src_idx := i * image_data.channels
+				dst_idx := i * 4
+				for j in 0 ..< 3 {
+					(^u16)(&data[dst_idx * 2 + j * 2])^ = src[src_idx + j]
 				}
+				(^u16)(&data[dst_idx * 2 + 6])^ = 65535 // Full alpha for 16-bit
+			}
+		case []f32:
+			for i in 0 ..< total_pixels {
+				src_idx := i * image_data.channels
+				dst_idx := i * 4
+				for j in 0 ..< 3 {
+					(^f32)(&data[dst_idx * 4 + j * 4])^ = src[src_idx + j]
+				}
+				(^f32)(&data[dst_idx * 4 + 12])^ = 1.0 // Full alpha for float
 			}
 		}
-
-		return
+	} else {
+		// If not converting, just create a byte slice of the data
+		data = make([]byte, total_pixels * bytes_per_pixel, allocator) or_return
+		switch src in image_data.data {
+		case []byte:
+			copy(data, src)
+		case []u16:
+			mem.copy(&data[0], &src[0], len(src) * size_of(u16))
+		case []f32:
+			mem.copy(&data[0], &src[0], len(src) * size_of(f32))
+		}
 	}
-
-	data = current_data[:]
 
 	return
 }
