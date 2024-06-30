@@ -57,10 +57,10 @@ surface_configure :: proc(
 		cfg.height = config.height
 		cfg.present_mode = config.present_mode
 
-		view_format_count := cast(uint)len(config.view_formats)
+		view_format_count := len(config.view_formats)
 
 		if view_format_count > 0 {
-			cfg.view_format_count = view_format_count
+			cfg.view_format_count = uint(view_format_count)
 			cfg.view_formats = raw_data(config.view_formats)
 		} else {
 			cfg.view_format_count = 0

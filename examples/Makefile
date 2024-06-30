@@ -3,7 +3,7 @@ MODE ?= debug
 
 # Arguments for debug mode
 ifeq ($(MODE),debug)
-ARGS = -debug
+ARGS = -debug -vet -strict-style
 else
 # Arguments optimized for release
 ARGS = -o:speed \

@@ -49,7 +49,7 @@ queue_submit_raw :: proc(using self: ^Queue, command_count: uint, commands: ^Raw
 }
 
 queue_submit_slice :: proc(using self: ^Queue, commands: ..Raw_Command_Buffer) {
-	wgpu.queue_submit(ptr, cast(uint)len(commands), raw_data(commands))
+	wgpu.queue_submit(ptr, uint(len(commands)), raw_data(commands))
 }
 
 queue_submit_single :: proc(using self: ^Queue, command: ^Raw_Command_Buffer) {
@@ -80,7 +80,7 @@ queue_submit_for_index_slice :: proc(
 	using self: ^Queue,
 	commands: ..Raw_Command_Buffer,
 ) -> Submission_Index {
-	return wgpu.queue_submit_for_index(ptr, cast(uint)len(commands), raw_data(commands))
+	return wgpu.queue_submit_for_index(ptr, uint(len(commands)), raw_data(commands))
 }
 
 queue_submit_for_index_single :: proc(
@@ -115,7 +115,7 @@ queue_write_buffer_bytes :: proc(
 	if len(data) == 0 {
 		wgpu.queue_write_buffer(ptr, buffer, offset, nil, 0)
 	} else {
-		wgpu.queue_write_buffer(ptr, buffer, offset, raw_data(data), cast(uint)len(data))
+		wgpu.queue_write_buffer(ptr, buffer, offset, raw_data(data), uint(len(data)))
 	}
 
 	err = get_last_error()
@@ -188,14 +188,7 @@ queue_write_texture :: proc(
 	if len(data) == 0 {
 		wgpu.queue_write_texture(ptr, texture, nil, 0, data_layout, size)
 	} else {
-		wgpu.queue_write_texture(
-			ptr,
-			texture,
-			raw_data(data),
-			cast(uint)len(data),
-			data_layout,
-			size,
-		)
+		wgpu.queue_write_texture(ptr, texture, raw_data(data), uint(len(data)), data_layout, size)
 	}
 
 	err = get_last_error()

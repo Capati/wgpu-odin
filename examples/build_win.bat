@@ -2,7 +2,7 @@
 setlocal
 
 :: Set default values
-set ARGS=-debug
+set ARGS=-debug -vet -strict-style
 
 :: Arguments optimized for release
 if "%2" == "release" (

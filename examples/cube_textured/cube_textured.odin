@@ -17,7 +17,7 @@ import "../framework/renderer"
 Texel_Size :: 256
 
 State :: struct {
-	gpu:             ^renderer.Renderer,
+	using gpu:       ^renderer.Renderer,
 	vertex_buffer:   wgpu.Buffer,
 	index_buffer:    wgpu.Buffer,
 	uniform_buffer:  wgpu.Buffer,
@@ -32,16 +32,16 @@ Error :: union #shared_nil {
 
 init_example :: proc() -> (state: State, err: Error) {
 	state.gpu = renderer.init() or_return
-	defer if err != nil do renderer.deinit(state.gpu)
+	defer if err != nil do renderer.deinit(state)
 
 	state.vertex_buffer = wgpu.device_create_buffer_with_data(
-		&state.gpu.device,
+		&state.device,
 		&{label = "Vertex Buffer", contents = wgpu.to_bytes(vertex_data), usage = {.Vertex}},
 	) or_return
 	defer if err != nil do wgpu.buffer_release(&state.vertex_buffer)
 
 	state.index_buffer = wgpu.device_create_buffer_with_data(
-		&state.gpu.device,
+		&state.device,
 		&{label = "Index Buffer", contents = wgpu.to_bytes(index_data), usage = {.Index}},
 	) or_return
 	defer if err != nil do wgpu.buffer_release(&state.index_buffer)
@@ -53,7 +53,7 @@ init_example :: proc() -> (state: State, err: Error) {
 	}
 
 	texture := wgpu.device_create_texture(
-		&state.gpu.device,
+		&state.device,
 		&{
 			size = texture_extent,
 			mip_level_count = 1,
@@ -71,21 +71,17 @@ init_example :: proc() -> (state: State, err: Error) {
 	texels := create_texels()
 
 	wgpu.queue_write_texture(
-		&state.gpu.queue,
+		&state.queue,
 		&{texture = texture.ptr, mip_level = 0, origin = {}, aspect = .All},
 		wgpu.to_bytes(texels),
-		&{
-			offset = 0,
-			bytes_per_row = Texel_Size,
-			rows_per_image = cast(u32)wgpu.COPY_STRIDE_UNDEFINED,
-		},
+		&{offset = 0, bytes_per_row = Texel_Size, rows_per_image = wgpu.COPY_STRIDE_UNDEFINED},
 		&texture_extent,
 	) or_return
 
-	mx_total := generate_matrix(cast(f32)state.gpu.config.width / cast(f32)state.gpu.config.height)
+	mx_total := generate_matrix(cast(f32)state.config.width / cast(f32)state.config.height)
 
 	state.uniform_buffer = wgpu.device_create_buffer_with_data(
-		&state.gpu.device,
+		&state.device,
 		&{
 			label = "Uniform Buffer",
 			contents = wgpu.to_bytes(mx_total),
@@ -97,7 +93,7 @@ init_example :: proc() -> (state: State, err: Error) {
 	shader_source := #load("./cube_textured.wgsl")
 
 	shader_module := wgpu.device_create_shader_module(
-		&state.gpu.device,
+		&state.device,
 		&{label = "Texture cube shader", source = cstring(raw_data(shader_source))},
 	) or_return
 	defer wgpu.shader_module_release(&shader_module)
@@ -116,7 +112,7 @@ init_example :: proc() -> (state: State, err: Error) {
 	}
 
 	state.render_pipeline = wgpu.device_create_render_pipeline(
-		&state.gpu.device,
+		&state.device,
 		&{
 			vertex = {
 				module = shader_module.ptr,
@@ -128,7 +124,7 @@ init_example :: proc() -> (state: State, err: Error) {
 				entry_point = "fs_main",
 				targets = {
 					{
-						format = state.gpu.config.format,
+						format = state.config.format,
 						blend = nil,
 						write_mask = wgpu.Color_Write_Mask_All,
 					},
@@ -148,7 +144,7 @@ init_example :: proc() -> (state: State, err: Error) {
 	defer wgpu.bind_group_layout_release(&bind_group_layout)
 
 	state.bind_group = wgpu.device_create_bind_group(
-		&state.gpu.device,
+		&state.device,
 		&{
 			layout = bind_group_layout.ptr,
 			entries = {
@@ -179,12 +175,12 @@ deinit_example :: proc(using state: ^State) {
 render :: proc(using state: ^State) -> (err: Error) {
 	frame := renderer.get_current_texture_frame(gpu) or_return
 	defer wgpu.texture_release(&frame.texture)
-	if gpu.skip_frame do return
+	if skip_frame do return
 
 	view := wgpu.texture_create_view(&frame.texture, nil) or_return
 	defer wgpu.texture_view_release(&view)
 
-	encoder := wgpu.device_create_command_encoder(&gpu.device) or_return
+	encoder := wgpu.device_create_command_encoder(&device) or_return
 	defer wgpu.command_encoder_release(&encoder)
 
 	render_pass := wgpu.command_encoder_begin_render_pass(
@@ -227,15 +223,15 @@ render :: proc(using state: ^State) -> (err: Error) {
 	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
 	defer wgpu.command_buffer_release(&command_buffer)
 
-	wgpu.queue_submit(&gpu.queue, command_buffer.ptr)
-	wgpu.surface_present(&gpu.surface)
+	wgpu.queue_submit(&queue, command_buffer.ptr)
+	wgpu.surface_present(&surface)
 
 	return
 }
 
 resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Error) {
 	wgpu.queue_write_buffer(
-		&gpu.queue,
+		&queue,
 		uniform_buffer.ptr,
 		0,
 		wgpu.to_bytes(generate_matrix(cast(f32)size.width / cast(f32)size.height)),

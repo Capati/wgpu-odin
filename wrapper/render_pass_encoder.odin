@@ -107,7 +107,7 @@ render_pass_encoder_execute_bundles :: proc(
 		return
 	}
 
-	wgpu.render_pass_encoder_execute_bundles(ptr, cast(uint)len(bundles), raw_data(bundles))
+	wgpu.render_pass_encoder_execute_bundles(ptr, uint(len(bundles)), raw_data(bundles))
 }
 
 // Inserts debug marker.
@@ -147,7 +147,7 @@ render_pass_encoder_set_bind_group :: proc(
 			ptr,
 			group_index,
 			group,
-			cast(uint)len(dynamic_offsets),
+			uint(len(dynamic_offsets)),
 			raw_data(dynamic_offsets),
 		)
 	}

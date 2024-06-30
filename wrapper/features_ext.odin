@@ -1,8 +1,5 @@
 package wgpu
 
-// Package
-import wgpu "./../bindings"
-
 @(private)
 // Webgpu and native features.
 Raw_Feature_Name :: enum ENUM_SIZE {

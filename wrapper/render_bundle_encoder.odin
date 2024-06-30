@@ -137,7 +137,7 @@ render_bundle_encoder_set_bind_group :: proc(
 			ptr,
 			group_index,
 			group,
-			cast(uint)len(dynamic_offsets),
+			uint(len(dynamic_offsets)),
 			raw_data(dynamic_offsets),
 		)
 	}

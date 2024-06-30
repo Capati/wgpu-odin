@@ -179,11 +179,11 @@ texture_usage_feature_flags_sample_count_supported :: proc(
 ) -> bool {
 	// odinfmt: disable
 	switch count {
-		case 1: return true
-		case 2: return .Multisample_X2 in self
-		case 4: return .Multisample_X4 in self
-		case 8: return .Multisample_X8 in self
-		case 16: return .Multisample_X16 in self
+	case 1: return true
+	case 2: return .Multisample_X2 in self
+	case 4: return .Multisample_X4 in self
+	case 8: return .Multisample_X8 in self
+	case 16: return .Multisample_X16 in self
 	}
 	// odinfmt: enable
 
@@ -200,7 +200,7 @@ texture_format_sample_type :: proc(
 	device_features: Device_Features = {},
 ) -> Texture_Sample_Type {
 	float_filterable := Texture_Sample_Type.Float
-	unfilterable_float := Texture_Sample_Type.Unfilterable_Float
+	// unfilterable_float := Texture_Sample_Type.Unfilterable_Float
 	float32_sample_type := Texture_Sample_Type.Unfilterable_Float
 	if .Float32_Filterable in device_features {
 		float32_sample_type = .Float
@@ -241,12 +241,11 @@ texture_format_sample_type :: proc(
 		}
 		return .Undefined
 
-	/*.R16_Unorm,*/
-	/*.R16_Snorm,*/
-	/*.Rg16_Unorm,*/
-	/*.Rg16_Snorm,*/
-	/*.Rgba16_Unorm,*/
-	/*.Rgba16_Snorm,*/
+	// case .Nv12:
+	// 	return unfilterable_float
+
+	// case .R16_Unorm, .R16_Snorm, .Rg16_Unorm, .Rg16_Snorm, .Rgba16_Unorm, .Rgba16_Snorm:
+	// 	return float_filterable
 
 	case .Rgb9_E5_Ufloat, .Bc1_Rgba_Unorm, .Bc1_Rgba_Unorm_Srgb, .Bc2_Rgba_Unorm,
 		 .Bc2_Rgba_Unorm_Srgb, .Bc3_Rgba_Unorm, .Bc3_Rgba_Unorm_Srgb, .Bc4_R_Unorm,
@@ -287,7 +286,7 @@ texture_format_guaranteed_format_features :: proc(
 	basic: Texture_Usage_Flags = {.Copy_Src, .Copy_Dst, .Texture_Binding}
 	attachment: Texture_Usage_Flags = basic + {.Render_Attachment}
 	storage: Texture_Usage_Flags = basic + {.Storage_Binding}
-	binding: Texture_Usage_Flags = {.Texture_Binding}
+	// binding: Texture_Usage_Flags = {.Texture_Binding}
 	all_flags := Texture_Usage_Flags_All
 	rg11b10f := attachment if .Rg11_B10_Ufloat_Renderable in device_features else basic
 	bgra8unorm := attachment + storage if .Bgra8_Unorm_Storage in device_features else attachment
@@ -339,6 +338,7 @@ texture_format_guaranteed_format_features :: proc(
 	case .Depth24_Plus_Stencil8: flags = msaa; allowed_usages = attachment
 	case .Depth32_Float: flags = msaa; allowed_usages = attachment
 	case .Depth32_Float_Stencil8: flags = msaa; allowed_usages = attachment
+	// case .Nv12: flags = noaa; allowed_usages = binding
 	// case .TextureFormat_NV12: flags = noaa; allowed_usages = binding
 	// case .R16_Unorm: flags = msaa; allowed_usages = storage
 	// case .R16_Snorm: flags = msaa; allowed_usages = storage
@@ -571,8 +571,8 @@ texture_format_components_with_aspect :: proc(self: Texture_Format, aspect: Text
 
 	case .Depth24_Plus_Stencil8, .Depth32_Float_Stencil8:
 		switch aspect {
-			case .Depth_Only, .Stencil_Only: return 1
-			case .All: return 2
+		case .Depth_Only, .Stencil_Only: return 1
+		case .All: return 2
 		}
 
 	case .Bc4_R_Unorm, .Bc4_R_Snorm, .Eacr11_Unorm, .Eacr11_Snorm:

@@ -3,7 +3,6 @@ package wgpu
 // Core
 import "base:runtime"
 import "core:fmt"
-import "core:strings"
 
 // Package
 import wgpu "../bindings"
@@ -274,7 +273,7 @@ adapter_request_device :: proc(
 		}
 
 		desc.required_feature_count = uint(features_len)
-		desc.required_features = transmute(^wgpu.Feature_Name)raw_data(features[:])
+		desc.required_features = cast(^wgpu.Feature_Name)raw_data(features[:])
 	}
 
 	// If no limits is provided, default to adapter best limits

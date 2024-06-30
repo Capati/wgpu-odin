@@ -146,7 +146,7 @@ main :: proc() {
 			layout = {
 				offset = 0,
 				bytes_per_row = cast(u32)buffer_dimensions.padded_bytes_per_row,
-				rows_per_image = cast(u32)wgpu.COPY_STRIDE_UNDEFINED,
+				rows_per_image = wgpu.COPY_STRIDE_UNDEFINED,
 			},
 		},
 		&texture_extent,
@@ -164,7 +164,7 @@ main :: proc() {
 	}
 	wgpu.buffer_map_async(&output_buffer, {.Read}, handle_buffer_map, nil, 0, buffer_size)
 
-	res, res_err := wgpu.device_poll(&device)
+	_, res_err := wgpu.device_poll(&device)
 	if res_err != nil do return
 
 	data, data_err := wgpu.buffer_get_const_mapped_range(&output_buffer, byte, 0, buffer_size)

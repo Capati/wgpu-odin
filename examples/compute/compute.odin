@@ -191,7 +191,7 @@ main :: proc() {
 		uint(staging_buffer.size),
 	)
 
-	res, res_err := wgpu.device_poll(&device)
+	_, res_err := wgpu.device_poll(&device)
 	if res_err != nil do return
 
 	if result == .Success {

@@ -17,7 +17,7 @@ import "../framework/renderer"
 Depth_Format: wgpu.Texture_Format = .Depth24_Plus
 
 State :: struct {
-	gpu:                ^renderer.Renderer,
+	using gpu:          ^renderer.Renderer,
 	vertex_buffer:      wgpu.Buffer,
 	render_pipeline:    wgpu.Render_Pipeline,
 	depth_stencil_view: wgpu.Texture_View,
@@ -32,18 +32,18 @@ Error :: union #shared_nil {
 
 init_example :: proc() -> (state: State, err: Error) {
 	state.gpu = renderer.init() or_return
-	defer if err != nil do renderer.deinit(state.gpu)
+	defer if err != nil do renderer.deinit(state)
 
 	shader_source := #load("./cube.wgsl")
 
 	shader_module := wgpu.device_create_shader_module(
-		&state.gpu.device,
+		&state.device,
 		&{label = "Cube shader", source = cstring(raw_data(shader_source))},
 	) or_return
 	defer wgpu.shader_module_release(&shader_module)
 
 	state.vertex_buffer = wgpu.device_create_buffer_with_data(
-		&state.gpu.device,
+		&state.device,
 		&{label = "Cube Vertex Buffer", contents = wgpu.to_bytes(vertex_data), usage = {.Vertex}},
 	) or_return
 	defer if err != nil do wgpu.buffer_release(&state.vertex_buffer)
@@ -69,7 +69,7 @@ init_example :: proc() -> (state: State, err: Error) {
 			entry_point = "fragment_main",
 			targets = {
 				{
-					format = state.gpu.config.format,
+					format = state.config.format,
 					blend = &wgpu.Blend_State_Replace,
 					write_mask = wgpu.Color_Write_Mask_All,
 				},
@@ -91,22 +91,22 @@ init_example :: proc() -> (state: State, err: Error) {
 	}
 
 	state.render_pipeline = wgpu.device_create_render_pipeline(
-		&state.gpu.device,
+		&state.device,
 		&pipeline_descriptor,
 	) or_return
 	defer if err != nil do wgpu.render_pipeline_release(&state.render_pipeline)
 
 	state.depth_stencil_view = get_depth_framebuffer(
-		state.gpu,
-		{state.gpu.config.width, state.gpu.config.height},
+		state,
+		{state.config.width, state.config.height},
 	) or_return
 	defer if err != nil do wgpu.texture_view_release(&state.depth_stencil_view)
 
-	aspect := cast(f32)state.gpu.config.width / cast(f32)state.gpu.config.height
+	aspect := cast(f32)state.config.width / cast(f32)state.config.height
 	mvp_mat := generate_matrix(aspect)
 
 	state.uniform_buffer = wgpu.device_create_buffer_with_data(
-		&state.gpu.device,
+		&state.device,
 		&{
 			label = "Uniform Buffer",
 			contents = wgpu.to_bytes(mvp_mat),
@@ -122,7 +122,7 @@ init_example :: proc() -> (state: State, err: Error) {
 	defer wgpu.bind_group_layout_release(&bind_group_layout)
 
 	state.bind_group = wgpu.device_create_bind_group(
-		&state.gpu.device,
+		&state.device,
 		&{
 			layout = bind_group_layout.ptr,
 			entries = {
@@ -152,12 +152,12 @@ deinit_example :: proc(using state: ^State) {
 render :: proc(using state: ^State) -> (err: Error) {
 	frame := renderer.get_current_texture_frame(gpu) or_return
 	defer wgpu.texture_release(&frame.texture)
-	if gpu.skip_frame do return
+	if skip_frame do return
 
 	view := wgpu.texture_create_view(&frame.texture, nil) or_return
 	defer wgpu.texture_view_reference(&view)
 
-	encoder := wgpu.device_create_command_encoder(&gpu.device) or_return
+	encoder := wgpu.device_create_command_encoder(&device) or_return
 	defer wgpu.command_encoder_release(&encoder)
 
 	render_pass := wgpu.command_encoder_begin_render_pass(
@@ -198,8 +198,8 @@ render :: proc(using state: ^State) -> (err: Error) {
 	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
 	defer wgpu.command_buffer_release(&command_buffer)
 
-	wgpu.queue_submit(&gpu.queue, command_buffer.ptr)
-	wgpu.surface_present(&gpu.surface)
+	wgpu.queue_submit(&queue, command_buffer.ptr)
+	wgpu.surface_present(&surface)
 
 	return
 }
@@ -209,7 +209,7 @@ resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Er
 	depth_stencil_view = get_depth_framebuffer(gpu, size) or_return
 
 	wgpu.queue_write_buffer(
-		&gpu.queue,
+		&queue,
 		uniform_buffer.ptr,
 		0,
 		wgpu.to_bytes(generate_matrix(cast(f32)size.width / cast(f32)size.height)),
@@ -252,14 +252,14 @@ main :: proc() {
 }
 
 get_depth_framebuffer :: proc(
-	gpu: ^renderer.Renderer,
+	using gpu: ^renderer.Renderer,
 	size: app.Physical_Size,
 ) -> (
 	view: wgpu.Texture_View,
 	err: wgpu.Error,
 ) {
 	texture := wgpu.device_create_texture(
-		&gpu.device,
+		&device,
 		&{
 			size = {width = size.width, height = size.height, depth_or_array_layers = 1},
 			mip_level_count = 1,

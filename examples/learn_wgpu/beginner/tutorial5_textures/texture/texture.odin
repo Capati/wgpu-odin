@@ -1,7 +1,6 @@
 package tutorial5_textures_texture
 
 // Core
-import "core:bytes"
 import "core:fmt"
 import "core:image/png"
 
