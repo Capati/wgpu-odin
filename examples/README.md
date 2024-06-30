@@ -39,15 +39,13 @@ set ARGS=%ARGS% -define:WGPU_BACKEND_TYPE=DX12
 You can use the `Makefile`, for example:
 
 ```shell
-make cube_textured_example
+make cube_textured
 ```
-
-The suffix `_example` is to avoid a problem with same target and directory name.
 
 To build optimized for release mode, set the `MODE` option to `release`:
 
 ```shell
-make cube_textured_example MODE=release
+make cube_textured MODE=release
 ```
 
 ## More Examples
