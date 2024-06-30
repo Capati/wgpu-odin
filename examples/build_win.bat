@@ -54,6 +54,7 @@ call :compute
 call :cube
 call :cube_textured
 call :info
+call :microui
 call :texture_arrays
 call :triangle
 call :triangle_msaa
@@ -78,6 +79,10 @@ goto :eof
 
 :info
 odin build .\info %ARGS% %OUT%\info.exe
+goto :eof
+
+:microui
+odin build .\microui %ARGS% %OUT%\microui.exe
 goto :eof
 
 :texture_arrays

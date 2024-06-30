@@ -29,7 +29,7 @@ endif
 BUILD_TARGET ?= all
 
 # Define all target names
-TARGETS := capture compute cube cube_textured info texture_arrays triangle triangle_msaa learn_wgpu
+TARGETS := capture compute cube cube_textured info microui texture_arrays triangle triangle_msaa learn_wgpu
 
 .PHONY: all $(TARGETS)
 
@@ -54,6 +54,10 @@ cube_textured:
 info:
 	@echo Building 'info' in $(MODE) mode...
 	@odin build ./info $(ARGS) $(OUT)/info
+
+microui:
+	@echo Building 'microui' in $(MODE) mode...
+	@odin build ./microui $(ARGS) $(OUT)/microui
 
 texture_arrays:
 	@echo Building 'texture_arrays' in $(MODE) mode...
