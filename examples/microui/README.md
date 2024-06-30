@@ -24,8 +24,7 @@ import wmu "wgpu/utils/microui"
 // ...
 
 // Initialize the renderer
-wmu.init(&device, &queue, &surface_config)
-mu.init(mu_ctx)
+mu_ctx := wmu.init(&device, &queue, &surface_config)
 
 // In your render loop:
 mu.begin(mu_ctx)
@@ -40,6 +39,7 @@ wmu.resize(new_width, new_height)
 
 // Cleanup
 wmu.destroy()
+free(mu_ctx)
 ```
 
 ## Screenshots
