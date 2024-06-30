@@ -2,63 +2,85 @@
 MODE ?= debug
 
 # Arguments for debug mode
-ifeq ($(MODE),debug)
 ARGS = -debug -vet -strict-style
-else
-# Arguments optimized for release
-ARGS = -o:speed \
-    -disable-assert \
-    -no-bounds-check \
-    -define:WGPU_CHECK_TO_BYTES=false \
-    -define:WGPU_ENABLE_ERROR_HANDLING=false
+
+# Output directory
+OUT = -out:./build
+
+# Check if we're in release mode
+ifeq ($(MODE),release)
+	ARGS = -o:speed \
+		-disable-assert \
+		-no-bounds-check \
+		-define:WGPU_CHECK_TO_BYTES=false \
+		-define:WGPU_ENABLE_ERROR_HANDLING=false
 endif
 
 # Set the default linking
 USE_SYSTEM_LIBRARIES ?= false
-ARGS := $(ARGS) -define:WGPU_USE_SYSTEM_LIBRARIES=$(USE_SYSTEM_LIBRARIES)
+ARGS += -define:WGPU_USE_SYSTEM_LIBRARIES=$(USE_SYSTEM_LIBRARIES)
 
+# Add macOS-specific linker flags
 ifeq ($(shell uname -s),Darwin)
-	ARGS := $(ARGS) -extra-linker-flags:"-L/opt/homebrew/lib"
+	ARGS += -extra-linker-flags:"-L/opt/homebrew/lib"
 endif
 
-OUT = -out:./build
+# Set default build target
+BUILD_TARGET ?= all
 
-.PHONY: all
+# Define all target names
+TARGETS := capture compute cube cube_textured info texture_arrays triangle triangle_msaa learn_wgpu
 
-all: info_example triangle_example triangle_msaa_example cube_example cube_textured_example compute_example capture_example texture_arrays_example learn_wgpu_examples
+.PHONY: all $(TARGETS)
 
-info_example:
-	odin build ./info $(ARGS) $(OUT)/info
+all: $(TARGETS)
 
-triangle_example:
-	odin build ./triangle $(ARGS) $(OUT)/triangle
+capture:
+	@echo Building 'capture' in $(MODE) mode...
+	@odin build ./capture $(ARGS) $(OUT)/capture
 
-triangle_msaa_example:
-	odin build ./triangle_msaa $(ARGS) $(OUT)/triangle_msaa
+compute:
+	@echo Building 'compute' in $(MODE) mode...
+	@odin build ./compute $(ARGS) $(OUT)/compute
 
-cube_example:
-	odin build ./cube $(ARGS) $(OUT)/cube
+cube:
+	@echo Building 'cube' in $(MODE) mode...
+	@odin build ./cube $(ARGS) $(OUT)/cube
 
-cube_textured_example:
-	odin build ./cube_textured $(ARGS) $(OUT)/cube_textured
+cube_textured:
+	@echo Building 'cube_textured' in $(MODE) mode...
+	@odin build ./cube_textured $(ARGS) $(OUT)/cube_textured
 
-compute_example:
-	odin build ./compute $(ARGS) $(OUT)/compute
+info:
+	@echo Building 'info' in $(MODE) mode...
+	@odin build ./info $(ARGS) $(OUT)/info
 
-capture_example:
-	odin build ./capture $(ARGS) $(OUT)/capture
+texture_arrays:
+	@echo Building 'texture_arrays' in $(MODE) mode...
+	@odin build ./texture_arrays $(ARGS) $(OUT)/texture_arrays
 
-texture_arrays_example:
-	odin build ./texture_arrays $(ARGS) $(OUT)/texture_arrays
+triangle:
+	@echo Building 'triangle' in $(MODE) mode...
+	@odin build ./triangle $(ARGS) $(OUT)/triangle
 
-learn_wgpu_examples:
-	odin build ./learn_wgpu/beginner/tutorial1_window $(ARGS) $(OUT)/tutorial1_window
-	odin build ./learn_wgpu/beginner/tutorial2_surface $(ARGS) $(OUT)/tutorial2_surface
-	odin build ./learn_wgpu/beginner/tutorial2_surface_challenge $(ARGS) $(OUT)/tutorial2_surface_challenge
-	odin build ./learn_wgpu/beginner/tutorial3_pipeline $(ARGS) $(OUT)/tutorial3_pipeline
-	odin build ./learn_wgpu/beginner/tutorial3_pipeline_challenge $(ARGS) $(OUT)/tutorial3_pipeline_challenge
-	odin build ./learn_wgpu/beginner/tutorial4_buffer $(ARGS) $(OUT)/tutorial4_buffer
-	odin build ./learn_wgpu/beginner/tutorial4_buffer_challenge $(ARGS) $(OUT)/tutorial4_buffer_challenge
-	odin build ./learn_wgpu/beginner/tutorial5_textures $(ARGS) $(OUT)/tutorial5_textures
-	odin build ./learn_wgpu/beginner/tutorial5_textures_challenge $(ARGS) $(OUT)/tutorial5_textures_challenge
-	odin build ./learn_wgpu/beginner/tutorial6_uniforms $(ARGS) $(OUT)/tutorial6_uniforms
+triangle_msaa:
+	@echo Building 'triangle_msaa' in $(MODE) mode...
+	@odin build ./triangle_msaa $(ARGS) $(OUT)/triangle_msaa
+
+learn_wgpu:
+	@echo Building 'learn_wgpu' examples in $(MODE) mode...
+	@odin build ./learn_wgpu/beginner/tutorial1_window $(ARGS) $(OUT)/tutorial1_window
+	@odin build ./learn_wgpu/beginner/tutorial2_surface $(ARGS) $(OUT)/tutorial2_surface
+	@odin build ./learn_wgpu/beginner/tutorial2_surface_challenge $(ARGS) $(OUT)/tutorial2_surface_challenge
+	@odin build ./learn_wgpu/beginner/tutorial3_pipeline $(ARGS) $(OUT)/tutorial3_pipeline
+	@odin build ./learn_wgpu/beginner/tutorial3_pipeline_challenge $(ARGS) $(OUT)/tutorial3_pipeline_challenge
+	@odin build ./learn_wgpu/beginner/tutorial4_buffer $(ARGS) $(OUT)/tutorial4_buffer
+	@odin build ./learn_wgpu/beginner/tutorial4_buffer_challenge $(ARGS) $(OUT)/tutorial4_buffer_challenge
+	@odin build ./learn_wgpu/beginner/tutorial5_textures $(ARGS) $(OUT)/tutorial5_textures
+	@odin build ./learn_wgpu/beginner/tutorial5_textures_challenge $(ARGS) $(OUT)/tutorial5_textures_challenge
+	@odin build ./learn_wgpu/beginner/tutorial6_uniforms $(ARGS) $(OUT)/tutorial6_uniforms
+
+# Default target
+$(BUILD_TARGET):
+	@echo Building all examples in $(MODE) mode...
+	@$(MAKE) $(BUILD_TARGET)
