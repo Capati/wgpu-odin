@@ -45,9 +45,10 @@ Error_Data_Type :: enum {
 	Surface_Get_Current_Texture,
 }
 
-System_Error :: enum {
+IO_Error :: enum {
 	None,
-	Read_Entire_File,
+	Read_File_Failed,
+	Load_Image_Failed,
 }
 
 // General error type merged with other types
@@ -61,7 +62,7 @@ Error :: union #shared_nil {
 	Queue_Work_Done_Status,
 	Surface_Get_Current_Texture_Status,
 	mem.Allocator_Error,
-	System_Error,
+	IO_Error,
 }
 
 Error_Data_Info :: struct {
