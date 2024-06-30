@@ -87,8 +87,3 @@ learn_wgpu:
 	@odin build ./learn_wgpu/beginner/tutorial5_textures $(ARGS) $(OUT)/tutorial5_textures
 	@odin build ./learn_wgpu/beginner/tutorial5_textures_challenge $(ARGS) $(OUT)/tutorial5_textures_challenge
 	@odin build ./learn_wgpu/beginner/tutorial6_uniforms $(ARGS) $(OUT)/tutorial6_uniforms
-
-# Default target
-$(BUILD_TARGET):
-	@echo Building all examples in $(MODE) mode...
-	@$(MAKE) $(BUILD_TARGET)
