@@ -53,6 +53,7 @@ call :capture
 call :compute
 call :cube
 call :cube_textured
+call :image_blur
 call :info
 call :microui
 call :texture_arrays
@@ -75,6 +76,10 @@ goto :eof
 
 :cube_textured
 odin build .\cube_textured %ARGS% %OUT%\cube_textured.exe
+goto :eof
+
+:image_blur
+odin build .\image_blur %ARGS% %OUT%\image_blur.exe
 goto :eof
 
 :info
