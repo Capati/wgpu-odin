@@ -59,7 +59,7 @@ init_state :: proc(window: ^sdl.Window) -> (state: State, err: wgpu.Error) {
 
 	device_descriptor := wgpu.Device_Descriptor {
 		label           = adapter.info.name,
-		required_limits = wgpu.Default_Limits,
+		required_limits = wgpu.DEFAULT_LIMITS,
 	}
 
 	state.device, state.queue = wgpu.adapter_request_device(&adapter, &device_descriptor) or_return

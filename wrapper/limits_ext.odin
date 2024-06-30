@@ -47,14 +47,14 @@ Limits :: struct {
 // guaranteed to be supported by WebGPU. Applications needing more modern features can
 // use this as a reasonable set of limits if they are targeting only desktop and modern
 // mobile devices.
-Default_Limits :: Limits {
+DEFAULT_LIMITS :: Limits {
 	max_texture_dimension_1d                        = 8192,
 	max_texture_dimension_2d                        = 8192,
 	max_texture_dimension_3d                        = 2048,
 	max_texture_array_layers                        = 256,
 	max_bind_groups                                 = 4,
 	max_bind_groups_plus_vertex_buffers             = 24,
-	max_bindings_per_bind_group                     = 640,
+	max_bindings_per_bind_group                     = 1000,
 	max_dynamic_uniform_buffers_per_pipeline_layout = 8,
 	max_dynamic_storage_buffers_per_pipeline_layout = 4,
 	max_sampled_textures_per_shader_stage           = 16,
@@ -62,12 +62,12 @@ Default_Limits :: Limits {
 	max_storage_buffers_per_shader_stage            = 8,
 	max_storage_textures_per_shader_stage           = 4,
 	max_uniform_buffers_per_shader_stage            = 12,
-	max_uniform_buffer_binding_size                 = 64 << 10,
-	max_storage_buffer_binding_size                 = 128 << 20,
+	max_uniform_buffer_binding_size                 = 64 << 10, // (64 KiB)
+	max_storage_buffer_binding_size                 = 128 << 20, // (128 MiB)
 	min_uniform_buffer_offset_alignment             = 256,
 	min_storage_buffer_offset_alignment             = 256,
 	max_vertex_buffers                              = 8,
-	max_buffer_size                                 = 1 << 28,
+	max_buffer_size                                 = 256 << 20, // (256 MiB)
 	max_vertex_attributes                           = 16,
 	max_vertex_buffer_array_stride                  = 2048,
 	max_inter_stage_shader_components               = 60,
@@ -80,7 +80,8 @@ Default_Limits :: Limits {
 	max_compute_workgroup_size_y                    = 256,
 	max_compute_workgroup_size_z                    = 64,
 	max_compute_workgroups_per_dimension            = 65535,
-	// Extras
+
+	// Native limits (extras)
 	max_push_constant_size                          = 0,
 	max_non_sampler_bindings                        = 1_000_000,
 }
@@ -89,14 +90,14 @@ Default_Limits :: Limits {
 // “downlevel” backends such as OpenGL and D3D11, other than WebGL. For most applications
 // we recommend using these limits, assuming they are high enough for your application,
 // and you do not intent to support WebGL.
-Downlevel_Limits :: Limits {
+DOWNLEVEL_LIMITS :: Limits {
 	max_texture_dimension_1d                        = 2048,
 	max_texture_dimension_2d                        = 2048,
 	max_texture_dimension_3d                        = 256,
 	max_texture_array_layers                        = 256,
 	max_bind_groups                                 = 4,
 	max_bind_groups_plus_vertex_buffers             = 24,
-	max_bindings_per_bind_group                     = 640,
+	max_bindings_per_bind_group                     = 1000,
 	max_dynamic_uniform_buffers_per_pipeline_layout = 8,
 	max_dynamic_storage_buffers_per_pipeline_layout = 4,
 	max_sampled_textures_per_shader_stage           = 16,
@@ -104,12 +105,12 @@ Downlevel_Limits :: Limits {
 	max_storage_buffers_per_shader_stage            = 4,
 	max_storage_textures_per_shader_stage           = 4,
 	max_uniform_buffers_per_shader_stage            = 12,
-	max_uniform_buffer_binding_size                 = 16 << 10,
-	max_storage_buffer_binding_size                 = 128 << 20,
+	max_uniform_buffer_binding_size                 = 16 << 10, // (16 KiB)
+	max_storage_buffer_binding_size                 = 128 << 20, // (128 MiB)
 	min_uniform_buffer_offset_alignment             = 256,
 	min_storage_buffer_offset_alignment             = 256,
 	max_vertex_buffers                              = 8,
-	max_buffer_size                                 = 1 << 28,
+	max_buffer_size                                 = 256 << 20, // (256 MiB)
 	max_vertex_attributes                           = 16,
 	max_vertex_buffer_array_stride                  = 2048,
 	max_inter_stage_shader_components               = 60,
@@ -122,21 +123,22 @@ Downlevel_Limits :: Limits {
 	max_compute_workgroup_size_y                    = 256,
 	max_compute_workgroup_size_z                    = 64,
 	max_compute_workgroups_per_dimension            = 65535,
-	// Extras
+
+	// Native limits (extras)
 	max_push_constant_size                          = 0,
 	max_non_sampler_bindings                        = 1_000_000,
 }
 
-// This is a set of limits that is lower even than the `Downlevel_Limits`, configured
+// This is a set of limits that is lower even than the `DOWNLEVEL_LIMITS`, configured
 // to be low enough to support running in the browser using WebGL2.
-Downlevel_Webgl2_Limits :: Limits {
+DOWNLEVEL_WEBGL2_LIMITS :: Limits {
 	max_texture_dimension_1d                        = 2048,
 	max_texture_dimension_2d                        = 2048,
 	max_texture_dimension_3d                        = 256,
 	max_texture_array_layers                        = 256,
 	max_bind_groups                                 = 4,
 	max_bind_groups_plus_vertex_buffers             = 24,
-	max_bindings_per_bind_group                     = 640,
+	max_bindings_per_bind_group                     = 1000,
 	max_dynamic_uniform_buffers_per_pipeline_layout = 8,
 	max_dynamic_storage_buffers_per_pipeline_layout = 0,
 	max_sampled_textures_per_shader_stage           = 16,
@@ -144,15 +146,15 @@ Downlevel_Webgl2_Limits :: Limits {
 	max_storage_buffers_per_shader_stage            = 0,
 	max_storage_textures_per_shader_stage           = 0,
 	max_uniform_buffers_per_shader_stage            = 11,
-	max_uniform_buffer_binding_size                 = 16 << 10,
+	max_uniform_buffer_binding_size                 = 16 << 10, // (16 KiB)
 	max_storage_buffer_binding_size                 = 0,
 	min_uniform_buffer_offset_alignment             = 256,
 	min_storage_buffer_offset_alignment             = 256,
 	max_vertex_buffers                              = 8,
-	max_buffer_size                                 = 1 << 28,
+	max_buffer_size                                 = 256 << 20, // (256 MiB)
 	max_vertex_attributes                           = 16,
 	max_vertex_buffer_array_stride                  = 255,
-	max_inter_stage_shader_components               = 60,
+	max_inter_stage_shader_components               = 31,
 	max_inter_stage_shader_variables                = 16,
 	max_color_attachments                           = 8,
 	max_color_attachment_bytes_per_sample           = 32,
@@ -162,7 +164,8 @@ Downlevel_Webgl2_Limits :: Limits {
 	max_compute_workgroup_size_y                    = 0,
 	max_compute_workgroup_size_z                    = 0,
 	max_compute_workgroups_per_dimension            = 0,
-	// Extras
+
+	// Native limits (extras)
 	max_push_constant_size                          = 0,
 	max_non_sampler_bindings                        = 1_000_000,
 }
