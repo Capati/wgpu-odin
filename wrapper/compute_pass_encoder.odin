@@ -89,7 +89,7 @@ compute_pass_encoder_set_bind_group :: proc(
 	group: Raw_Bind_Group,
 	dynamic_offsets: []u32 = {},
 ) {
-	dynamic_offset_count := cast(uint)len(dynamic_offsets)
+	dynamic_offset_count := uint(len(dynamic_offsets))
 
 	if dynamic_offset_count == 0 {
 		wgpu.compute_pass_encoder_set_bind_group(ptr, group_index, group, 0, nil)

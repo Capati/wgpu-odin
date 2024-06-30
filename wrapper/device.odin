@@ -79,7 +79,7 @@ device_create_bind_group :: proc(
 
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
-	entry_count := cast(uint)len(descriptor.entries)
+	entry_count := uint(len(descriptor.entries))
 
 	if entry_count > 0 {
 		entries := make([]wgpu.Bind_Group_Entry, entry_count, context.temp_allocator)
@@ -190,7 +190,7 @@ device_create_bind_group_layout :: proc(
 
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
-	entry_count := cast(uint)len(descriptor.entries)
+	entry_count := uint(len(descriptor.entries))
 
 	if entry_count > 0 {
 		entries := make([]wgpu.Bind_Group_Layout_Entry, entry_count, context.temp_allocator)
@@ -524,7 +524,7 @@ device_create_render_bundle_encoder :: proc(
 	desc: wgpu.Render_Bundle_Encoder_Descriptor
 	desc.label = descriptor.label
 
-	color_format_count := cast(uint)len(descriptor.color_formats)
+	color_format_count := uint(len(descriptor.color_formats))
 
 	if color_format_count > 0 {
 		desc.color_format_count = color_format_count
@@ -576,7 +576,7 @@ _device_create_render_pipeline_descriptor :: proc(
 		desc.vertex.constants = raw_data(descriptor.vertex.constants)
 	}
 
-	vertex_buffer_count := cast(uint)len(descriptor.vertex.buffers)
+	vertex_buffer_count := uint(len(descriptor.vertex.buffers))
 
 	if vertex_buffer_count > 0 {
 		vertex_buffers := make([]wgpu.Vertex_Buffer_Layout, vertex_buffer_count, allocator)
@@ -587,7 +587,7 @@ _device_create_render_pipeline_descriptor :: proc(
 			raw_buffer.array_stride = v.array_stride
 			raw_buffer.step_mode = v.step_mode
 
-			attribute_count := cast(uint)len(v.attributes)
+			attribute_count := uint(len(v.attributes))
 
 			if attribute_count > 0 {
 				raw_buffer.attribute_count = attribute_count
@@ -876,7 +876,7 @@ device_create_texture :: proc(
 	desc.mip_level_count = descriptor.mip_level_count
 	desc.sample_count = descriptor.sample_count
 
-	view_format_count := cast(uint)len(descriptor.view_formats)
+	view_format_count := uint(len(descriptor.view_formats))
 
 	if view_format_count > 0 {
 		desc.view_format_count = view_format_count

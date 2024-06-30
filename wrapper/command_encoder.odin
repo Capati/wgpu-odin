@@ -71,7 +71,7 @@ command_encoder_begin_render_pass :: proc(
 	desc.label = descriptor.label
 
 	if len(descriptor.color_attachments) > 0 {
-		desc.color_attachment_count = cast(uint)len(descriptor.color_attachments)
+		desc.color_attachment_count = uint(len(descriptor.color_attachments))
 		desc.color_attachments = raw_data(descriptor.color_attachments)
 	}
 

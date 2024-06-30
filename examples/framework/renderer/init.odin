@@ -8,7 +8,7 @@ import "core:reflect"
 // Packages
 import app "../application"
 import "../application/core"
-import "../application/events"
+// import "../application/events"
 
 // Libs
 import wgpu "../../../wrapper"

@@ -12,7 +12,7 @@ import "../../../framework/application/events"
 import "../../../framework/renderer"
 
 State :: struct {
-	gpu:         ^renderer.Renderer,
+	using gpu:   ^renderer.Renderer,
 	clear_color: wgpu.Color,
 }
 
@@ -23,9 +23,7 @@ Error :: union #shared_nil {
 
 init_example :: proc() -> (state: State, err: Error) {
 	state.gpu = renderer.init() or_return
-
 	state.clear_color = wgpu.Color_Black
-
 	return
 }
 
@@ -36,13 +34,13 @@ deinit_example :: proc(using state: ^State) {
 render :: proc(using state: ^State) -> (err: Error) {
 	frame := renderer.get_current_texture_frame(gpu) or_return
 	defer wgpu.texture_release(&frame.texture)
-	if gpu.skip_frame do return
+	if skip_frame do return
 
 	view := wgpu.texture_create_view(&frame.texture, nil) or_return
 	defer wgpu.texture_view_release(&view)
 
 	encoder := wgpu.device_create_command_encoder(
-		&gpu.device,
+		&device,
 		&wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
 	) or_return
 	defer wgpu.command_encoder_release(&encoder)
@@ -69,8 +67,8 @@ render :: proc(using state: ^State) -> (err: Error) {
 	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
 	defer wgpu.command_buffer_release(&command_buffer)
 
-	wgpu.queue_submit(&gpu.queue, command_buffer.ptr)
-	wgpu.surface_present(&gpu.surface)
+	wgpu.queue_submit(&queue, command_buffer.ptr)
+	wgpu.surface_present(&surface)
 
 	return
 }
@@ -98,16 +96,13 @@ main :: proc() {
 			#partial switch &ev in event {
 			case events.Quit_Event:
 				break main_loop
-			case events.Key_Press_Event:
-			case events.Mouse_Press_Event:
 			case events.Mouse_Motion_Event:
 				state.clear_color = {
-					r = cast(f64)ev.x / cast(f64)state.gpu.config.width,
-					g = cast(f64)ev.y / cast(f64)state.gpu.config.height,
+					r = cast(f64)ev.x / cast(f64)state.config.width,
+					g = cast(f64)ev.y / cast(f64)state.config.height,
 					b = 1.0,
 					a = 1.0,
 				}
-			case events.Mouse_Scroll_Event:
 			case events.Framebuffer_Resize_Event:
 				err := resize_surface(&state, {ev.width, ev.height})
 				if err != nil do break main_loop

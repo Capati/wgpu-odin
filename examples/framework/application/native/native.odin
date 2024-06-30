@@ -18,9 +18,6 @@ Default_Physical_Size :: core.Default_Physical_Size
 Physical_Size :: core.Physical_Size
 Platform_Info :: core.Platform_Info
 
-// Force backend type option
-WGPU_BACKEND_TYPE :: #config(WGPU_BACKEND_TYPE, "Undefined")
-
 Display_Mode :: enum {
 	Windowed,
 	Fullscreen,

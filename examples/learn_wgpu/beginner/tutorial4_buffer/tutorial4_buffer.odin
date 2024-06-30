@@ -17,7 +17,7 @@ Vertex :: struct {
 }
 
 State :: struct {
-	gpu:             ^renderer.Renderer,
+	using gpu:       ^renderer.Renderer,
 	render_pipeline: wgpu.Render_Pipeline,
 	vertex_buffer:   wgpu.Buffer,
 	index_buffer:    wgpu.Buffer,
@@ -31,17 +31,17 @@ Error :: union #shared_nil {
 
 init_example :: proc() -> (state: State, err: Error) {
 	state.gpu = renderer.init() or_return
-	defer if err != nil do renderer.deinit(state.gpu)
+	defer if err != nil do renderer.deinit(state)
 
 	shader_source := #load("./shader.wgsl")
 	shader_module := wgpu.device_create_shader_module(
-		&state.gpu.device,
+		&state.device,
 		&{source = cstring(raw_data(shader_source))},
 	) or_return
 	defer wgpu.shader_module_release(&shader_module)
 
 	render_pipeline_layout := wgpu.device_create_pipeline_layout(
-		&state.gpu.device,
+		&state.device,
 		&{label = "Render Pipeline Layout"},
 	) or_return
 	defer wgpu.pipeline_layout_release(&render_pipeline_layout)
@@ -68,7 +68,7 @@ init_example :: proc() -> (state: State, err: Error) {
 			entry_point = "fs_main",
 			targets = {
 				{
-					format = state.gpu.config.format,
+					format = state.config.format,
 					blend = &wgpu.Blend_State_Replace,
 					write_mask = wgpu.Color_Write_Mask_All,
 				},
@@ -80,7 +80,7 @@ init_example :: proc() -> (state: State, err: Error) {
 	}
 
 	state.render_pipeline = wgpu.device_create_render_pipeline(
-		&state.gpu.device,
+		&state.device,
 		&render_pipeline_descriptor,
 	) or_return
 	defer if err != nil do wgpu.render_pipeline_release(&state.render_pipeline)
@@ -101,11 +101,11 @@ init_example :: proc() -> (state: State, err: Error) {
 
 	indices: []u16 = {0, 1, 4, 1, 2, 4, 2, 3, 4}
 
-	// gpu.num_vertices = cast(u32)len(vertices)
+	// num_vertices = cast(u32)len(vertices)
 	state.num_indices = cast(u32)len(indices)
 
 	state.vertex_buffer = wgpu.device_create_buffer_with_data(
-		&state.gpu.device,
+		&state.device,
 		&wgpu.Buffer_Data_Descriptor {
 			label = "Vertex Buffer",
 			contents = wgpu.to_bytes(vertices),
@@ -115,7 +115,7 @@ init_example :: proc() -> (state: State, err: Error) {
 	defer if err != nil do wgpu.buffer_release(&state.vertex_buffer)
 
 	state.index_buffer = wgpu.device_create_buffer_with_data(
-		&state.gpu.device,
+		&state.device,
 		&wgpu.Buffer_Data_Descriptor {
 			label = "Index Buffer",
 			contents = wgpu.to_bytes(indices),
@@ -136,13 +136,13 @@ deinit_example :: proc(using state: ^State) {
 render :: proc(using state: ^State) -> (err: Error) {
 	frame := renderer.get_current_texture_frame(gpu) or_return
 	defer wgpu.texture_release(&frame.texture)
-	if gpu.skip_frame do return
+	if skip_frame do return
 
 	view := wgpu.texture_create_view(&frame.texture, nil) or_return
 	defer wgpu.texture_view_release(&view)
 
 	encoder := wgpu.device_create_command_encoder(
-		&gpu.device,
+		&device,
 		&wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
 	) or_return
 	defer wgpu.command_encoder_release(&encoder)
@@ -181,8 +181,8 @@ render :: proc(using state: ^State) -> (err: Error) {
 	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
 	defer wgpu.command_buffer_release(&command_buffer)
 
-	wgpu.queue_submit(&gpu.queue, command_buffer.ptr)
-	wgpu.surface_present(&gpu.surface)
+	wgpu.queue_submit(&queue, command_buffer.ptr)
+	wgpu.surface_present(&surface)
 
 	return
 }

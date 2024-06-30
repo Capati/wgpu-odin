@@ -12,7 +12,7 @@ import "../framework/application/events"
 import "../framework/renderer"
 
 State :: struct {
-	gpu:             ^renderer.Renderer,
+	using gpu:       ^renderer.Renderer,
 	render_pipeline: wgpu.Render_Pipeline,
 }
 
@@ -23,18 +23,18 @@ Error :: union #shared_nil {
 
 init_example :: proc() -> (state: State, err: Error) {
 	state.gpu = renderer.init() or_return
-	defer if err != nil do renderer.deinit(state.gpu)
+	defer if err != nil do renderer.deinit(state)
 
 	shader_source := #load("./triangle.wgsl")
 
 	shader_module := wgpu.device_create_shader_module(
-		&state.gpu.device,
+		&state.device,
 		&{label = "Red triangle module", source = cstring(raw_data(shader_source))},
 	) or_return
 	defer wgpu.shader_module_release(&shader_module)
 
 	state.render_pipeline = wgpu.device_create_render_pipeline(
-		&state.gpu.device,
+		&state.device,
 		&{
 			label = "Render Pipeline",
 			vertex = {module = shader_module.ptr, entry_point = "vs"},
@@ -43,7 +43,7 @@ init_example :: proc() -> (state: State, err: Error) {
 				entry_point = "fs",
 				targets = {
 					{
-						format = state.gpu.config.format,
+						format = state.config.format,
 						blend = &wgpu.Blend_State_Replace,
 						write_mask = wgpu.Color_Write_Mask_All,
 					},
@@ -64,12 +64,12 @@ deinit_example :: proc(using state: ^State) {
 render :: proc(using state: ^State) -> (err: Error) {
 	frame := renderer.get_current_texture_frame(gpu) or_return
 	defer wgpu.texture_release(&frame.texture)
-	if gpu.skip_frame do return
+	if skip_frame do return
 
 	view := wgpu.texture_create_view(&frame.texture, nil) or_return
 	defer wgpu.texture_view_release(&view)
 
-	encoder := wgpu.device_create_command_encoder(&gpu.device) or_return
+	encoder := wgpu.device_create_command_encoder(&device) or_return
 	defer wgpu.command_encoder_release(&encoder)
 
 	render_pass := wgpu.command_encoder_begin_render_pass(
@@ -97,8 +97,8 @@ render :: proc(using state: ^State) -> (err: Error) {
 	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
 	defer wgpu.command_buffer_release(&command_buffer)
 
-	wgpu.queue_submit(&gpu.queue, command_buffer.ptr)
-	wgpu.surface_present(&gpu.surface)
+	wgpu.queue_submit(&queue, command_buffer.ptr)
+	wgpu.surface_present(&surface)
 
 	return
 }

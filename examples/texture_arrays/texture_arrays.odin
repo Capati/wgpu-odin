@@ -26,7 +26,7 @@ Texture_Name :: enum {
 }
 
 State :: struct {
-	gpu:                          ^renderer.Renderer,
+	using gpu:                    ^renderer.Renderer,
 	device_has_optional_features: bool,
 	use_uniform_workaround:       bool,
 	fragment_entry_point:         cstring,
@@ -72,78 +72,76 @@ INDICES: []u16: {
 // odinfmt: enable
 
 init_example :: proc() -> (state: State, err: wgpu.Error) {
-	using state
-
 	r_properties := renderer.Default_Render_Properties
 	r_properties.optional_features = {
 		.Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing,
 	}
 	r_properties.required_features = {.Texture_Binding_Array}
-	gpu = renderer.init(r_properties) or_return
-	defer if err != nil do renderer.deinit(gpu)
+	state.gpu = renderer.init(r_properties) or_return
+	defer if err != nil do renderer.deinit(state)
 
-	device_has_optional_features = wgpu.device_has_feature(
-		&gpu.device,
+	state.device_has_optional_features = wgpu.device_has_feature(
+		&state.device,
 		r_properties.optional_features,
 	)
 
-	if device_has_optional_features {
-		fragment_entry_point = "non_uniform_main"
+	if state.device_has_optional_features {
+		state.fragment_entry_point = "non_uniform_main"
 	} else {
-		use_uniform_workaround = true
-		fragment_entry_point = "uniform_main"
+		state.use_uniform_workaround = true
+		state.fragment_entry_point = "uniform_main"
 	}
 
 	base_shader_source := #load("./indexing.wgsl", cstring)
 
 	base_shader_module := wgpu.device_create_shader_module(
-		&gpu.device,
+		&state.device,
 		&{source = base_shader_source},
 	) or_return
 	defer wgpu.shader_module_release(&base_shader_module)
 
 	fragment_shader_module: wgpu.Shader_Module
 
-	if !use_uniform_workaround {
+	if !state.use_uniform_workaround {
 		fragment_shader_source := #load("./non_uniform_indexing.wgsl", cstring)
 		fragment_shader_module = wgpu.device_create_shader_module(
-			&gpu.device,
+			&state.device,
 			&{source = fragment_shader_source},
 		) or_return
 	} else {
 		fragment_shader_module = wgpu.device_create_shader_module(
-			&gpu.device,
+			&state.device,
 			&{source = base_shader_source},
 		) or_return
 	}
 	defer wgpu.shader_module_release(&fragment_shader_module)
 
-	fmt.printfln("Using fragment entry point: %s", fragment_entry_point)
+	fmt.printfln("Using fragment entry point: %s", state.fragment_entry_point)
 
-	vertex_buffer = wgpu.device_create_buffer_with_data(
-		&gpu.device,
+	state.vertex_buffer = wgpu.device_create_buffer_with_data(
+		&state.device,
 		&{label = "Vertex buffer", contents = wgpu.to_bytes(VERTICES), usage = {.Vertex}},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(&vertex_buffer)
+	defer if err != nil do wgpu.buffer_release(&state.vertex_buffer)
 
-	index_buffer = wgpu.device_create_buffer_with_data(
-		&gpu.device,
+	state.index_buffer = wgpu.device_create_buffer_with_data(
+		&state.device,
 		&{label = "Index buffer", contents = wgpu.to_bytes(INDICES), usage = {.Index}},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(&index_buffer)
+	defer if err != nil do wgpu.buffer_release(&state.index_buffer)
 
 	texture_index_buffer_contents: [128]u32 = {}
 	texture_index_buffer_contents[64] = 1
 
-	texture_index_buffer = wgpu.device_create_buffer_with_data(
-		&gpu.device,
+	state.texture_index_buffer = wgpu.device_create_buffer_with_data(
+		&state.device,
 		&{
 			label = "Texture index buffer",
 			contents = wgpu.to_bytes(texture_index_buffer_contents),
 			usage = {.Uniform},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(&texture_index_buffer)
+	defer if err != nil do wgpu.buffer_release(&state.texture_index_buffer)
 
 	extent_3d_default: wgpu.Extent_3D = {1, 1, 1}
 
@@ -162,19 +160,19 @@ init_example :: proc() -> (state: State, err: wgpu.Error) {
 		rows_per_image = wgpu.COPY_STRIDE_UNDEFINED,
 	}
 
-	textures[.RED].label = "red"
-	textures[.GREEN].label = "green"
-	textures[.BLUE].label = "blue"
-	textures[.WHITE].label = "white"
+	state.textures[.RED].label = "red"
+	state.textures[.GREEN].label = "green"
+	state.textures[.BLUE].label = "blue"
+	state.textures[.WHITE].label = "white"
 
-	textures[.RED].data = {255, 0, 0, 255}
-	textures[.GREEN].data = {0, 255, 0, 255}
-	textures[.BLUE].data = {0, 0, 255, 255}
-	textures[.WHITE].data = {255, 255, 255, 255}
+	state.textures[.RED].data = {255, 0, 0, 255}
+	state.textures[.GREEN].data = {0, 255, 0, 255}
+	state.textures[.BLUE].data = {0, 0, 255, 255}
+	state.textures[.WHITE].data = {255, 255, 255, 255}
 
 	defer if err != nil {
-		for i in 0 ..< len(textures) {
-			ref := &textures[cast(Texture_Name)i]
+		for i in 0 ..< len(state.textures) {
+			ref := &state.textures[cast(Texture_Name)i]
 			if ref.view.ptr != nil {
 				wgpu.texture_view_release(&ref.view)
 				wgpu.texture_release(&ref.tex)
@@ -182,18 +180,18 @@ init_example :: proc() -> (state: State, err: wgpu.Error) {
 		}
 	}
 
-	for i in 0 ..< len(textures) {
-		ref := &textures[cast(Texture_Name)i]
+	for i in 0 ..< len(state.textures) {
+		ref := &state.textures[cast(Texture_Name)i]
 
 		texture_descriptor_common.label = ref.label
 
-		ref.tex = wgpu.device_create_texture(&gpu.device, &texture_descriptor_common) or_return
+		ref.tex = wgpu.device_create_texture(&state.device, &texture_descriptor_common) or_return
 
 		ref.view = wgpu.texture_create_view(&ref.tex) or_return
 
 		image_copy_texture := wgpu.texture_as_image_copy(&ref.tex)
 		wgpu.queue_write_texture(
-			&gpu.queue,
+			&state.queue,
 			&image_copy_texture,
 			wgpu.to_bytes(wgpu.to_bytes(ref.data)),
 			&texture_data_layout_common,
@@ -201,8 +199,8 @@ init_example :: proc() -> (state: State, err: wgpu.Error) {
 		) or_return
 	}
 
-	bind_group_layout = wgpu.device_create_bind_group_layout(
-		&gpu.device,
+	state.bind_group_layout = wgpu.device_create_bind_group_layout(
+		&state.device,
 		&{
 			label = "Bind group layout",
 			entries = {
@@ -244,34 +242,40 @@ init_example :: proc() -> (state: State, err: wgpu.Error) {
 			},
 		},
 	) or_return
-	defer if err != nil do wgpu.bind_group_layout_release(&bind_group_layout)
+	defer if err != nil do wgpu.bind_group_layout_release(&state.bind_group_layout)
 
-	sampler = wgpu.device_create_sampler(&gpu.device) or_return
-	defer if err != nil do wgpu.sampler_release(&sampler)
+	state.sampler = wgpu.device_create_sampler(&state.device) or_return
+	defer if err != nil do wgpu.sampler_release(&state.sampler)
 
-	bind_group = wgpu.device_create_bind_group(
-		&gpu.device,
+	state.bind_group = wgpu.device_create_bind_group(
+		&state.device,
 		&{
 			label = "Bind group layout",
-			layout = bind_group_layout.ptr,
+			layout = state.bind_group_layout.ptr,
 			entries = {
 				{
 					binding = 0,
 					extras = &{
-						texture_views = {textures[.RED].view.ptr, textures[.GREEN].view.ptr},
+						texture_views = {
+							state.textures[.RED].view.ptr,
+							state.textures[.GREEN].view.ptr,
+						},
 					},
 				},
 				{
 					binding = 1,
 					extras = &{
-						texture_views = {textures[.BLUE].view.ptr, textures[.WHITE].view.ptr},
+						texture_views = {
+							state.textures[.BLUE].view.ptr,
+							state.textures[.WHITE].view.ptr,
+						},
 					},
 				},
-				{binding = 2, extras = &{samplers = {sampler.ptr, sampler.ptr}}},
+				{binding = 2, extras = &{samplers = {state.sampler.ptr, state.sampler.ptr}}},
 				{
 					binding = 3,
 					resource = wgpu.Buffer_Binding {
-						buffer = texture_index_buffer.ptr,
+						buffer = state.texture_index_buffer.ptr,
 						offset = 0,
 						size = 4,
 					},
@@ -279,18 +283,18 @@ init_example :: proc() -> (state: State, err: wgpu.Error) {
 			},
 		},
 	) or_return
-	defer if err != nil do wgpu.bind_group_release(&bind_group)
+	defer if err != nil do wgpu.bind_group_release(&state.bind_group)
 
-	pipeline_layout = wgpu.device_create_pipeline_layout(
-		&gpu.device,
-		&{label = "main", bind_group_layouts = {bind_group_layout.ptr}},
+	state.pipeline_layout = wgpu.device_create_pipeline_layout(
+		&state.device,
+		&{label = "main", bind_group_layouts = {state.bind_group_layout.ptr}},
 	) or_return
-	defer if err != nil do wgpu.pipeline_layout_release(&pipeline_layout)
+	defer if err != nil do wgpu.pipeline_layout_release(&state.pipeline_layout)
 
-	render_pipeline = wgpu.device_create_render_pipeline(
-		&gpu.device,
+	state.render_pipeline = wgpu.device_create_render_pipeline(
+		&state.device,
 		&{
-			layout = pipeline_layout.ptr,
+			layout = state.pipeline_layout.ptr,
 			vertex = {
 				module = base_shader_module.ptr,
 				entry_point = "vert_main",
@@ -316,8 +320,8 @@ init_example :: proc() -> (state: State, err: wgpu.Error) {
 			},
 			fragment = &{
 				module = fragment_shader_module.ptr,
-				entry_point = fragment_entry_point,
-				targets = {{format = gpu.config.format, write_mask = wgpu.Color_Write_Mask_All}},
+				entry_point = state.fragment_entry_point,
+				targets = {{format = state.config.format, write_mask = wgpu.Color_Write_Mask_All}},
 			},
 			primitive = wgpu.Default_Primitive_State,
 			multisample = wgpu.Default_Multisample_State,
@@ -351,12 +355,12 @@ deinit_example :: proc(using state: ^State) {
 render :: proc(using state: ^State) -> (err: wgpu.Error) {
 	frame := renderer.get_current_texture_frame(gpu) or_return
 	defer wgpu.texture_release(&frame.texture)
-	if gpu.skip_frame do return
+	if skip_frame do return
 
 	view := wgpu.texture_create_view(&frame.texture, nil) or_return
 	defer wgpu.texture_view_release(&view)
 
-	encoder := wgpu.device_create_command_encoder(&gpu.device) or_return
+	encoder := wgpu.device_create_command_encoder(&device) or_return
 	defer wgpu.command_encoder_release(&encoder)
 
 	render_pass := wgpu.command_encoder_begin_render_pass(
@@ -395,8 +399,8 @@ render :: proc(using state: ^State) -> (err: wgpu.Error) {
 	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
 	defer wgpu.command_buffer_release(&command_buffer)
 
-	wgpu.queue_submit(&gpu.queue, command_buffer.ptr)
-	wgpu.surface_present(&gpu.surface)
+	wgpu.queue_submit(&queue, command_buffer.ptr)
+	wgpu.surface_present(&surface)
 
 	return
 }
