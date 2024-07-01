@@ -87,7 +87,7 @@ compute_pass_encoder_set_bind_group :: proc(
 	using self: ^Compute_Pass_Encoder,
 	group_index: u32,
 	group: Raw_Bind_Group,
-	dynamic_offsets: []u32 = {},
+	dynamic_offsets: []Dynamic_Offset = {},
 ) {
 	dynamic_offset_count := uint(len(dynamic_offsets))
 
