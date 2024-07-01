@@ -31,7 +31,7 @@ Buffer_Dimensions :: struct {
 buffer_dimensions_init :: proc(r: ^Buffer_Dimensions, width, height: uint) {
 	bytes_per_pixel := size_of(u32(0))
 	unpadded_bytes_per_row := width * cast(uint)bytes_per_pixel
-	align := cast(uint)wgpu.Copy_Bytes_Per_Row_Alignment
+	align := cast(uint)wgpu.COPY_BYTES_PER_ROW_ALIGNMENT
 	padded_bytes_per_row_padding := (align - (unpadded_bytes_per_row % align)) % align
 	padded_bytes_per_row := unpadded_bytes_per_row + padded_bytes_per_row_padding
 

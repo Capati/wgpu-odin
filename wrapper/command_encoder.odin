@@ -218,7 +218,7 @@ command_encoder_copy_buffer_to_texture :: proc(
 	err: Error,
 ) {
 	when WGPU_ENABLE_ERROR_HANDLING {
-		if source != nil && source.layout.bytes_per_row % Copy_Bytes_Per_Row_Alignment != 0 {
+		if source != nil && source.layout.bytes_per_row % COPY_BYTES_PER_ROW_ALIGNMENT != 0 {
 			err = .Validation
 			set_and_update_err_data(
 				_err_data,
@@ -251,7 +251,7 @@ command_encoder_copy_texture_to_buffer :: proc(
 	err: Error,
 ) {
 	if destination != nil {
-		if destination.layout.bytes_per_row % Copy_Bytes_Per_Row_Alignment != 0 {
+		if destination.layout.bytes_per_row % COPY_BYTES_PER_ROW_ALIGNMENT != 0 {
 			err = .Validation
 			set_and_update_err_data(
 				_err_data,
