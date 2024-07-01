@@ -1,10 +1,14 @@
 package wgpu_microui
 
+// Core
+// import "core:fmt"
+
 // Vendor
 import mu "vendor:microui"
 
 // Package
 import wgpu "./../../wrapper"
+import shaders "./../shaders"
 
 // Constants for buffer sizes and atlas dimensions
 MAX_QUADS_PER_BATCH: u32 : 16384
@@ -157,11 +161,11 @@ init :: proc(
 	) or_return
 	defer wgpu.pipeline_layout_release(&pipeline_layout)
 
-	microui_shader_source := #load("./microui.wgsl")
-
+	microui_shader_source: string : #load("./microui.wgsl")
+	shader_source := shaders.SRGB_TO_LINEAR_WGSL + microui_shader_source
 	microui_shader_module := wgpu.device_create_shader_module(
 		device,
-		&{label = "microui shader", source = cstring(raw_data(microui_shader_source))},
+		&{label = "microui shader", source = cstring(raw_data(shader_source))},
 	) or_return
 	defer wgpu.shader_module_release(&microui_shader_module)
 

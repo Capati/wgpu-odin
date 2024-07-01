@@ -33,6 +33,8 @@ fn vert_main(@builtin(vertex_index) VertexIndex : u32) -> VertexOutput {
 }
 
 @fragment
-fn frag_main(@location(0) fragUV : vec2f) -> @location(0) vec4f {
-  return textureSample(myTexture, mySampler, fragUV);
+fn frag_main(@location(0) fragUV: vec2f) -> @location(0) vec4f {
+    let srgb_color = textureSample(myTexture, mySampler, fragUV);
+    let linear_color = srgb_to_linear(srgb_color.rgb);
+    return vec4(linear_color, srgb_color.a);
 }
