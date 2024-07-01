@@ -553,15 +553,19 @@ set_clip_rect :: proc(rect: mu.Rect) {
 	w := max(0, right - x)
 	h := max(0, bottom - y)
 
-	r.current_clip_rect = {x, y, w, h}
+	new_clip_rect := mu.Rect{x, y, w, h}
 
-	wgpu.render_pass_encoder_set_scissor_rect(
-		&r.current_pass,
-		u32(r.current_clip_rect.x),
-		u32(r.current_clip_rect.y),
-		u32(r.current_clip_rect.w),
-		u32(r.current_clip_rect.h),
-	)
+	if r.current_clip_rect != new_clip_rect {
+		r.current_clip_rect = new_clip_rect
+
+		wgpu.render_pass_encoder_set_scissor_rect(
+			&r.current_pass,
+			u32(r.current_clip_rect.x),
+			u32(r.current_clip_rect.y),
+			u32(r.current_clip_rect.w),
+			u32(r.current_clip_rect.h),
+		)
+	}
 }
 
 resize :: proc(width, height: i32) {
