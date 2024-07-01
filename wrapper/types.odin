@@ -10,24 +10,24 @@ Shader_Location :: u32
 Dynamic_Offset :: u32
 
 // Buffer-Texture copies must have [`bytes_per_row`] aligned to this number.
-Copy_Bytes_Per_Row_Alignment: u32 : 256
+COPY_BYTES_PER_ROW_ALIGNMENT: u32 : 256
 // An offset into the query resolve buffer has to be aligned to self.
-Query_Resolve_Buffer_Alignment: Buffer_Address : 256
+QUERY_RESOLVE_BUFFER_ALIGNMENT: Buffer_Address : 256
 // Buffer to buffer copy as well as buffer clear offsets and sizes must be aligned to
 // this number.
-Copy_Buffer_Alignment: Buffer_Address : 4
+COPY_BUFFER_ALIGNMENT: Buffer_Address : 4
 // Buffer alignment mask to calculate proper size
-Copy_Buffer_Alignment_Mask :: Copy_Buffer_Alignment - 1
+COPY_BUFFER_ALIGNMENT_MASK :: COPY_BUFFER_ALIGNMENT - 1
 // Size to align mappings.
-Map_Alignment: Buffer_Address : 8
+MAP_ALIGNMENT: Buffer_Address : 8
 // Vertex buffer strides have to be aligned to this number.
-Vertex_Stride_Alignment: Buffer_Address : 4
+VERTEX_STRIDE_ALIGNMENT: Buffer_Address : 4
 // Alignment all push constants need
-Push_Constant_Alignment: u32 : 4
+PUSH_CONSTANT_ALIGNMENT: u32 : 4
 // Maximum queries in a query set
-Query_Set_Max_Queries: u32 : 8192
+QUERY_SET_MAX_QUERIES: u32 : 8192
 // Size of a single piece of query data.
-Query_Size: u32 : 8
+QUERY_SIZE: u32 : 8
 
 // Standard blending state that blends source and destination based on source alpha.
 Blend_Component_Normal := Blend_Component {

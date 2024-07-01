@@ -240,7 +240,7 @@ render_pass_encoder_release_and_nil :: proc(using self: ^Render_Pass_Encoder) {
 //
 // Write the bytes in `data` at offset `offset` within push constant storage, all of which are
 // accessible by all the pipeline stages in `stages`, and no others. Both `offset` and the length
-// of `data` must be multiples of `Push_Constant_Alignment`, which is always `4`.
+// of `data` must be multiples of `PUSH_CONSTANT_ALIGNMENT`, which is always `4`.
 render_pass_encoder_set_push_constants :: proc(
 	using self: ^Render_Pass_Encoder,
 	stages: Shader_Stage_Flags,

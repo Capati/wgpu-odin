@@ -36,13 +36,13 @@ device_create_buffer_with_data :: proc(
 	unpadded_size := cast(Buffer_Address)len(descriptor.contents)
 
 	// Valid vulkan usage is
-	// 1. buffer size must be a multiple of Copy_Buffer_Alignment.
+	// 1. buffer size must be a multiple of COPY_BUFFER_ALIGNMENT.
 	// 2. buffer size must be greater than 0.
 	// Therefore we round the value up to the nearest multiple, and ensure it's at least
-	// Copy_Buffer_Alignment.
+	// COPY_BUFFER_ALIGNMENT.
 
-	align_mask := Copy_Buffer_Alignment - 1
-	padded_size := max(((unpadded_size + align_mask) & ~align_mask), Copy_Buffer_Alignment)
+	align_mask := COPY_BUFFER_ALIGNMENT_MASK
+	padded_size := max(((unpadded_size + align_mask) & ~align_mask), COPY_BUFFER_ALIGNMENT)
 
 	buffer_descriptor: Buffer_Descriptor = {
 		label              = descriptor.label,
