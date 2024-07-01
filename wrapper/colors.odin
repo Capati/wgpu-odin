@@ -1,5 +1,8 @@
 package wgpu
 
+// Core
+import "core:math"
+
 Color_Transparent :: Color{0.0, 0.0, 0.0, 0.0}
 Color_Alice_Blue :: Color{0.941176, 0.972549, 1.0, 1.0}
 Color_Antique_White :: Color{0.980392, 0.921569, 0.843137, 1.0}
@@ -143,18 +146,83 @@ Color_White_Smoke :: Color{0.960784, 0.960784, 0.960784, 1.0}
 Color_Yellow :: Color{1.0, 1.0, 0.0, 1.0}
 Color_Yellow_Green :: Color{0.603922, 0.803922, 0.196078, 1.0}
 
-// Returns a gray color
-// ### Arguments
-// * `brightness` - The brightness of the color. `0.0` is black, `1.0` is white
+// Returns a gray color.
+//
+// Parameters
+// - `brightness`: The brightness of the color. `0.0` is black, `1.0` is white.
 color_gray :: proc(brightness: f64) -> Color {
 	b := brightness if brightness <= 1.0 else 1.0
 	return {b, b, b, 1.0}
 }
 
-// Returns a semi-transparent white color
-// ### Arguments
-// * `transparency` - The transparency of the color. `0.0` is transparent, `1.0` is opaque
+// Returns a semi-transparent white color.
+//
+// Parameters
+// - `transparency`: The transparency of the color. `0.0` is transparent, `1.0` is opaque.
 color_alpha :: proc(transparency: f64) -> Color {
 	t := transparency if transparency <= 1.0 else 1.0
 	return {1.0, 1.0, 1.0, t}
+}
+
+// Converts an sRGB color component to its linear (physical) representation.
+color_srgb_component_to_linear :: proc(color: f64) -> f64 {
+	c := clamp(color, 0.0, 1.0)
+	if c <= 0.04045 {
+		return c / 12.92
+	} else {
+		return math.pow((c + 0.055) / 1.055, 2.4)
+	}
+}
+
+// Converts a linear (physical) color component to its sRGB representation.
+color_linear_component_to_srgb :: proc(color: f64) -> f64 {
+	if color <= 0.0031308 {
+		return clamp(color * 12.92, 0.0, 1.0)
+	} else {
+		return clamp(math.pow(color, 1.0 / 2.4) * 1.055 - 0.055, 0.0, 1.0)
+	}
+}
+
+// Converts a Color from sRGB space to linear (physical) space
+color_srgb_color_to_linear :: proc(color: Color) -> Color {
+	return Color {
+		r = color_srgb_component_to_linear(color.r),
+		g = color_srgb_component_to_linear(color.g),
+		b = color_srgb_component_to_linear(color.b),
+		a = color.a,
+	}
+}
+
+// Converts a Color from sRGB space to linear (physical) space
+color_set_srgb_color_to_linear :: proc(color: ^Color) {
+	color.r = color_srgb_component_to_linear(color.r)
+	color.g = color_srgb_component_to_linear(color.g)
+	color.b = color_srgb_component_to_linear(color.b)
+}
+
+// Converts a Color from linear (physical) space to sRGB space
+color_linear_color_to_srgb :: proc(color: Color) -> Color {
+	return Color {
+		r = color_linear_component_to_srgb(color.r),
+		g = color_linear_component_to_srgb(color.g),
+		b = color_linear_component_to_srgb(color.b),
+		a = color.a,
+	}
+}
+
+// Converts a Color from linear (physical) space to sRGB space
+color_set_linear_color_to_srgb :: proc(color: ^Color) {
+	color.r = color_linear_component_to_srgb(color.r)
+	color.g = color_linear_component_to_srgb(color.g)
+	color.b = color_linear_component_to_srgb(color.b)
+}
+
+color_srgb_to_linear :: proc {
+	color_srgb_component_to_linear,
+	color_srgb_color_to_linear,
+}
+
+color_linear_to_srgb :: proc {
+	color_linear_component_to_srgb,
+	color_linear_color_to_srgb,
 }

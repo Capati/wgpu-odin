@@ -24,6 +24,13 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let atlas_color = textureSample(atlas_texture, atlas_sampler, in.uv);
-    return in.color * atlas_color;
+	let atlas_color = textureSample(atlas_texture, atlas_sampler, in.uv);
+
+    let linear_atlas = vec4<f32>(srgb_to_linear(atlas_color.rgb), atlas_color.a);
+    let linear_input = vec4<f32>(srgb_to_linear(in.color.rgb), in.color.a);
+
+	// Perform color multiplication in linear space
+    let final_color = linear_input * linear_atlas;
+
+    return final_color;
 }
