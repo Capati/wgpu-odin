@@ -128,7 +128,7 @@ render_bundle_encoder_set_bind_group :: proc(
 	using self: ^Render_Bundle_Encoder,
 	group_index: u32,
 	group: Raw_Bind_Group,
-	dynamic_offsets: []u32 = {},
+	dynamic_offsets: []Dynamic_Offset = {},
 ) {
 	if len(dynamic_offsets) == 0 {
 		wgpu.render_bundle_encoder_set_bind_group(ptr, group_index, group, 0, nil)
