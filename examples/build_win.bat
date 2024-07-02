@@ -28,6 +28,7 @@ if "%RELEASE_MODE%"=="true" (
         -no-bounds-check ^
         -define:WGPU_CHECK_TO_BYTES=false ^
         -define:WGPU_ENABLE_ERROR_HANDLING=false
+	set ADDITIONAL_ARGS=-subsystem:windows
 )
 
 :: Force DX12 backend
@@ -72,52 +73,52 @@ odin build .\compute %ARGS% %OUT%\compute.exe
 goto :eof
 
 :cube
-odin build .\cube %ARGS% %OUT%\cube.exe
+odin build .\cube %ARGS% %ADDITIONAL_ARGS% %OUT%\cube.exe
 goto :eof
 
 :cube_textured
-odin build .\cube_textured %ARGS% %OUT%\cube_textured.exe
+odin build .\cube_textured %ARGS% %ADDITIONAL_ARGS% %OUT%\cube_textured.exe
 goto :eof
 
 :image_blur
-odin build .\image_blur %ARGS% %OUT%\image_blur.exe
+odin build .\image_blur %ARGS% %ADDITIONAL_ARGS% %OUT%\image_blur.exe
 goto :eof
 
 :info
-odin build .\info %ARGS% %OUT%\info.exe
+odin build .\info %ARGS% %ADDITIONAL_ARGS% %OUT%\info.exe
 goto :eof
 
 :microui
-odin build .\microui %ARGS% %OUT%\microui.exe
+odin build .\microui %ARGS% %ADDITIONAL_ARGS% %OUT%\microui.exe
 goto :eof
 
 :rotating_cube
-odin build .\rotating_cube %ARGS% %OUT%\rotating_cube.exe
+odin build .\rotating_cube %ARGS% %ADDITIONAL_ARGS% %OUT%\rotating_cube.exe
 goto :eof
 
 :texture_arrays
-odin build .\texture_arrays %ARGS% %OUT%\texture_arrays.exe
+odin build .\texture_arrays %ARGS% %ADDITIONAL_ARGS% %OUT%\texture_arrays.exe
 goto :eof
 
 :triangle
-odin build .\triangle %ARGS% %OUT%\triangle.exe
+odin build .\triangle %ARGS% %ADDITIONAL_ARGS% %OUT%\triangle.exe
 goto :eof
 
 :triangle_msaa
-odin build .\triangle_msaa %ARGS% %OUT%\triangle_msaa.exe
+odin build .\triangle_msaa %ARGS% %ADDITIONAL_ARGS% %OUT%\triangle_msaa.exe
 goto :eof
 
 :learn_wgpu
-odin build .\learn_wgpu\beginner\tutorial1_window %ARGS% %OUT%/tutorial1_window.exe
-odin build .\learn_wgpu\beginner\tutorial2_surface %ARGS% %OUT%/tutorial2_surface.exe
-odin build .\learn_wgpu\beginner\tutorial2_surface_challenge %ARGS% %OUT%/tutorial2_surface_challenge.exe
-odin build .\learn_wgpu\beginner\tutorial3_pipeline %ARGS% %OUT%/tutorial3_pipeline.exe
-odin build .\learn_wgpu\beginner\tutorial3_pipeline_challenge %ARGS% %OUT%/tutorial3_pipeline_challenge.exe
-odin build .\learn_wgpu\beginner\tutorial4_buffer %ARGS% %OUT%/tutorial4_buffer.exe
-odin build .\learn_wgpu\beginner\tutorial4_buffer_challenge %ARGS% %OUT%/tutorial4_buffer_challenge.exe
-odin build .\learn_wgpu\beginner\tutorial5_textures %ARGS% %OUT%/tutorial5_textures.exe
-odin build .\learn_wgpu\beginner\tutorial5_textures_challenge %ARGS% %OUT%/tutorial5_textures_challenge.exe
-odin build .\learn_wgpu\beginner\tutorial6_uniforms %ARGS% %OUT%/tutorial6_uniforms.exe
+odin build .\learn_wgpu\beginner\tutorial1_window %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial1_window.exe
+odin build .\learn_wgpu\beginner\tutorial2_surface %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial2_surface.exe
+odin build .\learn_wgpu\beginner\tutorial2_surface_challenge %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial2_surface_challenge.exe
+odin build .\learn_wgpu\beginner\tutorial3_pipeline %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial3_pipeline.exe
+odin build .\learn_wgpu\beginner\tutorial3_pipeline_challenge %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial3_pipeline_challenge.exe
+odin build .\learn_wgpu\beginner\tutorial4_buffer %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial4_buffer.exe
+odin build .\learn_wgpu\beginner\tutorial4_buffer_challenge %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial4_buffer_challenge.exe
+odin build .\learn_wgpu\beginner\tutorial5_textures %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial5_textures.exe
+odin build .\learn_wgpu\beginner\tutorial5_textures_challenge %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial5_textures_challenge.exe
+odin build .\learn_wgpu\beginner\tutorial6_uniforms %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial6_uniforms.exe
 goto :eof
 
 :end
