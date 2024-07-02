@@ -56,6 +56,7 @@ call :cube_textured
 call :image_blur
 call :info
 call :microui
+call :rotating_cube
 call :texture_arrays
 call :triangle
 call :triangle_msaa
@@ -88,6 +89,10 @@ goto :eof
 
 :microui
 odin build .\microui %ARGS% %OUT%\microui.exe
+goto :eof
+
+:rotating_cube
+odin build .\rotating_cube %ARGS% %OUT%\rotating_cube.exe
 goto :eof
 
 :texture_arrays
