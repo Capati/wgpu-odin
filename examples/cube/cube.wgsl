@@ -19,7 +19,6 @@ fn vertex_main(
 }
 
 @fragment
-fn fragment_main(fragData: VertexOut) -> @location(0) vec4f
-{
-	return fragData.color;
+fn fragment_main(fragData: VertexOut) -> @location(0) vec4f {
+    return vec4(srgb_to_linear(fragData.color.rgb), fragData.color.a);
 }
