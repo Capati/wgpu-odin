@@ -5,11 +5,12 @@ import "core:fmt"
 import la "core:math/linalg"
 
 // Package
+import "../../../../utils/shaders"
 import wgpu "../../../../wrapper"
 import "../../../common"
 import "../tutorial5_textures/texture"
 
-Open_Gl_To_Wgpu_Matrix :: common.Open_Gl_To_Wgpu_Matrix
+OPEN_GL_TO_WGPU_MATRIX :: common.OPEN_GL_TO_WGPU_MATRIX
 
 // Framework
 import app "../../../framework/application"
@@ -46,7 +47,7 @@ Camera_Controller :: struct {
 }
 
 State :: struct {
-	using gpu:          ^renderer.Renderer,
+	using _:            common.State_Base,
 	diffuse_bind_group: wgpu.Bind_Group,
 	camera:             Camera,
 	camera_controller:  Camera_Controller,
@@ -59,12 +60,19 @@ State :: struct {
 	index_buffer:       wgpu.Buffer,
 }
 
-Error :: union #shared_nil {
-	app.Application_Error,
-	wgpu.Error,
-}
+Error :: common.Error
 
-init_example :: proc() -> (state: State, err: Error) {
+EXAMPLE_TITLE :: "Tutorial 6 - Uniforms"
+
+init :: proc() -> (state: ^State, err: Error) {
+	state = new(State) or_return
+	defer if err != nil do free(state)
+
+	app_properties := app.Default_Properties
+	app_properties.title = EXAMPLE_TITLE
+	app.init(app_properties) or_return
+	defer if err != nil do app.deinit()
+
 	state.gpu = renderer.init() or_return
 	defer if err != nil do renderer.deinit(state)
 
@@ -194,10 +202,11 @@ init_example :: proc() -> (state: State, err: Error) {
 		},
 	}
 
-	shader_source := #load("./shader.wgsl")
+	SHADER_SRC: string : #load("./shader.wgsl", string)
+	COMBINED_SHADER_SRC :: shaders.SRGB_TO_LINEAR_WGSL + SHADER_SRC
 	shader_module := wgpu.device_create_shader_module(
 		&state.device,
-		&{source = cstring(raw_data(shader_source))},
+		&{source = COMBINED_SHADER_SRC},
 	) or_return
 	defer wgpu.shader_module_release(&shader_module)
 
@@ -262,10 +271,18 @@ init_example :: proc() -> (state: State, err: Error) {
 		},
 	) or_return
 
+	state.render_pass_desc = common.create_render_pass_descriptor(
+		EXAMPLE_TITLE + " Render Pass",
+		wgpu.color_srgb_to_linear(wgpu.Color{0.1, 0.2, 0.3, 1.0}),
+	) or_return
+
+	state.color_attachment = &state.render_pass_desc.color_attachments[0]
+
 	return
 }
 
-deinit_example :: proc(using state: ^State) {
+deinit :: proc(using state: ^State) {
+	delete(render_pass_desc.color_attachments)
 	wgpu.buffer_release(&index_buffer)
 	wgpu.buffer_release(&vertex_buffer)
 	wgpu.render_pipeline_release(&render_pipeline)
@@ -273,6 +290,8 @@ deinit_example :: proc(using state: ^State) {
 	wgpu.bind_group_release(&diffuse_bind_group)
 	wgpu.buffer_release(&camera_buffer)
 	renderer.deinit(gpu)
+	app.deinit()
+	free(state)
 }
 
 update :: proc(using state: ^State) -> (err: Error) {
@@ -289,28 +308,14 @@ render :: proc(using state: ^State) -> (err: Error) {
 	if skip_frame do return
 	defer wgpu.texture_release(&frame.texture)
 
-	view := wgpu.texture_create_view(&frame.texture, nil) or_return
+	view := wgpu.texture_create_view(&frame.texture) or_return
 	defer wgpu.texture_view_release(&view)
 
 	encoder := wgpu.device_create_command_encoder(&device) or_return
 	defer wgpu.command_encoder_release(&encoder)
 
-	render_pass := wgpu.command_encoder_begin_render_pass(
-		&encoder,
-		&{
-			label = "Render Pass",
-			color_attachments = []wgpu.Render_Pass_Color_Attachment {
-				{
-					view = view.ptr,
-					resolve_target = nil,
-					load_op = .Clear,
-					store_op = .Store,
-					clear_value = {0.1, 0.2, 0.3, 1.0},
-				},
-			},
-			depth_stencil_attachment = nil,
-		},
-	)
+	color_attachment.view = view.ptr
+	render_pass := wgpu.command_encoder_begin_render_pass(&encoder, &render_pass_desc)
 	defer wgpu.render_pass_encoder_release(&render_pass)
 
 	wgpu.render_pass_encoder_set_pipeline(&render_pass, render_pipeline.ptr)
@@ -351,62 +356,64 @@ resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Er
 	return
 }
 
-main :: proc() {
-	app_properties := app.Default_Properties
-	app_properties.title = "Tutorial 6 - Uniforms"
-	if app.init(app_properties) != .No_Error do return
-	defer app.deinit()
+handle_events :: proc(using state: ^State) -> (should_quit: bool, err: Error) {
+	event: events.Event
+	for app.poll_event(&event) {
+		#partial switch &ev in event {
+		case events.Quit_Event:
+			return true, nil
+		case events.Key_Press_Event:
+			#partial switch ev.key {
+			case .Space:
+				state.camera_controller.is_up_pressed = true
+			case .Lshift:
+				state.camera_controller.is_down_pressed = true
+			case .W:
+				state.camera_controller.is_forward_pressed = true
+			case .A:
+				state.camera_controller.is_left_pressed = true
+			case .S:
+				state.camera_controller.is_backward_pressed = true
+			case .D:
+				state.camera_controller.is_right_pressed = true
+			}
+		case events.Key_Release_Event:
+			#partial switch ev.key {
+			case .Space:
+				state.camera_controller.is_up_pressed = false
+			case .Lshift:
+				state.camera_controller.is_down_pressed = false
+			case .W:
+				state.camera_controller.is_forward_pressed = false
+			case .A:
+				state.camera_controller.is_left_pressed = false
+			case .S:
+				state.camera_controller.is_backward_pressed = false
+			case .D:
+				state.camera_controller.is_right_pressed = false
+			}
+		case events.Framebuffer_Resize_Event:
+			if err = resize_surface(state, {ev.width, ev.height}); err != nil {
+				return true, err
+			}
+		}
+	}
 
-	state, state_err := init_example()
+	return
+}
+
+main :: proc() {
+	state, state_err := init()
 	if state_err != nil do return
-	defer deinit_example(&state)
+	defer deinit(state)
 
 	fmt.printf("Entering main loop...\n\n")
 
 	main_loop: for {
-		event: events.Event
-		for app.poll_event(&event) {
-			#partial switch &ev in event {
-			case events.Quit_Event:
-				break main_loop
-			case events.Key_Press_Event:
-				#partial switch ev.key {
-				case .Space:
-					state.camera_controller.is_up_pressed = true
-				case .Lshift:
-					state.camera_controller.is_down_pressed = true
-				case .W:
-					state.camera_controller.is_forward_pressed = true
-				case .A:
-					state.camera_controller.is_left_pressed = true
-				case .S:
-					state.camera_controller.is_backward_pressed = true
-				case .D:
-					state.camera_controller.is_right_pressed = true
-				}
-			case events.Key_Release_Event:
-				#partial switch ev.key {
-				case .Space:
-					state.camera_controller.is_up_pressed = false
-				case .Lshift:
-					state.camera_controller.is_down_pressed = false
-				case .W:
-					state.camera_controller.is_forward_pressed = false
-				case .A:
-					state.camera_controller.is_left_pressed = false
-				case .S:
-					state.camera_controller.is_backward_pressed = false
-				case .D:
-					state.camera_controller.is_right_pressed = false
-				}
-			case events.Framebuffer_Resize_Event:
-				err := resize_surface(&state, {ev.width, ev.height})
-				if err != nil do break main_loop
-			}
-		}
-
-		if err := update(&state); err != nil do break main_loop
-		if err := render(&state); err != nil do break main_loop
+		should_quit, err := handle_events(state)
+		if should_quit || err != nil do break main_loop
+		if err = update(state); err != nil do break main_loop
+		if err = render(state); err != nil do break main_loop
 	}
 
 	fmt.println("Exiting...")
@@ -421,7 +428,7 @@ build_view_projection_matrix :: proc(camera: ^Camera) -> la.Matrix4f32 {
 	)
 	view := la.matrix4_look_at_f32(eye = camera.eye, centre = camera.target, up = camera.up)
 	// return la.mul(projection, view)
-	return Open_Gl_To_Wgpu_Matrix * projection * view
+	return OPEN_GL_TO_WGPU_MATRIX * projection * view
 }
 
 new_camera_uniform :: proc() -> Camera_Uniform {

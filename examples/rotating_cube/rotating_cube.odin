@@ -4,13 +4,12 @@ package rotating_cube
 import "core:fmt"
 import "core:math"
 import la "core:math/linalg"
-import "core:mem"
-import "core:slice"
 import "core:time"
 
 // Package
 import wgpu "../../wrapper"
 import "./../../utils/shaders"
+import "./../common"
 
 // Framework
 import app "../framework/application"
@@ -20,7 +19,7 @@ import "../framework/renderer"
 DEPTH_FORMAT :: wgpu.Texture_Format.Depth24_Plus
 
 State :: struct {
-	using gpu:                ^renderer.Renderer,
+	using _:                  common.State_Base,
 	vertex_buffer:            wgpu.Buffer,
 	index_buffer:             wgpu.Buffer,
 	render_pipeline:          wgpu.Render_Pipeline,
@@ -30,23 +29,20 @@ State :: struct {
 	aspect:                   f32,
 	projection_matrix:        la.Matrix4f32,
 	start_time:               time.Time,
-	render_pass_descriptor:   wgpu.Render_Pass_Descriptor,
 	depth_stencil_attachment: wgpu.Render_Pass_Depth_Stencil_Attachment,
 }
 
-Error :: union #shared_nil {
-	app.Application_Error,
-	wgpu.Error,
-	mem.Allocator_Error,
-}
+Error :: common.Error
 
-init_example :: proc() -> (state: ^State, err: Error) {
+EXAMPLE_TITLE :: "Rotating Cube"
+
+init :: proc() -> (state: ^State, err: Error) {
 	state = new(State) or_return
 	defer if err != nil do free(state)
 
 	// Initialize the application
 	app_properties := app.Default_Properties
-	app_properties.title = "Rotating Cube"
+	app_properties.title = EXAMPLE_TITLE
 	app.init(app_properties) or_return
 	defer if err != nil do app.deinit()
 
@@ -58,7 +54,7 @@ init_example :: proc() -> (state: ^State, err: Error) {
 	state.vertex_buffer = wgpu.device_create_buffer_with_data(
 		&state.device,
 		&{
-			label = "Cube Vertex Data",
+			label = EXAMPLE_TITLE + " Vertex Data",
 			contents = wgpu.to_bytes(CUBE_VERTEX_DATA),
 			usage = {.Vertex},
 		},
@@ -71,7 +67,7 @@ init_example :: proc() -> (state: ^State, err: Error) {
 	state.index_buffer = wgpu.device_create_buffer_with_data(
 		&state.device,
 		&{
-			label = "Cube Index Buffer",
+			label = EXAMPLE_TITLE + " Index Buffer",
 			contents = wgpu.to_bytes(CUBE_INDICES_DATA),
 			usage = {.Index},
 		},
@@ -149,7 +145,7 @@ init_example :: proc() -> (state: ^State, err: Error) {
 	state.uniform_buffer = wgpu.device_create_buffer(
 		&state.device,
 		&{
-			label = "Uniform Buffer",
+			label = EXAMPLE_TITLE + " Uniform Buffer",
 			size  = 4 * 16, // 4x4 matrix
 			usage = {.Uniform, .Copy_Dst},
 		},
@@ -192,20 +188,15 @@ init_example :: proc() -> (state: ^State, err: Error) {
 		depth_store_op    = .Store,
 	}
 
-	state.render_pass_descriptor = wgpu.Render_Pass_Descriptor {
-		label                    = "Rotating Cube Render Pass",
-		color_attachments        = slice.clone(
-			[]wgpu.Render_Pass_Color_Attachment {
-				{
-					view        = nil, // Assigned later
-					load_op     = .Clear,
-					store_op    = .Store,
-					clear_value = wgpu.color_srgb_to_linear(wgpu.Color_Dark_Gray),
-				},
-			},
-		) or_return,
-		depth_stencil_attachment = &state.depth_stencil_attachment,
-	}
+	state.render_pass_desc = common.create_render_pass_descriptor(
+		EXAMPLE_TITLE + " Render Pass",
+		wgpu.color_srgb_to_linear(wgpu.Color_Dark_Gray),
+	) or_return
+
+	state.render_pass_desc.depth_stencil_attachment = &state.depth_stencil_attachment
+
+	// Get a reference to the first color attachment
+	state.color_attachment = &state.render_pass_desc.color_attachments[0]
 
 	set_projection_matrix(state)
 
@@ -214,8 +205,8 @@ init_example :: proc() -> (state: ^State, err: Error) {
 	return
 }
 
-deinit_example :: proc(using state: ^State) {
-	delete(state.render_pass_descriptor.color_attachments)
+deinit :: proc(using state: ^State) {
+	delete(state.render_pass_desc.color_attachments)
 	wgpu.texture_view_release(&depth_stencil_view)
 	wgpu.bind_group_release(&uniform_bind_group)
 	wgpu.buffer_destroy(&uniform_buffer)
@@ -277,7 +268,7 @@ get_transformation_matrix :: proc(using state: ^State) -> (mvp_mat: la.Matrix4f3
 	return
 }
 
-render_example :: proc(using state: ^State) -> (err: Error) {
+render :: proc(using state: ^State) -> (err: Error) {
 	frame := renderer.get_current_texture_frame(gpu) or_return
 	if skip_frame do return
 	defer wgpu.texture_release(&frame.texture)
@@ -290,23 +281,22 @@ render_example :: proc(using state: ^State) -> (err: Error) {
 		wgpu.to_bytes(transformation_matrix),
 	) or_return
 
-	view := wgpu.texture_create_view(&frame.texture, nil) or_return
+	view := wgpu.texture_create_view(&frame.texture) or_return
 	defer wgpu.texture_view_release(&view)
 
 	encoder := wgpu.device_create_command_encoder(&device) or_return
 	defer wgpu.command_encoder_release(&encoder)
 
-	render_pass_descriptor.color_attachments[0].view = view.ptr
-	render_pass := wgpu.command_encoder_begin_render_pass(&encoder, &render_pass_descriptor)
+	color_attachment.view = view.ptr
+	render_pass := wgpu.command_encoder_begin_render_pass(&encoder, &render_pass_desc)
+	defer wgpu.render_pass_encoder_release(&render_pass)
 
 	wgpu.render_pass_encoder_set_pipeline(&render_pass, render_pipeline.ptr)
 	wgpu.render_pass_encoder_set_bind_group(&render_pass, 0, uniform_bind_group.ptr)
 	wgpu.render_pass_encoder_set_vertex_buffer(&render_pass, 0, vertex_buffer.ptr)
 	wgpu.render_pass_encoder_set_index_buffer(&render_pass, index_buffer.ptr, .Uint16)
 	wgpu.render_pass_encoder_draw_indexed(&render_pass, u32(len(CUBE_INDICES_DATA)))
-
 	wgpu.render_pass_encoder_end(&render_pass) or_return
-	wgpu.render_pass_encoder_release(&render_pass)
 
 	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
 	defer wgpu.command_buffer_release(&command_buffer)
@@ -320,7 +310,7 @@ render_example :: proc(using state: ^State) -> (err: Error) {
 resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Error) {
 	wgpu.texture_view_release(&depth_stencil_view)
 	depth_stencil_view = get_depth_framebuffer(state, size) or_return
-	render_pass_descriptor.depth_stencil_attachment.view = depth_stencil_view.ptr
+	render_pass_desc.depth_stencil_attachment.view = depth_stencil_view.ptr
 
 	renderer.resize_surface(gpu, {size.width, size.height}) or_return
 
@@ -346,16 +336,16 @@ handle_events :: proc(state: ^State) -> (should_quit: bool, err: Error) {
 }
 
 main :: proc() {
-	state, state_err := init_example()
+	state, state_err := init()
 	if state_err != nil do return
-	defer deinit_example(state)
+	defer deinit(state)
 
 	fmt.printf("Entering main loop...\n\n")
 
 	main_loop: for {
 		should_quit, err := handle_events(state)
 		if should_quit || err != nil do break main_loop
-		if err = render_example(state); err != nil do break main_loop
+		if err = render(state); err != nil do break main_loop
 	}
 
 	fmt.println("Exiting...")
