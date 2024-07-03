@@ -110,8 +110,8 @@ deinit_example :: proc(using state: ^State) {
 
 render :: proc(using state: ^State) -> (err: Error) {
 	frame := renderer.get_current_texture_frame(gpu) or_return
-	defer wgpu.texture_release(&frame.texture)
 	if skip_frame do return
+	defer wgpu.texture_release(&frame.texture)
 
 	view := wgpu.texture_create_view(&frame.texture, nil) or_return
 	defer wgpu.texture_view_release(&view)

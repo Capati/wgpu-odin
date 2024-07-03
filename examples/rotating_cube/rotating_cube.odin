@@ -278,12 +278,17 @@ get_transformation_matrix :: proc(using state: ^State) -> (mvp_mat: la.Matrix4f3
 }
 
 render_example :: proc(using state: ^State) -> (err: Error) {
-	transformation_matrix := get_transformation_matrix(state)
-	wgpu.queue_write_buffer(&queue, uniform_buffer.ptr, 0, wgpu.to_bytes(transformation_matrix))
-
 	frame := renderer.get_current_texture_frame(gpu) or_return
-	defer wgpu.texture_release(&frame.texture)
 	if skip_frame do return
+	defer wgpu.texture_release(&frame.texture)
+
+	transformation_matrix := get_transformation_matrix(state)
+	wgpu.queue_write_buffer(
+		&queue,
+		uniform_buffer.ptr,
+		0,
+		wgpu.to_bytes(transformation_matrix),
+	) or_return
 
 	view := wgpu.texture_create_view(&frame.texture, nil) or_return
 	defer wgpu.texture_view_release(&view)
