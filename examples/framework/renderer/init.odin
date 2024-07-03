@@ -21,6 +21,7 @@ Renderer :: struct {
 	device:     wgpu.Device,
 	queue:      wgpu.Queue,
 	config:     wgpu.Surface_Configuration,
+	output:     wgpu.Surface_Texture,
 	skip_frame: bool,
 }
 

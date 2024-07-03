@@ -14,56 +14,61 @@ GET_CURRENT_TEXTURE_MAX_ATTEMPTS :: 3
 get_current_texture_frame :: proc(
 	renderer: ^Renderer,
 ) -> (
-	frame: wgpu.Surface_Texture,
+	out: ^wgpu.Surface_Texture,
 	err: wgpu.Error,
 ) {
+	if app.is_minimized() {
+		renderer.skip_frame = true
+		return
+	}
+
 	for attempt in 0 ..< GET_CURRENT_TEXTURE_MAX_ATTEMPTS {
-		frame = wgpu.surface_get_current_texture(&renderer.surface) or_return
+		renderer.output = wgpu.surface_get_current_texture(&renderer.surface) or_return
 		renderer.skip_frame = false
 
-		switch frame.status {
+		switch renderer.output.status {
 		case .Success:
 			// Handle suboptimal surface
-			if frame.suboptimal {
-				size := app.get_size()
-				resize_surface(renderer, size)
+			if renderer.output.suboptimal {
+				resize_surface(renderer, app.get_size()) or_return
 				continue // Try again with the new size
 			}
-			return
+			return &renderer.output, nil
 		case .Timeout:
 			if attempt < GET_CURRENT_TEXTURE_MAX_ATTEMPTS - 1 {
-				fmt.printf("Timeout getting current texture. Retrying...\n")
+				fmt.println("Timeout getting current texture. Retrying...")
 				continue
 			}
 			fallthrough
 		case .Outdated, .Lost:
-			// Skip this frame
 			renderer.skip_frame = true
-			if frame.texture.ptr != nil {
-				wgpu.texture_release(&frame.texture)
-			}
-			size := app.get_size()
-			resize_surface(renderer, size) or_return
+			resize_surface(renderer, app.get_size()) or_return
 			if attempt < GET_CURRENT_TEXTURE_MAX_ATTEMPTS - 1 {
-				fmt.printf("Surface outdated or lost. Resized and retrying...\n")
+				fmt.println("Surface outdated or lost. Resized and retrying...")
 				continue
 			}
-			return
+			return nil, wgpu.Error_Type.Unknown
 		case .Out_Of_Memory, .Device_Lost:
-			fmt.eprintf("Failed to acquire surface texture: %s\n", frame.status)
+			fmt.eprintf("Failed to acquire surface texture: %s\n", renderer.output.status)
 			return {}, .Internal
 		}
 	}
 
-	return
+	return nil, wgpu.Error_Type.Unknown
 }
 
 resize_surface :: proc(renderer: ^Renderer, size: app.Physical_Size) -> (err: wgpu.Error) {
-	if size.width == 0 && size.height == 0 {
+	if renderer.output.texture.ptr != nil {
+		wgpu.texture_release_and_nil(&renderer.output.texture)
+	}
+
+	// Panic if width or height is zero.
+	if size.width == 0 || size.height == 0 {
 		return
 	}
 
 	// Wait for the device to finish all operations
+	// TODO(Capati): Does this make sense here?
 	wgpu.device_poll(&renderer.device, true)
 
 	renderer.config.width = size.width
