@@ -59,15 +59,13 @@ _ctx: Native_Application
 init :: proc(properties: Native_Properties) -> (err: core.Application_Error) {
 	fmt.printf("Application \"%s\" init...\n", properties.title)
 
-	properties := properties
-
 	sdl_flags := sdl.InitFlags{.VIDEO, .JOYSTICK, .GAMECONTROLLER, .EVENTS}
 
 	if res := sdl.Init(sdl_flags); res != 0 {
 		fmt.eprintf("Failed to initialize SDL: [%s]\n", sdl.GetError())
 		return .Canvas_Failed
 	}
-	defer if err != .No_Error do sdl.Quit()
+	defer if err != nil do sdl.Quit()
 
 	current_mode: sdl.DisplayMode
 	if res := sdl.GetCurrentDisplayMode(0, &current_mode); res != 0 {
@@ -75,119 +73,53 @@ init :: proc(properties: Native_Properties) -> (err: core.Application_Error) {
 		return .Canvas_Failed
 	}
 
-	physical_size: core.Physical_Size = {
-		width  = properties.size.width,
-		height = properties.size.height,
-	}
+	physical_size := properties.size
 
-	// Window is hidden by default, defer shown afer initialize everything,
-	// this can avoid blank screen at start
-	window_flags: sdl.WindowFlags = {.ALLOW_HIGHDPI, .HIDDEN}
+	window_flags := sdl.WindowFlags{.ALLOW_HIGHDPI}
 
 	if properties.display_mode == .Windowed {
-		if properties.resizable {
-			window_flags += {.RESIZABLE}
-		}
-
-		if !properties.decorated {
-			window_flags += {.BORDERLESS}
-		}
+		window_flags += {.RESIZABLE} if properties.resizable else {}
+		window_flags += {.BORDERLESS} if !properties.decorated else {}
 	} else {
-		// Force borderless in fullscreen
 		window_flags += {.BORDERLESS}
 	}
 
 	#partial switch properties.display_mode {
-	case .Fullscreen:
-		fallthrough
-	case .Fullscreen_Borderless:
-		physical_size.width = cast(u32)current_mode.w
-		physical_size.height = cast(u32)current_mode.h
-	case:
+	case .Fullscreen, .Fullscreen_Borderless:
+		physical_size = {u32(current_mode.w), u32(current_mode.h)}
 	}
 
 	#partial switch properties.display_mode {
-	case .Fullscreen:
-		fallthrough
-	case .Fullscreen_Stretch:
+	case .Fullscreen, .Fullscreen_Stretch:
 		window_flags += {.FULLSCREEN}
-	case:
 	}
 
-	window_pos := sdl.WINDOWPOS_UNDEFINED
-	if properties.centered {
-		window_pos = sdl.WINDOWPOS_CENTERED
-	}
+	window_pos := properties.centered ? sdl.WINDOWPOS_CENTERED : sdl.WINDOWPOS_UNDEFINED
 
 	_ctx.window = sdl.CreateWindow(
 		properties.title,
-		cast(i32)window_pos,
-		cast(i32)window_pos,
-		cast(i32)physical_size.width,
-		cast(i32)physical_size.height,
+		i32(window_pos),
+		i32(window_pos),
+		i32(physical_size.width),
+		i32(physical_size.height),
 		window_flags,
 	)
 	if _ctx.window == nil {
 		fmt.eprintf("Failed to create a SDL window: [%s]\n", sdl.GetError())
 		return .Canvas_Failed
 	}
-	defer if err != .No_Error do sdl.DestroyWindow(_ctx.window)
-	defer if err == .No_Error {
-		sdl.ShowWindow(_ctx.window)
-		// Ensure "centered" on fullscreen borderless
-		if properties.display_mode == .Fullscreen_Borderless {
-			sdl.SetWindowPosition(_ctx.window, 0, 0)
-		}
-	}
+	defer if err != nil do sdl.DestroyWindow(_ctx.window)
 
 	_ctx.properties = properties
 
-	wm_info: sdl.SysWMinfo
-	sdl.GetVersion(&wm_info.version)
+	init_system_info() or_return
 
-	if !sdl.GetWindowWMInfo(_ctx.window, &wm_info) {
-		fmt.eprintf("Could not obtain SDL WM info from window.\n")
-		return .Init_Failed
-	}
-
-	when ODIN_OS == .Windows {
-		_ctx.system_info.platform_tag = .Windows
-		_ctx.system_info.windows = {
-			window    = wm_info.info.win.window,
-			hinstance = wm_info.info.win.hinstance,
-		}
-	} else when ODIN_OS == .Darwin {
-		_ctx.system_info.platform_tag = .Cocoa
-		_ctx.system_info.cocoa = {
-			window = wm_info.info.cocoa.window,
-		}
-	} else when ODIN_OS == .Linux {
-		if wm_info.subsystem == .X11 {
-			_ctx.system_info.platform_tag = .X11
-			_ctx.system_info.x11 = {
-				display = wm_info.info.x11.display,
-				window  = wm_info.info.x11.window,
-			}
-		} else if wm_info.subsystem == .WAYLAND {
-			_ctx.system_info.platform_tag = .Wayland
-			_ctx.system_info.wayland = {
-				display = wm_info.info.wl.display,
-				surface = wm_info.info.wl.surface,
-			}
-		} else {
-			panic("Unsupported Unix platform!")
-		}
+	if events, events_err := events.init_events(); events_err == .None {
+		_ctx.events = events
 	} else {
-		#panic("Unsupported native platform!")
-	}
-
-	events, events_err := events.init_events()
-	if events_err != .None {
 		fmt.eprintf("Failed to initialize events queue.\n")
 		return .Init_Failed
 	}
-
-	_ctx.events = events
 
 	fmt.printf("Application initialized successfully.\n\n")
 
@@ -201,7 +133,6 @@ process_events :: proc() -> ^events.Event_List {
 	}
 
 	e: sdl.Event
-
 	for sdl.PollEvent(&e) {
 		#partial switch (e.type) {
 		case .QUIT:
@@ -296,4 +227,45 @@ deinit :: proc() {
 
 	sdl.DestroyWindow(_ctx.window)
 	sdl.Quit()
+}
+
+@(private)
+init_system_info :: proc() -> core.Application_Error {
+	wm_info: sdl.SysWMinfo
+	sdl.GetVersion(&wm_info.version)
+
+	if !sdl.GetWindowWMInfo(_ctx.window, &wm_info) {
+		fmt.eprintf("Could not obtain SDL WM info from window.\n")
+		return .Init_Failed
+	}
+
+	when ODIN_OS == .Windows {
+		_ctx.system_info = {
+			platform_tag = .Windows,
+			windows = {window = wm_info.info.win.window, hinstance = wm_info.info.win.hinstance},
+		}
+	} else when ODIN_OS == .Darwin {
+		_ctx.system_info = {
+			platform_tag = .Cocoa,
+			cocoa = {window = wm_info.info.cocoa.window},
+		}
+	} else when ODIN_OS == .Linux {
+		if wm_info.subsystem == .X11 {
+			_ctx.system_info = {
+				platform_tag = .X11,
+				x11 = {display = wm_info.info.x11.display, window = wm_info.info.x11.window},
+			}
+		} else if wm_info.subsystem == .WAYLAND {
+			_ctx.system_info = {
+				platform_tag = .Wayland,
+				wayland = {display = wm_info.info.wl.display, surface = wm_info.info.wl.surface},
+			}
+		} else {
+			return .Init_Failed, fmt.eprintf("Unsupported Unix platform!\n")
+		}
+	} else {
+		#panic("Unsupported native platform!")
+	}
+
+	return .No_Error
 }

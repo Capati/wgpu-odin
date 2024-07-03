@@ -161,12 +161,13 @@ init :: proc(
 	return
 }
 
-deinit :: proc(renderer: ^Renderer) {
-	wgpu.queue_release(&renderer.queue)
-	wgpu.device_release(&renderer.device)
-	wgpu.surface_release(&renderer.surface)
-	wgpu.adapter_release(&renderer.adapter)
-	wgpu.instance_release(&renderer.instance)
+deinit :: proc(using renderer: ^Renderer) {
+	wgpu.queue_release(&queue)
+	wgpu.device_release(&device)
+	wgpu.surface_unconfigure(&surface)
+	wgpu.surface_release(&surface)
+	wgpu.adapter_release(&adapter)
+	wgpu.instance_release(&instance)
 	free(renderer)
 }
 
