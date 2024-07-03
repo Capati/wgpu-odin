@@ -9,6 +9,7 @@ import mu "vendor:microui"
 // Package
 import wgpu "../../wrapper"
 import wmu "./../../utils/microui"
+import "./../common"
 
 // Framework
 import app "../framework/application"
@@ -16,24 +17,25 @@ import "../framework/application/events"
 import "../framework/renderer"
 
 State :: struct {
-	using gpu:       ^renderer.Renderer,
+	using _:         common.State_Base,
 	mu_ctx:          ^mu.Context,
 	log_buf:         [64000]u8,
 	log_buf_len:     int,
 	log_buf_updated: bool,
 	bg:              mu.Color,
-	clear_value:     wgpu.Color,
 }
 
-Error :: union #shared_nil {
-	app.Application_Error,
-	wgpu.Error,
-}
+Error :: common.Error
 
-init_example :: proc() -> (state: State, err: Error) {
+EXAMPLE_TITLE :: "MicroUI"
+
+init :: proc() -> (state: ^State, err: Error) {
+	state = new(State) or_return
+	defer if err != nil do free(state)
+
 	// Initialize the application
 	app_properties := app.Default_Properties
-	app_properties.title = "MicroUI Example"
+	app_properties.title = EXAMPLE_TITLE
 	app.init(app_properties) or_return
 	defer if err != nil do app.deinit()
 
@@ -50,10 +52,27 @@ init_example :: proc() -> (state: State, err: Error) {
 	// Set initial state
 	state.bg = {56, 130, 210, 255}
 
+	state.render_pass_desc = common.create_render_pass_descriptor(
+		EXAMPLE_TITLE + " Render Pass",
+		update_clear_value_from_bg(state),
+	) or_return
+
+	// Get a reference to the first color attachment
+	state.color_attachment = &state.render_pass_desc.color_attachments[0]
+
 	return
 }
 
-render_example :: proc(using state: ^State) -> (err: Error) {
+deinit :: proc(using state: ^State) {
+	delete(render_pass_desc.color_attachments)
+	wmu.destroy()
+	free(mu_ctx)
+	renderer.deinit(gpu)
+	app.deinit()
+	free(state)
+}
+
+render :: proc(using state: ^State) -> (err: Error) {
 	// UI definition and update
 	mu.begin(mu_ctx)
 	test_window(state)
@@ -66,34 +85,21 @@ render_example :: proc(using state: ^State) -> (err: Error) {
 	if skip_frame do return
 	defer wgpu.texture_release(&frame.texture)
 
-	view := wgpu.texture_create_view(&frame.texture, nil) or_return
+	view := wgpu.texture_create_view(&frame.texture) or_return
 	defer wgpu.texture_view_release(&view)
 
 	encoder := wgpu.device_create_command_encoder(&device) or_return
 	defer wgpu.command_encoder_release(&encoder)
 
-	render_pass := wgpu.command_encoder_begin_render_pass(
-		&encoder,
-		&{
-			label = "Render Pass",
-			color_attachments = []wgpu.Render_Pass_Color_Attachment {
-				{
-					view = view.ptr,
-					load_op = .Clear,
-					store_op = .Store,
-					clear_value = wgpu.color_srgb_to_linear(
-						wgpu.Color{f64(bg.r) / 255.0, f64(bg.g) / 255.0, f64(bg.b) / 255.0, 1.0},
-					),
-				},
-			},
-		},
-	)
+	color_attachment.view = view.ptr
+	color_attachment.clear_value = update_clear_value_from_bg(state)
+	render_pass := wgpu.command_encoder_begin_render_pass(&encoder, &render_pass_desc)
+	defer wgpu.render_pass_encoder_release(&render_pass)
 
 	// micro-ui rendering
 	wmu.render(mu_ctx, &render_pass) or_return
 
 	wgpu.render_pass_encoder_end(&render_pass) or_return
-	wgpu.render_pass_encoder_release(&render_pass)
 
 	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
 	defer wgpu.command_buffer_release(&command_buffer)
@@ -104,11 +110,10 @@ render_example :: proc(using state: ^State) -> (err: Error) {
 	return
 }
 
-deinit_example :: proc(using s: ^State) {
-	wmu.destroy()
-	renderer.deinit(gpu)
-	free(mu_ctx)
-	app.deinit()
+update_clear_value_from_bg :: proc(using state: ^State) -> wgpu.Color {
+	return wgpu.color_srgb_to_linear(
+		wgpu.Color{f64(bg.r) / 255.0, f64(bg.g) / 255.0, f64(bg.b) / 255.0, 1.0},
+	)
 }
 
 resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Error) {
@@ -148,16 +153,16 @@ handle_events :: proc(state: ^State) -> (should_quit: bool, err: Error) {
 }
 
 main :: proc() {
-	state, state_err := init_example()
+	state, state_err := init()
 	if state_err != nil do return
-	defer deinit_example(&state)
+	defer deinit(state)
 
 	fmt.printf("Entering main loop...\n\n")
 
 	main_loop: for {
-		should_quit, err := handle_events(&state)
+		should_quit, err := handle_events(state)
 		if should_quit || err != nil do break main_loop
-		if err = render_example(&state); err != nil do break main_loop
+		if err = render(state); err != nil do break main_loop
 	}
 
 	fmt.println("Exiting...")

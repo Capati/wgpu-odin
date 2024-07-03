@@ -3,6 +3,7 @@ package image_blur_example
 // Core
 import "core:fmt"
 import "core:math"
+import "core:slice"
 
 // Vendor
 import mu "vendor:microui"
@@ -10,7 +11,8 @@ import mu "vendor:microui"
 // Package
 import wgpu "../../wrapper"
 import wmu "./../../utils/microui"
-import shaders "./../../utils/shaders"
+import "./../../utils/shaders"
+import "./../common"
 
 // Framework
 import app "../framework/application"
@@ -23,7 +25,7 @@ Settings :: struct {
 }
 
 State :: struct {
-	using gpu:                ^renderer.Renderer,
+	using _:                  common.State_Base,
 	mu_ctx:                   ^mu.Context,
 	blur_pipeline:            wgpu.Compute_Pipeline,
 	fullscreen_quad_pipeline: wgpu.Render_Pipeline,
@@ -46,10 +48,7 @@ State :: struct {
 	settings:                 Settings,
 }
 
-Error :: union #shared_nil {
-	app.Application_Error,
-	wgpu.Error,
-}
+Error :: common.Error
 
 // Constants from the shader
 TILE_DIM: i32 : 128
@@ -57,7 +56,10 @@ BATCH :: 4
 
 SLIDER_FMT :: "%.0f"
 
-init_example :: proc() -> (state: State, err: Error) {
+init :: proc() -> (state: ^State, err: Error) {
+	state = new(State) or_return
+	defer if err != nil do free(state)
+
 	// Initialize application
 	app_properties := app.Default_Properties
 	app_properties.title = "Image Blur"
@@ -286,12 +288,31 @@ init_example :: proc() -> (state: State, err: Error) {
 		iterations  = 2,
 	}
 
-	update_settings(&state) or_return
+	update_settings(state) or_return
+
+	state.render_pass_desc = wgpu.Render_Pass_Descriptor {
+		label             = "Image Blur Render Pass",
+		color_attachments = slice.clone(
+			[]wgpu.Render_Pass_Color_Attachment {
+				{
+					view        = nil, // Assigned later
+					load_op     = .Clear,
+					store_op    = .Store,
+					clear_value = wgpu.Color_Black,
+				},
+			},
+		) or_return,
+	}
+
+	// Get a reference to the first color attachment
+	state.color_attachment = &state.render_pass_desc.color_attachments[0]
 
 	return
 }
 
-deinit_example :: proc(using s: ^State) {
+deinit :: proc(using state: ^State) {
+	delete(render_pass_desc.color_attachments)
+
 	wgpu.bind_group_release(&show_result_bind_group)
 	wgpu.bind_group_release(&compute_bind_group_2)
 	wgpu.bind_group_release(&compute_bind_group_1)
@@ -315,6 +336,7 @@ deinit_example :: proc(using s: ^State) {
 	free(mu_ctx)
 
 	app.deinit()
+	free(state)
 }
 
 update_settings :: proc(using state: ^State) -> (err: Error) {
@@ -329,7 +351,7 @@ update_settings :: proc(using state: ^State) -> (err: Error) {
 	return
 }
 
-render_example :: proc(using state: ^State) -> (err: Error) {
+render :: proc(using state: ^State) -> (err: Error) {
 	// UI definition
 	mu.begin(mu_ctx)
 	if mu.begin_window(mu_ctx, "Settings", {10, 10, 245, 78}, {.NO_RESIZE}) {
@@ -356,7 +378,7 @@ render_example :: proc(using state: ^State) -> (err: Error) {
 	if skip_frame do return
 	defer wgpu.texture_release(&frame.texture)
 
-	view := wgpu.texture_create_view(&frame.texture, nil) or_return
+	view := wgpu.texture_create_view(&frame.texture) or_return
 	defer wgpu.texture_view_release(&view)
 
 	encoder := wgpu.device_create_command_encoder(&device) or_return
@@ -398,20 +420,9 @@ render_example :: proc(using state: ^State) -> (err: Error) {
 
 	wgpu.compute_pass_encoder_end(&compute_pass) or_return
 
-	render_pass := wgpu.command_encoder_begin_render_pass(
-		&encoder,
-		&{
-			label = "Render Pass",
-			color_attachments = []wgpu.Render_Pass_Color_Attachment {
-				{
-					view = view.ptr,
-					load_op = .Clear,
-					store_op = .Store,
-					clear_value = wgpu.Color_Black,
-				},
-			},
-		},
-	)
+	color_attachment.view = view.ptr
+	render_pass := wgpu.command_encoder_begin_render_pass(&encoder, &render_pass_desc)
+	defer wgpu.render_pass_encoder_release(&render_pass)
 
 	wgpu.render_pass_encoder_set_pipeline(&render_pass, fullscreen_quad_pipeline.ptr)
 	wgpu.render_pass_encoder_set_bind_group(&render_pass, 0, show_result_bind_group.ptr)
@@ -421,7 +432,6 @@ render_example :: proc(using state: ^State) -> (err: Error) {
 	wmu.render(mu_ctx, &render_pass) or_return
 
 	wgpu.render_pass_encoder_end(&render_pass) or_return
-	wgpu.render_pass_encoder_release(&render_pass)
 
 	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
 	defer wgpu.command_buffer_release(&command_buffer)
@@ -469,16 +479,16 @@ handle_events :: proc(state: ^State) -> (should_quit: bool, err: Error) {
 }
 
 main :: proc() {
-	state, state_err := init_example()
+	state, state_err := init()
 	if state_err != nil do return
-	defer deinit_example(&state)
+	defer deinit(state)
 
 	fmt.printf("Entering main loop...\n\n")
 
 	main_loop: for {
-		should_quit, err := handle_events(&state)
+		should_quit, err := handle_events(state)
 		if should_quit || err != nil do break main_loop
-		if err = render_example(&state); err != nil do break main_loop
+		if err = render(state); err != nil do break main_loop
 	}
 
 	fmt.println("Exiting...")

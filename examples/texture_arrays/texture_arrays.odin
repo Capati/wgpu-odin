@@ -4,7 +4,9 @@ package texture_arrays_example
 import "core:fmt"
 
 // Package
+import "../../utils/shaders"
 import wgpu "../../wrapper"
+import "./../common"
 
 // Framework
 import app "../framework/application"
@@ -26,7 +28,7 @@ Texture_Name :: enum {
 }
 
 State :: struct {
-	using gpu:                    ^renderer.Renderer,
+	using _:                      common.State_Base,
 	device_has_optional_features: bool,
 	use_uniform_workaround:       bool,
 	fragment_entry_point:         cstring,
@@ -40,6 +42,8 @@ State :: struct {
 	pipeline_layout:              wgpu.Pipeline_Layout,
 	render_pipeline:              wgpu.Render_Pipeline,
 }
+
+Error :: common.Error
 
 Vertex :: struct {
 	pos:       [2]f32,
@@ -71,7 +75,17 @@ INDICES: []u16: {
 }
 // odinfmt: enable
 
-init_example :: proc() -> (state: State, err: wgpu.Error) {
+EXAMPLE_TITLE :: "Texture Arrays"
+
+init :: proc() -> (state: ^State, err: Error) {
+	state = new(State) or_return
+	defer if err != nil do free(state)
+
+	app_properties := app.Default_Properties
+	app_properties.title = EXAMPLE_TITLE
+	app.init(app_properties) or_return
+	defer if err != nil do app.deinit()
+
 	r_properties := renderer.Default_Render_Properties
 	r_properties.optional_features = {
 		.Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing,
@@ -92,26 +106,27 @@ init_example :: proc() -> (state: State, err: wgpu.Error) {
 		state.fragment_entry_point = "uniform_main"
 	}
 
-	base_shader_source := #load("./indexing.wgsl", cstring)
-
+	BASE_SHADER_SRC: string : #load("./indexing.wgsl", string)
+	COMBINED_BASE_SHADER_SRC :: shaders.SRGB_TO_LINEAR_WGSL + BASE_SHADER_SRC
 	base_shader_module := wgpu.device_create_shader_module(
 		&state.device,
-		&{source = base_shader_source},
+		&{source = COMBINED_BASE_SHADER_SRC},
 	) or_return
 	defer wgpu.shader_module_release(&base_shader_module)
 
 	fragment_shader_module: wgpu.Shader_Module
 
 	if !state.use_uniform_workaround {
-		fragment_shader_source := #load("./non_uniform_indexing.wgsl", cstring)
+		FRAGMENT_SHADER_SRC: string : #load("./non_uniform_indexing.wgsl", string)
+		COMBINED_FRAGMENT_SHADER_SRC :: shaders.SRGB_TO_LINEAR_WGSL + FRAGMENT_SHADER_SRC
 		fragment_shader_module = wgpu.device_create_shader_module(
 			&state.device,
-			&{source = fragment_shader_source},
+			&{source = COMBINED_FRAGMENT_SHADER_SRC},
 		) or_return
 	} else {
 		fragment_shader_module = wgpu.device_create_shader_module(
 			&state.device,
-			&{source = base_shader_source},
+			&{source = COMBINED_BASE_SHADER_SRC},
 		) or_return
 	}
 	defer wgpu.shader_module_release(&fragment_shader_module)
@@ -120,13 +135,21 @@ init_example :: proc() -> (state: State, err: wgpu.Error) {
 
 	state.vertex_buffer = wgpu.device_create_buffer_with_data(
 		&state.device,
-		&{label = "Vertex buffer", contents = wgpu.to_bytes(VERTICES), usage = {.Vertex}},
+		&{
+			label = EXAMPLE_TITLE + " Vertex buffer",
+			contents = wgpu.to_bytes(VERTICES),
+			usage = {.Vertex},
+		},
 	) or_return
 	defer if err != nil do wgpu.buffer_release(&state.vertex_buffer)
 
 	state.index_buffer = wgpu.device_create_buffer_with_data(
 		&state.device,
-		&{label = "Index buffer", contents = wgpu.to_bytes(INDICES), usage = {.Index}},
+		&{
+			label = EXAMPLE_TITLE + " Index buffer",
+			contents = wgpu.to_bytes(INDICES),
+			usage = {.Index},
+		},
 	) or_return
 	defer if err != nil do wgpu.buffer_release(&state.index_buffer)
 
@@ -136,7 +159,7 @@ init_example :: proc() -> (state: State, err: wgpu.Error) {
 	state.texture_index_buffer = wgpu.device_create_buffer_with_data(
 		&state.device,
 		&{
-			label = "Texture index buffer",
+			label = EXAMPLE_TITLE + "Texture index buffer",
 			contents = wgpu.to_bytes(texture_index_buffer_contents),
 			usage = {.Uniform},
 		},
@@ -202,7 +225,7 @@ init_example :: proc() -> (state: State, err: wgpu.Error) {
 	state.bind_group_layout = wgpu.device_create_bind_group_layout(
 		&state.device,
 		&{
-			label = "Bind group layout",
+			label = EXAMPLE_TITLE + " Bind group layout",
 			entries = {
 				{
 					binding = 0,
@@ -250,7 +273,7 @@ init_example :: proc() -> (state: State, err: wgpu.Error) {
 	state.bind_group = wgpu.device_create_bind_group(
 		&state.device,
 		&{
-			label = "Bind group layout",
+			label = EXAMPLE_TITLE + " Bind Group",
 			layout = state.bind_group_layout.ptr,
 			entries = {
 				{
@@ -287,7 +310,7 @@ init_example :: proc() -> (state: State, err: wgpu.Error) {
 
 	state.pipeline_layout = wgpu.device_create_pipeline_layout(
 		&state.device,
-		&{label = "main", bind_group_layouts = {state.bind_group_layout.ptr}},
+		&{label = EXAMPLE_TITLE + " main", bind_group_layouts = {state.bind_group_layout.ptr}},
 	) or_return
 	defer if err != nil do wgpu.pipeline_layout_release(&state.pipeline_layout)
 
@@ -327,11 +350,21 @@ init_example :: proc() -> (state: State, err: wgpu.Error) {
 			multisample = wgpu.Default_Multisample_State,
 		},
 	) or_return
+	defer if err != nil do wgpu.render_pipeline_release(&state.render_pipeline)
+
+	state.render_pass_desc = common.create_render_pass_descriptor(
+		EXAMPLE_TITLE + " Render Pass",
+	) or_return
+
+	// Get a reference to the first color attachment
+	state.color_attachment = &state.render_pass_desc.color_attachments[0]
 
 	return
 }
 
-deinit_example :: proc(using state: ^State) {
+deinit :: proc(using state: ^State) {
+	delete(render_pass_desc.color_attachments)
+
 	wgpu.render_pipeline_release(&render_pipeline)
 	wgpu.pipeline_layout_release(&pipeline_layout)
 	wgpu.bind_group_release(&bind_group)
@@ -350,35 +383,23 @@ deinit_example :: proc(using state: ^State) {
 	wgpu.buffer_release(&vertex_buffer)
 
 	renderer.deinit(gpu)
+	app.deinit()
+	free(state)
 }
 
-render :: proc(using state: ^State) -> (err: wgpu.Error) {
+render :: proc(using state: ^State) -> (err: Error) {
 	frame := renderer.get_current_texture_frame(gpu) or_return
 	if skip_frame do return
 	defer wgpu.texture_release(&frame.texture)
 
-	view := wgpu.texture_create_view(&frame.texture, nil) or_return
+	view := wgpu.texture_create_view(&frame.texture) or_return
 	defer wgpu.texture_view_release(&view)
 
 	encoder := wgpu.device_create_command_encoder(&device) or_return
 	defer wgpu.command_encoder_release(&encoder)
 
-	render_pass := wgpu.command_encoder_begin_render_pass(
-		&encoder,
-		&{
-			label = "render_pass_encoder",
-			color_attachments = []wgpu.Render_Pass_Color_Attachment {
-				{
-					view = view.ptr,
-					resolve_target = nil,
-					load_op = .Clear,
-					store_op = .Store,
-					clear_value = wgpu.Color_Black,
-				},
-			},
-			depth_stencil_attachment = nil,
-		},
-	)
+	color_attachment.view = view.ptr
+	render_pass := wgpu.command_encoder_begin_render_pass(&encoder, &render_pass_desc)
 	defer wgpu.render_pass_encoder_release(&render_pass)
 
 	wgpu.render_pass_encoder_set_pipeline(&render_pass, render_pipeline.ptr)
@@ -405,37 +426,38 @@ render :: proc(using state: ^State) -> (err: wgpu.Error) {
 	return
 }
 
-resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: wgpu.Error) {
+resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Error) {
 	renderer.resize_surface(gpu, {size.width, size.height}) or_return
+	return
+}
+
+handle_events :: proc(state: ^State) -> (should_quit: bool, err: Error) {
+	event: events.Event
+	for app.poll_event(&event) {
+		#partial switch &ev in event {
+		case events.Quit_Event:
+			return true, nil
+		case events.Framebuffer_Resize_Event:
+			if err = resize_surface(state, {ev.width, ev.height}); err != nil {
+				return true, err
+			}
+		}
+	}
 
 	return
 }
 
 main :: proc() {
-	app_properties := app.Default_Properties
-	app_properties.title = "Texture Arrays Example"
-	if app.init(app_properties) != nil do return
-	defer app.deinit()
-
-	state, state_err := init_example()
+	state, state_err := init()
 	if state_err != nil do return
-	defer deinit_example(&state)
+	defer deinit(state)
 
 	fmt.printf("Entering main loop...\n\n")
 
 	main_loop: for {
-		event: events.Event
-		for app.poll_event(&event) {
-			#partial switch &ev in event {
-			case events.Quit_Event:
-				break main_loop
-			case events.Framebuffer_Resize_Event:
-				err := resize_surface(&state, {ev.width, ev.height})
-				if err != nil do break main_loop
-			}
-		}
-
-		if err := render(&state); err != nil do break main_loop
+		should_quit, err := handle_events(state)
+		if should_quit || err != nil do break main_loop
+		if err = render(state); err != nil do break main_loop
 	}
 
 	fmt.println("Exiting...")
