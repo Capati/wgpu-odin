@@ -43,8 +43,12 @@ Framebuffer_Resize_Event :: struct {
 	height: u32,
 }
 
-Focus_Gained_Event :: distinct bool
+Minimized_Event :: struct {
+	value: bool,
+}
 
-Focus_Lost_Event :: distinct bool
+Focus_Event :: struct {
+	value: bool,
+}
 
 Quit_Event :: distinct bool

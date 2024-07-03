@@ -29,6 +29,7 @@ Native_Application :: struct {
 	using properties: Native_Properties,
 	events:           events.Event_List,
 	window:           ^sdl.Window,
+	is_minimized:     bool,
 	system_info:      Platform_Info,
 }
 
@@ -247,6 +248,20 @@ process_events :: proc() -> ^events.Event_List {
 					_ctx.properties.size = {new_size.width, new_size.height}
 					push_event(new_size)
 				}
+
+			case .MINIMIZED:
+				_ctx.is_minimized = true
+				push_event(events.Minimized_Event{true})
+
+			case .RESTORED:
+				_ctx.is_minimized = false
+				push_event(events.Minimized_Event{false})
+
+			case .FOCUS_GAINED:
+				push_event(events.Focus_Event{true})
+
+			case .FOCUS_LOST:
+				push_event(events.Focus_Event{false})
 			}
 		}
 	}
@@ -262,6 +277,10 @@ get_size :: proc() -> Physical_Size {
 	width, height: i32
 	sdl.GetWindowSize(_ctx.window, &width, &height)
 	return {cast(u32)width, cast(u32)height}
+}
+
+is_minimized :: #force_inline proc "contextless" () -> bool {
+	return _ctx.is_minimized
 }
 
 get_system_info :: proc() -> Platform_Info {
