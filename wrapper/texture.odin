@@ -9,6 +9,7 @@ import wgpu "../bindings"
 Texture :: struct {
 	ptr:              Raw_Texture,
 	using descriptor: Texture_Descriptor,
+	released:         bool,
 	_err_data:        ^Error_Data,
 }
 
@@ -92,11 +93,12 @@ texture_reference :: proc(using self: ^Texture) {
 // Release the `Texture`.
 texture_release :: proc(using self: ^Texture) {
 	wgpu.texture_release(ptr)
+	released = true
 }
 
 // Release the `Texture` and modify the raw pointer to `nil`.
 texture_release_and_nil :: proc(using self: ^Texture) {
 	if ptr == nil do return
-	wgpu.texture_release(ptr)
+	texture_release(self)
 	ptr = nil
 }
