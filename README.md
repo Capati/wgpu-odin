@@ -1,6 +1,6 @@
 # WGPU Odin Bindings
 
-Bindings to [wgpu-native](https://github.com/gfx-rs/wgpu-native) **0.19.4.1** in the [Odin programming language](https://odin-lang.org/).
+Bindings to [wgpu-native](https://github.com/gfx-rs/wgpu-native) **0.19.4.1** made by hand in the [Odin programming language](https://odin-lang.org/).
 
 See [examples here](./examples).
 
@@ -26,7 +26,7 @@ To make this repository easy to maintain and light to download, I decided to not
 
 **Make sure to match the version tag** is the same from upstream, just place the corresponding files according to the bindings tree in `bindings/lib/`:
 
-```
+```text
 📦lib
  ┣ 📂linux
  ┃ ┣ 📂arch64
@@ -59,17 +59,23 @@ On Linux or Mac, you can tell the library to link against system `libwgpu_native
 
 ## Quick Start Guide
 
-1. Clone this repository.
-2. Make sure you follow the Linking steps above to include the binaries for your target.
-3. Create a folder `libs/wgpu` in the root of your project (from where you run `odin build`).
-4. If you want the wrapper version, copy the folders `bindings`, `wrapper` and `utils`  from this repository to the directory created in the previous step.
-5. To easily import the package to your project, you can set a `collection`:
+1. Clone this repository or [download the zip](https://github.com/Capati/wgpu-odin/archive/refs/heads/main.zip) file.
 
-```shell
-odin build ./src -collection:libs=./libs
-```
+2. Ensure you follow the "Linking" steps outlined above to include the appropriate binaries for your target platform.
 
-6. Import the package:
+3. Create a folder named `libs/wgpu` in the root of your project (where you run `odin build` from). Alternatively, you can use the `shared` folder in your Odin installation to define a collection.
+
+4. If you want the wrapper version:
+    - Copy the `bindings`, `wrapper`, and `utils` folders from this repository to the directory created in step 3.
+
+5. To easily import the package into your project, set up a `collection`:
+
+    ```shell
+    // Example of setting up a collection (add this to your build command or script)
+    odin build ./src -collection:libs=./libs
+    ```
+
+6. You can now import the package in your code:
 
 ```odin
 import wgpu "libs:wgpu/wrapper"
