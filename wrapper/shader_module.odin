@@ -20,12 +20,15 @@ Shader_Module :: struct {
 	ptr: Raw_Shader_Module,
 }
 
-WGSL_Source :: cstring
+// Source `string` will be `clone_to_cstring` to ensure null terminated
+WGSL_Source_String :: string
+WGSL_Source_C_String :: cstring
 SPIRV_Source :: []u32
 
 // Source of a shader module.
 Shader_Source :: union {
-	WGSL_Source,
+	WGSL_Source_String,
+	WGSL_Source_C_String,
 	SPIRV_Source,
 }
 
