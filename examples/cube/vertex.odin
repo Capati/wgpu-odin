@@ -1,4 +1,4 @@
-package cube
+package cube_example
 
 Vertex :: struct {
 	position: [3]f32,

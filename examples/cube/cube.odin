@@ -1,4 +1,4 @@
-package cube
+package cube_example
 
 // Core
 import "core:fmt"
@@ -76,16 +76,16 @@ init_example :: proc() -> (state: ^State, err: Error) {
 		label = "Render Pipeline",
 		vertex = {
 			module = shader_module.ptr,
-			entry_point = "vertex_main",
+			entry_point = "vs_main",
 			buffers = {vertex_buffer_layout},
 		},
 		fragment = &{
 			module = shader_module.ptr,
-			entry_point = "fragment_main",
+			entry_point = "fs_main",
 			targets = {
 				{
 					format = state.config.format,
-					blend = &wgpu.Blend_State_Replace,
+					blend = &wgpu.Blend_State_Normal,
 					write_mask = wgpu.Color_Write_Mask_All,
 				},
 			},
@@ -139,7 +139,7 @@ init_example :: proc() -> (state: ^State, err: Error) {
 					binding = 0,
 					resource = wgpu.Buffer_Binding {
 						buffer = state.uniform_buffer.ptr,
-						size = wgpu.WHOLE_SIZE,
+						size = state.uniform_buffer.size,
 					},
 				},
 			},
@@ -190,13 +190,13 @@ deinit_example :: proc(using state: ^State) {
 	free(state)
 }
 
-render :: proc(using state: ^State) -> (err: Error) {
+render_example :: proc(using state: ^State) -> (err: Error) {
 	frame := renderer.get_current_texture_frame(gpu) or_return
-	defer wgpu.texture_release(&frame.texture)
 	if skip_frame do return
+	defer wgpu.texture_release_and_nil(&frame.texture)
 
-	view := wgpu.texture_create_view(&frame.texture, nil) or_return
-	defer wgpu.texture_view_reference(&view)
+	view := wgpu.texture_create_view(&frame.texture) or_return
+	defer wgpu.texture_view_release(&view)
 
 	encoder := wgpu.device_create_command_encoder(&device) or_return
 	defer wgpu.command_encoder_release(&encoder)
@@ -205,14 +205,8 @@ render :: proc(using state: ^State) -> (err: Error) {
 	render_pass := wgpu.command_encoder_begin_render_pass(&encoder, &render_pass_descriptor)
 
 	wgpu.render_pass_encoder_set_pipeline(&render_pass, render_pipeline.ptr)
-	wgpu.render_pass_encoder_set_bind_group(&render_pass, 0, bind_group.ptr, nil)
-	wgpu.render_pass_encoder_set_vertex_buffer(
-		&render_pass,
-		0,
-		vertex_buffer.ptr,
-		0,
-		wgpu.WHOLE_SIZE,
-	)
+	wgpu.render_pass_encoder_set_bind_group(&render_pass, 0, bind_group.ptr)
+	wgpu.render_pass_encoder_set_vertex_buffer(&render_pass, 0, vertex_buffer.ptr)
 	wgpu.render_pass_encoder_draw(&render_pass, cast(u32)len(vertex_data))
 
 	wgpu.render_pass_encoder_end(&render_pass) or_return
@@ -238,19 +232,6 @@ resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Er
 	new_matrix := generate_matrix(aspect_ratio)
 	wgpu.queue_write_buffer(&queue, uniform_buffer.ptr, 0, wgpu.to_bytes(new_matrix)) or_return
 
-	/*
-	FIXME(Capati): Panic on surface configure using DX12 backend
-
-	[wgpu] [Error] ResizeBuffers failed: 0x887A0001
-
-	[wgpu] [Error] surface configuration failed: window is in use
-
-	thread '<unnamed>' panicked at src\lib.rs:586:5:
-	Error in wgpuSurfaceConfigure: Validation Error
-
-	Caused by:
-		Invalid surface
-	*/
 	renderer.resize_surface(gpu, size) or_return
 
 	return
@@ -282,14 +263,14 @@ main :: proc() {
 	main_loop: for {
 		should_quit, err := handle_events(state)
 		if should_quit || err != nil do break main_loop
-		if err = render(state); err != nil do break main_loop
+		if err = render_example(state); err != nil do break main_loop
 	}
 
 	fmt.println("Exiting...")
 }
 
 get_depth_framebuffer :: proc(
-	using gpu: ^renderer.Renderer,
+	using state: ^State,
 	size: app.Physical_Size,
 ) -> (
 	view: wgpu.Texture_View,
@@ -308,12 +289,12 @@ get_depth_framebuffer :: proc(
 	) or_return
 	defer wgpu.texture_release(&texture)
 
-	return wgpu.texture_create_view(&texture, nil)
+	return wgpu.texture_create_view(&texture)
 }
 
 generate_matrix :: proc(aspect: f32) -> la.Matrix4f32 {
 	// 72 deg FOV
-	projection := la.matrix4_perspective_f32((2 * math.PI) / 5, aspect, 1.0, 10.0)
+	projection := la.matrix4_perspective_f32(2 * math.PI / 5, aspect, 1.0, 100.0)
 	view := la.matrix4_look_at_f32(
 		eye = {1.1, 1.1, 1.1},
 		centre = {0.0, 0.0, 0.0},
