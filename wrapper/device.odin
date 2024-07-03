@@ -3,6 +3,7 @@ package wgpu
 // Core
 import "base:runtime"
 import "core:mem"
+import "core:strings"
 
 // Package
 import wgpu "../bindings"
@@ -805,7 +806,18 @@ device_create_shader_module :: proc(
 	set_and_reset_err_data(_err_data, loc)
 
 	switch &source in descriptor.source {
-	case WGSL_Source:
+	case WGSL_Source_String:
+		runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+
+		wgsl := wgpu.Shader_Module_WGSL_Descriptor {
+			chain = {next = nil, stype = .Shader_Module_WGSL_Descriptor},
+			code = strings.clone_to_cstring(source, context.temp_allocator),
+		}
+
+		desc.next_in_chain = &wgsl.chain
+
+		shader_module.ptr = wgpu.device_create_shader_module(ptr, &desc)
+	case WGSL_Source_C_String:
 		wgsl := wgpu.Shader_Module_WGSL_Descriptor {
 			chain = {next = nil, stype = .Shader_Module_WGSL_Descriptor},
 			code = source,
