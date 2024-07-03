@@ -2,6 +2,7 @@ package renderer
 
 // Core
 import "core:fmt"
+import "core:time"
 
 // Package
 import wgpu "../../../wrapper"
@@ -10,6 +11,7 @@ import wgpu "../../../wrapper"
 import app "../application"
 
 GET_CURRENT_TEXTURE_MAX_ATTEMPTS :: 3
+RENDERER_THROTTLE_DURATION :: 16 * time.Millisecond // 16ms roughly corresponds to 60 fps
 
 get_current_texture_frame :: proc(
 	renderer: ^Renderer,
@@ -19,6 +21,7 @@ get_current_texture_frame :: proc(
 ) {
 	if app.is_minimized() {
 		renderer.skip_frame = true
+		time.sleep(RENDERER_THROTTLE_DURATION)
 		return
 	}
 
@@ -37,6 +40,7 @@ get_current_texture_frame :: proc(
 		case .Timeout:
 			if attempt < GET_CURRENT_TEXTURE_MAX_ATTEMPTS - 1 {
 				fmt.println("Timeout getting current texture. Retrying...")
+				time.sleep(RENDERER_THROTTLE_DURATION)
 				continue
 			}
 			fallthrough
@@ -45,6 +49,7 @@ get_current_texture_frame :: proc(
 			resize_surface(renderer, app.get_size()) or_return
 			if attempt < GET_CURRENT_TEXTURE_MAX_ATTEMPTS - 1 {
 				fmt.println("Surface outdated or lost. Resized and retrying...")
+				time.sleep(RENDERER_THROTTLE_DURATION)
 				continue
 			}
 			return nil, wgpu.Error_Type.Unknown
