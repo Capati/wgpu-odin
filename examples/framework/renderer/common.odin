@@ -63,8 +63,8 @@ get_current_texture_frame :: proc(
 }
 
 resize_surface :: proc(renderer: ^Renderer, size: app.Physical_Size) -> (err: wgpu.Error) {
-	if renderer.output.texture.ptr != nil {
-		wgpu.texture_release_and_nil(&renderer.output.texture)
+	if !renderer.output.texture.released {
+		wgpu.texture_release(&renderer.output.texture)
 	}
 
 	// Panic if width or height is zero.
