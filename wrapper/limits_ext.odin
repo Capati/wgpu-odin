@@ -170,6 +170,14 @@ DOWNLEVEL_WEBGL2_LIMITS :: Limits {
 	max_non_sampler_bindings                        = 1_000_000,
 }
 
+// Modify the current limits to use the resolution limits of the other.
+limits_using_resolution :: proc(using self: ^Limits, other: Limits) -> Limits {
+	max_texture_dimension_1d = other.max_texture_dimension_1d
+	max_texture_dimension_2d = other.max_texture_dimension_2d
+	max_texture_dimension_3d = other.max_texture_dimension_3d
+	return self^
+}
+
 @(private)
 limits_merge_webgpu_with_native :: proc(
 	webgpu: wgpu.Limits,
