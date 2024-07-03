@@ -50,6 +50,10 @@ get_size :: proc() -> Physical_Size {
 	return app.get_size()
 }
 
+is_minimized :: #force_inline proc "contextless" () -> bool {
+	return app.is_minimized()
+}
+
 get_system_info :: proc() -> Platform_Info {
 	return app.get_system_info()
 }

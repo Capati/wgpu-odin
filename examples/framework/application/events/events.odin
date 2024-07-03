@@ -16,8 +16,8 @@ Event :: union #no_nil {
 	Mouse_Release_Event,
 	Mouse_Scroll_Event,
 	Framebuffer_Resize_Event,
-	Focus_Gained_Event,
-	Focus_Lost_Event,
+	Minimized_Event,
+	Focus_Event,
 	Quit_Event,
 }
 
