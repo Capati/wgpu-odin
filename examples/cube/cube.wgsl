@@ -7,11 +7,10 @@ struct VertexOut {
 var<uniform> mvpMat : mat4x4<f32>;
 
 @vertex
-fn vertex_main(
+fn vs_main(
 	@location(0) position: vec3f,
 	@location(1) color: vec3f
-	) -> VertexOut
-{
+) -> VertexOut {
 	var output : VertexOut;
 	output.position = mvpMat * vec4f(position, 1.0);
 	output.color = vec4f(color, 1.0);
@@ -19,6 +18,6 @@ fn vertex_main(
 }
 
 @fragment
-fn fragment_main(fragData: VertexOut) -> @location(0) vec4f {
+fn fs_main(fragData: VertexOut) -> @location(0) vec4f {
     return vec4(srgb_to_linear(fragData.color.rgb), fragData.color.a);
 }
