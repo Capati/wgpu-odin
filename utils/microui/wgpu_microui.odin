@@ -161,11 +161,11 @@ init :: proc(
 	) or_return
 	defer wgpu.pipeline_layout_release(&pipeline_layout)
 
-	microui_shader_source: string : #load("./microui.wgsl")
-	shader_source := shaders.SRGB_TO_LINEAR_WGSL + microui_shader_source
+	SHADER_SRC: string : #load("./microui.wgsl", string)
+	COMBINED_SHADER_SRC :: shaders.SRGB_TO_LINEAR_WGSL + SHADER_SRC
 	microui_shader_module := wgpu.device_create_shader_module(
 		device,
-		&{label = "microui shader", source = cstring(raw_data(shader_source))},
+		&{label = "microui shader", source = COMBINED_SHADER_SRC},
 	) or_return
 	defer wgpu.shader_module_release(&microui_shader_module)
 
