@@ -32,25 +32,23 @@ Buffer_Binding :: struct {
 }
 
 // Resource that can be bound to a pipeline.
+//
+// Corresponds to [WebGPU `GPUBindingResource`](
+// https://gpuweb.github.io/gpuweb/#typedefdef-gpubindingresource).
 Binding_Resource :: union {
 	Buffer_Binding,
+	[]Raw_Buffer,
 	Raw_Sampler,
+	[]Raw_Sampler,
 	Raw_Texture_View,
-}
-
-Bind_Group_Entry_Extras :: struct {
-	buffers:       []Raw_Buffer,
-	samplers:      []Raw_Sampler,
-	texture_views: []Raw_Texture_View,
+	[]Raw_Texture_View,
 }
 
 // An element of a `Bind_Group_Descriptor`, consisting of a bindable resource
 // and the slot to bind it to.
 Bind_Group_Entry :: struct {
-	binding:     u32,
-	resource:    Binding_Resource,
-	extras:      ^Bind_Group_Entry_Extras,
-	_raw_extras: wgpu.Bind_Group_Entry_Extras, // for internal use
+	binding:  u32,
+	resource: Binding_Resource,
 }
 
 // Describes a group of bindings and the resources to be bound.
@@ -82,46 +80,50 @@ device_create_bind_group :: proc(
 
 	entry_count := uint(len(descriptor.entries))
 
+	extras: [dynamic]wgpu.Bind_Group_Entry_Extras
+	extras.allocator = context.temp_allocator
+
 	if entry_count > 0 {
 		entries := make([]wgpu.Bind_Group_Entry, entry_count, context.temp_allocator)
 
 		for &v, i in descriptor.entries {
 			raw_entry := &entries[i]
 			raw_entry.binding = v.binding
+			raw_extra: ^wgpu.Bind_Group_Entry_Extras
+
+			#partial switch &res in v.resource {
+			case []Raw_Buffer, []Raw_Sampler, []Raw_Texture_View:
+				append(
+					&extras,
+					wgpu.Bind_Group_Entry_Extras {
+						chain = {stype = wgpu.SType(Native_SType.Bind_Group_Entry_Extras)},
+					},
+				)
+				raw_extra = &extras[len(extras) - 1]
+			}
 
 			switch &res in v.resource {
 			case Buffer_Binding:
 				raw_entry.buffer = res.buffer
 				raw_entry.size = res.size
 				raw_entry.offset = res.offset
+			case []Raw_Buffer:
+				raw_extra.buffer_count = len(res)
+				raw_extra.buffers = raw_data(res)
 			case Raw_Sampler:
 				raw_entry.sampler = res
+			case []Raw_Sampler:
+				raw_extra.sampler_count = len(res)
+				raw_extra.samplers = raw_data(res)
 			case Raw_Texture_View:
 				raw_entry.texture_view = res
+			case []Raw_Texture_View:
+				raw_extra.texture_view_count = len(res)
+				raw_extra.texture_views = raw_data(res)
 			}
 
-			if v.extras != nil {
-				if len(v.extras.buffers) > 0 {
-					v._raw_extras.buffer_count = len(v.extras.buffers)
-					v._raw_extras.buffers = raw_data(v.extras.buffers)
-				}
-
-				if len(v.extras.samplers) > 0 {
-					v._raw_extras.sampler_count = len(v.extras.samplers)
-					v._raw_extras.samplers = raw_data(v.extras.samplers)
-				}
-
-				if len(v.extras.texture_views) > 0 {
-					v._raw_extras.texture_view_count = len(v.extras.texture_views)
-					v._raw_extras.texture_views = raw_data(v.extras.texture_views)
-				}
-
-				if v._raw_extras.buffer_count > 0 ||
-				   v._raw_extras.sampler_count > 0 ||
-				   v._raw_extras.texture_view_count > 0 {
-					v._raw_extras.chain.stype = wgpu.SType(Native_SType.Bind_Group_Entry_Extras)
-					raw_entry.next_in_chain = &v._raw_extras.chain
-				}
+			if len(extras) > 0 {
+				raw_entry.next_in_chain = &raw_extra.chain
 			}
 		}
 
