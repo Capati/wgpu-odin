@@ -278,23 +278,19 @@ init :: proc() -> (state: ^State, err: Error) {
 			entries = {
 				{
 					binding = 0,
-					extras = &{
-						texture_views = {
-							state.textures[.RED].view.ptr,
-							state.textures[.GREEN].view.ptr,
-						},
+					resource = []wgpu.Raw_Texture_View {
+						state.textures[.RED].view.ptr,
+						state.textures[.GREEN].view.ptr,
 					},
 				},
 				{
 					binding = 1,
-					extras = &{
-						texture_views = {
-							state.textures[.BLUE].view.ptr,
-							state.textures[.WHITE].view.ptr,
-						},
+					resource = []wgpu.Raw_Texture_View {
+						state.textures[.BLUE].view.ptr,
+						state.textures[.WHITE].view.ptr,
 					},
 				},
-				{binding = 2, extras = &{samplers = {state.sampler.ptr, state.sampler.ptr}}},
+				{binding = 2, resource = []wgpu.Raw_Sampler{state.sampler.ptr, state.sampler.ptr}},
 				{
 					binding = 3,
 					resource = wgpu.Buffer_Binding {
