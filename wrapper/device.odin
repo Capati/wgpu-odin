@@ -142,7 +142,7 @@ device_create_bind_group :: proc(
 	return
 }
 
-// Specific type of a binding.
+// Specific type of a binding layout.
 Binding_Type :: union {
 	wgpu.Buffer_Binding_Layout,
 	wgpu.Sampler_Binding_Layout,
@@ -151,11 +151,15 @@ Binding_Type :: union {
 }
 
 // Describes a single binding inside a bind group.
+//
+// Corresponds to [WebGPU `GPUBindGroupLayoutEntry`](
+// https://gpuweb.github.io/gpuweb/#dictdef-gpubindgrouplayoutentry).
 Bind_Group_Layout_Entry :: struct {
 	binding:    u32,
 	visibility: Shader_Stage_Flags,
 	type:       Binding_Type,
-	extras:     ^Bind_Group_Layout_Entry_Extras,
+	// Extra values
+	count:      Maybe(u32),
 }
 
 // Describes a `Bind_Group_Layout`.
@@ -193,6 +197,9 @@ device_create_bind_group_layout :: proc(
 
 	entry_count := uint(len(descriptor.entries))
 
+	extras: [dynamic]wgpu.Bind_Group_Layout_Entry_Extras
+	extras.allocator = context.temp_allocator
+
 	if entry_count > 0 {
 		entries := make([]wgpu.Bind_Group_Layout_Entry, entry_count, context.temp_allocator)
 
@@ -213,10 +220,17 @@ device_create_bind_group_layout :: proc(
 				raw_entry.storage_texture = e
 			}
 
-
-			if v.extras != nil {
-				v.extras.chain.stype = wgpu.SType(wgpu.Native_SType.Bind_Group_Layout_Entry_Extras)
-				raw_entry.next_in_chain = &v.extras.chain
+			if count, ok := v.count.?; ok {
+				append(
+					&extras,
+					wgpu.Bind_Group_Layout_Entry_Extras {
+						chain = {
+							stype = wgpu.SType(wgpu.Native_SType.Bind_Group_Layout_Entry_Extras),
+						},
+						count = count,
+					},
+				)
+				raw_entry.next_in_chain = &extras[len(extras) - 1].chain
 			}
 		}
 

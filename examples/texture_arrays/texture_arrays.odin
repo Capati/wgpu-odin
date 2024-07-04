@@ -235,7 +235,7 @@ init :: proc() -> (state: ^State, err: Error) {
 						view_dimension = .D2,
 						sample_type = .Float,
 					},
-					extras = &{count = 2},
+					count = 2,
 				},
 				{
 					binding = 1,
@@ -245,13 +245,13 @@ init :: proc() -> (state: ^State, err: Error) {
 						view_dimension = .D2,
 						sample_type = .Float,
 					},
-					extras = &{count = 2},
+					count = 2,
 				},
 				{
 					binding = 2,
 					visibility = {.Fragment},
 					type = wgpu.Sampler_Binding_Layout{type = .Filtering},
-					extras = &{count = 2},
+					count = 2,
 				},
 				{
 					binding = 3,
