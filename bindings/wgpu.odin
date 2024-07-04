@@ -319,7 +319,7 @@ Primitive_Topology :: enum ENUM_SIZE {
 
 Query_Type :: enum ENUM_SIZE {
 	Occlusion,
-	Query_Type_Timestamp,
+	Timestamp,
 }
 
 Queue_Work_Done_Status :: enum ENUM_SIZE {
