@@ -52,7 +52,7 @@ Instance_Backend_Secondary :: wgpu.Instance_Backend_Secondary
 // Instance_Backend_None :: wgpu.Instance_Backend_None
 Dx12_Compiler :: wgpu.Dx12_Compiler
 Gles3_Minor_Version :: wgpu.Gles3_Minor_Version
-Pipeline_Statistic_Name :: wgpu.Pipeline_Statistic_Name
+// Pipeline_Statistic_Name :: wgpu.Pipeline_Statistic_Name
 Composite_Alpha_Mode :: wgpu.Composite_Alpha_Mode
 
 Instance_Extras :: wgpu.Instance_Extras
@@ -99,7 +99,7 @@ Mipmap_Filter_Mode :: wgpu.Mipmap_Filter_Mode
 Power_Preference :: wgpu.Power_Preference
 Present_Mode :: wgpu.Present_Mode
 // Primitive_Topology :: wgpu.Primitive_Topology
-Query_Type :: wgpu.Query_Type
+// Query_Type :: wgpu.Query_Type
 Queue_Work_Done_Status :: wgpu.Queue_Work_Done_Status
 Request_Adapter_Status :: wgpu.Request_Adapter_Status
 Request_Device_Status :: wgpu.Request_Device_Status

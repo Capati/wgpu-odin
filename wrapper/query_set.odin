@@ -1,5 +1,8 @@
 package wgpu
 
+// Base
+import intr "base:intrinsics"
+
 // Package
 import wgpu "../bindings"
 
@@ -7,7 +10,9 @@ import wgpu "../bindings"
 //
 // It can be created with `device_create_query_set`.
 Query_Set :: struct {
-	ptr: Raw_Query_Set,
+	ptr:   Raw_Query_Set,
+	type:  Query_Type,
+	count: u32,
 }
 
 // Destroys the `Query_Set`.
@@ -17,12 +22,29 @@ query_set_destroy :: proc(using self: ^Query_Set) {
 
 // Get the `Query_Set` count.
 query_set_get_count :: proc(using self: ^Query_Set) -> u32 {
-	return wgpu.query_set_get_count(ptr)
+	return count
 }
 
 // Get the `Query_Set` type.
-query_set_get_type :: proc(using self: ^Query_Set) -> Query_Type {
-	return wgpu.query_set_get_type(ptr)
+query_set_get_type :: proc(
+	self: ^Query_Set,
+	$T: typeid,
+) -> (
+	value: T,
+	ok: bool,
+) where intr.type_is_variant_of(T, Query_Type) #optional_ok {
+	value, ok = self.type.(T)
+	return
+}
+
+// Get the `Query_Set` type from a variant.
+query_set_get_type_assert :: proc(
+	self: ^Query_Set,
+	$T: typeid,
+) -> T where intr.type_is_variant_of(T, Query_Type) {
+	value, ok := query_set_get_type(self, T)
+	assert(ok, "Invalid query type")
+	return value
 }
 
 // Set debug label.

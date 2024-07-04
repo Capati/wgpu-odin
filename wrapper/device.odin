@@ -456,18 +456,37 @@ device_create_pipeline_layout :: proc(
 	return
 }
 
-Query_Set_Descriptor_Extras :: struct {
-	pipeline_statistics: []Pipeline_Statistic_Name,
+// Query returns a single 64-bit number, serving as an occlusion boolean.
+Query_Type_Occlusion :: struct {}
+
+// Query returns a 64-bit number indicating the GPU-timestamp where all previous commands
+// have finished executing.
+Query_Type_Timestamp :: struct {}
+
+Pipeline_Statistic_Type :: wgpu.Pipeline_Statistic_Name
+// Flags for which pipeline data should be recorded.
+Pipeline_Statistics_Types :: []Pipeline_Statistic_Type
+
+// Type of query contained in a Query_Set.
+//
+// Corresponds to [WebGPU `GPUQueryType`](
+// https://gpuweb.github.io/gpuweb/#enumdef-gpuquerytype).
+Query_Type :: union {
+	Query_Type_Occlusion,
+	Query_Type_Timestamp,
+	Pipeline_Statistics_Types,
 }
 
-// Describes a `Query_Set`.
+// Describes a [`Query_Set`].
 //
-// For use with `device_create_query_set`.
+// For use with [`device_create_query_set`].
+//
+// Corresponds to [WebGPU `GPUQuerySetDescriptor`](
+// https://gpuweb.github.io/gpuweb/#dictdef-gpuquerysetdescriptor).
 Query_Set_Descriptor :: struct {
-	label:  cstring,
-	type:   Query_Type,
-	count:  u32,
-	extras: ^Query_Set_Descriptor_Extras,
+	label: cstring,
+	type:  Query_Type,
+	count: u32,
 }
 
 // Creates a new `Query_Set`.
@@ -482,19 +501,20 @@ device_create_query_set :: proc(
 	desc: wgpu.Query_Set_Descriptor
 
 	desc.label = descriptor.label
-	desc.type = descriptor.type
 	desc.count = descriptor.count
 
 	extras: wgpu.Query_Set_Descriptor_Extras
 
-	if descriptor.extras != nil {
+	switch type in descriptor.type {
+	case Query_Type_Occlusion:
+		desc.type = .Occlusion
+	case Query_Type_Timestamp:
+		desc.type = .Timestamp
+	case Pipeline_Statistics_Types:
+		desc.type = cast(wgpu.Query_Type)wgpu.Native_Query_Type.Pipeline_Statistics
 		extras.chain.stype = wgpu.SType(wgpu.Native_SType.Query_Set_Descriptor_Extras)
-
-		if len(descriptor.extras.pipeline_statistics) > 0 {
-			extras.pipeline_statistic_count = len(descriptor.extras.pipeline_statistics)
-			extras.pipeline_statistics = raw_data(descriptor.extras.pipeline_statistics)
-		}
-
+		extras.pipeline_statistic_count = len(type)
+		extras.pipeline_statistics = raw_data(type)
 		desc.next_in_chain = &extras.chain
 	}
 
@@ -506,7 +526,11 @@ device_create_query_set :: proc(
 		if query_set.ptr != nil {
 			wgpu.query_set_release(query_set.ptr)
 		}
+		return
 	}
+
+	query_set.type = descriptor.type
+	query_set.count = descriptor.count
 
 	return
 }
