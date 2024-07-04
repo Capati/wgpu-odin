@@ -143,13 +143,13 @@ init :: proc(
 	}
 
 	r.config = wgpu.Surface_Configuration {
-		usage = {.Render_Attachment},
-		format = preferred_format,
-		width = size.width,
-		height = size.height,
-		present_mode = properties.present_mode,
-		alpha_mode = caps.alpha_modes[0],
-		extras = {desired_maximum_frame_latency = properties.desired_maximum_frame_latency},
+		usage                         = {.Render_Attachment},
+		format                        = preferred_format,
+		width                         = size.width,
+		height                        = size.height,
+		present_mode                  = properties.present_mode,
+		alpha_mode                    = caps.alpha_modes[0],
+		desired_maximum_frame_latency = properties.desired_maximum_frame_latency,
 	}
 
 	wgpu.surface_configure(&r.surface, &r.device, &r.config) or_return
