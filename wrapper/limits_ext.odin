@@ -1,5 +1,14 @@
 package wgpu
 
+// Base
+import "base:runtime"
+
+// Core
+import "core:fmt"
+import "core:reflect"
+import "core:slice"
+import "core:strings"
+
 // Package
 import wgpu "./../bindings"
 
@@ -176,6 +185,218 @@ limits_using_resolution :: proc(using self: ^Limits, other: Limits) -> Limits {
 	max_texture_dimension_2d = other.max_texture_dimension_2d
 	max_texture_dimension_3d = other.max_texture_dimension_3d
 	return self^
+}
+
+// For `Limits` check. Doesn't use `Ada_Case` for consistency with the struct name.
+Limits_Name :: enum {
+	max_texture_dimension_1d,
+	max_texture_dimension_2d,
+	max_texture_dimension_3d,
+	max_texture_array_layers,
+	max_bind_groups,
+	max_bind_groups_plus_vertex_buffers,
+	max_bindings_per_bind_group,
+	max_dynamic_uniform_buffers_per_pipeline_layout,
+	max_dynamic_storage_buffers_per_pipeline_layout,
+	max_sampled_textures_per_shader_stage,
+	max_samplers_per_shader_stage,
+	max_storage_buffers_per_shader_stage,
+	max_storage_textures_per_shader_stage,
+	max_uniform_buffers_per_shader_stage,
+	max_uniform_buffer_binding_size,
+	max_storage_buffer_binding_size,
+	min_uniform_buffer_offset_alignment,
+	min_storage_buffer_offset_alignment,
+	max_vertex_buffers,
+	max_buffer_size,
+	max_vertex_attributes,
+	max_vertex_buffer_array_stride,
+	max_inter_stage_shader_components,
+	max_inter_stage_shader_variables,
+	max_color_attachments,
+	max_color_attachment_bytes_per_sample,
+	max_compute_workgroup_storage_size,
+	max_compute_invocations_per_workgroup,
+	max_compute_workgroup_size_x,
+	max_compute_workgroup_size_y,
+	max_compute_workgroup_size_z,
+	max_compute_workgroups_per_dimension,
+
+	// Native limits (extras)
+	max_push_constant_size,
+	max_non_sampler_bindings,
+}
+
+Limits_Name_Flags :: bit_set[Limits_Name]
+
+Limit_Violation_Value :: struct {
+	current: u64,
+	allowed: u64,
+}
+
+Limit_Violation_Data :: [Limits_Name]Limit_Violation_Value
+
+Limit_Violation :: struct {
+	data:             Limit_Violation_Data,
+	flags:            Limits_Name_Flags,
+	ok:               bool,
+	total_violations: u8,
+}
+
+/*
+Compares two `Limits` structures and identifies any violations where the `self` limits exceed or
+fall short of the `allowed` limits.
+
+Parameters
+- `self: Limits`: The limits to be checked.
+- `allowed: Limits`: The reference limits that `self` is checked against.
+
+Returns
+- `violations: Limit_Violation`: A structure containing information about any limit violations.
+*/
+@(require_results)
+limits_check :: proc(self: Limits, allowed: Limits) -> (violations: Limit_Violation) {
+	compare :: proc(
+		self_value, allowed_value: u64,
+		expected_order: slice.Ordering,
+	) -> (
+		Limit_Violation_Value,
+		bool,
+	) {
+		order := slice.cmp(self_value, allowed_value)
+		// Check if the order is different from expected and not equal
+		if order != expected_order && order != .Equal {
+			return {self_value, allowed_value}, true
+		}
+		return {}, false
+	}
+
+	check :: proc(
+		violations: ^Limit_Violation,
+		name: Limits_Name,
+		self_value, allowed_value: u64,
+		expected_order: slice.Ordering,
+	) {
+		violation, is_violation := compare(self_value, allowed_value, expected_order)
+		if is_violation {
+			violations.flags += {name}
+			violations.data[name] = violation
+			violations.total_violations += 1
+		}
+	}
+
+	fields := reflect.struct_fields_zipped(Limits)
+	// Ensure that the number of fields in Limits matches Limit_Violation_Data
+	assert(len(fields) == len(Limit_Violation_Data), "Mismatch limits")
+
+	for &field in fields {
+		name := field.name
+
+		self_value := reflect.struct_field_value_by_name(self, name)
+		allowed_value := reflect.struct_field_value_by_name(allowed, name)
+
+		// Convert both values to u64 for consistent comparison
+		self_u64, allowed_u64: u64
+		switch v in self_value {
+		case u32:
+			self_u64 = u64(v)
+		case u64:
+			self_u64 = v
+		case:
+			unreachable() // This should never happen if Limits only contains u32 or u64
+		}
+		switch v in allowed_value {
+		case u32:
+			allowed_u64 = u64(v)
+		case u64:
+			allowed_u64 = v
+		case:
+			unreachable()
+		}
+
+		// Get the corresponding Limits_Name enum value
+		limits_name, limits_name_ok := reflect.enum_from_name(Limits_Name, name)
+		assert(limits_name_ok, "Invalid limit name")
+
+		expected_order := slice.Ordering.Less
+		#partial switch limits_name {
+		case .min_uniform_buffer_offset_alignment, .min_storage_buffer_offset_alignment:
+			expected_order = .Greater
+		}
+
+		check(&violations, limits_name, self_u64, allowed_u64, expected_order)
+	}
+
+	violations.ok = violations.flags == {}
+
+	return
+}
+
+print_limits_violation :: proc(violation: Limit_Violation) {
+	if violation.ok || violation.flags == {} {
+		fmt.println("No limits violations detected.")
+		return
+	}
+
+	fmt.println("Limits violations detected:")
+
+	iter := violation.total_violations
+
+	for name in violation.flags {
+		data := violation.data[name]
+		fmt.printf("  %s:\n", name)
+		fmt.printf("    Current value: %d\n", data.current)
+		fmt.printf("    Allowed value: %d\n", data.allowed)
+		fmt.printf("    Violation: ")
+
+		if data.current > data.allowed {
+			fmt.printf("Value exceeds the maximum allowed.\n")
+		} else {
+			fmt.printf("Value is below the minimum required.\n")
+		}
+
+		if iter > 1 do fmt.println()
+		iter -= 1
+	}
+}
+
+limits_violation_to_string :: proc(
+	violation: Limit_Violation,
+	allocator := context.allocator,
+) -> (
+	str: string,
+) {
+	if violation.ok || violation.flags == {} do return
+
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
+
+	b := strings.builder_make(context.temp_allocator)
+	defer strings.builder_destroy(&b)
+
+	strings.write_string(&b, "Limits violations detected:\n")
+
+	iter := violation.total_violations
+
+	for name in violation.flags {
+		data := violation.data[name]
+		fmt.sbprintf(&b, "  %s:\n", name)
+		fmt.sbprintf(&b, "    Current value: %d\n", data.current)
+		fmt.sbprintf(&b, "    Allowed value: %d\n", data.allowed)
+		strings.write_string(&b, "    Violation: ")
+
+		if data.current > data.allowed {
+			strings.write_string(&b, "Value exceeds the maximum allowed.\n")
+		} else {
+			strings.write_string(&b, "Value is below the minimum required.\n")
+		}
+
+		if iter > 1 do strings.write_string(&b, "\n")
+		iter -= 1
+	}
+
+	str = strings.clone(strings.to_string(b), allocator)
+
+	return
 }
 
 @(private)

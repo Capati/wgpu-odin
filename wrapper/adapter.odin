@@ -179,7 +179,9 @@ _adapter_request_device :: proc(
 
 	if res.status != .Success {
 		err = res.status
-		set_and_update_err_data(nil, .Request_Device, err, string(res.message), loc)
+		message := string(res.message)
+		if message == "" do message = "Unknown"
+		set_and_update_err_data(nil, .Request_Device, err, message, loc)
 		return
 	}
 
@@ -279,6 +281,22 @@ adapter_request_device :: proc(
 	// If no limits is provided, default to adapter best limits
 	// TODO(Capati): Or default to a down level limits?
 	limits := descriptor.required_limits if descriptor.required_limits != {} else self.limits
+
+	if limits != self.limits {
+		limit_violation := limits_check(limits, self.limits)
+
+		if !limit_violation.ok {
+			err = .Validation
+			set_and_update_err_data(
+				nil,
+				.Request_Device,
+				err,
+				limits_violation_to_string(limit_violation, context.temp_allocator),
+				loc,
+			)
+			return
+		}
+	}
 
 	required_limits := Required_Limits {
 		next_in_chain = nil,
