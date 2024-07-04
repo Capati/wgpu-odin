@@ -408,17 +408,13 @@ device_create_compute_pipeline_async :: proc(
 	return
 }
 
-Pipeline_Layout_Extras :: struct {
-	push_constant_ranges: []Push_Constant_Range,
-}
-
 // Describes a PipelineLayout.
 //
 // For use with `device_create_pipeline_layout`.
 Pipeline_Layout_Descriptor :: struct {
-	label:              cstring,
-	bind_group_layouts: []Raw_Bind_Group_Layout,
-	extras:             ^Pipeline_Layout_Extras,
+	label:                cstring,
+	bind_group_layouts:   []Raw_Bind_Group_Layout,
+	push_constant_ranges: []Push_Constant_Range,
 }
 
 // Creates a `Pipeline_Layout`.
@@ -440,12 +436,10 @@ device_create_pipeline_layout :: proc(
 
 	extras: wgpu.Pipeline_Layout_Extras
 
-	if descriptor.extras != nil && len(descriptor.extras.push_constant_ranges) > 0 {
-		extras.push_constant_range_count = len(descriptor.extras.push_constant_ranges)
-		extras.push_constant_ranges = raw_data(descriptor.extras.push_constant_ranges)
-
-		extras.chain.next = nil
+	if len(descriptor.push_constant_ranges) > 0 {
 		extras.chain.stype = wgpu.SType(wgpu.Native_SType.Pipeline_Layout_Extras)
+		extras.push_constant_range_count = len(descriptor.push_constant_ranges)
+		extras.push_constant_ranges = raw_data(descriptor.push_constant_ranges)
 		desc.next_in_chain = &extras.chain
 	}
 
