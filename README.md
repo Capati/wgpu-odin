@@ -14,7 +14,7 @@ See [examples here](./examples).
 
 You can use the bindings only where the procedures are called directly from the `foreign` block.
 
-## Wrapper
+## Wrapper (🚧WIP)
 
 The wrapper version exposes an API similar to the [WebGPU spec](https://gpuweb.github.io/gpuweb/). Most of the inner procedures are boilerplate code that create an convenient way to work with idiomatic Odin and wgpu data.
 
