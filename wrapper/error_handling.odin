@@ -11,17 +11,20 @@ import "core:strings"
 import "core:sync"
 import "core:time"
 
-// Configuration values for enabling error handling and logging
+// Enable the global error handling
 WGPU_ENABLE_ERROR_HANDLING :: #config(WGPU_ENABLE_ERROR_HANDLING, true)
-WGPU_LOG_ON_ERROR :: #config(WGPU_LOG_ON_ERROR, false)
-WGPU_MUTEX_ON_ERROR :: #config(WGPU_MUTEX_ON_ERROR, false)
+// Logging when an error is captured
+WGPU_LOG_ON_ERROR :: #config(WGPU_LOG_ON_ERROR, true)
+// Panic as soon an error is encountered (will log too if enabled)
 WGPU_PANIC_ON_ERROR :: #config(WGPU_PANIC_ON_ERROR, false)
+// An attempt to ensure thread safe for errors
+WGPU_ENABLE_MUTEX_ERROR_HANDLING :: #config(WGPU_ENABLE_MUTEX_ERROR_HANDLING, false)
 
 @(private = "file")
-LOG_ENABLED :: WGPU_ENABLE_ERROR_HANDLING && (ODIN_DEBUG || WGPU_LOG_ON_ERROR)
+LOG_ENABLED :: WGPU_ENABLE_ERROR_HANDLING && WGPU_LOG_ON_ERROR
 
 @(private = "file")
-MUTEX_ENABLED :: WGPU_ENABLE_ERROR_HANDLING && WGPU_MUTEX_ON_ERROR
+MUTEX_ENABLED :: WGPU_ENABLE_ERROR_HANDLING && WGPU_ENABLE_MUTEX_ERROR_HANDLING
 
 @(private = "file")
 // Start with 2 instances, for 1 fallback and 1 device
