@@ -7,6 +7,7 @@ import "base:runtime"
 import "core:fmt"
 import "core:image"
 import "core:mem"
+import "core:slice"
 import "core:strings"
 
 // Vendor
@@ -86,8 +87,10 @@ queue_copy_image_to_texture_image_data :: proc(
 	// Get block size for the determined format
 	block_size := texture_format_block_size(format)
 
-	// Calculate bytes per row
-	bytes_per_row := u32(width) * block_size
+	// Calculate bytes per row, ensuring it meets the WGPU alignment requirements
+	bytes_per_row :=
+		((u32(width) * block_size + COPY_BYTES_PER_ROW_ALIGNMENT - 1) &
+			~(COPY_BYTES_PER_ROW_ALIGNMENT - 1))
 
 	// Prepare image data for upload
 	image_copy_texture := texture_as_image_copy(&texture)
@@ -98,7 +101,12 @@ queue_copy_image_to_texture_image_data :: proc(
 	}
 
 	// Convert image data if necessary
-	pixels_to_upload := _convert_image_data(data, format, context.temp_allocator) or_return
+	pixels_to_upload := _convert_image_data(
+		data,
+		format,
+		bytes_per_row,
+		context.temp_allocator,
+	) or_return
 
 	// Copy image data to texture
 	queue_write_texture(
@@ -250,6 +258,8 @@ _determine_texture_format :: proc(
 
 	format: Texture_Format
 
+	// NOTE: 3 channels will be converted to rgba later
+
 	if data.is_float {
 		switch data.channels {
 		case 1:
@@ -277,56 +287,106 @@ _determine_texture_format :: proc(
 _convert_image_data :: proc(
 	image_data: ^Image_Data,
 	format: Texture_Format,
+	aligned_bytes_per_row: u32,
 	allocator := context.allocator,
 ) -> (
 	data: []byte,
 	err: Error,
 ) {
-	total_pixels := image_data.width * image_data.height
 	bytes_per_pixel := image_data.channels * image_data.bytes_per_channel
 
 	if image_data.channels == 3 {
 		// Convert RGB to RGBA
 		new_bytes_per_pixel := 4 * image_data.bytes_per_channel
-		data = make([]byte, total_pixels * new_bytes_per_pixel, allocator) or_return
+		data = make([]byte, int(aligned_bytes_per_row) * image_data.height, allocator) or_return
 
 		switch src in image_data.data {
 		case []byte:
-			for i in 0 ..< total_pixels {
-				src_idx := i * bytes_per_pixel
-				dst_idx := i * new_bytes_per_pixel
-				copy(data[dst_idx:], src[src_idx:src_idx + bytes_per_pixel])
-				data[dst_idx + 3] = 255 // Full alpha for 8-bit
+			for y in 0 ..< image_data.height {
+				for x in 0 ..< image_data.width {
+					src_idx := (y * image_data.width + x) * bytes_per_pixel
+					dst_idx := y * int(aligned_bytes_per_row) + x * new_bytes_per_pixel
+					copy(data[dst_idx:], src[src_idx:src_idx + bytes_per_pixel])
+					data[dst_idx + 3] = 255 // Full alpha for 8-bit
+				}
 			}
 		case []u16:
-			for i in 0 ..< total_pixels {
-				src_idx := i * image_data.channels
-				dst_idx := i * 4
-				for j in 0 ..< 3 {
-					(^u16)(&data[dst_idx * 2 + j * 2])^ = src[src_idx + j]
+			for y in 0 ..< image_data.height {
+				for x in 0 ..< image_data.width {
+					src_idx := (y * image_data.width + x) * image_data.channels
+					dst_idx := y * int(aligned_bytes_per_row) + x * 4 * 2
+					for j in 0 ..< 3 {
+						(^u16)(&data[dst_idx + j * 2])^ = src[src_idx + j]
+					}
+					(^u16)(&data[dst_idx + 6])^ = 65535 // Full alpha for 16-bit
 				}
-				(^u16)(&data[dst_idx * 2 + 6])^ = 65535 // Full alpha for 16-bit
 			}
 		case []f32:
-			for i in 0 ..< total_pixels {
-				src_idx := i * image_data.channels
-				dst_idx := i * 4
-				for j in 0 ..< 3 {
-					(^f32)(&data[dst_idx * 4 + j * 4])^ = src[src_idx + j]
+			for y in 0 ..< image_data.height {
+				for x in 0 ..< image_data.width {
+					src_idx := (y * image_data.width + x) * image_data.channels
+					dst_idx := y * int(aligned_bytes_per_row) + x * 4 * 4
+					for j in 0 ..< 3 {
+						(^f32)(&data[dst_idx + j * 4])^ = src[src_idx + j]
+					}
+					(^f32)(&data[dst_idx + 12])^ = 1.0 // Full alpha for float
 				}
-				(^f32)(&data[dst_idx * 4 + 12])^ = 1.0 // Full alpha for float
 			}
 		}
 	} else {
-		// If not converting, just create a byte slice of the data
-		data = make([]byte, total_pixels * bytes_per_pixel, allocator) or_return
-		switch src in image_data.data {
+		// Check if the source data is already properly aligned
+		src_bytes_per_row := u32(image_data.width * bytes_per_pixel)
+		if src_bytes_per_row == aligned_bytes_per_row {
+			// If already aligned, we can simply reinterpret the data
+			switch src in image_data.data {
+			case []byte:
+				data = src
+			case []u16:
+				data = slice.reinterpret([]byte, src)
+			case []f32:
+				data = slice.reinterpret([]byte, src)
+			}
+			return
+		}
+
+		// If not converting, create a byte slice of the data with proper alignment
+		total_size := int(aligned_bytes_per_row) * image_data.height
+		data = make([]byte, total_size, allocator) or_return
+
+		copy_image_data :: proc(
+			$T: typeid,
+			src: ^[]T,
+			dst: ^[]byte,
+			image_data: ^Image_Data,
+			aligned_bytes_per_row: int,
+		) {
+			bytes_per_pixel := size_of(T) * image_data.channels
+
+			for y in 0 ..< image_data.height {
+				src_row := src[y * image_data.width * image_data.channels:]
+				dst_row := dst[y * aligned_bytes_per_row:]
+
+				when T == byte {
+					copy(dst_row[:image_data.width * bytes_per_pixel], src_row)
+				} else {
+					copy_slice(
+						dst_row[:image_data.width * bytes_per_pixel],
+						slice.reinterpret(
+							[]byte,
+							src_row[:image_data.width * image_data.channels],
+						),
+					)
+				}
+			}
+		}
+
+		switch &src in image_data.data {
 		case []byte:
-			copy(data, src)
+			copy_image_data(byte, &src, &data, image_data, int(aligned_bytes_per_row))
 		case []u16:
-			mem.copy(&data[0], &src[0], len(src) * size_of(u16))
+			copy_image_data(u16, &src, &data, image_data, int(aligned_bytes_per_row))
 		case []f32:
-			mem.copy(&data[0], &src[0], len(src) * size_of(f32))
+			copy_image_data(f32, &src, &data, image_data, int(aligned_bytes_per_row))
 		}
 	}
 
