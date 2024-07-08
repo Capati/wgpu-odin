@@ -25,7 +25,7 @@ get_surface_descriptor :: proc(
 	case glfw.PLATFORM_X11:
 		descriptor.target = wgpu.Surface_Descriptor_From_Xlib_Window {
 			display = glfw.GetX11Display(),
-			window  = glfw.GetX11Window(w),
+			window  = u64(glfw.GetX11Window(w)),
 		}
 	case:
 		fmt.eprintf("ERROR: Unable to recognize the current desktop session.")
