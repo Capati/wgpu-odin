@@ -1,5 +1,8 @@
 package wgpu
 
+// Base
+import intr "base:intrinsics"
+
 // Integral type used for buffer offsets.
 Buffer_Address :: u64
 // Integral type used for buffer slice sizes.
@@ -86,4 +89,57 @@ Blend_State_Alpha_Blending := Blend_State {
 Blend_State_Premultiplied_Alpha_Blending := Blend_State {
 	color = Blend_Component_Over,
 	alpha = Blend_Component_Over,
+}
+
+Range :: struct($T: typeid) {
+	start, end: T,
+}
+
+range_init :: proc "contextless" (
+	$T: typeid,
+	start, end: T,
+) -> Range(T) where intr.type_is_ordered(T) {
+	return Range(T){start, end}
+}
+
+// Check if the range is empty
+range_is_empty :: proc "contextless" (r: Range($T)) -> bool where intr.type_is_ordered(T) {
+	return r.start >= r.end
+}
+
+// Check if a value is within the Range
+range_contains :: proc "contextless" (
+	r: Range($T),
+	value: T,
+) -> bool where intr.type_is_ordered(T) {
+	return value >= r.start && value < r.end
+}
+
+// Get the length of the Range
+range_len :: proc "contextless" (r: Range($T)) -> T where intr.type_is_ordered(T) {
+	if range_is_empty(r) do return 0
+	return r.end - r.start
+}
+
+// Iterator for the Range
+Range_Iterator :: struct($T: typeid) {
+	current, end: T,
+}
+
+// Create an iterator for the Range
+range_iterator :: proc "contextless" (r: Range($T)) -> Range_Iterator(T) {
+	return Range_Iterator(T){r.start, r.end}
+}
+
+// Get the next value from the iterator
+range_next :: proc "contextless" (
+	it: ^Range_Iterator($T),
+	value: ^T,
+) -> bool where intr.type_is_ordered(T) {
+	if it.current < it.end {
+		value^ = it.current
+		it.current += 1
+		return true
+	}
+	return false
 }
