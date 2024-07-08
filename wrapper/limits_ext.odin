@@ -399,6 +399,130 @@ limits_violation_to_string :: proc(
 	return
 }
 
+limits_ensure_minimum :: proc(limits: ^Limits, minimum := DOWNLEVEL_WEBGL2_LIMITS) {
+	limits.max_texture_dimension_1d = max(
+		limits.max_texture_dimension_1d,
+		minimum.max_texture_dimension_1d,
+	)
+	limits.max_texture_dimension_2d = max(
+		limits.max_texture_dimension_2d,
+		minimum.max_texture_dimension_2d,
+	)
+	limits.max_texture_dimension_3d = max(
+		limits.max_texture_dimension_3d,
+		minimum.max_texture_dimension_3d,
+	)
+	limits.max_texture_array_layers = max(
+		limits.max_texture_array_layers,
+		minimum.max_texture_array_layers,
+	)
+	limits.max_bind_groups = max(limits.max_bind_groups, minimum.max_bind_groups)
+	limits.max_bind_groups_plus_vertex_buffers = max(
+		limits.max_bind_groups_plus_vertex_buffers,
+		minimum.max_bind_groups_plus_vertex_buffers,
+	)
+	limits.max_bindings_per_bind_group = max(
+		limits.max_bindings_per_bind_group,
+		minimum.max_bindings_per_bind_group,
+	)
+	limits.max_dynamic_uniform_buffers_per_pipeline_layout = max(
+		limits.max_dynamic_uniform_buffers_per_pipeline_layout,
+		minimum.max_dynamic_uniform_buffers_per_pipeline_layout,
+	)
+	limits.max_dynamic_storage_buffers_per_pipeline_layout = max(
+		limits.max_dynamic_storage_buffers_per_pipeline_layout,
+		minimum.max_dynamic_storage_buffers_per_pipeline_layout,
+	)
+	limits.max_sampled_textures_per_shader_stage = max(
+		limits.max_sampled_textures_per_shader_stage,
+		minimum.max_sampled_textures_per_shader_stage,
+	)
+	limits.max_samplers_per_shader_stage = max(
+		limits.max_samplers_per_shader_stage,
+		minimum.max_samplers_per_shader_stage,
+	)
+	limits.max_storage_buffers_per_shader_stage = max(
+		limits.max_storage_buffers_per_shader_stage,
+		minimum.max_storage_buffers_per_shader_stage,
+	)
+	limits.max_storage_textures_per_shader_stage = max(
+		limits.max_storage_textures_per_shader_stage,
+		minimum.max_storage_textures_per_shader_stage,
+	)
+	limits.max_uniform_buffers_per_shader_stage = max(
+		limits.max_uniform_buffers_per_shader_stage,
+		minimum.max_uniform_buffers_per_shader_stage,
+	)
+	limits.max_uniform_buffer_binding_size = max(
+		limits.max_uniform_buffer_binding_size,
+		minimum.max_uniform_buffer_binding_size,
+	)
+	limits.max_storage_buffer_binding_size = max(
+		limits.max_storage_buffer_binding_size,
+		minimum.max_storage_buffer_binding_size,
+	)
+	limits.min_uniform_buffer_offset_alignment = max(
+		limits.min_uniform_buffer_offset_alignment,
+		minimum.min_uniform_buffer_offset_alignment,
+	)
+	limits.min_storage_buffer_offset_alignment = max(
+		limits.min_storage_buffer_offset_alignment,
+		minimum.min_storage_buffer_offset_alignment,
+	)
+	limits.max_vertex_buffers = max(limits.max_vertex_buffers, minimum.max_vertex_buffers)
+	limits.max_buffer_size = max(limits.max_buffer_size, minimum.max_buffer_size)
+	limits.max_vertex_attributes = max(limits.max_vertex_attributes, minimum.max_vertex_attributes)
+	limits.max_vertex_buffer_array_stride = max(
+		limits.max_vertex_buffer_array_stride,
+		minimum.max_vertex_buffer_array_stride,
+	)
+	limits.max_inter_stage_shader_components = max(
+		limits.max_inter_stage_shader_components,
+		minimum.max_inter_stage_shader_components,
+	)
+	limits.max_inter_stage_shader_variables = max(
+		limits.max_inter_stage_shader_variables,
+		minimum.max_inter_stage_shader_variables,
+	)
+	limits.max_color_attachments = max(limits.max_color_attachments, minimum.max_color_attachments)
+	limits.max_color_attachment_bytes_per_sample = max(
+		limits.max_color_attachment_bytes_per_sample,
+		minimum.max_color_attachment_bytes_per_sample,
+	)
+	limits.max_compute_workgroup_storage_size = max(
+		limits.max_compute_workgroup_storage_size,
+		minimum.max_compute_workgroup_storage_size,
+	)
+	limits.max_compute_invocations_per_workgroup = max(
+		limits.max_compute_invocations_per_workgroup,
+		minimum.max_compute_invocations_per_workgroup,
+	)
+	limits.max_compute_workgroup_size_x = max(
+		limits.max_compute_workgroup_size_x,
+		minimum.max_compute_workgroup_size_x,
+	)
+	limits.max_compute_workgroup_size_y = max(
+		limits.max_compute_workgroup_size_y,
+		minimum.max_compute_workgroup_size_y,
+	)
+	limits.max_compute_workgroup_size_z = max(
+		limits.max_compute_workgroup_size_z,
+		minimum.max_compute_workgroup_size_z,
+	)
+	limits.max_compute_workgroups_per_dimension = max(
+		limits.max_compute_workgroups_per_dimension,
+		minimum.max_compute_workgroups_per_dimension,
+	)
+	limits.max_push_constant_size = max(
+		limits.max_push_constant_size,
+		minimum.max_push_constant_size,
+	)
+	limits.max_non_sampler_bindings = max(
+		limits.max_non_sampler_bindings,
+		minimum.max_non_sampler_bindings,
+	)
+}
+
 @(private)
 limits_merge_webgpu_with_native :: proc(
 	webgpu: wgpu.Limits,
