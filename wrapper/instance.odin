@@ -15,7 +15,8 @@ import wgpu "../bindings"
 //
 // Does not have to be kept alive.
 Instance :: struct {
-	ptr: Raw_Instance,
+	ptr:  Raw_Instance,
+	_pad: POINTER_PROMOTION_PADDING,
 }
 
 // Options for creating an instance.
@@ -29,14 +30,15 @@ Instance_Descriptor :: struct {
 }
 
 // Create an new instance of wgpu.
+@(require_results)
 create_instance :: proc(
-	descriptor: ^Instance_Descriptor = nil,
+	descriptor: Instance_Descriptor = {},
 	loc := #caller_location,
 ) -> (
 	instance: Instance,
 	err: Error,
 ) {
-	if descriptor == nil {
+	if descriptor == {} {
 		instance.ptr = wgpu.create_instance(nil)
 	} else {
 		instance_extras := Instance_Extras {
@@ -87,9 +89,10 @@ Surface_Descriptor :: struct {
 //
 // If the specified display and window target are not supported by any of the backends, then the
 // surface will not be supported by any adapters.
+@(require_results)
 instance_create_surface :: proc(
-	using self: ^Instance,
-	descriptor: ^Surface_Descriptor,
+	using self: Instance,
+	descriptor: Surface_Descriptor,
 	loc := #caller_location,
 ) -> (
 	surface: Surface,
@@ -160,9 +163,10 @@ instance_create_surface :: proc(
 }
 
 // Retrieves an `Adapter` which matches the given options.
+@(require_results)
 instance_request_adapter :: proc(
-	using self: ^Instance,
-	options: ^Request_Adapter_Options,
+	using self: Instance,
+	options: Request_Adapter_Options,
 	loc := #caller_location,
 ) -> (
 	adapter: Adapter,
@@ -192,7 +196,8 @@ instance_request_adapter :: proc(
 		}
 	}
 
-	wgpu.instance_request_adapter(ptr, options, request_adapter_callback, &res)
+	options := options
+	wgpu.instance_request_adapter(ptr, &options, request_adapter_callback, &res)
 
 	if res.status != .Success {
 		err = res.status
@@ -204,16 +209,17 @@ instance_request_adapter :: proc(
 	defer if err != nil do wgpu.adapter_release(adapter.ptr)
 
 	// Fill adapter details
-	adapter.features = _adapter_get_features(&adapter, loc) or_return
-	adapter.limits = _adapter_get_limits(&adapter, loc) or_return
-	adapter.info = _adapter_get_info(&adapter) or_return
+	adapter.features = _adapter_get_features(adapter, loc) or_return
+	adapter.limits = _adapter_get_limits(adapter, loc) or_return
+	adapter.info = _adapter_get_info(adapter) or_return
 
 	return
 }
 
 // Retrieves all available `Adapters` that match the given options.
+@(require_results)
 instance_enumerate_adapters :: proc(
-	using self: ^Instance,
+	using self: Instance,
 	backends: Instance_Backend_Flags,
 	allocator := context.allocator,
 	loc := #caller_location,
@@ -253,7 +259,7 @@ instance_enumerate_adapters :: proc(
 	defer if err != nil {
 		if len(adapters) > 0 {
 			for &a in adapters {
-				if a.ptr != nil do adapter_release(&a)
+				if a.ptr != nil do adapter_release(a)
 			}
 			delete(adapters)
 		}
@@ -264,28 +270,28 @@ instance_enumerate_adapters :: proc(
 			ptr = raw_adapters[i],
 		}
 
-		adapters[i].features = _adapter_get_features(&adapters[i], loc) or_return
-		adapters[i].limits = _adapter_get_limits(&adapters[i], loc) or_return
-		adapters[i].info = _adapter_get_info(&adapters[i]) or_return
+		adapters[i].features = _adapter_get_features(adapters[i], loc) or_return
+		adapters[i].limits = _adapter_get_limits(adapters[i], loc) or_return
+		adapters[i].info = _adapter_get_info(adapters[i]) or_return
 	}
 
 	return
 }
 
 // Generates memory report.
-instance_generate_report :: proc(self: ^Instance) -> Global_Report {
-	report: Global_Report = {}
+instance_generate_report :: proc "contextless" (self: Instance) -> Global_Report {
+	report: Global_Report
 	wgpu.generate_report(self.ptr, &report)
 	return report
 }
 
 // Processes pending WebGPU events on the instance.
-instance_process_events :: proc(self: ^Instance) {
+instance_process_events :: proc "contextless" (self: Instance) {
 	wgpu.instance_process_events(self.ptr)
 }
 
 // Print memory report.
-instance_print_report :: proc(using self: ^Instance, backend_type: Backend_Type = .Undefined) {
+instance_print_report :: proc(using self: Instance, backend_type: Backend_Type = .Undefined) {
 	report := instance_generate_report(self)
 
 	print_registry_report :: proc(report: Registry_Report, prefix: cstring, separator := true) {
@@ -339,17 +345,17 @@ instance_print_report :: proc(using self: ^Instance, backend_type: Backend_Type 
 }
 
 // Increase the reference count.
-instance_reference :: proc(using self: ^Instance) {
+instance_reference :: proc "contextless" (using self: Instance) {
 	wgpu.instance_reference(ptr)
 }
 
 // Release the `Instance`.
-instance_release :: proc(using self: ^Instance) {
+instance_release :: #force_inline proc "contextless" (using self: Instance) {
 	wgpu.instance_release(ptr)
 }
 
 // Release the `Instance` and modify the raw pointer to `nil`.
-instance_release_and_nil :: proc(using self: ^Instance) {
+instance_release_and_nil :: proc "contextless" (using self: ^Instance) {
 	if ptr == nil do return
 	wgpu.instance_release(ptr)
 	ptr = nil

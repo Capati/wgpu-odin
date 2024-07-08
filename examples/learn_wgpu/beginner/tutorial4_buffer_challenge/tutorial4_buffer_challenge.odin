@@ -51,16 +51,16 @@ init :: proc() -> (state: ^State, err: Error) {
 	SHADER_SRC: string : #load("./../tutorial4_buffer/shader.wgsl", string)
 	COMBINED_SHADER_SRC :: shaders.SRGB_TO_LINEAR_WGSL + SHADER_SRC
 	shader_module := wgpu.device_create_shader_module(
-		&state.device,
-		&{source = COMBINED_SHADER_SRC},
+		state.device,
+		{source = COMBINED_SHADER_SRC},
 	) or_return
-	defer wgpu.shader_module_release(&shader_module)
+	defer wgpu.shader_module_release(shader_module)
 
 	render_pipeline_layout := wgpu.device_create_pipeline_layout(
-		&state.device,
-		&{label = EXAMPLE_TITLE + " Render Pipeline Layout"},
+		state.device,
+		{label = EXAMPLE_TITLE + " Render Pipeline Layout"},
 	) or_return
-	defer wgpu.pipeline_layout_release(&render_pipeline_layout)
+	defer wgpu.pipeline_layout_release(render_pipeline_layout)
 
 	vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
 		array_stride = size_of(Vertex),
@@ -96,10 +96,10 @@ init :: proc() -> (state: ^State, err: Error) {
 	}
 
 	state.render_pipeline = wgpu.device_create_render_pipeline(
-		&state.device,
-		&render_pipeline_descriptor,
+		state.device,
+		render_pipeline_descriptor,
 	) or_return
-	defer if err != nil do wgpu.render_pipeline_release(&state.render_pipeline)
+	defer if err != nil do wgpu.render_pipeline_release(state.render_pipeline)
 
 	// vertices := []Vertex{
 	//     {position = {0.0, 0.5, 0.0}, color = {1.0, 0.0, 0.0}},
@@ -121,24 +121,24 @@ init :: proc() -> (state: ^State, err: Error) {
 	state.num_indices = cast(u32)len(indices)
 
 	state.vertex_buffer = wgpu.device_create_buffer_with_data(
-		&state.device,
-		&wgpu.Buffer_Data_Descriptor {
+		state.device,
+		wgpu.Buffer_Data_Descriptor {
 			label = EXAMPLE_TITLE + " Vertex Buffer",
 			contents = wgpu.to_bytes(vertices),
 			usage = {.Vertex},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(&state.vertex_buffer)
+	defer if err != nil do wgpu.buffer_release(state.vertex_buffer)
 
 	state.index_buffer = wgpu.device_create_buffer_with_data(
-		&state.device,
-		&wgpu.Buffer_Data_Descriptor {
+		state.device,
+		wgpu.Buffer_Data_Descriptor {
 			label = EXAMPLE_TITLE + " Index Buffer",
 			contents = wgpu.to_bytes(indices),
 			usage = {.Index},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(&state.index_buffer)
+	defer if err != nil do wgpu.buffer_release(state.index_buffer)
 
 	num_vertices :: 100
 	angle := math.PI * 2.0 / f32(num_vertices)
@@ -169,18 +169,18 @@ init :: proc() -> (state: ^State, err: Error) {
 	state.num_challenge_indices = cast(u32)len(challenge_indices)
 
 	state.challenge_vertex_buffer = wgpu.device_create_buffer_with_data(
-		&state.device,
-		&wgpu.Buffer_Data_Descriptor {
+		state.device,
+		wgpu.Buffer_Data_Descriptor {
 			label = EXAMPLE_TITLE + " Vertex Buffer",
 			contents = wgpu.to_bytes(challenge_verts[:]),
 			usage = {.Vertex},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(&state.challenge_vertex_buffer)
+	defer if err != nil do wgpu.buffer_release(state.challenge_vertex_buffer)
 
 	state.challenge_index_buffer = wgpu.device_create_buffer_with_data(
-		&state.device,
-		&wgpu.Buffer_Data_Descriptor {
+		state.device,
+		wgpu.Buffer_Data_Descriptor {
 			label = EXAMPLE_TITLE + " Index Buffer",
 			contents = wgpu.to_bytes(challenge_indices[:]),
 			usage = {.Index},
@@ -199,11 +199,11 @@ init :: proc() -> (state: ^State, err: Error) {
 
 deinit :: proc(using state: ^State) {
 	delete(render_pass_desc.color_attachments)
-	wgpu.buffer_release(&challenge_index_buffer)
-	wgpu.buffer_release(&challenge_vertex_buffer)
-	wgpu.buffer_release(&index_buffer)
-	wgpu.buffer_release(&vertex_buffer)
-	wgpu.render_pipeline_release(&render_pipeline)
+	wgpu.buffer_release(challenge_index_buffer)
+	wgpu.buffer_release(challenge_vertex_buffer)
+	wgpu.buffer_release(index_buffer)
+	wgpu.buffer_release(vertex_buffer)
+	wgpu.render_pipeline_release(render_pipeline)
 	renderer.deinit(gpu)
 	app.deinit()
 	free(state)
@@ -212,49 +212,37 @@ deinit :: proc(using state: ^State) {
 render :: proc(using state: ^State) -> (err: Error) {
 	frame := renderer.get_current_texture_frame(gpu) or_return
 	if skip_frame do return
-	defer wgpu.texture_release(&frame.texture)
+	defer renderer.release_current_texture_frame(gpu)
 
-	view := wgpu.texture_create_view(&frame.texture) or_return
-	defer wgpu.texture_view_release(&view)
+	view := wgpu.texture_create_view(frame.texture) or_return
+	defer wgpu.texture_view_release(view)
 
-	encoder := wgpu.device_create_command_encoder(&device) or_return
-	defer wgpu.command_encoder_release(&encoder)
+	encoder := wgpu.device_create_command_encoder(device) or_return
+	defer wgpu.command_encoder_release(encoder)
 
 	color_attachment.view = view.ptr
-	render_pass := wgpu.command_encoder_begin_render_pass(&encoder, &render_pass_desc)
-	defer wgpu.render_pass_encoder_release(&render_pass)
+	render_pass := wgpu.command_encoder_begin_render_pass(encoder, render_pass_desc)
+	defer wgpu.render_pass_release(render_pass)
 
-	wgpu.render_pass_encoder_set_pipeline(&render_pass, render_pipeline.ptr)
+	wgpu.render_pass_set_pipeline(render_pass, render_pipeline.ptr)
 
 	if use_complex {
-		wgpu.render_pass_encoder_set_vertex_buffer(&render_pass, 0, challenge_vertex_buffer.ptr)
-		wgpu.render_pass_encoder_set_index_buffer(
-			&render_pass,
-			challenge_index_buffer.ptr,
-			.Uint16,
-			0,
-			wgpu.WHOLE_SIZE,
-		)
-		wgpu.render_pass_encoder_draw_indexed(&render_pass, num_challenge_indices)
+		wgpu.render_pass_set_vertex_buffer(render_pass, 0, challenge_vertex_buffer.ptr)
+		wgpu.render_pass_set_index_buffer(render_pass, challenge_index_buffer.ptr, .Uint16)
+		wgpu.render_pass_draw_indexed(render_pass, {0, num_challenge_indices})
 	} else {
-		wgpu.render_pass_encoder_set_vertex_buffer(&render_pass, 0, vertex_buffer.ptr)
-		wgpu.render_pass_encoder_set_index_buffer(
-			&render_pass,
-			index_buffer.ptr,
-			.Uint16,
-			0,
-			wgpu.WHOLE_SIZE,
-		)
-		wgpu.render_pass_encoder_draw_indexed(&render_pass, num_indices)
+		wgpu.render_pass_set_vertex_buffer(render_pass, 0, vertex_buffer.ptr)
+		wgpu.render_pass_set_index_buffer(render_pass, index_buffer.ptr, .Uint16)
+		wgpu.render_pass_draw_indexed(render_pass, {0, num_indices})
 	}
 
-	wgpu.render_pass_encoder_end(&render_pass) or_return
+	wgpu.render_pass_end(render_pass) or_return
 
-	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
-	defer wgpu.command_buffer_release(&command_buffer)
+	command_buffer := wgpu.command_encoder_finish(encoder) or_return
+	defer wgpu.command_buffer_release(command_buffer)
 
-	wgpu.queue_submit(&queue, command_buffer.ptr)
-	wgpu.surface_present(&surface)
+	wgpu.queue_submit(queue, command_buffer.ptr)
+	wgpu.surface_present(surface)
 
 	return
 }
@@ -267,7 +255,7 @@ resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Er
 handle_events :: proc(using state: ^State) -> (should_quit: bool, err: Error) {
 	event: events.Event
 	for app.poll_event(&event) {
-		#partial switch &ev in event {
+		#partial switch ev in event {
 		case events.Quit_Event:
 			return true, nil
 		case events.Key_Press_Event:

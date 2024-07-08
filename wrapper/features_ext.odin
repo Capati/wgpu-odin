@@ -127,7 +127,7 @@ features_all_native_flags :: proc(features: Features) -> (ret: Features) {
 
 
 @(private)
-features_slice_to_flags :: proc(features_slice: ^[]Raw_Feature_Name) -> (features: Features) {
+features_slice_to_flags :: proc(features_slice: []Raw_Feature_Name) -> (features: Features) {
 	// odinfmt: disable
 	for &f in features_slice {
 		switch f {

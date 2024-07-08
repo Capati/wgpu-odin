@@ -13,8 +13,9 @@ Compute_Pipeline :: struct {
 }
 
 // Get an object representing the bind group layout at a given index.
+@(require_results)
 compute_pipeline_get_bind_group_layout :: proc(
-	using self: ^Compute_Pipeline,
+	using self: Compute_Pipeline,
 	group_index: u32,
 	loc := #caller_location,
 ) -> (
@@ -41,22 +42,22 @@ compute_pipeline_get_bind_group_layout :: proc(
 }
 
 // Set debug label.
-compute_pipeline_set_label :: proc(using self: ^Compute_Pipeline, label: cstring) {
+compute_pipeline_set_label :: proc "contextless" (using self: Compute_Pipeline, label: cstring) {
 	wgpu.compute_pipeline_set_label(ptr, label)
 }
 
 // Increase the reference count.
-compute_pipeline_reference :: proc(using self: ^Compute_Pipeline) {
+compute_pipeline_reference :: proc "contextless" (using self: Compute_Pipeline) {
 	wgpu.compute_pipeline_reference(ptr)
 }
 
 // Release the `Compute_Pipeline`.
-compute_pipeline_release :: proc(using self: ^Compute_Pipeline) {
+compute_pipeline_release :: #force_inline proc "contextless" (using self: Compute_Pipeline) {
 	wgpu.compute_pipeline_release(ptr)
 }
 
 // Release the `Compute_Pipeline`and modify the raw pointer to `nil`.
-compute_pipeline_release_and_nil :: proc(using self: ^Compute_Pipeline) {
+compute_pipeline_release_and_nil :: proc "contextless" (using self: ^Compute_Pipeline) {
 	if ptr == nil do return
 	wgpu.compute_pipeline_release(ptr)
 	ptr = nil

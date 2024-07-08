@@ -33,10 +33,10 @@ Surface_Configuration :: struct {
 }
 
 // Initializes `Surface` for presentation.
-surface_configure :: proc(
+surface_configure :: proc "contextless" (
 	self: ^Surface,
-	device: ^Device,
-	config: ^Surface_Configuration,
+	device: Device,
+	config: Surface_Configuration,
 	loc := #caller_location,
 ) -> (
 	err: Error,
@@ -45,26 +45,24 @@ surface_configure :: proc(
 		device = device.ptr,
 	}
 
-	if config != nil {
-		cfg.format = config.format
-		cfg.usage = config.usage
-		cfg.alpha_mode = config.alpha_mode
-		cfg.width = config.width
-		cfg.height = config.height
-		cfg.present_mode = config.present_mode
+	cfg.format = config.format
+	cfg.usage = config.usage
+	cfg.alpha_mode = config.alpha_mode
+	cfg.width = config.width
+	cfg.height = config.height
+	cfg.present_mode = config.present_mode
 
-		view_format_count := len(config.view_formats)
+	view_format_count := len(config.view_formats)
 
-		if view_format_count > 0 {
-			cfg.view_format_count = uint(view_format_count)
-			cfg.view_formats = raw_data(config.view_formats)
-		} else {
-			cfg.view_format_count = 0
-			cfg.view_formats = nil
-		}
+	if view_format_count > 0 {
+		cfg.view_format_count = uint(view_format_count)
+		cfg.view_formats = raw_data(config.view_formats)
+	} else {
+		cfg.view_format_count = 0
+		cfg.view_formats = nil
 	}
 
-	self.config = config^
+	self.config = config
 
 	extras: wgpu.Surface_Configuration_Extras
 
@@ -89,8 +87,9 @@ surface_configure :: proc(
 }
 
 // Returns the capabilities of the surface when used with the given adapter.
+@(require_results)
 surface_get_capabilities :: proc(
-	using self: ^Surface,
+	using self: Surface,
 	adapter: Raw_Adapter,
 	allocator := context.allocator,
 	loc := #caller_location,
@@ -180,8 +179,9 @@ surface_get_capabilities :: proc(
 }
 
 // Returns the next texture to be presented by the swapchain for drawing.
-surface_get_current_texture :: proc(
-	using self: ^Surface,
+@(require_results)
+surface_get_current_texture :: proc "contextless" (
+	using self: Surface,
 	loc := #caller_location,
 ) -> (
 	surface_texture: Surface_Texture,
@@ -212,7 +212,7 @@ surface_get_current_texture :: proc(
 			},
 			_err_data = _err_data,
 		},
-		suboptimal = texture.suboptimal,
+		suboptimal = bool(texture.suboptimal),
 		status = texture.status,
 	}
 
@@ -220,8 +220,8 @@ surface_get_current_texture :: proc(
 }
 
 // Returns the best format for the provided surface and adapter.
-surface_get_preferred_format :: proc(
-	using self: ^Surface,
+surface_get_preferred_format :: proc "contextless" (
+	using self: Surface,
 	adapter: Raw_Adapter,
 	loc := #caller_location,
 ) -> (
@@ -236,7 +236,12 @@ surface_get_preferred_format :: proc(
 }
 
 // Schedule this surface to be presented on the owning surface.
-surface_present :: proc(using self: ^Surface, loc := #caller_location) -> (err: Error) {
+surface_present :: proc "contextless" (
+	using self: Surface,
+	loc := #caller_location,
+) -> (
+	err: Error,
+) {
 	set_and_reset_err_data(_err_data, loc)
 	wgpu.surface_present(ptr)
 	err = get_last_error()
@@ -245,14 +250,14 @@ surface_present :: proc(using self: ^Surface, loc := #caller_location) -> (err: 
 }
 
 // Removes the surface configuration. Destroys any textures produced while configured.
-surface_unconfigure :: proc(using self: ^Surface) {
+surface_unconfigure :: proc "contextless" (using self: Surface) {
 	wgpu.surface_unconfigure(ptr)
 }
 
 // Return a default `Surface_Configuration` from `width` and `height` to use for the
 // `Surface` with this adapter.
 surface_get_default_config :: proc(
-	self: ^Surface,
+	self: Surface,
 	adapter: Raw_Adapter,
 	width, height: u32,
 	loc := #caller_location,
@@ -276,17 +281,17 @@ surface_get_default_config :: proc(
 }
 
 // Increase the reference count.
-surface_reference :: proc(using self: ^Surface) {
+surface_reference :: proc "contextless" (using self: Surface) {
 	wgpu.surface_reference(ptr)
 }
 
 // Release the `Surface`.
-surface_release :: proc(using self: ^Surface) {
+surface_release :: #force_inline proc "contextless" (using self: Surface) {
 	wgpu.surface_release(ptr)
 }
 
 // Release the `Surface` and modify the raw pointer to `nil`.
-surface_release_and_nil :: proc(using self: ^Surface) {
+surface_release_and_nil :: proc "contextless" (using self: ^Surface) {
 	if ptr == nil do return
 	wgpu.surface_release(ptr)
 	ptr = nil

@@ -37,14 +37,14 @@ init :: proc() -> (state: ^State, err: Error) {
 	SHADER_SRC: string : #load("./triangle.wgsl", string)
 	COMBINED_SHADER_SRC :: shaders.SRGB_TO_LINEAR_WGSL + SHADER_SRC
 	shader_module := wgpu.device_create_shader_module(
-		&state.device,
-		&{label = EXAMPLE_TITLE + " Module", source = COMBINED_SHADER_SRC},
+		state.device,
+		{label = EXAMPLE_TITLE + " Module", source = COMBINED_SHADER_SRC},
 	) or_return
-	defer wgpu.shader_module_release(&shader_module)
+	defer wgpu.shader_module_release(shader_module)
 
 	state.render_pipeline = wgpu.device_create_render_pipeline(
-		&state.device,
-		&{
+		state.device,
+		{
 			label = EXAMPLE_TITLE + " Render Pipeline",
 			vertex = {module = shader_module.ptr, entry_point = "vs_main"},
 			fragment = &{
@@ -58,10 +58,10 @@ init :: proc() -> (state: ^State, err: Error) {
 					},
 				},
 			},
-			multisample = wgpu.Default_Multisample_State,
+			multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 		},
 	) or_return
-	defer if err != nil do wgpu.render_pipeline_release(&state.render_pipeline)
+	defer if err != nil do wgpu.render_pipeline_release(state.render_pipeline)
 
 	state.render_pass_desc = common.create_render_pass_descriptor(
 		EXAMPLE_TITLE + " Render Pass",
@@ -76,7 +76,7 @@ init :: proc() -> (state: ^State, err: Error) {
 
 deinit :: proc(using state: ^State) {
 	delete(render_pass_desc.color_attachments)
-	wgpu.render_pipeline_release(&render_pipeline)
+	wgpu.render_pipeline_release(render_pipeline)
 	renderer.deinit(gpu)
 	app.deinit()
 	free(state)
@@ -85,27 +85,27 @@ deinit :: proc(using state: ^State) {
 render :: proc(using state: ^State) -> (err: Error) {
 	frame := renderer.get_current_texture_frame(gpu) or_return
 	if skip_frame do return
-	defer wgpu.texture_release(&frame.texture)
+	defer renderer.release_current_texture_frame(gpu)
 
-	view := wgpu.texture_create_view(&frame.texture) or_return
-	defer wgpu.texture_view_release(&view)
+	view := wgpu.texture_create_view(frame.texture) or_return
+	defer wgpu.texture_view_release(view)
 
-	encoder := wgpu.device_create_command_encoder(&device) or_return
-	defer wgpu.command_encoder_release(&encoder)
+	encoder := wgpu.device_create_command_encoder(device) or_return
+	defer wgpu.command_encoder_release(encoder)
 
 	color_attachment.view = view.ptr
-	render_pass := wgpu.command_encoder_begin_render_pass(&encoder, &render_pass_desc)
-	defer wgpu.render_pass_encoder_release(&render_pass)
+	render_pass := wgpu.command_encoder_begin_render_pass(encoder, render_pass_desc)
+	defer wgpu.render_pass_release(render_pass)
 
-	wgpu.render_pass_encoder_set_pipeline(&render_pass, render_pipeline.ptr)
-	wgpu.render_pass_encoder_draw(&render_pass, 3)
-	wgpu.render_pass_encoder_end(&render_pass) or_return
+	wgpu.render_pass_set_pipeline(render_pass, render_pipeline.ptr)
+	wgpu.render_pass_draw(render_pass, {0, 3})
+	wgpu.render_pass_end(render_pass) or_return
 
-	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
-	defer wgpu.command_buffer_release(&command_buffer)
+	command_buffer := wgpu.command_encoder_finish(encoder) or_return
+	defer wgpu.command_buffer_release(command_buffer)
 
-	wgpu.queue_submit(&queue, command_buffer.ptr)
-	wgpu.surface_present(&surface)
+	wgpu.queue_submit(queue, command_buffer.ptr)
+	wgpu.surface_present(surface)
 
 	return
 }

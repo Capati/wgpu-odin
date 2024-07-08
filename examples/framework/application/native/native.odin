@@ -204,7 +204,7 @@ push_event :: proc(event: events.Event) {
 	events.push(&_ctx.events, event)
 }
 
-get_size :: proc() -> Physical_Size {
+get_size :: proc "contextless" () -> Physical_Size {
 	width, height: i32
 	sdl.GetWindowSize(_ctx.window, &width, &height)
 	return {cast(u32)width, cast(u32)height}
@@ -218,7 +218,7 @@ get_system_info :: proc() -> Platform_Info {
 	return _ctx.system_info
 }
 
-get_wgpu_surface :: proc(instance: ^wgpu.Instance) -> (wgpu.Surface, wgpu.Error) {
+get_wgpu_surface :: proc(instance: wgpu.Instance) -> (wgpu.Surface, wgpu.Error) {
 	return wgpu_sdl.create_surface(_ctx.window, instance)
 }
 

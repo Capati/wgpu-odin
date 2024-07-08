@@ -24,8 +24,8 @@ Queue :: struct {
 // work has completed. There are no restrictions on the code you can run in the callback, however
 // on native the call to the function will not complete until the callback returns, so prefer
 // keeping callbacks short and used to set flags, send messages, etc.
-queue_on_submitted_work_done :: proc(
-	using self: ^Queue,
+queue_on_submitted_work_done :: proc "contextless" (
+	using self: Queue,
 	callback: Queue_Work_Done_Callback,
 	data: rawptr = nil,
 	loc := #caller_location,
@@ -40,69 +40,42 @@ queue_on_submitted_work_done :: proc(
 }
 
 // Set debug label.
-queue_set_label :: proc(using self: ^Queue, label: cstring) {
+queue_set_label :: proc "contextless" (using self: Queue, label: cstring) {
 	wgpu.queue_set_label(ptr, label)
 }
 
-queue_submit_raw :: proc(using self: ^Queue, command_count: uint, commands: ^Raw_Command_Buffer) {
-	wgpu.queue_submit(ptr, command_count, commands)
-}
-
-queue_submit_slice :: proc(using self: ^Queue, commands: ..Raw_Command_Buffer) {
+queue_submit_slice :: proc "contextless" (using self: Queue, commands: ..Raw_Command_Buffer) {
 	wgpu.queue_submit(ptr, uint(len(commands)), raw_data(commands))
 }
 
-queue_submit_single :: proc(using self: ^Queue, command: ^Raw_Command_Buffer) {
-	wgpu.queue_submit(ptr, 1, command)
-}
-
-queue_submit_empty :: proc(using self: ^Queue) {
+queue_submit_empty :: proc "contextless" (using self: Queue) {
 	wgpu.queue_submit(ptr, 0, nil)
 }
 
 // Submits a series of finished command buffers for execution.
 queue_submit :: proc {
-	queue_submit_raw,
 	queue_submit_slice,
-	queue_submit_single,
 	queue_submit_empty,
 }
 
-queue_submit_for_index_raw :: proc(
-	using self: ^Queue,
-	command_count: uint,
-	commands: ^Raw_Command_Buffer,
-) -> Submission_Index {
-	return wgpu.queue_submit_for_index(ptr, command_count, commands)
-}
-
-queue_submit_for_index_slice :: proc(
-	using self: ^Queue,
+queue_submit_for_index_slice :: proc "contextless" (
+	using self: Queue,
 	commands: ..Raw_Command_Buffer,
 ) -> Submission_Index {
 	return wgpu.queue_submit_for_index(ptr, uint(len(commands)), raw_data(commands))
 }
 
-queue_submit_for_index_single :: proc(
-	using self: ^Queue,
-	command: ^Raw_Command_Buffer,
-) -> Submission_Index {
-	return wgpu.queue_submit_for_index(ptr, 1, command)
-}
-
-queue_submit_for_index_empty :: proc(using self: ^Queue) -> Submission_Index {
+queue_submit_for_index_empty :: proc "contextless" (using self: Queue) -> Submission_Index {
 	return wgpu.queue_submit_for_index(ptr, 0, nil)
 }
 
 queue_submit_for_index :: proc {
-	queue_submit_for_index_raw,
 	queue_submit_for_index_slice,
-	queue_submit_for_index_single,
 	queue_submit_for_index_empty,
 }
 
-queue_write_buffer_bytes :: proc(
-	using self: ^Queue,
+queue_write_buffer_bytes :: proc "contextless" (
+	using self: Queue,
 	buffer: Raw_Buffer,
 	offset: Buffer_Address,
 	data: []byte,
@@ -123,8 +96,8 @@ queue_write_buffer_bytes :: proc(
 	return
 }
 
-queue_write_buffer_raw :: proc(
-	using self: ^Queue,
+queue_write_buffer_raw :: proc "contextless" (
+	using self: Queue,
 	buffer: Raw_Buffer,
 	offset: Buffer_Address,
 	data: rawptr,
@@ -173,22 +146,30 @@ queue_write_buffer :: proc {
 // it any time after this call completes.
 //
 // This method fails if `size` overruns the size of `texture`, or if `data` is too short.
-queue_write_texture :: proc(
-	using self: ^Queue,
-	texture: ^Image_Copy_Texture,
+queue_write_texture :: proc "contextless" (
+	using self: Queue,
+	texture: Image_Copy_Texture,
 	data: []byte,
-	data_layout: ^Texture_Data_Layout,
-	size: ^Extent_3D,
+	data_layout: Texture_Data_Layout,
+	size: Extent_3D,
 	loc := #caller_location,
 ) -> (
 	err: Error,
 ) {
 	set_and_reset_err_data(_err_data, loc)
 
+	texture, data_layout, size := texture, data_layout, size
 	if len(data) == 0 {
-		wgpu.queue_write_texture(ptr, texture, nil, 0, data_layout, size)
+		wgpu.queue_write_texture(ptr, &texture, nil, 0, &data_layout, &size)
 	} else {
-		wgpu.queue_write_texture(ptr, texture, raw_data(data), uint(len(data)), data_layout, size)
+		wgpu.queue_write_texture(
+			ptr,
+			&texture,
+			raw_data(data),
+			uint(len(data)),
+			&data_layout,
+			&size,
+		)
 	}
 
 	err = get_last_error()
@@ -196,8 +177,8 @@ queue_write_texture :: proc(
 	return
 }
 
-queue_write_texture_raw :: proc(
-	using self: ^Queue,
+queue_write_texture_raw :: proc "contextless" (
+	using self: Queue,
 	texture: ^Image_Copy_Texture,
 	data: rawptr,
 	data_size: uint,
@@ -208,26 +189,24 @@ queue_write_texture_raw :: proc(
 	err: Error,
 ) {
 	set_and_reset_err_data(_err_data, loc)
-
 	wgpu.queue_write_texture(ptr, texture, data, data_size, data_layout, size)
-
 	err = get_last_error()
 
 	return
 }
 
 // Increase the reference count.
-queue_reference :: proc(using self: ^Queue) {
+queue_reference :: proc "contextless" (using self: Queue) {
 	wgpu.queue_reference(ptr)
 }
 
 // Release the `Queue`.
-queue_release :: proc(using self: ^Queue) {
+queue_release :: #force_inline proc "contextless" (using self: Queue) {
 	wgpu.queue_release(ptr)
 }
 
 // Release the `Queue` and modify the raw pointer to `nil`.
-queue_release_and_nil :: proc(using self: ^Queue) {
+queue_release_and_nil :: proc "contextless" (using self: ^Queue) {
 	if ptr == nil do return
 	wgpu.queue_release(ptr)
 	ptr = nil

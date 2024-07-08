@@ -1,6 +1,6 @@
 package wgpu
 
-texture_descriptor_is_cube_compatible :: proc(self: ^Texture_Descriptor) -> bool {
+texture_descriptor_is_cube_compatible :: proc(self: Texture_Descriptor) -> bool {
 	return(
 		self.dimension == .D2 &&
 		self.size.depth_or_array_layers % 6 == 0 &&
@@ -9,7 +9,7 @@ texture_descriptor_is_cube_compatible :: proc(self: ^Texture_Descriptor) -> bool
 	)
 }
 
-texture_descriptor_array_layer_count :: proc(self: ^Texture_Descriptor) -> (count: u32) {
+texture_descriptor_array_layer_count :: proc(self: Texture_Descriptor) -> (count: u32) {
 	switch self.dimension {
 	case .D1, .D3:
 		count = 1
@@ -20,7 +20,7 @@ texture_descriptor_array_layer_count :: proc(self: ^Texture_Descriptor) -> (coun
 }
 
 texture_descriptor_mip_level_size :: proc(
-	self: ^Texture_Descriptor,
+	self: Texture_Descriptor,
 	level: u32,
 ) -> (
 	extent: Extent_3D,

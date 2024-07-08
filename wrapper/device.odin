@@ -1,7 +1,9 @@
 package wgpu
 
-// Core
+// Base
 import "base:runtime"
+
+// Core
 import "core:mem"
 import "core:strings"
 
@@ -61,9 +63,10 @@ Bind_Group_Descriptor :: struct {
 }
 
 // Creates a new `Bind_Group`.
+@(require_results)
 device_create_bind_group :: proc(
-	using self: ^Device,
-	descriptor: ^Bind_Group_Descriptor,
+	using self: Device,
+	descriptor: Bind_Group_Descriptor,
 	loc := #caller_location,
 ) -> (
 	bind_group: Bind_Group,
@@ -171,15 +174,16 @@ Bind_Group_Layout_Descriptor :: struct {
 }
 
 // Creates a `Bind_Group_Layout`.
+@(require_results)
 device_create_bind_group_layout :: proc(
-	using self: ^Device,
-	descriptor: ^Bind_Group_Layout_Descriptor = nil,
+	using self: Device,
+	descriptor: Bind_Group_Layout_Descriptor = {},
 	loc := #caller_location,
 ) -> (
 	bind_group_layout: Bind_Group_Layout,
 	err: Error,
 ) {
-	if descriptor == nil {
+	if (descriptor.label == "" || descriptor.label == nil) && len(descriptor.entries) == 0 {
 		set_and_reset_err_data(_err_data, loc)
 		bind_group_layout.ptr = wgpu.device_create_bind_group_layout(ptr, nil)
 
@@ -254,9 +258,10 @@ device_create_bind_group_layout :: proc(
 }
 
 // Creates a `Buffer`.
-device_create_buffer :: proc(
-	using self: ^Device,
-	descriptor: ^Buffer_Descriptor,
+@(require_results)
+device_create_buffer :: proc "contextless" (
+	using self: Device,
+	descriptor: Buffer_Descriptor,
 	loc := #caller_location,
 ) -> (
 	buffer: Buffer,
@@ -264,7 +269,8 @@ device_create_buffer :: proc(
 ) {
 	set_and_reset_err_data(_err_data, loc)
 
-	buffer.ptr = wgpu.device_create_buffer(ptr, descriptor)
+	descriptor := descriptor
+	buffer.ptr = wgpu.device_create_buffer(ptr, &descriptor)
 
 	if err = get_last_error(); err != nil {
 		if buffer.ptr != nil {
@@ -281,9 +287,10 @@ device_create_buffer :: proc(
 }
 
 // Creates an empty `Command_Encoder`.
-device_create_command_encoder :: proc(
-	using self: ^Device,
-	descriptor: ^Command_Encoder_Descriptor = nil,
+@(require_results)
+device_create_command_encoder :: proc "contextless" (
+	using self: Device,
+	descriptor: Command_Encoder_Descriptor = {},
 	loc := #caller_location,
 ) -> (
 	command_encoder: Command_Encoder,
@@ -291,8 +298,9 @@ device_create_command_encoder :: proc(
 ) {
 	set_and_reset_err_data(_err_data, loc)
 
-	if descriptor != nil {
-		command_encoder.ptr = wgpu.device_create_command_encoder(ptr, descriptor)
+	if descriptor != {} {
+		descriptor := descriptor
+		command_encoder.ptr = wgpu.device_create_command_encoder(ptr, &descriptor)
 	} else {
 		command_encoder.ptr = wgpu.device_create_command_encoder(ptr, nil)
 	}
@@ -325,13 +333,11 @@ Compute_Pipeline_Descriptor :: struct {
 }
 
 @(private = "file")
-_device_create_compute_pipeline_descriptor :: proc(
-	descriptor: ^Compute_Pipeline_Descriptor,
+_device_create_compute_pipeline_descriptor :: proc "contextless" (
+	descriptor: Compute_Pipeline_Descriptor,
 ) -> (
 	desc: wgpu.Compute_Pipeline_Descriptor,
 ) {
-	if descriptor == nil do return
-
 	desc.label = descriptor.label
 
 	if descriptor.layout != nil {
@@ -353,9 +359,10 @@ _device_create_compute_pipeline_descriptor :: proc(
 }
 
 // Creates a `Compute_Pipeline`.
-device_create_compute_pipeline :: proc(
-	using self: ^Device,
-	descriptor: ^Compute_Pipeline_Descriptor,
+@(require_results)
+device_create_compute_pipeline :: proc "contextless" (
+	using self: Device,
+	descriptor: Compute_Pipeline_Descriptor,
 	loc := #caller_location,
 ) -> (
 	compute_pipeline: Compute_Pipeline,
@@ -365,10 +372,7 @@ device_create_compute_pipeline :: proc(
 
 	set_and_reset_err_data(_err_data, loc)
 
-	compute_pipeline.ptr = wgpu.device_create_compute_pipeline(
-		ptr,
-		&desc if descriptor != nil else nil,
-	)
+	compute_pipeline.ptr = wgpu.device_create_compute_pipeline(ptr, &desc)
 
 	if err = get_last_error(); err != nil {
 		if compute_pipeline.ptr != nil {
@@ -383,9 +387,10 @@ device_create_compute_pipeline :: proc(
 }
 
 // Creates a `Compute_Pipeline` async.
-device_create_compute_pipeline_async :: proc(
-	using self: ^Device,
-	descriptor: ^Compute_Pipeline_Descriptor,
+@(require_results)
+device_create_compute_pipeline_async :: proc "contextless" (
+	using self: Device,
+	descriptor: Compute_Pipeline_Descriptor,
 	callback: Create_Compute_Pipeline_Async_Callback,
 	user_data: rawptr,
 	loc := #caller_location,
@@ -395,14 +400,7 @@ device_create_compute_pipeline_async :: proc(
 	desc := _device_create_compute_pipeline_descriptor(descriptor)
 
 	set_and_reset_err_data(_err_data, loc)
-
-	wgpu.device_create_compute_pipeline_async(
-		ptr,
-		&desc if descriptor != nil else nil,
-		callback,
-		user_data,
-	)
-
+	wgpu.device_create_compute_pipeline_async(ptr, &desc, callback, user_data)
 	err = get_last_error()
 
 	return
@@ -418,9 +416,10 @@ Pipeline_Layout_Descriptor :: struct {
 }
 
 // Creates a `Pipeline_Layout`.
-device_create_pipeline_layout :: proc(
-	using self: ^Device,
-	descriptor: ^Pipeline_Layout_Descriptor,
+@(require_results)
+device_create_pipeline_layout :: proc "contextless" (
+	using self: Device,
+	descriptor: Pipeline_Layout_Descriptor,
 	loc := #caller_location,
 ) -> (
 	pipeline_layout: Pipeline_Layout,
@@ -490,9 +489,10 @@ Query_Set_Descriptor :: struct {
 }
 
 // Creates a new `Query_Set`.
-device_create_query_set :: proc(
-	using self: ^Device,
-	descriptor: ^Query_Set_Descriptor,
+@(require_results)
+device_create_query_set :: proc "contextless" (
+	using self: Device,
+	descriptor: Query_Set_Descriptor,
 	loc := #caller_location,
 ) -> (
 	query_set: Query_Set,
@@ -548,9 +548,10 @@ Render_Bundle_Encoder_Descriptor :: struct {
 }
 
 // Creates an empty `Render_Bundle_Encoder`.
-device_create_render_bundle_encoder :: proc(
-	using self: ^Device,
-	descriptor: ^Render_Bundle_Encoder_Descriptor,
+@(require_results)
+device_create_render_bundle_encoder :: proc "contextless" (
+	using self: Device,
+	descriptor: Render_Bundle_Encoder_Descriptor,
 	loc := #caller_location,
 ) -> (
 	render_bundle_encoder: Render_Bundle_Encoder,
@@ -568,8 +569,8 @@ device_create_render_bundle_encoder :: proc(
 
 	desc.depth_stencil_format = descriptor.depth_stencil_format
 	desc.sample_count = descriptor.sample_count
-	desc.depth_read_only = descriptor.depth_read_only
-	desc.stencil_read_only = descriptor.stencil_read_only
+	desc.depth_read_only = b32(descriptor.depth_read_only)
+	desc.stencil_read_only = b32(descriptor.stencil_read_only)
 
 	set_and_reset_err_data(_err_data, loc)
 
@@ -752,9 +753,10 @@ Render_Pipeline_Descriptor :: struct {
 }
 
 // Creates a `Render_Pipeline`.
+@(require_results)
 device_create_render_pipeline :: proc(
-	using self: ^Device,
-	descriptor: ^Render_Pipeline_Descriptor,
+	using self: Device,
+	descriptor: Render_Pipeline_Descriptor,
 	loc := #caller_location,
 ) -> (
 	render_pipeline: Render_Pipeline,
@@ -762,7 +764,8 @@ device_create_render_pipeline :: proc(
 ) {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
-	desc := _device_create_render_pipeline_descriptor(descriptor, context.temp_allocator)
+	descriptor := descriptor
+	desc := _device_create_render_pipeline_descriptor(&descriptor, context.temp_allocator)
 
 	set_and_reset_err_data(_err_data, loc)
 
@@ -781,9 +784,10 @@ device_create_render_pipeline :: proc(
 }
 
 // Creates a `Render_Pipeline` async.
+@(require_results)
 device_create_render_pipeline_async :: proc(
-	using self: ^Device,
-	descriptor: ^Render_Pipeline_Descriptor,
+	using self: Device,
+	descriptor: Render_Pipeline_Descriptor,
 	callback: Create_Render_Pipeline_Async_Callback,
 	user_data: rawptr,
 	loc := #caller_location,
@@ -792,21 +796,21 @@ device_create_render_pipeline_async :: proc(
 ) {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
-	desc := _device_create_render_pipeline_descriptor(descriptor, context.temp_allocator)
+	descriptor := descriptor
+	desc := _device_create_render_pipeline_descriptor(&descriptor, context.temp_allocator)
 
 	set_and_reset_err_data(_err_data, loc)
-
 	wgpu.device_create_render_pipeline_async(ptr, &desc, callback, user_data)
-
 	err = get_last_error()
 
 	return
 }
 
 // Creates a new `Sampler`.
-device_create_sampler :: proc(
-	using self: ^Device,
-	descriptor: ^Sampler_Descriptor = nil,
+@(require_results)
+device_create_sampler :: proc "contextless" (
+	using self: Device,
+	descriptor: Sampler_Descriptor = DEFAULT_SAMPLER_DESCRIPTOR,
 	loc := #caller_location,
 ) -> (
 	sampler: Sampler,
@@ -814,7 +818,8 @@ device_create_sampler :: proc(
 ) {
 	set_and_reset_err_data(_err_data, loc)
 
-	sampler.ptr = wgpu.device_create_sampler(ptr, descriptor if descriptor != nil else nil)
+	descriptor := descriptor
+	sampler.ptr = wgpu.device_create_sampler(ptr, &descriptor)
 
 	if err = get_last_error(); err != nil {
 		if sampler.ptr != nil {
@@ -826,9 +831,10 @@ device_create_sampler :: proc(
 }
 
 // Creates a shader module from either `SPIR-V` or `WGSL` source code.
+@(require_results)
 device_create_shader_module :: proc(
-	using self: ^Device,
-	descriptor: ^Shader_Module_Descriptor,
+	using self: Device,
+	descriptor: Shader_Module_Descriptor,
 	loc := #caller_location,
 ) -> (
 	shader_module: Shader_Module,
@@ -904,9 +910,10 @@ Texture_Descriptor :: struct {
 // Creates a new `Texture`.
 //
 // `descriptor` specifies the general format of the texture.
-device_create_texture :: proc(
-	using self: ^Device,
-	descriptor: ^Texture_Descriptor,
+@(require_results)
+device_create_texture :: proc "contextless" (
+	using self: Device,
+	descriptor: Texture_Descriptor,
 	loc := #caller_location,
 ) -> (
 	texture: Texture,
@@ -940,19 +947,19 @@ device_create_texture :: proc(
 		return
 	}
 
-	texture.descriptor = descriptor^
+	texture.descriptor = descriptor
 	texture._err_data = _err_data
 
 	return
 }
 
-device_destroy :: proc(using self: ^Device) {
+device_destroy :: proc "contextless" (using self: Device) {
 	wgpu.device_destroy(ptr)
 }
 
 @(private)
 _device_get_features :: proc(
-	self: ^Device,
+	self: Device,
 	loc := #caller_location,
 ) -> (
 	features: Device_Features,
@@ -975,7 +982,7 @@ _device_get_features :: proc(
 	wgpu.device_enumerate_features(self.ptr, raw_data(raw_features))
 
 	features_slice := transmute([]Raw_Feature_Name)raw_features
-	features = cast(Device_Features)features_slice_to_flags(&features_slice)
+	features = cast(Device_Features)features_slice_to_flags(features_slice)
 
 	return
 }
@@ -983,18 +990,12 @@ _device_get_features :: proc(
 // List all features that may be used with this device.
 //
 // Functions may panic if you use unsupported features.
-device_get_features :: proc(self: ^Device) -> Device_Features {
+device_get_features :: proc "contextless" (self: Device) -> Device_Features {
 	return self.features // filled on request device
 }
 
 @(private)
-_device_get_limits :: proc(
-	self: ^Device,
-	loc := #caller_location,
-) -> (
-	limits: Limits,
-	err: Error,
-) {
+_device_get_limits :: proc(self: Device, loc := #caller_location) -> (limits: Limits, err: Error) {
 	native := Supported_Limits_Extras {
 		chain = {stype = SType(Native_SType.Supported_Limits_Extras)},
 	}
@@ -1028,12 +1029,12 @@ _device_get_limits :: proc(
 // List all limits that were requested of this device.
 //
 // If any of these limits are exceeded, functions may panic.
-device_get_limits :: proc(self: ^Device) -> Limits {
+device_get_limits :: proc "contextless" (self: Device) -> Limits {
 	return self.limits // filled on request device
 }
 
 // Get a handle to a command queue on the device
-device_get_queue :: proc(using self: ^Device) -> (queue: Queue) {
+device_get_queue :: proc "contextless" (using self: Device) -> (queue: Queue) {
 	queue = Queue {
 		ptr       = wgpu.device_get_queue(ptr),
 		_err_data = _err_data,
@@ -1043,12 +1044,12 @@ device_get_queue :: proc(using self: ^Device) -> (queue: Queue) {
 }
 
 // Check if device support the given feature name.
-device_has_feature_name :: proc(self: ^Device, feature: Feature_Name) -> bool {
+device_has_feature_name :: proc "contextless" (self: Device, feature: Feature_Name) -> bool {
 	return feature in self.features
 }
 
 // Check if device support all features in the given flags.
-device_has_feature :: proc(self: ^Device, features: Features) -> bool {
+device_has_feature :: proc "contextless" (self: Device, features: Features) -> bool {
 	if features == {} do return true
 	for f in features {
 		if f not_in self.features || f == .Undefined do return false
@@ -1056,16 +1057,20 @@ device_has_feature :: proc(self: ^Device, features: Features) -> bool {
 	return true
 }
 
-device_pop_error_scope :: proc(using self: ^Device, callback: Error_Callback, user_data: rawptr) {
+device_pop_error_scope :: proc "contextless" (
+	using self: Device,
+	callback: Error_Callback,
+	user_data: rawptr,
+) {
 	wgpu.device_pop_error_scope(ptr, callback, user_data)
 }
 
-device_push_error_scope :: proc(using self: ^Device, filter: Error_Filter) {
+device_push_error_scope :: proc "contextless" (using self: Device, filter: Error_Filter) {
 	wgpu.device_push_error_scope(ptr, filter)
 }
 
-device_set_uncaptured_error_callback :: proc(
-	using self: ^Device,
+device_set_uncaptured_error_callback :: proc "contextless" (
+	using self: Device,
 	callback: Error_Callback,
 	user_data: rawptr,
 ) {
@@ -1077,31 +1082,39 @@ device_set_uncaptured_error_callback :: proc(
 }
 
 // Set debug label.
-device_set_label :: proc(using self: ^Device, label: cstring) {
+device_set_label :: proc "contextless" (using self: Device, label: cstring) {
 	wgpu.device_set_label(ptr, label)
 }
 
 // Increase the reference count.
-device_reference :: proc(using self: ^Device) {
+device_reference :: proc "contextless" (using self: Device) {
 	wgpu.device_reference(ptr)
 }
 
 
 // Release the `Device` and delete internal objects.
-device_release :: proc(using self: ^Device) {
+device_release :: #force_inline proc "contextless" (using self: Device) {
 	wgpu.device_release(ptr)
 }
 
 // Release the `Device` and delete internal objects and modify the raw pointer to `nil`.
-device_release_and_nil :: proc(using self: ^Device) {
+device_release_and_nil :: proc "contextless" (using self: ^Device) {
 	if ptr == nil do return
 	wgpu.device_release(ptr)
 	ptr = nil
 }
 
-// Check for resource cleanups and mapping callbacks.
-device_poll :: proc(
-	using self: ^Device,
+// Check for resource cleanups and mapping callbacks. Will block if [`Maintain::Wait`] is passed.
+//
+// Return `true` if the queue is empty, or `false` if there are more queue
+// submissions still in flight. (Note that, unless access to the [`Queue`] is
+// coordinated somehow, this information could be out of date by the time
+// the caller receives it. `Queue`s can be shared between threads, so
+// other threads could submit new work at any time.)
+//
+// When running on WebGPU, this is a no-op. `Device`s are automatically polled.
+device_poll :: proc "contextless" (
+	using self: Device,
 	wait: bool = true,
 	wrapped_submission_index: ^Wrapped_Submission_Index = nil,
 	loc := #caller_location,
@@ -1110,7 +1123,7 @@ device_poll :: proc(
 	err: Error,
 ) {
 	set_and_reset_err_data(_err_data, loc)
-	result = wgpu.device_poll(ptr, wait, wrapped_submission_index)
+	result = bool(wgpu.device_poll(ptr, b32(wait), wrapped_submission_index))
 	err = get_last_error()
 
 	return

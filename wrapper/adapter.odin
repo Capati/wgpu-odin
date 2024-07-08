@@ -25,7 +25,7 @@ Adapter_Features :: distinct Features
 
 @(private)
 _adapter_get_features :: proc(
-	self: ^Adapter,
+	self: Adapter,
 	loc := #caller_location,
 ) -> (
 	features: Adapter_Features,
@@ -48,7 +48,7 @@ _adapter_get_features :: proc(
 	wgpu.adapter_enumerate_features(self.ptr, raw_data(raw_features))
 
 	features_slice := transmute([]Raw_Feature_Name)raw_features
-	features = cast(Adapter_Features)features_slice_to_flags(&features_slice)
+	features = cast(Adapter_Features)features_slice_to_flags(features_slice)
 
 	return
 }
@@ -56,13 +56,13 @@ _adapter_get_features :: proc(
 // List all features that are supported with this adapter.
 //
 // Features must be explicitly requested in `adapter_request_device` in order to use them.
-adapter_get_features :: proc(self: ^Adapter) -> Adapter_Features {
+adapter_get_features :: proc "contextless" (self: Adapter) -> Adapter_Features {
 	return self.features // filled on request adapter
 }
 
 @(private)
 _adapter_get_limits :: proc(
-	self: ^Adapter,
+	self: Adapter,
 	loc := #caller_location,
 ) -> (
 	limits: Limits,
@@ -78,7 +78,7 @@ _adapter_get_limits :: proc(
 
 	set_and_reset_err_data(nil, loc)
 
-	result := wgpu.adapter_get_limits(self.ptr, &supported)
+	result := bool(wgpu.adapter_get_limits(self.ptr, &supported))
 
 	if !result {
 		err = Error_Type.Unknown
@@ -98,13 +98,13 @@ _adapter_get_limits :: proc(
 //
 // Limits must be explicitly requested in `adapter_request_device` to set the values that you are
 // allowed to use.
-adapter_get_limits :: proc(self: ^Adapter) -> Limits {
+adapter_get_limits :: proc "contextless" (self: Adapter) -> Limits {
 	return self.limits // filled on request adapter
 }
 
 @(private)
 _adapter_get_info :: proc(
-	self: ^Adapter,
+	self: Adapter,
 	loc := #caller_location,
 ) -> (
 	info: Adapter_Info,
@@ -121,12 +121,12 @@ _adapter_get_info :: proc(
 }
 
 // Get info about the adapter itself.
-adapter_get_info :: proc(self: ^Adapter) -> Adapter_Info {
+adapter_get_info :: proc "contextless" (self: Adapter) -> Adapter_Info {
 	return self.info // filled on request adapter
 }
 
 // Check if adapter support all features in the given flags.
-adapter_has_feature :: proc(self: ^Adapter, features: Features) -> bool {
+adapter_has_feature :: proc "contextless" (self: Adapter, features: Features) -> bool {
 	if features == {} do return true
 	for f in features {
 		if f not_in self.features || f == .Undefined do return false
@@ -135,13 +135,13 @@ adapter_has_feature :: proc(self: ^Adapter, features: Features) -> bool {
 }
 
 // Check if adapter support the given feature name.
-adapter_has_feature_name :: proc(self: ^Adapter, feature: Feature_Name) -> bool {
+adapter_has_feature_name :: proc "contextless" (self: Adapter, feature: Feature_Name) -> bool {
 	return feature in self.features
 }
 
 @(private = "file")
 _adapter_request_device :: proc(
-	self: ^Adapter,
+	self: Adapter,
 	desc: ^wgpu.Device_Descriptor = nil,
 	loc := #caller_location,
 ) -> (
@@ -173,12 +173,7 @@ _adapter_request_device :: proc(
 		}
 	}
 
-	wgpu.adapter_request_device(
-		self.ptr,
-		desc if desc != nil else nil,
-		adapter_request_device_callback,
-		&res,
-	)
+	wgpu.adapter_request_device(self.ptr, desc, adapter_request_device_callback, &res)
 
 	if res.status != .Success {
 		err = res.status
@@ -205,8 +200,8 @@ _adapter_request_device :: proc(
 		)
 	}
 
-	device.features = _device_get_features(&device, loc) or_return
-	device.limits = _device_get_limits(&device, loc) or_return
+	device.features = _device_get_features(device, loc) or_return
+	device.limits = _device_get_limits(device, loc) or_return
 
 	queue = Queue {
 		ptr       = wgpu.device_get_queue(res.device),
@@ -229,16 +224,17 @@ Device_Descriptor :: struct {
 // Requests a connection to a physical device, creating a logical device.
 //
 // Returns the `Device` together with a `Queue` that executes command buffers.
+@(require_results)
 adapter_request_device :: proc(
-	self: ^Adapter,
-	descriptor: ^Device_Descriptor = nil,
+	self: Adapter,
+	descriptor: Device_Descriptor = {},
 	loc := #caller_location,
 ) -> (
 	device: Device,
 	queue: Queue,
 	err: Error,
 ) {
-	if descriptor == nil {
+	if descriptor == {} {
 		return _adapter_request_device(self, nil, loc)
 	}
 
@@ -383,26 +379,26 @@ adapter_request_device :: proc(
 }
 
 // Increase the reference count.
-adapter_reference :: proc(using self: ^Adapter) {
+adapter_reference :: proc "contextless" (using self: Adapter) {
 	wgpu.adapter_reference(ptr)
 }
 
+// // Release the `Adapter`.
+// @(private = "file")
+// _adapter_release :: proc "contextless" (using self: Adapter) {
+// 	// TODO(Capati): Wait for upstream update
+// 	// wgpu.adapter_info_free_members(&info)
+// 	wgpu.adapter_release(ptr)
+// }
+
 // Release the `Adapter`.
-@(private = "file")
-_adapter_release :: proc(using self: ^Adapter) {
-	// TODO(Capati): Wait for upstream update
-	// wgpu.adapter_info_free_members(&info)
+adapter_release :: #force_inline proc "contextless" (using self: Adapter) {
 	wgpu.adapter_release(ptr)
 }
 
-// Release the `Adapter`.
-adapter_release :: proc(using self: ^Adapter) {
-	_adapter_release(self)
-}
-
-// Release the `Adapter` and modify the raw pointer to `nil`..
-adapter_release_and_nil :: proc(using self: ^Adapter) {
+// Release the `Adapter` and modify the raw pointer to `nil`.
+adapter_release_and_nil :: proc "contextless" (using self: ^Adapter) {
 	if ptr == nil do return
-	_adapter_release(self)
+	wgpu.adapter_release(ptr)
 	ptr = nil
 }

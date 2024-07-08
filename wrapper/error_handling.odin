@@ -54,6 +54,11 @@ IO_Error :: enum {
 	Load_Image_Failed,
 }
 
+Data_Error :: enum {
+	None,
+	Nil_Data,
+}
+
 // General error type merged with other types
 Error :: union #shared_nil {
 	Error_Type,
@@ -66,6 +71,7 @@ Error :: union #shared_nil {
 	Surface_Get_Current_Texture_Status,
 	mem.Allocator_Error,
 	IO_Error,
+	Data_Error,
 }
 
 Error_Data_Info :: struct {

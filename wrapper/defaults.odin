@@ -4,24 +4,25 @@ package wgpu
 import wgpu "../bindings"
 
 // Backends are set to `Primary`, and `FXC` is chosen as the `dx12_shader_compiler`.
-Default_Instance_Descriptor :: Instance_Descriptor {
+DEFAULT_INSTANCE_DESCRIPTOR :: Instance_Descriptor {
 	backends             = wgpu.Instance_Backend_Primary,
-	dx12_shader_compiler = .Fxc,
+	dx12_shader_compiler = DEFAULT_DX12_COMPILER,
 }
-Default_Dx12_Compiler :: Dx12_Compiler.Fxc
+
+DEFAULT_DX12_COMPILER :: Dx12_Compiler.Fxc
 
 // High_Performance.
-Default_Power_Preference: Power_Preference = .High_Performance
+DEFAULT_POWER_PREFERENCE: Power_Preference = .High_Performance
 
 // Default `count = 1` and mask all pixels `0xFFFFFFFF`.
-Default_Multisample_State :: Multisample_State {
+DEFAULT_MULTISAMPLE_STATE :: Multisample_State {
 	next_in_chain             = nil,
 	count                     = 1,
 	mask                      = ~u32(0), // 0xFFFFFFFF
-	alpha_to_coverage_enabled = false,
+	alpha_to_coverage_enabled = b32(false),
 }
 
-Default_Sampler_Descriptor :: Sampler_Descriptor {
+DEFAULT_SAMPLER_DESCRIPTOR :: Sampler_Descriptor {
 	label          = nil,
 	address_mode_u = .Clamp_To_Edge,
 	address_mode_v = .Clamp_To_Edge,
@@ -35,27 +36,27 @@ Default_Sampler_Descriptor :: Sampler_Descriptor {
 	max_anisotropy = 1,
 }
 
-Default_Depth_Stencil_State :: Depth_Stencil_State {
+DEFAULT_DEPTH_STENCIL_STATE :: Depth_Stencil_State {
 	stencil_front = {compare = .Always},
 	stencil_back = {compare = .Always},
 	stencil_read_mask = ~u32(0),
 	stencil_write_mask = ~u32(0),
 }
 
-Default_Texture_Descriptor :: Texture_Descriptor {
+DEFAULT_TEXTURE_DESCRIPTOR :: Texture_Descriptor {
 	mip_level_count = 1,
 	sample_count    = 1,
 	dimension       = .D2,
 }
 
-Default_Primitive_State :: Primitive_State {
+DEFAULT_PRIMITIVE_STATE :: Primitive_State {
 	topology   = .Triangle_List,
 	front_face = .CCW,
 	cull_mode  = .None,
 }
 
-Default_Render_Pipeline_Descriptor: Render_Pipeline_Descriptor : {
-	primitive = Default_Primitive_State,
+DEFAULT_RENDER_PIPELINE_DESCRIPTOR: Render_Pipeline_Descriptor : {
+	primitive = DEFAULT_PRIMITIVE_STATE,
 	depth_stencil = nil,
-	multisample = Default_Multisample_State,
+	multisample = DEFAULT_MULTISAMPLE_STATE,
 }

@@ -43,8 +43,8 @@ Image_Data :: struct {
 }
 
 queue_copy_image_to_texture_image_data :: proc(
-	self: ^Device,
-	queue: ^Queue,
+	self: Device,
+	queue: Queue,
 	data: ^Image_Data,
 	options: Texture_Creation_Options = {},
 	loc := #caller_location,
@@ -81,8 +81,8 @@ queue_copy_image_to_texture_image_data :: proc(
 		format = format,
 		usage = options.usage,
 	}
-	texture = device_create_texture(self, &texture_desc) or_return
-	defer if err != nil do texture_release(&texture)
+	texture = device_create_texture(self, texture_desc) or_return
+	defer if err != nil do texture_release(texture)
 
 	// Get block size for the determined format
 	block_size := texture_format_block_size(format)
@@ -93,7 +93,7 @@ queue_copy_image_to_texture_image_data :: proc(
 			~(COPY_BYTES_PER_ROW_ALIGNMENT - 1))
 
 	// Prepare image data for upload
-	image_copy_texture := texture_as_image_copy(&texture)
+	image_copy_texture := texture_as_image_copy(texture)
 	texture_data_layout := Texture_Data_Layout {
 		offset         = 0,
 		bytes_per_row  = bytes_per_row,
@@ -111,18 +111,18 @@ queue_copy_image_to_texture_image_data :: proc(
 	// Copy image data to texture
 	queue_write_texture(
 		queue,
-		&image_copy_texture,
+		image_copy_texture,
 		pixels_to_upload,
-		&texture_data_layout,
-		&texture_desc.size,
+		texture_data_layout,
+		texture_desc.size,
 	) or_return
 
 	return
 }
 
 queue_copy_image_to_texture_image_path :: proc(
-	self: ^Device,
-	queue: ^Queue,
+	self: Device,
+	queue: Queue,
 	image_path: string,
 	options: Texture_Creation_Options = {},
 	loc := #caller_location,
@@ -200,8 +200,8 @@ queue_copy_image_to_texture_image_path :: proc(
 }
 
 queue_copy_image_to_texture_image :: proc(
-	self: ^Device,
-	queue: ^Queue,
+	self: Device,
+	queue: Queue,
 	image: ^image.Image,
 	options: Texture_Creation_Options = {},
 	loc := #caller_location,

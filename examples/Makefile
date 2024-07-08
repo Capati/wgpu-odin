@@ -81,8 +81,10 @@ triangle_msaa:
 
 learn_wgpu:
 	@echo Building 'learn_wgpu' examples in $(MODE) mode...
-	@odin build ./learn_wgpu/beginner/tutorial1_window $(ARGS) $(OUT)/tutorial1_window
-	@odin build ./learn_wgpu/beginner/tutorial2_surface $(ARGS) $(OUT)/tutorial2_surface
+	@odin build ./learn_wgpu/beginner/tutorial1_window_glfw $(ARGS) $(OUT)/tutorial1_window_glfw
+	@odin build ./learn_wgpu/beginner/tutorial1_window_sdl $(ARGS) $(OUT)/tutorial1_window_sdl
+	@odin build ./learn_wgpu/beginner/tutorial2_surface_glfw $(ARGS) $(OUT)/tutorial2_surface_glfw
+	@odin build ./learn_wgpu/beginner/tutorial2_surface_sdl $(ARGS) $(OUT)/tutorial2_surface_sdl
 	@odin build ./learn_wgpu/beginner/tutorial2_surface_challenge $(ARGS) $(OUT)/tutorial2_surface_challenge
 	@odin build ./learn_wgpu/beginner/tutorial3_pipeline $(ARGS) $(OUT)/tutorial3_pipeline
 	@odin build ./learn_wgpu/beginner/tutorial3_pipeline_challenge $(ARGS) $(OUT)/tutorial3_pipeline_challenge

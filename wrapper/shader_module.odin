@@ -1,7 +1,9 @@
 package wgpu
 
-// Core
+// Base
 import "base:runtime"
+
+// Core
 import "core:fmt"
 import "core:os"
 import "core:slice"
@@ -17,7 +19,8 @@ import wgpu "../bindings"
 // `device_create_shader_module_spirv`. Shader modules are used to define programmable stages of a
 // pipeline.
 Shader_Module :: struct {
-	ptr: Raw_Shader_Module,
+	ptr:  Raw_Shader_Module,
+	_pad: POINTER_PROMOTION_PADDING,
 }
 
 // Source `string` will be `clone_to_cstring` to ensure null terminated
@@ -39,7 +42,7 @@ Shader_Module_Descriptor :: struct {
 
 // Load a wgsl shader file and return a compiled shader module.
 device_load_wgsl_shader_module :: proc(
-	using self: ^Device,
+	using self: Device,
 	path: cstring,
 	label: cstring = nil,
 	loc := #caller_location,
@@ -67,12 +70,12 @@ device_load_wgsl_shader_module :: proc(
 		source = strings.clone_to_cstring(string(data), context.temp_allocator),
 	}
 
-	return device_create_shader_module(self, &descriptor)
+	return device_create_shader_module(self, descriptor)
 }
 
 // Load a spirv shader file and return a compiled shader module.
 device_load_spirv_shader_module :: proc(
-	using self: ^Device,
+	using self: Device,
 	path: cstring,
 	label: cstring = nil,
 	loc := #caller_location,
@@ -99,26 +102,26 @@ device_load_spirv_shader_module :: proc(
 		source = slice.reinterpret([]u32, data),
 	}
 
-	return device_create_shader_module(self, &descriptor)
+	return device_create_shader_module(self, descriptor)
 }
 
 // Set debug label.
-shader_module_set_label :: proc(using self: ^Shader_Module, label: cstring) {
+shader_module_set_label :: proc "contextless" (using self: Shader_Module, label: cstring) {
 	wgpu.shader_module_set_label(ptr, label)
 }
 
 // Increase the reference count.
-shader_module_reference :: proc(using self: ^Shader_Module) {
+shader_module_reference :: proc "contextless" (using self: Shader_Module) {
 	wgpu.shader_module_reference(ptr)
 }
 
 // Release the `Shader_Module`.
-shader_module_release :: proc(using self: ^Shader_Module) {
+shader_module_release :: #force_inline proc "contextless" (using self: Shader_Module) {
 	wgpu.shader_module_release(ptr)
 }
 
 // Release the `Shader_Module` and modify the raw pointer to `nil`.
-shader_module_release_and_nil :: proc(using self: ^Shader_Module) {
+shader_module_release_and_nil :: proc "contextless" (using self: ^Shader_Module) {
 	if ptr == nil do return
 	wgpu.shader_module_release(ptr)
 	ptr = nil

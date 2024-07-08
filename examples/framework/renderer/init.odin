@@ -22,6 +22,7 @@ Renderer :: struct {
 	queue:      wgpu.Queue,
 	config:     wgpu.Surface_Configuration,
 	output:     wgpu.Surface_Texture,
+	released:   bool, // is the surface texture released?
 	skip_frame: bool,
 }
 
@@ -86,11 +87,11 @@ init :: proc(
 		}
 	}
 
-	r.instance = wgpu.create_instance(&instance_descriptor, loc) or_return
-	defer if err != nil do wgpu.instance_release(&r.instance)
+	r.instance = wgpu.create_instance(instance_descriptor, loc) or_return
+	defer if err != nil do wgpu.instance_release(r.instance)
 
-	r.surface = app.get_wgpu_surface(&r.instance) or_return
-	defer if err != nil do wgpu.surface_release(&r.surface)
+	r.surface = app.get_wgpu_surface(r.instance) or_return
+	defer if err != nil do wgpu.surface_release(r.surface)
 
 	adapter_options := wgpu.Request_Adapter_Options {
 		power_preference       = properties.power_preferences,
@@ -98,13 +99,13 @@ init :: proc(
 		force_fallback_adapter = false,
 	}
 
-	r.adapter = wgpu.instance_request_adapter(&r.instance, &adapter_options, loc) or_return
-	defer if err != nil do wgpu.adapter_release(&r.adapter)
+	r.adapter = wgpu.instance_request_adapter(r.instance, adapter_options, loc) or_return
+	defer if err != nil do wgpu.adapter_release(r.adapter)
 
 	fmt.printf("Device information:\n\n")
 
 	// Print selected adapter information
-	wgpu.adapter_print_info(&r.adapter)
+	wgpu.adapter_print_info(r.adapter)
 
 	device_descriptor := wgpu.Device_Descriptor {
 		label             = r.adapter.info.name,
@@ -120,14 +121,14 @@ init :: proc(
 
 	r.properties = properties
 
-	r.device, r.queue = wgpu.adapter_request_device(&r.adapter, &device_descriptor, loc) or_return
+	r.device, r.queue = wgpu.adapter_request_device(r.adapter, device_descriptor, loc) or_return
 	defer if err != nil {
-		wgpu.queue_release(&r.queue)
-		wgpu.device_release(&r.device)
+		wgpu.queue_release(r.queue)
+		wgpu.device_release(r.device)
 	}
 
 	caps := wgpu.surface_get_capabilities(
-		&r.surface,
+		r.surface,
 		r.adapter.ptr,
 		context.allocator,
 		loc,
@@ -152,10 +153,10 @@ init :: proc(
 		desired_maximum_frame_latency = properties.desired_maximum_frame_latency,
 	}
 
-	wgpu.surface_configure(&r.surface, &r.device, &r.config) or_return
+	wgpu.surface_configure(&r.surface, r.device, r.config) or_return
 
 	// Set device errors callback
-	wgpu.device_set_uncaptured_error_callback(&r.device, _on_native_device_uncaptured_error, r)
+	wgpu.device_set_uncaptured_error_callback(r.device, _on_native_device_uncaptured_error, r)
 
 	fmt.printf("GPU initialized successfully. \n\n")
 
@@ -163,12 +164,12 @@ init :: proc(
 }
 
 deinit :: proc(using renderer: ^Renderer) {
-	wgpu.queue_release(&queue)
-	wgpu.device_release(&device)
-	wgpu.surface_unconfigure(&surface)
-	wgpu.surface_release(&surface)
-	wgpu.adapter_release(&adapter)
-	wgpu.instance_release(&instance)
+	wgpu.queue_release(queue)
+	wgpu.device_release(device)
+	wgpu.surface_unconfigure(surface)
+	wgpu.surface_release(surface)
+	wgpu.adapter_release(adapter)
+	wgpu.instance_release(instance)
 	free(renderer)
 }
 
