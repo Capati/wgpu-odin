@@ -261,7 +261,8 @@ init_system_info :: proc() -> core.Application_Error {
 				wayland = {display = wm_info.info.wl.display, surface = wm_info.info.wl.surface},
 			}
 		} else {
-			return .Init_Failed, fmt.eprintf("Unsupported Unix platform!\n")
+			fmt.println("Unsupported Unix platform!")
+			return .Init_Failed
 		}
 	} else {
 		#panic("Unsupported native platform!")
