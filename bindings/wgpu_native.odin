@@ -120,7 +120,7 @@ Push_Constant_Range :: struct {
 Pipeline_Layout_Extras :: struct {
 	chain:                     Chained_Struct,
 	push_constant_range_count: uint,
-	push_constant_ranges:      ^Push_Constant_Range,
+	push_constant_ranges:      [^]Push_Constant_Range `fmt:"v,push_constant_range_count"`,
 }
 
 Submission_Index :: distinct u64
@@ -140,7 +140,7 @@ Shader_Module_Glsl_Descriptor :: struct {
 	stage:        Shader_Stage,
 	code:         cstring,
 	define_count: u32,
-	defines:      ^Shader_Define,
+	defines:      [^]Shader_Define `fmt:"v,define_count"`,
 }
 
 Registry_Report :: struct {
@@ -186,11 +186,11 @@ Instance_Enumerate_Adapter_Options :: struct {
 
 Bind_Group_Entry_Extras :: struct {
 	chain:              Chained_Struct,
-	buffers:            ^Buffer,
+	buffers:            [^]Buffer `fmt:"v,buffer_count"`,
 	buffer_count:       uint,
-	samplers:           ^Sampler,
+	samplers:           [^]Sampler `fmt:"v,sampler_count"`,
 	sampler_count:      uint,
-	texture_views:      ^Texture_View,
+	texture_views:      [^]Texture_View `fmt:"v,texture_view_count"`,
 	texture_view_count: uint,
 }
 
@@ -201,7 +201,7 @@ Bind_Group_Layout_Entry_Extras :: struct {
 
 Query_Set_Descriptor_Extras :: struct {
 	chain:                    Chained_Struct,
-	pipeline_statistics:      ^Pipeline_Statistic_Name,
+	pipeline_statistics:      [^]Pipeline_Statistic_Name `fmt:"v,pipeline_statistic_count"`,
 	pipeline_statistic_count: uint,
 }
 
@@ -212,18 +212,32 @@ Surface_Configuration_Extras :: struct {
 
 Log_Callback :: #type proc "c" (level: Log_Level, message: cstring, user_data: rawptr)
 
+@(default_calling_convention = "c")
 foreign _ {
+	// odinfmt: disable
 	@(link_name = "wgpuGenerateReport")
 	generate_report :: proc(instance: Instance, report: ^Global_Report) ---
 
 	@(link_name = "wgpuInstanceEnumerateAdapters")
-	instance_enumerate_adapters :: proc(instance: Instance, options: ^Instance_Enumerate_Adapter_Options, adapters: [^]Adapter) -> uint ---
+	instance_enumerate_adapters :: proc(
+		instance: Instance,
+		options: ^Instance_Enumerate_Adapter_Options,
+		adapters: [^]Adapter,
+	) -> uint ---
 
 	@(link_name = "wgpuQueueSubmitForIndex")
-	queue_submit_for_index :: proc(queue: Queue, command_count: uint, commands: ^Command_Buffer) -> Submission_Index ---
+	queue_submit_for_index :: proc(
+		queue: Queue,
+		command_count: uint,
+		commands: [^]Command_Buffer,
+	) -> Submission_Index ---
 
 	@(link_name = "wgpuDevicePoll")
-	device_poll :: proc(device: Device, wait: bool, wrapped_submission_index: ^Wrapped_Submission_Index) -> bool ---
+	device_poll :: proc(
+		device: Device,
+		wait: b32,
+		wrapped_submission_index: ^Wrapped_Submission_Index,
+	) -> b32 ---
 
 	@(link_name = "wgpuSetLogCallback")
 	set_log_callback :: proc(callback: Log_Callback, user_data: rawptr) ---
@@ -235,24 +249,72 @@ foreign _ {
 	get_version :: proc() -> u32 ---
 
 	@(link_name = "wgpuRenderPassEncoderSetPushConstants")
-	render_pass_encoder_set_push_constants :: proc(encoder: Render_Pass_Encoder, stages: Shader_Stage_Flags, offset: u32, size_bytes: u32, data: rawptr) ---
+	render_pass_encoder_set_push_constants :: proc(
+		encoder: Render_Pass_Encoder,
+		stages: Shader_Stage_Flags,
+		offset: u32,
+		size_bytes: u32,
+		data: rawptr,
+	) ---
 
 	@(link_name = "wgpuRenderPassEncoderMultiDrawIndirect")
-	render_pass_encoder_multi_draw_indirect :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: u64, count: u32) ---
+	render_pass_encoder_multi_draw_indirect :: proc(
+		encoder: Render_Pass_Encoder,
+		buffer: Buffer,
+		offset: u64,
+		count: u32,
+	) ---
+
 	@(link_name = "wgpuRenderPassEncoderMultiDrawIndexedIndirect")
-	render_pass_encoder_multi_draw_indexed_indirect :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: u64, count: u32) ---
+	render_pass_encoder_multi_draw_indexed_indirect :: proc(
+		encoder: Render_Pass_Encoder,
+		buffer: Buffer,
+		offset: u64,
+		count: u32,
+	) ---
 
 	@(link_name = "wgpuRenderPassEncoderMultiDrawIndirectCount")
-	render_pass_encoder_multi_draw_indirect_count :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: u64, count_buffer: Buffer, count_buffer_offset, max_count: u32) ---
+	render_pass_encoder_multi_draw_indirect_count :: proc(
+		encoder: Render_Pass_Encoder,
+		buffer: Buffer,
+		offset: u64,
+		count_buffer: Buffer,
+		count_buffer_offset: u32,
+		max_count: u32,
+	) ---
+
 	@(link_name = "wgpuRenderPassEncoderMultiDrawIndexedIndirectCount")
-	render_pass_encoder_multi_draw_indexed_indirect_count :: proc(encoder: Render_Pass_Encoder, buffer: Buffer, offset: u64, count_buffer: Buffer, count_buffer_offset, max_count: u32) ---
+	render_pass_encoder_multi_draw_indexed_indirect_count :: proc(
+		encoder: Render_Pass_Encoder,
+		buffer: Buffer,
+		offset: u64,
+		count_buffer: Buffer,
+		count_buffer_offset: u32,
+		max_count: u32,
+	) ---
 
 	@(link_name = "wgpuComputePassEncoderBeginPipelineStatisticsQuery")
-	compute_pass_encoder_begin_pipeline_statistics_query :: proc(compute_pass_encoder: Compute_Pass_Encoder, query_set: Query_Set, query_index: u32) ---
+	compute_pass_encoder_begin_pipeline_statistics_query :: proc(
+		compute_pass_encoder: Compute_Pass_Encoder,
+		query_set: Query_Set,
+		query_index: u32,
+	) ---
+
 	@(link_name = "wgpuComputePassEncoderEndPipelineStatisticsQuery")
-	compute_pass_encoder_end_pipeline_statistics_query :: proc(compute_pass_encoder: Compute_Pass_Encoder) ---
+	compute_pass_encoder_end_pipeline_statistics_query :: proc(
+		compute_pass_encoder: Compute_Pass_Encoder,
+	) ---
+
 	@(link_name = "wgpuRenderPassEncoderBeginPipelineStatisticsQuery")
-	render_pass_encoder_begin_pipeline_statistics_query :: proc(render_pass_encoder: Render_Pass_Encoder, query_set: Query_Set, query_index: u32) ---
+	render_pass_encoder_begin_pipeline_statistics_query :: proc(
+		render_pass_encoder: Render_Pass_Encoder,
+		query_set: Query_Set,
+		query_index: u32,
+	) ---
+
 	@(link_name = "wgpuRenderPassEncoderEndPipelineStatisticsQuery")
-	render_pass_encoder_end_pipeline_statistics_query :: proc(render_pass_encoder: Render_Pass_Encoder) ---
+	render_pass_encoder_end_pipeline_statistics_query :: proc(
+		render_pass_encoder: Render_Pass_Encoder,
+	) ---
+	// odinfmt: enable
 }
