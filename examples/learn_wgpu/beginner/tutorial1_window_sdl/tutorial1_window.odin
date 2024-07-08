@@ -1,4 +1,4 @@
-package tutorial1_window
+package tutorial1_window_sdl
 
 // Core
 import "core:fmt"

@@ -46,20 +46,20 @@ init :: proc() -> (state: ^State, err: Error) {
 	SHADER_SRC: string : #load("./cube.wgsl", string)
 	COMBINE_SHADER_SRC := shaders.SRGB_TO_LINEAR_WGSL + SHADER_SRC
 	shader_module := wgpu.device_create_shader_module(
-		&state.device,
-		&{label = EXAMPLE_TITLE + " Module", source = COMBINE_SHADER_SRC},
+		state.device,
+		{label = EXAMPLE_TITLE + " Module", source = COMBINE_SHADER_SRC},
 	) or_return
-	defer wgpu.shader_module_release(&shader_module)
+	defer wgpu.shader_module_release(shader_module)
 
 	state.vertex_buffer = wgpu.device_create_buffer_with_data(
-		&state.device,
-		&{
+		state.device,
+		{
 			label = EXAMPLE_TITLE + " Buffer",
 			contents = wgpu.to_bytes(vertex_data),
 			usage = {.Vertex},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(&state.vertex_buffer)
+	defer if err != nil do wgpu.buffer_release(state.vertex_buffer)
 
 	vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
 		array_stride = size_of(Vertex),
@@ -100,37 +100,37 @@ init :: proc() -> (state: ^State, err: Error) {
 			stencil_read_mask = 0xFFFFFFFF,
 			stencil_write_mask = 0xFFFFFFFF,
 		},
-		multisample = wgpu.Default_Multisample_State,
+		multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 	}
 
 	state.render_pipeline = wgpu.device_create_render_pipeline(
-		&state.device,
-		&pipeline_descriptor,
+		state.device,
+		pipeline_descriptor,
 	) or_return
-	defer if err != nil do wgpu.render_pipeline_release(&state.render_pipeline)
+	defer if err != nil do wgpu.render_pipeline_release(state.render_pipeline)
 
 	aspect := cast(f32)state.config.width / cast(f32)state.config.height
 	mvp_mat := generate_matrix(aspect)
 
 	state.uniform_buffer = wgpu.device_create_buffer_with_data(
-		&state.device,
-		&{
+		state.device,
+		{
 			label = EXAMPLE_TITLE + " Uniform Buffer",
 			contents = wgpu.to_bytes(mvp_mat),
 			usage = {.Uniform, .Copy_Dst},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(&state.uniform_buffer)
+	defer if err != nil do wgpu.buffer_release(state.uniform_buffer)
 
 	bind_group_layout := wgpu.render_pipeline_get_bind_group_layout(
-		&state.render_pipeline,
+		state.render_pipeline,
 		0,
 	) or_return
-	defer wgpu.bind_group_layout_release(&bind_group_layout)
+	defer wgpu.bind_group_layout_release(bind_group_layout)
 
 	state.bind_group = wgpu.device_create_bind_group(
-		&state.device,
-		&{
+		state.device,
+		{
 			layout = bind_group_layout.ptr,
 			entries = {
 				{
@@ -143,13 +143,13 @@ init :: proc() -> (state: ^State, err: Error) {
 			},
 		},
 	) or_return
-	defer if err != nil do wgpu.bind_group_release(&state.bind_group)
+	defer if err != nil do wgpu.bind_group_release(state.bind_group)
 
 	state.depth_stencil_view = get_depth_framebuffer(
 		state,
 		{state.config.width, state.config.height},
 	) or_return
-	defer if err != nil do wgpu.texture_view_release(&state.depth_stencil_view)
+	defer if err != nil do wgpu.texture_view_release(state.depth_stencil_view)
 
 	state.depth_stencil_attachment = {
 		view              = state.depth_stencil_view.ptr,
@@ -172,11 +172,11 @@ init :: proc() -> (state: ^State, err: Error) {
 
 deinit :: proc(using state: ^State) {
 	delete(state.render_pass_desc.color_attachments)
-	wgpu.texture_view_release(&depth_stencil_view)
-	wgpu.bind_group_release(&bind_group)
-	wgpu.buffer_release(&uniform_buffer)
-	wgpu.render_pipeline_release(&render_pipeline)
-	wgpu.buffer_release(&vertex_buffer)
+	wgpu.texture_view_release(depth_stencil_view)
+	wgpu.bind_group_release(bind_group)
+	wgpu.buffer_release(uniform_buffer)
+	wgpu.render_pipeline_release(render_pipeline)
+	wgpu.buffer_release(vertex_buffer)
 	renderer.deinit(gpu)
 	app.deinit()
 	free(state)
@@ -185,43 +185,43 @@ deinit :: proc(using state: ^State) {
 render :: proc(using state: ^State) -> (err: Error) {
 	frame := renderer.get_current_texture_frame(gpu) or_return
 	if skip_frame do return
-	defer wgpu.texture_release_and_nil(&frame.texture)
+	defer renderer.release_current_texture_frame(gpu)
 
-	view := wgpu.texture_create_view(&frame.texture) or_return
-	defer wgpu.texture_view_release(&view)
+	view := wgpu.texture_create_view(frame.texture) or_return
+	defer wgpu.texture_view_release(view)
 
-	encoder := wgpu.device_create_command_encoder(&device) or_return
-	defer wgpu.command_encoder_release(&encoder)
+	encoder := wgpu.device_create_command_encoder(device) or_return
+	defer wgpu.command_encoder_release(encoder)
 
 	color_attachment.view = view.ptr
-	render_pass := wgpu.command_encoder_begin_render_pass(&encoder, &render_pass_desc)
-	defer wgpu.render_pass_encoder_release(&render_pass)
+	render_pass := wgpu.command_encoder_begin_render_pass(encoder, render_pass_desc)
+	defer wgpu.render_pass_release(render_pass)
 
-	wgpu.render_pass_encoder_set_pipeline(&render_pass, render_pipeline.ptr)
-	wgpu.render_pass_encoder_set_bind_group(&render_pass, 0, bind_group.ptr)
-	wgpu.render_pass_encoder_set_vertex_buffer(&render_pass, 0, vertex_buffer.ptr)
-	wgpu.render_pass_encoder_draw(&render_pass, cast(u32)len(vertex_data))
-	wgpu.render_pass_encoder_end(&render_pass) or_return
+	wgpu.render_pass_set_pipeline(render_pass, render_pipeline.ptr)
+	wgpu.render_pass_set_bind_group(render_pass, 0, bind_group.ptr)
+	wgpu.render_pass_set_vertex_buffer(render_pass, 0, vertex_buffer.ptr)
+	wgpu.render_pass_draw(render_pass, {0, u32(len(vertex_data))})
+	wgpu.render_pass_end(render_pass) or_return
 
-	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
-	defer wgpu.command_buffer_release(&command_buffer)
+	command_buffer := wgpu.command_encoder_finish(encoder) or_return
+	defer wgpu.command_buffer_release(command_buffer)
 
-	wgpu.queue_submit(&queue, command_buffer.ptr)
-	wgpu.surface_present(&surface)
+	wgpu.queue_submit(queue, command_buffer.ptr)
+	wgpu.surface_present(surface)
 
 	return
 }
 
 resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Error) {
 	// Release old depth stencil view and create new one
-	wgpu.texture_view_release(&depth_stencil_view)
+	wgpu.texture_view_release(depth_stencil_view)
 	depth_stencil_view = get_depth_framebuffer(state, size) or_return
 	render_pass_desc.depth_stencil_attachment.view = depth_stencil_view.ptr
 
 	// Update uniform buffer with new aspect ratio
 	aspect_ratio := cast(f32)size.width / cast(f32)size.height
 	new_matrix := generate_matrix(aspect_ratio)
-	wgpu.queue_write_buffer(&queue, uniform_buffer.ptr, 0, wgpu.to_bytes(new_matrix)) or_return
+	wgpu.queue_write_buffer(queue, uniform_buffer.ptr, 0, wgpu.to_bytes(new_matrix)) or_return
 
 	renderer.resize_surface(gpu, size) or_return
 
@@ -268,8 +268,8 @@ get_depth_framebuffer :: proc(
 	err: wgpu.Error,
 ) {
 	texture := wgpu.device_create_texture(
-		&device,
-		&{
+		device,
+		{
 			size = {width = size.width, height = size.height, depth_or_array_layers = 1},
 			mip_level_count = 1,
 			sample_count = 1,
@@ -278,9 +278,9 @@ get_depth_framebuffer :: proc(
 			usage = {.Render_Attachment},
 		},
 	) or_return
-	defer wgpu.texture_release(&texture)
+	defer wgpu.texture_release(texture)
 
-	return wgpu.texture_create_view(&texture)
+	return wgpu.texture_create_view(texture)
 }
 
 generate_matrix :: proc(aspect: f32) -> la.Matrix4f32 {

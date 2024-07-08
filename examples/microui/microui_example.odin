@@ -47,7 +47,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	defer if err != nil do renderer.deinit(state)
 
 	// Initialize the MicroUI renderer and context
-	state.mu_ctx = wmu.init(&state.device, &state.queue, &state.surface.config) or_return
+	state.mu_ctx = wmu.init(state.device, state.queue, state.surface.config) or_return
 
 	// Set initial state
 	state.bg = {56, 130, 210, 255}
@@ -83,29 +83,29 @@ render :: proc(using state: ^State) -> (err: Error) {
 	// WebGPU rendering
 	frame := renderer.get_current_texture_frame(gpu) or_return
 	if skip_frame do return
-	defer wgpu.texture_release(&frame.texture)
+	defer renderer.release_current_texture_frame(gpu)
 
-	view := wgpu.texture_create_view(&frame.texture) or_return
-	defer wgpu.texture_view_release(&view)
+	view := wgpu.texture_create_view(frame.texture) or_return
+	defer wgpu.texture_view_release(view)
 
-	encoder := wgpu.device_create_command_encoder(&device) or_return
-	defer wgpu.command_encoder_release(&encoder)
+	encoder := wgpu.device_create_command_encoder(device) or_return
+	defer wgpu.command_encoder_release(encoder)
 
 	color_attachment.view = view.ptr
 	color_attachment.clear_value = update_clear_value_from_bg(state)
-	render_pass := wgpu.command_encoder_begin_render_pass(&encoder, &render_pass_desc)
-	defer wgpu.render_pass_encoder_release(&render_pass)
+	render_pass := wgpu.command_encoder_begin_render_pass(encoder, render_pass_desc)
+	defer wgpu.render_pass_release(render_pass)
 
 	// micro-ui rendering
-	wmu.render(mu_ctx, &render_pass) or_return
+	wmu.render(mu_ctx, render_pass) or_return
 
-	wgpu.render_pass_encoder_end(&render_pass) or_return
+	wgpu.render_pass_end(render_pass) or_return
 
-	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
-	defer wgpu.command_buffer_release(&command_buffer)
+	command_buffer := wgpu.command_encoder_finish(encoder) or_return
+	defer wgpu.command_buffer_release(command_buffer)
 
-	wgpu.queue_submit(&queue, command_buffer.ptr)
-	wgpu.surface_present(&surface)
+	wgpu.queue_submit(queue, command_buffer.ptr)
+	wgpu.surface_present(surface)
 
 	return
 }

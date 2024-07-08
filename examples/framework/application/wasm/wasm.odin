@@ -52,12 +52,12 @@ get_system_info :: proc() -> (info: Platform_Info) {
 	unimplemented("Wasm get_system_info")
 }
 
-get_wgpu_surface :: proc(instance: ^wgpu.Instance) -> (wgpu.Surface, wgpu.Error_Type) {
+get_wgpu_surface :: proc(instance: wgpu.Instance) -> (wgpu.Surface, wgpu.Error) {
 	surface_descriptor := wgpu.Surface_Descriptor {
 		label = "HTML Canvas",
 		target = wgpu.Surface_Descriptor_From_Canvas_Html_Selector{selector = _ctx.selector},
 	}
-	return wgpu.instance_create_surface(instance, &surface_descriptor)
+	return wgpu.instance_create_surface(instance, surface_descriptor)
 }
 
 deinit :: proc() {

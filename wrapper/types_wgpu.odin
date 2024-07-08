@@ -93,6 +93,11 @@ Error_Type :: wgpu.Error_Type
 // Feature_Name :: wgpu.Feature_Name
 Filter_Mode :: wgpu.Filter_Mode
 Front_Face :: wgpu.Front_Face
+
+// Format of indices used with pipeline.
+//
+// Corresponds to [WebGPU `GPUIndexFormat`](
+// https://gpuweb.github.io/gpuweb/#enumdef-gpuindexformat).
 Index_Format :: wgpu.Index_Format
 Load_Op :: wgpu.Load_Op
 Mipmap_Filter_Mode :: wgpu.Mipmap_Filter_Mode

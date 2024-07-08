@@ -32,6 +32,14 @@ QUERY_SET_MAX_QUERIES: u32 : 8192
 // Size of a single piece of query data.
 QUERY_SIZE: u32 : 8
 
+when ODIN_ARCH == .amd64 || ODIN_ARCH == .arm64 {
+	@(private)
+	POINTER_PROMOTION_PADDING :: [8]byte
+} else {
+	@(private)
+	POINTER_PROMOTION_PADDING :: [4]byte
+}
+
 // Standard blending state that blends source and destination based on source alpha.
 Blend_Component_Normal := Blend_Component {
 	operation  = .Add,

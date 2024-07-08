@@ -55,25 +55,25 @@ deinit :: proc(using state: ^State) {
 render :: proc(using state: ^State) -> (err: Error) {
 	frame := renderer.get_current_texture_frame(gpu) or_return
 	if skip_frame do return
-	defer wgpu.texture_release(&frame.texture)
+	defer renderer.release_current_texture_frame(gpu)
 
-	view := wgpu.texture_create_view(&frame.texture) or_return
-	defer wgpu.texture_view_release(&view)
+	view := wgpu.texture_create_view(frame.texture) or_return
+	defer wgpu.texture_view_release(view)
 
-	encoder := wgpu.device_create_command_encoder(&device) or_return
-	defer wgpu.command_encoder_release(&encoder)
+	encoder := wgpu.device_create_command_encoder(device) or_return
+	defer wgpu.command_encoder_release(encoder)
 
 	color_attachment.view = view.ptr
 	color_attachment.clear_value = wgpu.color_srgb_color_to_linear(clear_color)
-	render_pass := wgpu.command_encoder_begin_render_pass(&encoder, &render_pass_desc)
-	wgpu.render_pass_encoder_end(&render_pass) or_return
-	wgpu.render_pass_encoder_release(&render_pass)
+	render_pass := wgpu.command_encoder_begin_render_pass(encoder, render_pass_desc)
+	wgpu.render_pass_end(render_pass) or_return
+	wgpu.render_pass_release(render_pass)
 
-	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
-	defer wgpu.command_buffer_release(&command_buffer)
+	command_buffer := wgpu.command_encoder_finish(encoder) or_return
+	defer wgpu.command_buffer_release(command_buffer)
 
-	wgpu.queue_submit(&queue, command_buffer.ptr)
-	wgpu.surface_present(&surface)
+	wgpu.queue_submit(queue, command_buffer.ptr)
+	wgpu.surface_present(surface)
 
 	return
 }
@@ -86,7 +86,7 @@ resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Er
 handle_events :: proc(using state: ^State) -> (should_quit: bool, err: Error) {
 	event: events.Event
 	for app.poll_event(&event) {
-		#partial switch &ev in event {
+		#partial switch ev in event {
 		case events.Quit_Event:
 			return true, nil
 		case events.Mouse_Motion_Event:

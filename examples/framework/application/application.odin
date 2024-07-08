@@ -46,7 +46,7 @@ push_event :: proc(event: events.Event) {
 	app.push_event(event)
 }
 
-get_size :: proc() -> Physical_Size {
+get_size :: proc "contextless" () -> Physical_Size {
 	return app.get_size()
 }
 

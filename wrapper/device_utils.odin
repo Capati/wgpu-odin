@@ -13,16 +13,17 @@ Buffer_Data_Descriptor :: struct {
 }
 
 // Creates a `Buffer` with data to initialize it.
+@(require_results)
 device_create_buffer_with_data :: proc(
-	using self: ^Device,
-	descriptor: ^Buffer_Data_Descriptor,
+	using self: Device,
+	descriptor: Buffer_Data_Descriptor,
 	loc := #caller_location,
 ) -> (
 	buffer: Buffer,
 	err: Error,
 ) {
 	// Skip mapping if the buffer is zero sized
-	if descriptor == nil || descriptor.contents == nil || len(descriptor.contents) == 0 {
+	if descriptor.contents == nil || len(descriptor.contents) == 0 {
 		buffer_descriptor: Buffer_Descriptor = {
 			label              = descriptor.label,
 			size               = 0,
@@ -30,7 +31,7 @@ device_create_buffer_with_data :: proc(
 			mapped_at_creation = false,
 		}
 
-		return device_create_buffer(self, &buffer_descriptor, loc)
+		return device_create_buffer(self, buffer_descriptor, loc)
 	}
 
 	unpadded_size := cast(Buffer_Address)len(descriptor.contents)
@@ -51,20 +52,18 @@ device_create_buffer_with_data :: proc(
 		mapped_at_creation = true,
 	}
 
-	buffer = device_create_buffer(self, &buffer_descriptor, loc) or_return
+	buffer = device_create_buffer(self, buffer_descriptor, loc) or_return
 
 	// Synchronously and immediately map a buffer for reading. If the buffer is not
 	// immediately mappable through `mapped_at_creation` or
 	// `buffer_map_async`, will panic.
-	mapped_array_buffer := buffer_get_mapped_range(
-		&buffer,
-		byte,
-		0,
-		cast(uint)padded_size,
+	mapped_buffer_slice := buffer_get_mapped_range_bytes(
+		buffer,
+		{size = padded_size},
 		loc,
 	) or_return
-	copy(mapped_array_buffer, descriptor.contents)
-	buffer_unmap(&buffer, loc) or_return
+	copy(mapped_buffer_slice, descriptor.contents)
+	buffer_unmap(buffer, loc) or_return
 
 	return
 }
@@ -76,10 +75,11 @@ Texture_Data_Order :: enum {
 }
 
 // Upload an entire texture and its mipmaps from a source buffer.
+@(require_results)
 device_create_texture_with_data :: proc(
-	self: ^Device,
-	queue: ^Queue,
-	desc: ^Texture_Descriptor,
+	self: Device,
+	queue: Queue,
+	desc: Texture_Descriptor,
 	order: Texture_Data_Order,
 	data: []byte,
 	loc := #caller_location,
@@ -87,13 +87,15 @@ device_create_texture_with_data :: proc(
 	texture: Texture,
 	err: Error,
 ) {
+	desc := desc
+
 	// Implicitly add the .Copy_Dst usage
 	if .Copy_Dst not_in desc.usage {
 		desc.usage += {.Copy_Dst}
 	}
 
 	texture = device_create_texture(self, desc, loc) or_return
-	defer if err != nil do texture_release(&texture)
+	defer if err != nil do texture_release(texture)
 
 	// Will return 0 only if it's a combined depth-stencil format
 	// If so, default to 4, validation will fail later anyway since the depth or stencil
@@ -163,10 +165,10 @@ device_create_texture_with_data :: proc(
 
 			queue_write_texture(
 				queue,
-				&{texture = texture.ptr, mip_level = mip, origin = {0, 0, layer}, aspect = .All},
+				{texture = texture.ptr, mip_level = mip, origin = {0, 0, layer}, aspect = .All},
 				data[binary_offset:end_offset],
-				&{offset = 0, bytes_per_row = bytes_per_row, rows_per_image = height_blocks},
-				&mip_physical,
+				{offset = 0, bytes_per_row = bytes_per_row, rows_per_image = height_blocks},
+				mip_physical,
 				loc,
 			) or_return
 

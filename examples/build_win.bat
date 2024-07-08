@@ -109,8 +109,10 @@ odin build .\triangle_msaa %ARGS% %ADDITIONAL_ARGS% %OUT%\triangle_msaa.exe
 goto :eof
 
 :learn_wgpu
-odin build .\learn_wgpu\beginner\tutorial1_window %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial1_window.exe
-odin build .\learn_wgpu\beginner\tutorial2_surface %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial2_surface.exe
+odin build .\learn_wgpu\beginner\tutorial1_window_sdl %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial1_window_sdl.exe
+odin build .\learn_wgpu\beginner\tutorial1_window_glfw %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial1_window_glfw.exe
+odin build .\learn_wgpu\beginner\tutorial2_surface_sdl %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial2_surface_sdl.exe
+odin build .\learn_wgpu\beginner\tutorial2_surface_glfw %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial2_surface_glfw.exe
 odin build .\learn_wgpu\beginner\tutorial2_surface_challenge %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial2_surface_challenge.exe
 odin build .\learn_wgpu\beginner\tutorial3_pipeline %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial3_pipeline.exe
 odin build .\learn_wgpu\beginner\tutorial3_pipeline_challenge %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial3_pipeline_challenge.exe

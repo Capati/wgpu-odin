@@ -75,36 +75,33 @@ init :: proc() -> (state: ^State, err: Error) {
 	defer if err != nil do renderer.deinit(state)
 
 	// Initialize MicroUI renderer
-	state.mu_ctx = wmu.init(&state.device, &state.queue, &state.surface.config) or_return
+	state.mu_ctx = wmu.init(state.device, state.queue, state.surface.config) or_return
 	defer if err != nil {
 		wmu.destroy()
 		free(state.mu_ctx)
 	}
 
 	// Initialize example objects
-	blur_source := #load("./blur.wgsl", cstring)
-	blur_shader := wgpu.device_create_shader_module(
-		&state.device,
-		&{source = blur_source},
-	) or_return
-	defer wgpu.shader_module_release(&blur_shader)
+	BLUR_SOURCE :: #load("./blur.wgsl", cstring)
+	blur_shader := wgpu.device_create_shader_module(state.device, {source = BLUR_SOURCE}) or_return
+	defer wgpu.shader_module_release(blur_shader)
 	state.blur_pipeline = wgpu.device_create_compute_pipeline(
-		&state.device,
-		&{compute = {module = blur_shader.ptr, entry_point = "main"}},
+		state.device,
+		{compute = {module = blur_shader.ptr, entry_point = "main"}},
 	) or_return
-	defer if err != nil do wgpu.compute_pipeline_release(&state.blur_pipeline)
+	defer if err != nil do wgpu.compute_pipeline_release(state.blur_pipeline)
 
-	quad_shader_src: string : #load("./fullscreen_textured_quad.wgsl", string)
-	quad_combined_shader_src := shaders.SRGB_TO_LINEAR_WGSL + quad_shader_src
+	QUAD_SHADER_SRC: string : #load("./fullscreen_textured_quad.wgsl", string)
+	QUAD_COMBINED_SHADER_SRC :: shaders.SRGB_TO_LINEAR_WGSL + QUAD_SHADER_SRC
 	quad_shader_module := wgpu.device_create_shader_module(
-		&state.device,
-		&{source = cstring(raw_data(quad_combined_shader_src))},
+		state.device,
+		{source = cstring(raw_data(QUAD_COMBINED_SHADER_SRC))},
 	) or_return
-	defer wgpu.shader_module_release(&quad_shader_module)
+	defer wgpu.shader_module_release(quad_shader_module)
 
 	state.fullscreen_quad_pipeline = wgpu.device_create_render_pipeline(
-		&state.device,
-		&{
+		state.device,
+		{
 			vertex = {module = quad_shader_module.ptr, entry_point = "vert_main"},
 			fragment = &{
 				module = quad_shader_module.ptr,
@@ -119,22 +116,22 @@ init :: proc() -> (state: ^State, err: Error) {
 			},
 			primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .None},
 			depth_stencil = nil,
-			multisample = wgpu.Default_Multisample_State,
+			multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 		},
 	) or_return
-	defer if err != nil do wgpu.render_pipeline_release(&state.fullscreen_quad_pipeline)
+	defer if err != nil do wgpu.render_pipeline_release(state.fullscreen_quad_pipeline)
 
 	state.image_texture = wgpu.queue_copy_image_to_texture(
-		&state.device,
-		&state.queue,
+		state.device,
+		state.queue,
 		"./assets/image_blur/nature.jpg",
 	) or_return
-	defer if err != nil do wgpu.texture_release(&state.image_texture)
+	defer if err != nil do wgpu.texture_release(state.image_texture)
 
 	for &t in state.textures {
 		t.texture = wgpu.device_create_texture(
-			&state.device,
-			&{
+			state.device,
+			{
 				usage = {.Copy_Dst, .Storage_Binding, .Texture_Binding},
 				dimension = state.image_texture.dimension,
 				size = state.image_texture.size,
@@ -143,48 +140,48 @@ init :: proc() -> (state: ^State, err: Error) {
 				sample_count = state.image_texture.sample_count,
 			},
 		) or_return
-		t.view = wgpu.texture_create_view(&t.texture) or_return
+		t.view = wgpu.texture_create_view(t.texture) or_return
 	}
 	defer if err != nil {
-		for &t in state.textures {
-			wgpu.texture_release(&t.texture)
-			wgpu.texture_view_release(&t.view)
+		for t in state.textures {
+			wgpu.texture_release(t.texture)
+			wgpu.texture_view_release(t.view)
 		}
 	}
 
 	state.buffer_0 = wgpu.device_create_buffer_with_data(
-		&state.device,
-		&{contents = wgpu.to_bytes([1]u32{0}), usage = {.Uniform}},
+		state.device,
+		{contents = wgpu.to_bytes([1]u32{0}), usage = {.Uniform}},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(&state.buffer_0)
+	defer if err != nil do wgpu.buffer_release(state.buffer_0)
 
 	state.buffer_1 = wgpu.device_create_buffer_with_data(
-		&state.device,
-		&{contents = wgpu.to_bytes([1]u32{1}), usage = {.Uniform}},
+		state.device,
+		{contents = wgpu.to_bytes([1]u32{1}), usage = {.Uniform}},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(&state.buffer_1)
+	defer if err != nil do wgpu.buffer_release(state.buffer_1)
 
 	state.blur_params_buffer = wgpu.device_create_buffer(
-		&state.device,
-		&{size = size_of(Settings), usage = {.Copy_Dst, .Uniform}},
+		state.device,
+		{size = size_of(Settings), usage = {.Copy_Dst, .Uniform}},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(&state.blur_params_buffer)
+	defer if err != nil do wgpu.buffer_release(state.blur_params_buffer)
 
 	blur_pipeline_layout_0 := wgpu.compute_pipeline_get_bind_group_layout(
-		&state.blur_pipeline,
+		state.blur_pipeline,
 		0,
 	) or_return
-	defer wgpu.bind_group_layout_release(&blur_pipeline_layout_0)
+	defer wgpu.bind_group_layout_release(blur_pipeline_layout_0)
 
-	sampler_descriptor := wgpu.Default_Sampler_Descriptor
+	sampler_descriptor := wgpu.DEFAULT_SAMPLER_DESCRIPTOR
 	sampler_descriptor.mag_filter = .Linear
 	sampler_descriptor.min_filter = .Linear
-	state.sampler = wgpu.device_create_sampler(&state.device, &sampler_descriptor) or_return
-	defer if err != nil do wgpu.sampler_release(&state.sampler)
+	state.sampler = wgpu.device_create_sampler(state.device, sampler_descriptor) or_return
+	defer if err != nil do wgpu.sampler_release(state.sampler)
 
 	state.compute_constants = wgpu.device_create_bind_group(
-		&state.device,
-		&{
+		state.device,
+		{
 			layout = blur_pipeline_layout_0.ptr,
 			entries = {
 				{binding = 0, resource = state.sampler.ptr},
@@ -200,17 +197,17 @@ init :: proc() -> (state: ^State, err: Error) {
 	) or_return
 
 	blur_pipeline_layout_1 := wgpu.compute_pipeline_get_bind_group_layout(
-		&state.blur_pipeline,
+		state.blur_pipeline,
 		1,
 	) or_return
-	defer wgpu.bind_group_layout_release(&blur_pipeline_layout_1)
+	defer wgpu.bind_group_layout_release(blur_pipeline_layout_1)
 
-	state.image_texture_view = wgpu.texture_create_view(&state.image_texture) or_return
-	defer if err != nil do wgpu.texture_view_release(&state.image_texture_view)
+	state.image_texture_view = wgpu.texture_create_view(state.image_texture) or_return
+	defer if err != nil do wgpu.texture_view_release(state.image_texture_view)
 
 	state.compute_bind_group_0 = wgpu.device_create_bind_group(
-		&state.device,
-		&{
+		state.device,
+		{
 			layout = blur_pipeline_layout_1.ptr,
 			entries = {
 				{binding = 1, resource = state.image_texture_view.ptr},
@@ -225,11 +222,11 @@ init :: proc() -> (state: ^State, err: Error) {
 			},
 		},
 	) or_return
-	defer if err != nil do wgpu.bind_group_release(&state.compute_bind_group_0)
+	defer if err != nil do wgpu.bind_group_release(state.compute_bind_group_0)
 
 	state.compute_bind_group_1 = wgpu.device_create_bind_group(
-		&state.device,
-		&{
+		state.device,
+		{
 			layout = blur_pipeline_layout_1.ptr,
 			entries = {
 				{binding = 1, resource = state.textures[0].view.ptr},
@@ -244,11 +241,11 @@ init :: proc() -> (state: ^State, err: Error) {
 			},
 		},
 	) or_return
-	defer if err != nil do wgpu.bind_group_release(&state.compute_bind_group_1)
+	defer if err != nil do wgpu.bind_group_release(state.compute_bind_group_1)
 
 	state.compute_bind_group_2 = wgpu.device_create_bind_group(
-		&state.device,
-		&{
+		state.device,
+		{
 			layout = blur_pipeline_layout_1.ptr,
 			entries = {
 				{binding = 1, resource = state.textures[1].view.ptr},
@@ -263,17 +260,17 @@ init :: proc() -> (state: ^State, err: Error) {
 			},
 		},
 	) or_return
-	defer if err != nil do wgpu.bind_group_release(&state.compute_bind_group_2)
+	defer if err != nil do wgpu.bind_group_release(state.compute_bind_group_2)
 
 	fullscreen_quad_pipeline_layout := wgpu.render_pipeline_get_bind_group_layout(
-		&state.fullscreen_quad_pipeline,
+		state.fullscreen_quad_pipeline,
 		0,
 	) or_return
-	defer wgpu.bind_group_layout_release(&fullscreen_quad_pipeline_layout)
+	defer wgpu.bind_group_layout_release(fullscreen_quad_pipeline_layout)
 
 	state.show_result_bind_group = wgpu.device_create_bind_group(
-		&state.device,
-		&{
+		state.device,
+		{
 			layout = fullscreen_quad_pipeline_layout.ptr,
 			entries = {
 				{binding = 0, resource = state.sampler.ptr},
@@ -281,7 +278,7 @@ init :: proc() -> (state: ^State, err: Error) {
 			},
 		},
 	) or_return
-	defer if err != nil do wgpu.bind_group_release(&state.show_result_bind_group)
+	defer if err != nil do wgpu.bind_group_release(state.show_result_bind_group)
 
 	state.settings = {
 		filter_size = 15,
@@ -313,23 +310,23 @@ init :: proc() -> (state: ^State, err: Error) {
 deinit :: proc(using state: ^State) {
 	delete(render_pass_desc.color_attachments)
 
-	wgpu.bind_group_release(&show_result_bind_group)
-	wgpu.bind_group_release(&compute_bind_group_2)
-	wgpu.bind_group_release(&compute_bind_group_1)
-	wgpu.bind_group_release(&compute_bind_group_0)
+	wgpu.bind_group_release(show_result_bind_group)
+	wgpu.bind_group_release(compute_bind_group_2)
+	wgpu.bind_group_release(compute_bind_group_1)
+	wgpu.bind_group_release(compute_bind_group_0)
 	for &t in textures {
-		wgpu.texture_release(&t.texture)
-		wgpu.texture_view_release(&t.view)
+		wgpu.texture_release(t.texture)
+		wgpu.texture_view_release(t.view)
 	}
-	wgpu.texture_view_release(&image_texture_view)
-	wgpu.buffer_release(&buffer_0)
-	wgpu.buffer_release(&buffer_1)
-	wgpu.sampler_release(&sampler)
-	wgpu.buffer_release(&blur_params_buffer)
-	wgpu.bind_group_release(&compute_constants)
-	wgpu.texture_release(&image_texture)
-	wgpu.render_pipeline_release(&fullscreen_quad_pipeline)
-	wgpu.compute_pipeline_release(&blur_pipeline)
+	wgpu.texture_view_release(image_texture_view)
+	wgpu.buffer_release(buffer_0)
+	wgpu.buffer_release(buffer_1)
+	wgpu.sampler_release(sampler)
+	wgpu.buffer_release(blur_params_buffer)
+	wgpu.bind_group_release(compute_constants)
+	wgpu.texture_release(image_texture)
+	wgpu.render_pipeline_release(fullscreen_quad_pipeline)
+	wgpu.compute_pipeline_release(blur_pipeline)
 
 	wmu.destroy()
 	renderer.deinit(gpu)
@@ -342,7 +339,7 @@ deinit :: proc(using state: ^State) {
 update_settings :: proc(using state: ^State) -> (err: Error) {
 	block_dim = TILE_DIM - (settings.filter_size - 1)
 	wgpu.queue_write_buffer(
-		&queue,
+		queue,
 		blur_params_buffer.ptr,
 		0,
 		wgpu.to_bytes([2]i32{settings.filter_size, block_dim}),
@@ -376,68 +373,68 @@ render :: proc(using state: ^State) -> (err: Error) {
 
 	frame := renderer.get_current_texture_frame(gpu) or_return
 	if skip_frame do return
-	defer wgpu.texture_release(&frame.texture)
+	defer renderer.release_current_texture_frame(gpu)
 
-	view := wgpu.texture_create_view(&frame.texture) or_return
-	defer wgpu.texture_view_release(&view)
+	view := wgpu.texture_create_view(frame.texture) or_return
+	defer wgpu.texture_view_release(view)
 
-	encoder := wgpu.device_create_command_encoder(&device) or_return
-	defer wgpu.command_encoder_release(&encoder)
+	encoder := wgpu.device_create_command_encoder(device) or_return
+	defer wgpu.command_encoder_release(encoder)
 
-	compute_pass := wgpu.command_encoder_begin_compute_pass(&encoder) or_return
-	wgpu.compute_pass_encoder_set_pipeline(&compute_pass, blur_pipeline.ptr)
-	wgpu.compute_pass_encoder_set_bind_group(&compute_pass, 0, compute_constants.ptr)
+	compute_pass := wgpu.command_encoder_begin_compute_pass(encoder) or_return
+	wgpu.compute_pass_encoder_set_pipeline(compute_pass, blur_pipeline.ptr)
+	wgpu.compute_pass_encoder_set_bind_group(compute_pass, 0, compute_constants.ptr)
 
-	wgpu.compute_pass_encoder_set_bind_group(&compute_pass, 1, compute_bind_group_0.ptr)
+	wgpu.compute_pass_encoder_set_bind_group(compute_pass, 1, compute_bind_group_0.ptr)
 	wgpu.compute_pass_encoder_dispatch_workgroups(
-		&compute_pass,
+		compute_pass,
 		u32(math.ceil(f32(image_texture.size.width) / f32(block_dim))),
 		u32(math.ceil(f32(image_texture.size.height) / BATCH)),
 	)
 
-	wgpu.compute_pass_encoder_set_bind_group(&compute_pass, 1, compute_bind_group_1.ptr)
+	wgpu.compute_pass_encoder_set_bind_group(compute_pass, 1, compute_bind_group_1.ptr)
 	wgpu.compute_pass_encoder_dispatch_workgroups(
-		&compute_pass,
+		compute_pass,
 		u32(math.ceil(f32(image_texture.size.height) / f32(block_dim))),
 		u32(math.ceil(f32(image_texture.size.width) / BATCH)),
 	)
 
 	for _ in 0 ..< settings.iterations - 1 {
-		wgpu.compute_pass_encoder_set_bind_group(&compute_pass, 1, compute_bind_group_2.ptr)
+		wgpu.compute_pass_encoder_set_bind_group(compute_pass, 1, compute_bind_group_2.ptr)
 		wgpu.compute_pass_encoder_dispatch_workgroups(
-			&compute_pass,
+			compute_pass,
 			u32(math.ceil(f32(image_texture.size.width) / f32(block_dim))),
 			u32(math.ceil(f32(image_texture.size.height) / BATCH)),
 		)
 
-		wgpu.compute_pass_encoder_set_bind_group(&compute_pass, 1, compute_bind_group_1.ptr)
+		wgpu.compute_pass_encoder_set_bind_group(compute_pass, 1, compute_bind_group_1.ptr)
 		wgpu.compute_pass_encoder_dispatch_workgroups(
-			&compute_pass,
+			compute_pass,
 			u32(math.ceil(f32(image_texture.size.height) / f32(block_dim))),
 			u32(math.ceil(f32(image_texture.size.width) / BATCH)),
 		)
 	}
 
-	wgpu.compute_pass_encoder_end(&compute_pass) or_return
+	wgpu.compute_pass_encoder_end(compute_pass) or_return
 
 	color_attachment.view = view.ptr
-	render_pass := wgpu.command_encoder_begin_render_pass(&encoder, &render_pass_desc)
-	defer wgpu.render_pass_encoder_release(&render_pass)
+	render_pass := wgpu.command_encoder_begin_render_pass(encoder, render_pass_desc)
+	defer wgpu.render_pass_release(render_pass)
 
-	wgpu.render_pass_encoder_set_pipeline(&render_pass, fullscreen_quad_pipeline.ptr)
-	wgpu.render_pass_encoder_set_bind_group(&render_pass, 0, show_result_bind_group.ptr)
-	wgpu.render_pass_encoder_draw(&render_pass, 6)
+	wgpu.render_pass_set_pipeline(render_pass, fullscreen_quad_pipeline.ptr)
+	wgpu.render_pass_set_bind_group(render_pass, 0, show_result_bind_group.ptr)
+	wgpu.render_pass_draw(render_pass, {0, 6})
 
 	// micro-ui rendering
-	wmu.render(mu_ctx, &render_pass) or_return
+	wmu.render(mu_ctx, render_pass) or_return
 
-	wgpu.render_pass_encoder_end(&render_pass) or_return
+	wgpu.render_pass_end(render_pass) or_return
 
-	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
-	defer wgpu.command_buffer_release(&command_buffer)
+	command_buffer := wgpu.command_encoder_finish(encoder) or_return
+	defer wgpu.command_buffer_release(command_buffer)
 
-	wgpu.queue_submit(&queue, command_buffer.ptr)
-	wgpu.surface_present(&surface)
+	wgpu.queue_submit(queue, command_buffer.ptr)
+	wgpu.surface_present(surface)
 
 	return
 }

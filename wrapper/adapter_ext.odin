@@ -3,10 +3,11 @@ package wgpu
 // Core
 import "core:fmt"
 
+// Package
 import wgpu "../bindings"
 
 // Print adapter information (name, driver, type and backend).
-adapter_print_info :: proc(using self: ^Adapter) {
+adapter_print_info :: proc(using self: Adapter) {
 	fmt.printf("%s\n", info.name)
 
 	driver_description: cstring = info.driver_description

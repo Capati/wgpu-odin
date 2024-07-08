@@ -95,7 +95,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	defer if err != nil do renderer.deinit(state)
 
 	state.device_has_optional_features = wgpu.device_has_feature(
-		&state.device,
+		state.device,
 		r_properties.optional_features,
 	)
 
@@ -109,10 +109,10 @@ init :: proc() -> (state: ^State, err: Error) {
 	BASE_SHADER_SRC: string : #load("./indexing.wgsl", string)
 	COMBINED_BASE_SHADER_SRC :: shaders.SRGB_TO_LINEAR_WGSL + BASE_SHADER_SRC
 	base_shader_module := wgpu.device_create_shader_module(
-		&state.device,
-		&{source = COMBINED_BASE_SHADER_SRC},
+		state.device,
+		{source = COMBINED_BASE_SHADER_SRC},
 	) or_return
-	defer wgpu.shader_module_release(&base_shader_module)
+	defer wgpu.shader_module_release(base_shader_module)
 
 	fragment_shader_module: wgpu.Shader_Module
 
@@ -120,51 +120,51 @@ init :: proc() -> (state: ^State, err: Error) {
 		FRAGMENT_SHADER_SRC: string : #load("./non_uniform_indexing.wgsl", string)
 		COMBINED_FRAGMENT_SHADER_SRC :: shaders.SRGB_TO_LINEAR_WGSL + FRAGMENT_SHADER_SRC
 		fragment_shader_module = wgpu.device_create_shader_module(
-			&state.device,
-			&{source = COMBINED_FRAGMENT_SHADER_SRC},
+			state.device,
+			{source = COMBINED_FRAGMENT_SHADER_SRC},
 		) or_return
 	} else {
 		fragment_shader_module = wgpu.device_create_shader_module(
-			&state.device,
-			&{source = COMBINED_BASE_SHADER_SRC},
+			state.device,
+			{source = COMBINED_BASE_SHADER_SRC},
 		) or_return
 	}
-	defer wgpu.shader_module_release(&fragment_shader_module)
+	defer wgpu.shader_module_release(fragment_shader_module)
 
 	fmt.printfln("Using fragment entry point: %s", state.fragment_entry_point)
 
 	state.vertex_buffer = wgpu.device_create_buffer_with_data(
-		&state.device,
-		&{
+		state.device,
+		{
 			label = EXAMPLE_TITLE + " Vertex buffer",
 			contents = wgpu.to_bytes(VERTICES),
 			usage = {.Vertex},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(&state.vertex_buffer)
+	defer if err != nil do wgpu.buffer_release(state.vertex_buffer)
 
 	state.index_buffer = wgpu.device_create_buffer_with_data(
-		&state.device,
-		&{
+		state.device,
+		{
 			label = EXAMPLE_TITLE + " Index buffer",
 			contents = wgpu.to_bytes(INDICES),
 			usage = {.Index},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(&state.index_buffer)
+	defer if err != nil do wgpu.buffer_release(state.index_buffer)
 
 	texture_index_buffer_contents: [128]u32 = {}
 	texture_index_buffer_contents[64] = 1
 
 	state.texture_index_buffer = wgpu.device_create_buffer_with_data(
-		&state.device,
-		&{
+		state.device,
+		{
 			label = EXAMPLE_TITLE + "Texture index buffer",
 			contents = wgpu.to_bytes(texture_index_buffer_contents),
 			usage = {.Uniform},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(&state.texture_index_buffer)
+	defer if err != nil do wgpu.buffer_release(state.texture_index_buffer)
 
 	extent_3d_default: wgpu.Extent_3D = {1, 1, 1}
 
@@ -197,8 +197,8 @@ init :: proc() -> (state: ^State, err: Error) {
 		for i in 0 ..< len(state.textures) {
 			ref := &state.textures[cast(Texture_Name)i]
 			if ref.view.ptr != nil {
-				wgpu.texture_view_release(&ref.view)
-				wgpu.texture_release(&ref.tex)
+				wgpu.texture_view_release(ref.view)
+				wgpu.texture_release(ref.tex)
 			}
 		}
 	}
@@ -208,23 +208,22 @@ init :: proc() -> (state: ^State, err: Error) {
 
 		texture_descriptor_common.label = ref.label
 
-		ref.tex = wgpu.device_create_texture(&state.device, &texture_descriptor_common) or_return
+		ref.tex = wgpu.device_create_texture(state.device, texture_descriptor_common) or_return
 
-		ref.view = wgpu.texture_create_view(&ref.tex) or_return
+		ref.view = wgpu.texture_create_view(ref.tex) or_return
 
-		image_copy_texture := wgpu.texture_as_image_copy(&ref.tex)
 		wgpu.queue_write_texture(
-			&state.queue,
-			&image_copy_texture,
+			state.queue,
+			wgpu.texture_as_image_copy(ref.tex),
 			wgpu.to_bytes(wgpu.to_bytes(ref.data)),
-			&texture_data_layout_common,
-			&extent_3d_default,
+			texture_data_layout_common,
+			extent_3d_default,
 		) or_return
 	}
 
 	state.bind_group_layout = wgpu.device_create_bind_group_layout(
-		&state.device,
-		&{
+		state.device,
+		{
 			label = EXAMPLE_TITLE + " Bind group layout",
 			entries = {
 				{
@@ -265,14 +264,14 @@ init :: proc() -> (state: ^State, err: Error) {
 			},
 		},
 	) or_return
-	defer if err != nil do wgpu.bind_group_layout_release(&state.bind_group_layout)
+	defer if err != nil do wgpu.bind_group_layout_release(state.bind_group_layout)
 
-	state.sampler = wgpu.device_create_sampler(&state.device) or_return
-	defer if err != nil do wgpu.sampler_release(&state.sampler)
+	state.sampler = wgpu.device_create_sampler(state.device) or_return
+	defer if err != nil do wgpu.sampler_release(state.sampler)
 
 	state.bind_group = wgpu.device_create_bind_group(
-		&state.device,
-		&{
+		state.device,
+		{
 			label = EXAMPLE_TITLE + " Bind Group",
 			layout = state.bind_group_layout.ptr,
 			entries = {
@@ -302,17 +301,17 @@ init :: proc() -> (state: ^State, err: Error) {
 			},
 		},
 	) or_return
-	defer if err != nil do wgpu.bind_group_release(&state.bind_group)
+	defer if err != nil do wgpu.bind_group_release(state.bind_group)
 
 	state.pipeline_layout = wgpu.device_create_pipeline_layout(
-		&state.device,
-		&{label = EXAMPLE_TITLE + " main", bind_group_layouts = {state.bind_group_layout.ptr}},
+		state.device,
+		{label = EXAMPLE_TITLE + " main", bind_group_layouts = {state.bind_group_layout.ptr}},
 	) or_return
-	defer if err != nil do wgpu.pipeline_layout_release(&state.pipeline_layout)
+	defer if err != nil do wgpu.pipeline_layout_release(state.pipeline_layout)
 
 	state.render_pipeline = wgpu.device_create_render_pipeline(
-		&state.device,
-		&{
+		state.device,
+		{
 			layout = state.pipeline_layout.ptr,
 			vertex = {
 				module = base_shader_module.ptr,
@@ -342,11 +341,11 @@ init :: proc() -> (state: ^State, err: Error) {
 				entry_point = state.fragment_entry_point,
 				targets = {{format = state.config.format, write_mask = wgpu.Color_Write_Mask_All}},
 			},
-			primitive = wgpu.Default_Primitive_State,
-			multisample = wgpu.Default_Multisample_State,
+			primitive = wgpu.DEFAULT_PRIMITIVE_STATE,
+			multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 		},
 	) or_return
-	defer if err != nil do wgpu.render_pipeline_release(&state.render_pipeline)
+	defer if err != nil do wgpu.render_pipeline_release(state.render_pipeline)
 
 	state.render_pass_desc = common.create_render_pass_descriptor(
 		EXAMPLE_TITLE + " Render Pass",
@@ -361,22 +360,22 @@ init :: proc() -> (state: ^State, err: Error) {
 deinit :: proc(using state: ^State) {
 	delete(render_pass_desc.color_attachments)
 
-	wgpu.render_pipeline_release(&render_pipeline)
-	wgpu.pipeline_layout_release(&pipeline_layout)
-	wgpu.bind_group_release(&bind_group)
-	wgpu.sampler_release(&sampler)
-	wgpu.bind_group_layout_release(&bind_group_layout)
+	wgpu.render_pipeline_release(render_pipeline)
+	wgpu.pipeline_layout_release(pipeline_layout)
+	wgpu.bind_group_release(bind_group)
+	wgpu.sampler_release(sampler)
+	wgpu.bind_group_layout_release(bind_group_layout)
 
 	for i in 0 ..< len(textures) {
 		ref := &textures[cast(Texture_Name)i]
-		wgpu.texture_view_release(&ref.view)
-		wgpu.texture_destroy(&ref.tex)
-		wgpu.texture_release(&ref.tex)
+		wgpu.texture_view_release(ref.view)
+		wgpu.texture_destroy(ref.tex)
+		wgpu.texture_release(ref.tex)
 	}
 
-	wgpu.buffer_release(&texture_index_buffer)
-	wgpu.buffer_release(&index_buffer)
-	wgpu.buffer_release(&vertex_buffer)
+	wgpu.buffer_release(texture_index_buffer)
+	wgpu.buffer_release(index_buffer)
+	wgpu.buffer_release(vertex_buffer)
 
 	renderer.deinit(gpu)
 	app.deinit()
@@ -386,38 +385,38 @@ deinit :: proc(using state: ^State) {
 render :: proc(using state: ^State) -> (err: Error) {
 	frame := renderer.get_current_texture_frame(gpu) or_return
 	if skip_frame do return
-	defer wgpu.texture_release(&frame.texture)
+	defer renderer.release_current_texture_frame(gpu)
 
-	view := wgpu.texture_create_view(&frame.texture) or_return
-	defer wgpu.texture_view_release(&view)
+	view := wgpu.texture_create_view(frame.texture) or_return
+	defer wgpu.texture_view_release(view)
 
-	encoder := wgpu.device_create_command_encoder(&device) or_return
-	defer wgpu.command_encoder_release(&encoder)
+	encoder := wgpu.device_create_command_encoder(device) or_return
+	defer wgpu.command_encoder_release(encoder)
 
 	color_attachment.view = view.ptr
-	render_pass := wgpu.command_encoder_begin_render_pass(&encoder, &render_pass_desc)
-	defer wgpu.render_pass_encoder_release(&render_pass)
+	render_pass := wgpu.command_encoder_begin_render_pass(encoder, render_pass_desc)
+	defer wgpu.render_pass_release(render_pass)
 
-	wgpu.render_pass_encoder_set_pipeline(&render_pass, render_pipeline.ptr)
-	wgpu.render_pass_encoder_set_vertex_buffer(&render_pass, 0, vertex_buffer.ptr)
-	wgpu.render_pass_encoder_set_index_buffer(&render_pass, index_buffer.ptr, .Uint16)
-	wgpu.render_pass_encoder_set_bind_group(&render_pass, 0, bind_group.ptr, {0})
+	wgpu.render_pass_set_pipeline(render_pass, render_pipeline.ptr)
+	wgpu.render_pass_set_vertex_buffer(render_pass, 0, vertex_buffer.ptr)
+	wgpu.render_pass_set_index_buffer(render_pass, index_buffer.ptr, .Uint16)
+	wgpu.render_pass_set_bind_group(render_pass, 0, bind_group.ptr, {0})
 
 	if use_uniform_workaround {
-		wgpu.render_pass_encoder_draw_indexed(&render_pass, 6)
-		wgpu.render_pass_encoder_set_bind_group(&render_pass, 0, bind_group.ptr, {256})
-		wgpu.render_pass_encoder_draw_indexed(&render_pass, 6, 1, 6)
+		wgpu.render_pass_draw_indexed(render_pass, {0, 6})
+		wgpu.render_pass_set_bind_group(render_pass, 0, bind_group.ptr, {256})
+		wgpu.render_pass_draw_indexed(render_pass, {6, 6})
 	} else {
-		wgpu.render_pass_encoder_draw_indexed(&render_pass, 12)
+		wgpu.render_pass_draw_indexed(render_pass, {0, 12})
 	}
 
-	wgpu.render_pass_encoder_end(&render_pass) or_return
+	wgpu.render_pass_end(render_pass) or_return
 
-	command_buffer := wgpu.command_encoder_finish(&encoder) or_return
-	defer wgpu.command_buffer_release(&command_buffer)
+	command_buffer := wgpu.command_encoder_finish(encoder) or_return
+	defer wgpu.command_buffer_release(command_buffer)
 
-	wgpu.queue_submit(&queue, command_buffer.ptr)
-	wgpu.surface_present(&surface)
+	wgpu.queue_submit(queue, command_buffer.ptr)
+	wgpu.surface_present(surface)
 
 	return
 }
@@ -430,7 +429,7 @@ resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Er
 handle_events :: proc(state: ^State) -> (should_quit: bool, err: Error) {
 	event: events.Event
 	for app.poll_event(&event) {
-		#partial switch &ev in event {
+		#partial switch ev in event {
 		case events.Quit_Event:
 			return true, nil
 		case events.Framebuffer_Resize_Event:
