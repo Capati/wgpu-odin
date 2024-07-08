@@ -88,6 +88,9 @@ _adapter_get_limits :: proc(
 
 	limits = limits_merge_webgpu_with_native(supported.limits, native.limits)
 
+	// Enforce minimum values for all limits even if the supported values are lower
+	limits_ensure_minimum(&limits, minimum = DOWNLEVEL_WEBGL2_LIMITS)
+
 	return
 }
 
