@@ -4,6 +4,7 @@
 !/examples/build/assets/
 bindings/lib/**/*.lib
 bindings/lib/**/*.dll
+bindings/lib/**/*.pdb
 bindings/lib/**/*.a
 bindings/lib/**/*.dylib
 
