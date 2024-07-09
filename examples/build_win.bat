@@ -64,6 +64,7 @@ call :image_blur
 call :info
 call :microui
 call :rotating_cube
+call :rotating_cube_textured
 call :texture_arrays
 call :triangle
 call :triangle_msaa
@@ -100,6 +101,10 @@ goto :eof
 
 :rotating_cube
 call :build_example rotating_cube
+goto :eof
+
+:rotating_cube_textured
+call :build_example rotating_cube_textured
 goto :eof
 
 :texture_arrays
