@@ -7,7 +7,7 @@ Surface_Capabilities :: struct {
 	alpha_modes:   []Composite_Alpha_Mode,
 }
 
-surface_capabilities_free_members :: proc(using self: ^Surface_Capabilities) {
+surface_capabilities_free_members :: proc(using self: Surface_Capabilities) {
 	delete(formats)
 	delete(present_modes)
 	delete(alpha_modes)

@@ -102,9 +102,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	}
 
 	caps := wgpu.surface_get_capabilities(state.surface, adapter.ptr) or_return
-	defer {
-		wgpu.surface_capabilities_free_members(&caps)
-	}
+	defer wgpu.surface_capabilities_free_members(caps)
 
 	width, height: i32
 	sdl.GetWindowSize(state.window, &width, &height)
