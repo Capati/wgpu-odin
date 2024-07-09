@@ -5,6 +5,7 @@ setlocal enabledelayedexpansion
 set ARGS=-debug -vet -strict-style
 set RELEASE_MODE=false
 set BUILD_TARGET=
+set ERROR_OCCURRED=false
 
 :: Check all arguments for "release" and identify the build target
 for %%i in (%*) do (
@@ -28,7 +29,7 @@ if "%RELEASE_MODE%"=="true" (
         -no-bounds-check ^
         -define:WGPU_CHECK_TO_BYTES=false ^
         -define:WGPU_ENABLE_ERROR_HANDLING=false
-	set ADDITIONAL_ARGS=-subsystem:windows
+    set ADDITIONAL_ARGS=-subsystem:windows
 )
 
 :: Force DX12 backend
@@ -38,16 +39,21 @@ set OUT=-out:.\build
 
 :: Process the build target
 if "%BUILD_TARGET%"=="" (
-    echo Building all examples in %MODE% mode...
     call :all
 ) else (
-    echo Building '%BUILD_TARGET%' in %MODE% mode...
     call :%BUILD_TARGET%
     if errorlevel 1 (
-        echo Example not recognized: %BUILD_TARGET%
+        set ERROR_OCCURRED=true
     )
 )
-goto :end
+
+if "%ERROR_OCCURRED%"=="true" (
+    echo One or more errors occurred during the build process.
+    exit /b 1
+) else (
+    echo Build process completed successfully.
+    exit /b 0
+)
 
 :all
 call :capture
@@ -65,63 +71,84 @@ call :learn_wgpu
 goto :eof
 
 :capture
-odin build .\capture %ARGS% %OUT%\capture.exe
+call :build_example capture
 goto :eof
 
 :compute
-odin build .\compute %ARGS% %OUT%\compute.exe
+call :build_example compute
 goto :eof
 
 :cube
-odin build .\cube %ARGS% %ADDITIONAL_ARGS% %OUT%\cube.exe
+call :build_example cube
 goto :eof
 
 :cube_textured
-odin build .\cube_textured %ARGS% %ADDITIONAL_ARGS% %OUT%\cube_textured.exe
+call :build_example cube_textured
 goto :eof
 
 :image_blur
-odin build .\image_blur %ARGS% %ADDITIONAL_ARGS% %OUT%\image_blur.exe
+call :build_example image_blur
 goto :eof
 
 :info
-odin build .\info %ARGS% %ADDITIONAL_ARGS% %OUT%\info.exe
+call :build_example info
 goto :eof
 
 :microui
-odin build .\microui %ARGS% %ADDITIONAL_ARGS% %OUT%\microui.exe
+call :build_example microui
 goto :eof
 
 :rotating_cube
-odin build .\rotating_cube %ARGS% %ADDITIONAL_ARGS% %OUT%\rotating_cube.exe
+call :build_example rotating_cube
 goto :eof
 
 :texture_arrays
-odin build .\texture_arrays %ARGS% %ADDITIONAL_ARGS% %OUT%\texture_arrays.exe
+call :build_example texture_arrays
 goto :eof
 
 :triangle
-odin build .\triangle %ARGS% %ADDITIONAL_ARGS% %OUT%\triangle.exe
+call :build_example triangle
 goto :eof
 
 :triangle_msaa
-odin build .\triangle_msaa %ARGS% %ADDITIONAL_ARGS% %OUT%\triangle_msaa.exe
+call :build_example triangle_msaa
 goto :eof
 
 :learn_wgpu
-odin build .\learn_wgpu\beginner\tutorial1_window_sdl %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial1_window_sdl.exe
-odin build .\learn_wgpu\beginner\tutorial1_window_glfw %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial1_window_glfw.exe
-odin build .\learn_wgpu\beginner\tutorial2_surface_sdl %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial2_surface_sdl.exe
-odin build .\learn_wgpu\beginner\tutorial2_surface_glfw %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial2_surface_glfw.exe
-odin build .\learn_wgpu\beginner\tutorial2_surface_challenge %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial2_surface_challenge.exe
-odin build .\learn_wgpu\beginner\tutorial3_pipeline %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial3_pipeline.exe
-odin build .\learn_wgpu\beginner\tutorial3_pipeline_challenge %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial3_pipeline_challenge.exe
-odin build .\learn_wgpu\beginner\tutorial4_buffer %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial4_buffer.exe
-odin build .\learn_wgpu\beginner\tutorial4_buffer_challenge %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial4_buffer_challenge.exe
-odin build .\learn_wgpu\beginner\tutorial5_textures %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial5_textures.exe
-odin build .\learn_wgpu\beginner\tutorial5_textures_challenge %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial5_textures_challenge.exe
-odin build .\learn_wgpu\beginner\tutorial6_uniforms %ARGS% %ADDITIONAL_ARGS% %OUT%/tutorial6_uniforms.exe
+call :build_learn_wgpu
 goto :eof
 
-:end
-endlocal
+:build_example
+echo Building '%1' in %MODE% mode...
+odin build .\%1 %ARGS% %ADDITIONAL_ARGS% %OUT%\%1.exe
+if errorlevel 1 (
+	ECHO.
+    echo Error building '%1'
+    set ERROR_OCCURRED=true
+)
+goto :eof
+
+:build_learn_wgpu
+set LEARN_WGPU_EXAMPLES=^
+	beginner\tutorial1_window_sdl ^
+	beginner\tutorial1_window_glfw ^
+	beginner\tutorial2_surface_sdl ^
+	beginner\tutorial2_surface_glfw ^
+	beginner\tutorial2_surface_challenge ^
+	beginner\tutorial3_pipeline ^
+	beginner\tutorial3_pipeline_challenge ^
+	beginner\tutorial4_buffer ^
+	beginner\tutorial4_buffer_challenge ^
+	beginner\tutorial5_textures ^
+	beginner\tutorial5_textures_challenge ^
+	beginner\tutorial6_uniforms
+
+echo Building 'learn_wgpu' in %MODE% mode...
+for %%e in (%LEARN_WGPU_EXAMPLES%) do (
+    odin build .\learn_wgpu\%%e %ARGS% %ADDITIONAL_ARGS% %OUT%\%%~nxe.exe
+    if errorlevel 1 (
+        echo Error building %%e
+        set ERROR_OCCURRED=true
+    )
+)
+goto :eof
