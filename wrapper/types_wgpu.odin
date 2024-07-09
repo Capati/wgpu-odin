@@ -60,7 +60,7 @@ Device_Extras :: wgpu.Device_Extras
 Required_Limits_Extras :: wgpu.Required_Limits_Extras
 // Surface_Configuration_Extras :: wgpu.Surface_Configuration_Extras
 Supported_Limits_Extras :: wgpu.Supported_Limits_Extras
-Push_Constant_Range :: wgpu.Push_Constant_Range
+// Push_Constant_Range :: wgpu.Push_Constant_Range
 // Pipeline_Layout_Extras :: wgpu.Pipeline_Layout_Extras
 Submission_Index :: wgpu.Submission_Index
 Wrapped_Submission_Index :: wgpu.Wrapped_Submission_Index

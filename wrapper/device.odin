@@ -4,6 +4,7 @@ package wgpu
 import "base:runtime"
 
 // Core
+import "core:fmt"
 import "core:mem"
 import "core:strings"
 
@@ -406,9 +407,18 @@ device_create_compute_pipeline_async :: proc "contextless" (
 	return
 }
 
-// Describes a PipelineLayout.
+// A range of push constant memory to pass to a shader stage.
+Push_Constant_Range :: struct {
+	stages: Shader_Stage_Flags,
+	range:  Range(u32),
+}
+
+// Describes a [`Pipeline_Layout`].
 //
-// For use with `device_create_pipeline_layout`.
+// For use with [`device_create_pipeline_layout`].
+//
+// Corresponds to [WebGPU `GPUPipelineLayoutDescriptor`](
+// https://gpuweb.github.io/gpuweb/#dictdef-gpupipelinelayoutdescriptor).
 Pipeline_Layout_Descriptor :: struct {
 	label:                cstring,
 	bind_group_layouts:   []Raw_Bind_Group_Layout,
@@ -417,7 +427,7 @@ Pipeline_Layout_Descriptor :: struct {
 
 // Creates a `Pipeline_Layout`.
 @(require_results)
-device_create_pipeline_layout :: proc "contextless" (
+device_create_pipeline_layout :: proc(
 	using self: Device,
 	descriptor: Pipeline_Layout_Descriptor,
 	loc := #caller_location,
@@ -435,10 +445,61 @@ device_create_pipeline_layout :: proc "contextless" (
 
 	extras: wgpu.Pipeline_Layout_Extras
 
-	if len(descriptor.push_constant_ranges) > 0 {
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+
+	push_constant_range_count := len(descriptor.push_constant_ranges)
+
+	if push_constant_range_count > 0 {
+		when WGPU_ENABLE_ERROR_HANDLING {
+			if .Push_Constants not_in features {
+				err = .Validation
+				set_and_update_err_data(
+					_err_data,
+					.General,
+					err,
+					"Push Constants feature is not enabled. Enable the 'Push_Constants' feature in the device creation to use push constant ranges in the pipeline layout",
+					loc,
+				)
+				return
+			}
+		}
+
+		push_constant_ranges := make(
+			[]wgpu.Push_Constant_Range,
+			push_constant_range_count,
+			context.temp_allocator,
+		) or_return
+
+		for &r, i in descriptor.push_constant_ranges {
+			when WGPU_ENABLE_ERROR_HANDLING {
+				if r.range.start >= limits.max_push_constant_size ||
+				   r.range.end > limits.max_push_constant_size {
+					err = .Validation
+					set_and_update_err_data(
+						_err_data,
+						.General,
+						err,
+						fmt.tprintf(
+							"Invalid push constant range: %d-%d. Range must be within 0-%d",
+							r.range.start,
+							r.range.end,
+							limits.max_push_constant_size,
+						),
+						loc,
+					)
+					return
+				}
+			}
+
+			raw_range := &push_constant_ranges[i]
+			raw_range.stages = r.stages
+			raw_range.start = r.range.start
+			raw_range.end = r.range.end
+		}
+
 		extras.chain.stype = wgpu.SType(wgpu.Native_SType.Pipeline_Layout_Extras)
-		extras.push_constant_range_count = len(descriptor.push_constant_ranges)
-		extras.push_constant_ranges = raw_data(descriptor.push_constant_ranges)
+		extras.push_constant_range_count = uint(push_constant_range_count)
+		extras.push_constant_ranges = raw_data(push_constant_ranges)
 		desc.next_in_chain = &extras.chain
 	}
 
@@ -450,6 +511,7 @@ device_create_pipeline_layout :: proc "contextless" (
 		if pipeline_layout.ptr != nil {
 			wgpu.pipeline_layout_release(pipeline_layout.ptr)
 		}
+		return
 	}
 
 	return
