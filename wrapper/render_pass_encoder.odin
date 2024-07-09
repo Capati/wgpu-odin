@@ -155,8 +155,9 @@ render_pass_set_bind_group :: proc "contextless" (
 }
 
 // Sets the blend color as used by some of the blending modes.
-render_pass_set_blend_constant :: proc "contextless" (using self: Render_Pass, color: ^Color) {
-	wgpu.render_pass_encoder_set_blend_constant(ptr, color)
+render_pass_set_blend_constant :: proc "contextless" (using self: Render_Pass, color: Color) {
+	color := color
+	wgpu.render_pass_encoder_set_blend_constant(ptr, &color)
 }
 
 // Sets the active index buffer.

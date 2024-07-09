@@ -45,7 +45,7 @@ Image_Data :: struct {
 queue_copy_image_to_texture_image_data :: proc(
 	self: Device,
 	queue: Queue,
-	data: ^Image_Data,
+	data: Image_Data,
 	options: Texture_Creation_Options = {},
 	loc := #caller_location,
 ) -> (
@@ -191,7 +191,7 @@ queue_copy_image_to_texture_image_path :: proc(
 	texture = queue_copy_image_to_texture_image_data(
 		self,
 		queue,
-		&image_data,
+		image_data,
 		options,
 		loc,
 	) or_return
@@ -202,7 +202,7 @@ queue_copy_image_to_texture_image_path :: proc(
 queue_copy_image_to_texture_image :: proc(
 	self: Device,
 	queue: Queue,
-	image: ^image.Image,
+	image: image.Image,
 	options: Texture_Creation_Options = {},
 	loc := #caller_location,
 ) -> (
@@ -234,7 +234,7 @@ queue_copy_image_to_texture_image :: proc(
 	texture = queue_copy_image_to_texture_image_data(
 		self,
 		queue,
-		&image_data,
+		image_data,
 		options,
 		loc,
 	) or_return
@@ -249,7 +249,7 @@ queue_copy_image_to_texture :: proc {
 
 @(private = "file")
 _determine_texture_format :: proc(
-	data: ^Image_Data,
+	data: Image_Data,
 	options: Texture_Creation_Options,
 ) -> Texture_Format {
 	if f, ok := options.preferred_format.?; ok {
@@ -285,7 +285,7 @@ _determine_texture_format :: proc(
 
 @(private = "file")
 _convert_image_data :: proc(
-	image_data: ^Image_Data,
+	image_data: Image_Data,
 	format: Texture_Format,
 	aligned_bytes_per_row: u32,
 	allocator := context.allocator,
@@ -357,7 +357,7 @@ _convert_image_data :: proc(
 			$T: typeid,
 			src: ^[]T,
 			dst: ^[]byte,
-			image_data: ^Image_Data,
+			image_data: Image_Data,
 			aligned_bytes_per_row: int,
 		) {
 			bytes_per_pixel := size_of(T) * image_data.channels
