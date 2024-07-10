@@ -151,3 +151,15 @@ range_next :: proc "contextless" (
 	}
 	return false
 }
+
+Color_Space :: enum {
+	Undefined,
+	Srgb,
+	Linear,
+}
+
+Texture_Resource :: struct {
+	texture: Texture,
+	sampler: Sampler,
+	view:    Texture_View,
+}

@@ -8,6 +8,11 @@ bindings/lib/**/*.pdb
 bindings/lib/**/*.a
 bindings/lib/**/*.dylib
 
+# Assets
+
+examples/build/assets/cubemap/*
+!examples/build/assets/cubemap/.gitkeep
+
 # Bin
 
 # *.o
