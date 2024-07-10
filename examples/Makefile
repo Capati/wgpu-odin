@@ -29,7 +29,7 @@ endif
 BUILD_TARGET ?= all
 
 # Define all target names
-TARGETS := capture clear_color compute cube cube_textured image_blur info microui \
+TARGETS := capture clear_color compute cube cube_textured cubemap image_blur info microui \
 	rotating_cube rotating_cube_textured texture_arrays triangle triangle_msaa learn_wgpu
 
 .PHONY: all $(TARGETS)
@@ -55,6 +55,10 @@ cube:
 cube_textured:
 	@echo Building 'cube_textured' in $(MODE) mode...
 	@odin build ./cube_textured $(ARGS) $(OUT)/cube_textured
+
+cubemap:
+	@echo Building 'cubemap' in $(MODE) mode...
+	@odin build ./cubemap $(ARGS) $(OUT)/cubemap
 
 image_blur:
 	@echo Building 'image_blur' in $(MODE) mode...

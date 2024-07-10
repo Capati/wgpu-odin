@@ -13,18 +13,11 @@ import "core:strings"
 // Vendor
 import stbi "vendor:stb/image"
 
-Load_Method :: enum {
-	Default, // 8-bit channels
-	Load_16,
-	Load_F32,
-}
-
 Texture_Creation_Options :: struct {
 	label:            string,
 	srgb:             bool,
 	usage:            Texture_Usage_Flags,
 	preferred_format: Maybe(Texture_Format),
-	load_method:      Load_Method,
 }
 
 Image_Data_Type :: union {
@@ -33,16 +26,22 @@ Image_Data_Type :: union {
 	[]f32,
 }
 
+Image_Info :: struct {
+	width, height, channels: int,
+	is_hdr:                  bool,
+	bits_per_channel:        int,
+}
+
 Image_Data :: struct {
-	width:             int,
-	height:            int,
-	channels:          int,
+	using info:        Image_Info,
+	total_size:        int,
 	bytes_per_channel: int,
 	is_float:          bool,
+	raw_data:          rawptr,
 	data:              Image_Data_Type,
 }
 
-queue_copy_image_to_texture_image_data :: proc(
+queue_copy_image_to_texture_from_image_data :: proc(
 	self: Device,
 	queue: Queue,
 	data: Image_Data,
@@ -61,8 +60,8 @@ queue_copy_image_to_texture_image_data :: proc(
 		options.usage = {.Texture_Binding, .Copy_Dst, .Render_Attachment}
 	}
 
-	// Determine the texture format based on the image data
-	format := _determine_texture_format(data, options)
+	// Determine the texture format based on the image info
+	format := options.preferred_format.? or_else image_info_texture_format(data.info)
 
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
@@ -84,13 +83,7 @@ queue_copy_image_to_texture_image_data :: proc(
 	texture = device_create_texture(self, texture_desc) or_return
 	defer if err != nil do texture_release(texture)
 
-	// Get block size for the determined format
-	block_size := texture_format_block_size(format)
-
-	// Calculate bytes per row, ensuring it meets the WGPU alignment requirements
-	bytes_per_row :=
-		((u32(width) * block_size + COPY_BYTES_PER_ROW_ALIGNMENT - 1) &
-			~(COPY_BYTES_PER_ROW_ALIGNMENT - 1))
+	bytes_per_row := texture_format_bytes_per_row(format, u32(width))
 
 	// Prepare image data for upload
 	image_copy_texture := texture_as_image_copy(texture)
@@ -120,7 +113,131 @@ queue_copy_image_to_texture_image_data :: proc(
 	return
 }
 
-queue_copy_image_to_texture_image_path :: proc(
+get_image_info_stbi_from_c_string_path :: proc(
+	image_path: cstring,
+	loc := #caller_location,
+) -> (
+	info: Image_Info,
+	err: Error,
+) {
+	w, h, c: i32
+	if stbi.info(image_path, &w, &h, &c) == 0 {
+		err = .Load_Image_Failed
+		set_and_update_err_data(
+			nil,
+			.File_System,
+			err,
+			fmt.tprintf(
+				"Failed to get image info for '%s': %s",
+				image_path,
+				stbi.failure_reason(),
+			),
+			loc,
+		)
+		return
+	}
+
+	info.width, info.height, info.channels = int(w), int(h), int(c)
+	info.is_hdr = stbi.is_hdr(image_path) != 0
+
+	// Determine bits per channel
+	if info.is_hdr {
+		info.bits_per_channel = 32 // Assuming 32-bit float for HDR
+	} else {
+		info.bits_per_channel = stbi.is_16_bit(image_path) ? 16 : 8
+	}
+
+	return
+}
+
+get_image_info_stbi_from_string_path :: proc(
+	image_path: string,
+	loc := #caller_location,
+) -> (
+	info: Image_Info,
+	err: Error,
+) {
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+	c_image_path := strings.clone_to_cstring(image_path, context.temp_allocator) or_return
+	return get_image_info_stbi_from_c_string_path(c_image_path, loc)
+}
+
+get_image_info_stbi :: proc {
+	get_image_info_stbi_from_c_string_path,
+	get_image_info_stbi_from_string_path,
+}
+
+Load_Method :: enum {
+	Default, // 8-bit channels
+	Load_16,
+	Load_F32,
+}
+
+image_info_determine_load_method :: proc(info: Image_Info) -> Load_Method {
+	if info.is_hdr {
+		return .Load_F32
+	} else if info.bits_per_channel == 16 {
+		return .Load_16
+	}
+	return .Default
+}
+
+load_image_data_stbi :: proc(
+	image_path: string,
+	loc := #caller_location,
+) -> (
+	image_data: Image_Data,
+	err: Error,
+) {
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+	c_image_path := strings.clone_to_cstring(image_path, context.temp_allocator) or_return
+
+	image_data.info = get_image_info_stbi(c_image_path, loc) or_return
+
+	method := image_info_determine_load_method(image_data.info)
+
+	width, height, channels: i32
+
+	switch method {
+	case .Default:
+		image_data.raw_data = stbi.load(c_image_path, &width, &height, &channels, 0)
+		image_data.bytes_per_channel = 1
+	case .Load_16:
+		image_data.raw_data = stbi.load_16(c_image_path, &width, &height, &channels, 0)
+		image_data.bytes_per_channel = 2
+	case .Load_F32:
+		image_data.raw_data = stbi.loadf(c_image_path, &width, &height, &channels, 0)
+		image_data.bytes_per_channel = 4
+		image_data.is_float = true
+	}
+
+	if image_data.raw_data == nil {
+		err = .Load_Image_Failed
+		set_and_update_err_data(
+			nil,
+			.File_System,
+			err,
+			fmt.tprintf("Failed to load image '%s': %s", image_path, stbi.failure_reason()),
+			loc,
+		)
+		return
+	}
+
+	image_data.total_size = int(width * height * channels)
+
+	switch method {
+	case .Default:
+		image_data.data = mem.slice_ptr(cast([^]byte)image_data.raw_data, image_data.total_size)
+	case .Load_16:
+		image_data.data = mem.slice_ptr(cast([^]u16)image_data.raw_data, image_data.total_size)
+	case .Load_F32:
+		image_data.data = mem.slice_ptr(cast([^]f32)image_data.raw_data, image_data.total_size)
+	}
+
+	return
+}
+
+queue_copy_image_to_texture_from_path :: proc(
 	self: Device,
 	queue: Queue,
 	image_path: string,
@@ -130,65 +247,10 @@ queue_copy_image_to_texture_image_path :: proc(
 	texture: Texture,
 	err: Error,
 ) {
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+	image_data := load_image_data_stbi(image_path, loc) or_return
+	defer stbi.image_free(image_data.raw_data)
 
-	// Load the image
-	width, height, channels: i32
-	data: rawptr
-	c_image_path := strings.clone_to_cstring(image_path, context.temp_allocator) or_return
-
-	bytes_per_channel: int
-	is_float: bool
-
-	switch options.load_method {
-	case .Default:
-		data = stbi.load(c_image_path, &width, &height, &channels, 0)
-		bytes_per_channel = 1
-	case .Load_16:
-		data = stbi.load_16(c_image_path, &width, &height, &channels, 0)
-		bytes_per_channel = 2
-	case .Load_F32:
-		data = stbi.loadf(c_image_path, &width, &height, &channels, 0)
-		bytes_per_channel = 4
-		is_float = true
-	}
-
-	if data == nil {
-		err = .Load_Image_Failed
-		set_and_update_err_data(
-			self._err_data,
-			.File_System,
-			err,
-			fmt.tprintf("Failed to load image '%s': %s", image_path, stbi.failure_reason()),
-			loc,
-		)
-		return
-	}
-	defer stbi.image_free(data)
-
-	total_size := int(width * height * channels)
-
-	typed_data: Image_Data_Type
-
-	switch options.load_method {
-	case .Default:
-		typed_data = mem.slice_ptr(cast([^]byte)data, total_size)
-	case .Load_16:
-		typed_data = mem.slice_ptr(cast([^]u16)data, total_size)
-	case .Load_F32:
-		typed_data = mem.slice_ptr(cast([^]f32)data, total_size)
-	}
-
-	image_data := Image_Data {
-		width             = int(width),
-		height            = int(height),
-		channels          = int(channels),
-		bytes_per_channel = bytes_per_channel,
-		is_float          = is_float,
-		data              = typed_data,
-	}
-
-	texture = queue_copy_image_to_texture_image_data(
+	texture = queue_copy_image_to_texture_from_image_data(
 		self,
 		queue,
 		image_data,
@@ -199,10 +261,45 @@ queue_copy_image_to_texture_image_path :: proc(
 	return
 }
 
+queue_copy_image_to_texture_image_paths :: proc(
+	self: Device,
+	queue: Queue,
+	image_paths: []string,
+	options: Texture_Creation_Options = {},
+	allocator := context.allocator,
+	loc := #caller_location,
+) -> (
+	textures: []Texture,
+	err: Error,
+) {
+	textures = make([]Texture, len(image_paths), allocator) or_return
+	defer if err != nil {
+		for &t in textures {
+			texture_destroy(t)
+			texture_release(t)
+		}
+	}
+
+	for path, i in image_paths {
+		image_data := load_image_data_stbi(path, loc) or_return
+		defer stbi.image_free(image_data.raw_data)
+
+		textures[i] = queue_copy_image_to_texture_from_image_data(
+			self,
+			queue,
+			image_data,
+			options,
+			loc,
+		) or_return
+	}
+
+	return
+}
+
 queue_copy_image_to_texture_image :: proc(
 	self: Device,
 	queue: Queue,
-	image: image.Image,
+	image: ^image.Image,
 	options: Texture_Creation_Options = {},
 	loc := #caller_location,
 ) -> (
@@ -231,7 +328,7 @@ queue_copy_image_to_texture_image :: proc(
 		data              = typed_data,
 	}
 
-	texture = queue_copy_image_to_texture_image_data(
+	texture = queue_copy_image_to_texture_from_image_data(
 		self,
 		queue,
 		image_data,
@@ -243,44 +340,181 @@ queue_copy_image_to_texture_image :: proc(
 }
 
 queue_copy_image_to_texture :: proc {
-	queue_copy_image_to_texture_image_path,
+	queue_copy_image_to_texture_from_path,
+	queue_copy_image_to_texture_image_paths,
 	queue_copy_image_to_texture_image,
 }
 
-@(private = "file")
-_determine_texture_format :: proc(
-	data: Image_Data,
-	options: Texture_Creation_Options,
-) -> Texture_Format {
-	if f, ok := options.preferred_format.?; ok {
-		return f
-	}
-
-	format: Texture_Format
-
-	// NOTE: 3 channels will be converted to rgba later
-
-	if data.is_float {
-		switch data.channels {
+image_info_texture_format :: proc(info: Image_Info) -> Texture_Format {
+	if info.is_hdr {
+		switch info.channels {
 		case 1:
-			format = .R32_Float
+			return .R32_Float
 		case 2:
-			format = .Rg32_Float
+			return .Rg32_Float
 		case 3, 4:
-			format = .Rgba32_Float
+			return .Rgba32_Float
+		}
+	} else if info.bits_per_channel == 16 {
+		switch info.channels {
+		case 1:
+			return .R16_Uint
+		case 2:
+			return .Rg16_Uint
+		case 3, 4:
+			return .Rgba16_Uint
 		}
 	} else {
-		switch data.channels {
+		switch info.channels {
 		case 1:
-			format = .R8_Unorm if data.bytes_per_channel == 1 else .R16_Uint
+			return .R8_Unorm
 		case 2:
-			format = .Rg8_Unorm if data.bytes_per_channel == 1 else .Rg16_Uint
+			return .Rg8_Unorm
 		case 3, 4:
-			format = .Rgba8_Unorm if data.bytes_per_channel == 1 else .Rgba16_Uint
+			return .Rgba8_Unorm
 		}
 	}
 
-	return format
+	return .Rgba8_Unorm // Default to RGBA8 if channels are unexpected
+}
+
+queue_create_cubemap_texture :: proc(
+	self: Device,
+	queue: Queue,
+	image_paths: [6]string,
+	options: Texture_Creation_Options = {},
+	loc := #caller_location,
+) -> (
+	out: Texture_Resource,
+	err: Error,
+) {
+	options := options
+
+	// Get info of the first image
+	first_info := get_image_info_stbi(image_paths[0], loc) or_return
+
+	// Default texture usage if none is given
+	if options.usage == {} {
+		options.usage = {.Texture_Binding, .Copy_Dst, .Render_Attachment}
+	}
+
+	// Determine the texture format based on the image info or use the preferred format
+	format := options.preferred_format.? or_else image_info_texture_format(first_info)
+
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+
+	c_label: cstring = nil
+	if options.label != "" {
+		c_label = strings.clone_to_cstring(options.label, context.temp_allocator) or_return
+	}
+
+	// Create the cubemap texture
+	texture_desc := Texture_Descriptor {
+		label = c_label,
+		size = {
+			width = u32(first_info.width),
+			height = u32(first_info.height),
+			depth_or_array_layers = 6,
+		},
+		mip_level_count = 1,
+		sample_count = 1,
+		dimension = .D2,
+		format = format,
+		usage = options.usage,
+	}
+	out.texture = device_create_texture(self, texture_desc) or_return
+	defer if err != nil do texture_release(out.texture)
+
+	// Calculate bytes per row, ensuring it meets the WGPU alignment requirements
+	bytes_per_row := texture_format_bytes_per_row(format, u32(first_info.width))
+
+	// Load and copy each face of the cubemap
+	for i in 0 ..< 6 {
+		// Check info of each face
+		face_info := get_image_info_stbi(image_paths[i], loc) or_return
+
+		if face_info != first_info {
+			err = .Validation
+			set_and_update_err_data(
+				self._err_data,
+				.Assert,
+				err,
+				fmt.tprintf("Cubemap face '%s' has different properties", image_paths[i]),
+				loc,
+			)
+			return
+		}
+
+		// Load the face image
+		face_image_data := load_image_data_stbi(image_paths[i], loc) or_return
+		defer stbi.image_free(face_image_data.raw_data)
+
+		// Copy the face image to the appropriate layer of the cubemap texture
+		origin := Origin_3D{0, 0, u32(i)}
+
+		// Prepare image data for upload
+		image_copy_texture := texture_as_image_copy(out.texture, origin)
+		texture_data_layout := Texture_Data_Layout {
+			offset         = 0,
+			bytes_per_row  = bytes_per_row,
+			rows_per_image = u32(face_image_data.height),
+		}
+
+		// Convert image data if necessary
+		pixels_to_upload := _convert_image_data(
+			face_image_data,
+			format,
+			bytes_per_row,
+			context.temp_allocator,
+		) or_return
+
+		queue_write_texture(
+			queue,
+			image_copy_texture,
+			pixels_to_upload,
+			texture_data_layout,
+			{u32(face_image_data.width), u32(face_image_data.height), 1},
+		) or_return
+	}
+
+	cube_view_descriptor := Texture_View_Descriptor {
+		label             = "Cube Texture View",
+		format            = out.texture.format, // Use the same format as the texture
+		dimension         = .Cube,
+		base_mip_level    = 0,
+		mip_level_count   = 1, // Assume no mipmaps
+		base_array_layer  = 0,
+		array_layer_count = 6, // 6 faces of the cube
+		aspect            = .All,
+	}
+	out.view = texture_create_view(out.texture, cube_view_descriptor) or_return
+	defer if err != nil do texture_view_release(out.view)
+
+	// Create a sampler with linear filtering for smooth interpolation.
+	sampler_descriptor := Sampler_Descriptor {
+		address_mode_u = .Repeat,
+		address_mode_v = .Repeat,
+		address_mode_w = .Repeat,
+		mag_filter     = .Linear,
+		min_filter     = .Linear,
+		mipmap_filter  = .Linear,
+		lod_min_clamp  = 0.0,
+		lod_max_clamp  = 1.0,
+		compare        = .Undefined,
+		max_anisotropy = 1,
+	}
+
+	out.sampler = device_create_sampler(self, sampler_descriptor) or_return
+	// defer if err != nil do sampler_release(out.sampler)
+
+	return
+}
+
+texture_resource_release :: proc(res: Texture_Resource) {
+	sampler_release(res.sampler)
+	texture_view_release(res.view)
+	texture_destroy(res.texture)
+	texture_release(res.texture)
 }
 
 @(private = "file")

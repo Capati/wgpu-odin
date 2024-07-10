@@ -61,6 +61,7 @@ call :clear_color
 call :compute
 call :cube
 call :cube_textured
+call :cubemap
 call :image_blur
 call :info
 call :microui
@@ -90,6 +91,10 @@ goto :eof
 
 :cube_textured
 call :build_example cube_textured
+goto :eof
+
+:cubemap
+call :build_example cubemap
 goto :eof
 
 :image_blur
