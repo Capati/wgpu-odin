@@ -255,7 +255,13 @@ Returns
 - `violations: Limit_Violation`: A structure containing information about any limit violations.
 */
 @(require_results)
-limits_check :: proc(self: Limits, allowed: Limits) -> (violations: Limit_Violation) {
+limits_check :: proc(
+	self: Limits,
+	allowed: Limits,
+) -> (
+	violations: Limit_Violation,
+	ok: bool,
+) #optional_ok {
 	compare :: proc(
 		self_value, allowed_value: u64,
 		expected_order: slice.Ordering,
@@ -328,6 +334,7 @@ limits_check :: proc(self: Limits, allowed: Limits) -> (violations: Limit_Violat
 	}
 
 	violations.ok = violations.flags == {}
+	ok = violations.ok
 
 	return
 }
