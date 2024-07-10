@@ -282,9 +282,7 @@ adapter_request_device :: proc(
 	limits := descriptor.required_limits if descriptor.required_limits != {} else self.limits
 
 	if limits != self.limits {
-		limit_violation := limits_check(limits, self.limits)
-
-		if !limit_violation.ok {
+		if limit_violation, ok := limits_check(limits, self.limits); !ok {
 			err = .Validation
 			set_and_update_err_data(
 				nil,
