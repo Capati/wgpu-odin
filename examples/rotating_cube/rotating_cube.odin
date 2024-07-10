@@ -175,9 +175,11 @@ init :: proc() -> (state: ^State, err: Error) {
 	) or_return
 	defer if err != nil do wgpu.bind_group_release(state.uniform_bind_group)
 
-	state.depth_stencil_view = get_depth_framebuffer(
-		state,
-		{state.config.width, state.config.height},
+	state.depth_stencil_view = common.get_depth_framebuffer(
+		state.gpu,
+		DEPTH_FORMAT,
+		state.config.width,
+		state.config.height,
 	) or_return
 	defer if err != nil do wgpu.texture_view_release(state.depth_stencil_view)
 
@@ -219,29 +221,6 @@ deinit :: proc(using state: ^State) {
 	renderer.deinit(gpu)
 	app.deinit()
 	free(state)
-}
-
-get_depth_framebuffer :: proc(
-	using state: ^State,
-	size: app.Physical_Size,
-) -> (
-	view: wgpu.Texture_View,
-	err: wgpu.Error,
-) {
-	texture := wgpu.device_create_texture(
-		device,
-		{
-			size = {width = size.width, height = size.height, depth_or_array_layers = 1},
-			mip_level_count = 1,
-			sample_count = 1,
-			dimension = .D2,
-			format = DEPTH_FORMAT,
-			usage = {.Render_Attachment},
-		},
-	) or_return
-	defer wgpu.texture_release(texture)
-
-	return wgpu.texture_create_view(texture)
 }
 
 set_projection_matrix :: proc(using state: ^State) {
@@ -309,7 +288,12 @@ render :: proc(using state: ^State) -> (err: Error) {
 
 resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Error) {
 	wgpu.texture_view_release(depth_stencil_view)
-	depth_stencil_view = get_depth_framebuffer(state, size) or_return
+	depth_stencil_view = common.get_depth_framebuffer(
+		gpu,
+		DEPTH_FORMAT,
+		size.width,
+		size.height,
+	) or_return
 	render_pass_desc.depth_stencil_attachment.view = depth_stencil_view.ptr
 
 	renderer.resize_surface(gpu, {size.width, size.height}) or_return
