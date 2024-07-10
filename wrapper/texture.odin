@@ -49,9 +49,12 @@ texture_destroy :: proc "contextless" (using self: Texture) {
 	wgpu.texture_destroy(ptr)
 }
 
-// Make an `Image_Copy_Texture` representing the whole texture.
-texture_as_image_copy :: proc "contextless" (using self: Texture) -> Image_Copy_Texture {
-	return {texture = ptr, mip_level = 0, origin = {0, 0, 0}, aspect = Texture_Aspect.All}
+// Make an `Image_Copy_Texture` representing the whole texture with the given origin.
+texture_as_image_copy :: proc "contextless" (
+	using self: Texture,
+	origin: Origin_3D = {},
+) -> Image_Copy_Texture {
+	return {texture = ptr, mip_level = 0, origin = origin, aspect = Texture_Aspect.All}
 }
 
 // Returns the size of this `Texture`.
