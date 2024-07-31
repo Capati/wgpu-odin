@@ -1,25 +1,33 @@
 package wgpu
 
-// Core
+// STD Library
+import "base:runtime"
 import "core:fmt"
+import "core:strings"
 
-// Package
+// Local Packages
 import wgpu "../bindings"
 
-// Print adapter information (name, driver, type and backend).
-adapter_print_info :: proc(using self: Adapter) {
-	fmt.printf("%s\n", info.name)
+// Get adapter information string (name, driver, type and backend).
+adapter_info_string :: proc(using self: Adapter, allocator := context.allocator) -> string {
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
+
+	sb := strings.builder_make(context.temp_allocator)
+	defer strings.builder_destroy(&sb)
+
+	strings.write_string(&sb, "  ")
+	strings.write_string(&sb, string(info.name))
+	strings.write_byte(&sb, '\n')
 
 	driver_description: cstring = info.driver_description
-
 	if driver_description == nil || driver_description == "" {
 		driver_description = "Unknown"
 	}
+	strings.write_string(&sb, "    - Driver: ")
+	strings.write_string(&sb, string(driver_description))
+	strings.write_byte(&sb, '\n')
 
-	fmt.printf("\tDriver: %s\n", driver_description)
-
-	adapter_type: cstring = ""
-
+	adapter_type: string
 	switch info.adapter_type {
 	case wgpu.Adapter_Type.Discrete_GPU:
 		adapter_type = "Discrete GPU with separate CPU/GPU memory"
@@ -30,11 +38,11 @@ adapter_print_info :: proc(using self: Adapter) {
 	case wgpu.Adapter_Type.Unknown:
 		adapter_type = "Unknown"
 	}
+	strings.write_string(&sb, "    - Type: ")
+	strings.write_string(&sb, adapter_type)
+	strings.write_byte(&sb, '\n')
 
-	fmt.printf("\tType: %s\n", adapter_type)
-
-	backend_type: cstring
-
+	backend_type: string
 	#partial switch info.backend_type {
 	case wgpu.Backend_Type.Null:
 		backend_type = "Empty"
@@ -53,6 +61,14 @@ adapter_print_info :: proc(using self: Adapter) {
 	case wgpu.Backend_Type.OpenGLES:
 		backend_type = "OpenGLES"
 	}
+	strings.write_string(&sb, "    - Backend: ")
+	strings.write_string(&sb, backend_type)
 
-	fmt.printf("\tBackend: %s\n\n", backend_type)
+	return strings.clone(strings.to_string(sb), allocator)
+}
+
+// Print adapter information (name, driver, type and backend).
+adapter_print_info :: proc(using self: Adapter) {
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+	fmt.printf("%s", adapter_info_string(self, context.temp_allocator))
 }
