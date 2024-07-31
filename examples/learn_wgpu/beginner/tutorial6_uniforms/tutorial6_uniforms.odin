@@ -1,21 +1,14 @@
 package tutorial6_uniforms
 
-// Core
-import "core:fmt"
+// STD Library
+import "base:runtime"
 import la "core:math/linalg"
 
-// Package
+// Local Packages
 import "../../../../utils/shaders"
 import wgpu "../../../../wrapper"
-import "../../../common"
 import "../tutorial5_textures/texture"
-
-OPEN_GL_TO_WGPU_MATRIX :: common.OPEN_GL_TO_WGPU_MATRIX
-
-// Framework
-import app "../../../framework/application"
-import "../../../framework/application/events"
-import "../../../framework/renderer"
+import rl "./../../../../utils/renderlink"
 
 Vertex :: struct {
 	position:   [3]f32,
@@ -47,7 +40,6 @@ Camera_Controller :: struct {
 }
 
 State :: struct {
-	using _:            common.State_Base,
 	diffuse_bind_group: wgpu.Bind_Group,
 	camera:             Camera,
 	camera_controller:  Camera_Controller,
@@ -60,32 +52,21 @@ State :: struct {
 	index_buffer:       wgpu.Buffer,
 }
 
-Error :: common.Error
+App_Context :: rl.Context(State)
 
 EXAMPLE_TITLE :: "Tutorial 6 - Uniforms"
 
-init :: proc() -> (state: ^State, err: Error) {
-	state = new(State) or_return
-	defer if err != nil do free(state)
-
-	app_properties := app.Default_Properties
-	app_properties.title = EXAMPLE_TITLE
-	app.init(app_properties) or_return
-	defer if err != nil do app.deinit()
-
-	state.gpu = renderer.init() or_return
-	defer if err != nil do renderer.deinit(state)
-
+init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
 	// Load our tree image to texture
 	diffuse_texture := texture.texture_from_image(
-		state.device,
-		state.queue,
+		gpu.device,
+		gpu.queue,
 		"assets/learn_wgpu/tutorial5/happy-tree.png",
 	) or_return
 	defer texture.texture_destroy(diffuse_texture)
 
 	texture_bind_group_layout := wgpu.device_create_bind_group_layout(
-		state.device,
+		gpu.device,
 		{
 			label = "TextureBindGroupLayout",
 			entries = {
@@ -109,7 +90,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	defer wgpu.bind_group_layout_release(texture_bind_group_layout)
 
 	state.diffuse_bind_group = wgpu.device_create_bind_group(
-		state.device,
+		gpu.device,
 		wgpu.Bind_Group_Descriptor {
 			label = "diffuse_bind_group",
 			layout = texture_bind_group_layout.ptr,
@@ -125,7 +106,7 @@ init :: proc() -> (state: ^State, err: Error) {
 		{0.0, 1.0, 2.0},
 		{0.0, 0.0, 0.0},
 		{0.0, 1.0, 0.0},
-		cast(f32)state.config.width / cast(f32)state.config.height,
+		cast(f32)gpu.config.width / cast(f32)gpu.config.height,
 		// math.PI / 4,
 		cast(f32)la.to_radians(45.0),
 		0.1,
@@ -138,7 +119,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	update_view_proj(&state.camera_uniform, &state.camera)
 
 	state.camera_buffer = wgpu.device_create_buffer_with_data(
-		state.device,
+		gpu.device,
 		wgpu.Buffer_Data_Descriptor {
 			label = "Camera Buffer",
 			contents = wgpu.to_bytes(state.camera_uniform.view_proj),
@@ -148,7 +129,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	defer if err != nil do wgpu.buffer_release(state.camera_buffer)
 
 	camera_bind_group_layout := wgpu.device_create_bind_group_layout(
-		state.device,
+		gpu.device,
 		{
 			label = "camera_bind_group_layout",
 			entries = {
@@ -163,7 +144,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	defer wgpu.bind_group_layout_release(camera_bind_group_layout)
 
 	state.camera_bind_group = wgpu.device_create_bind_group(
-		state.device,
+		gpu.device,
 		wgpu.Bind_Group_Descriptor {
 			label = "camera_bind_group",
 			layout = camera_bind_group_layout.ptr,
@@ -181,7 +162,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	defer if err != nil do wgpu.bind_group_release(state.camera_bind_group)
 
 	render_pipeline_layout := wgpu.device_create_pipeline_layout(
-		state.device,
+		gpu.device,
 		{
 			label = "Render Pipeline Layout",
 			bind_group_layouts = {texture_bind_group_layout.ptr, camera_bind_group_layout.ptr},
@@ -202,11 +183,17 @@ init :: proc() -> (state: ^State, err: Error) {
 		},
 	}
 
-	SHADER_SRC: string : #load("./shader.wgsl", string)
-	COMBINED_SHADER_SRC :: shaders.SRGB_TO_LINEAR_WGSL + SHADER_SRC
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+
+	CUBE_WGSL: string : #load("./shader.wgsl", string)
+	shader_source := shaders.apply_color_conversion(
+		CUBE_WGSL,
+		gpu.is_srgb,
+		context.temp_allocator,
+	) or_return
 	shader_module := wgpu.device_create_shader_module(
-		state.device,
-		{source = COMBINED_SHADER_SRC},
+		gpu.device,
+		{source = shader_source},
 	) or_return
 	defer wgpu.shader_module_release(shader_module)
 
@@ -223,7 +210,7 @@ init :: proc() -> (state: ^State, err: Error) {
 			entry_point = "fs_main",
 			targets = {
 				{
-					format = state.config.format,
+					format = gpu.config.format,
 					blend = &wgpu.Blend_State_Replace,
 					write_mask = wgpu.Color_Write_Mask_All,
 				},
@@ -235,7 +222,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	}
 
 	state.render_pipeline = wgpu.device_create_render_pipeline(
-		state.device,
+		gpu.device,
 		render_pipeline_descriptor,
 	) or_return
 	defer if err != nil do wgpu.render_pipeline_release(state.render_pipeline)
@@ -253,7 +240,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	state.num_indices = cast(u32)len(indices)
 
 	state.vertex_buffer = wgpu.device_create_buffer_with_data(
-		state.device,
+		gpu.device,
 		wgpu.Buffer_Data_Descriptor {
 			label = "Vertex Buffer",
 			contents = wgpu.to_bytes(vertices),
@@ -263,7 +250,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	defer if err != nil do wgpu.buffer_release(state.vertex_buffer)
 
 	state.index_buffer = wgpu.device_create_buffer_with_data(
-		state.device,
+		gpu.device,
 		wgpu.Buffer_Data_Descriptor {
 			label = "Index Buffer",
 			contents = wgpu.to_bytes(indices),
@@ -271,125 +258,76 @@ init :: proc() -> (state: ^State, err: Error) {
 		},
 	) or_return
 
-	state.render_pass_desc = common.create_render_pass_descriptor(
-		EXAMPLE_TITLE + " Render Pass",
-		wgpu.color_srgb_to_linear(wgpu.Color{0.1, 0.2, 0.3, 1.0}),
-	) or_return
-
-	state.color_attachment = &state.render_pass_desc.color_attachments[0]
+	rl.graphics_clear(rl.Color{0.1, 0.2, 0.3, 1.0})
 
 	return
 }
 
-deinit :: proc(using state: ^State) {
-	delete(render_pass_desc.color_attachments)
+quit :: proc(using ctx: ^App_Context) {
 	wgpu.buffer_release(index_buffer)
 	wgpu.buffer_release(vertex_buffer)
 	wgpu.render_pipeline_release(render_pipeline)
 	wgpu.bind_group_release(camera_bind_group)
 	wgpu.bind_group_release(diffuse_bind_group)
 	wgpu.buffer_release(camera_buffer)
-	renderer.deinit(gpu)
-	app.deinit()
-	free(state)
 }
 
-update :: proc(using state: ^State) -> (err: Error) {
-	update_camera_controller(&camera_controller, &camera)
-	update_view_proj(&camera_uniform, &camera)
-
-	wgpu.queue_write_buffer(queue, camera_buffer.ptr, 0, wgpu.to_bytes(camera_uniform.view_proj))
-
-	return
-}
-
-render :: proc(using state: ^State) -> (err: Error) {
-	frame := renderer.get_current_texture_frame(gpu) or_return
-	if skip_frame do return
-	defer renderer.release_current_texture_frame(gpu)
-
-	view := wgpu.texture_create_view(frame.texture) or_return
-	defer wgpu.texture_view_release(view)
-
-	encoder := wgpu.device_create_command_encoder(device) or_return
-	defer wgpu.command_encoder_release(encoder)
-
-	color_attachment.view = view.ptr
-	render_pass := wgpu.command_encoder_begin_render_pass(encoder, render_pass_desc)
-	defer wgpu.render_pass_release(render_pass)
-
-	wgpu.render_pass_set_pipeline(render_pass, render_pipeline.ptr)
-	wgpu.render_pass_set_bind_group(render_pass, 0, diffuse_bind_group.ptr)
-	wgpu.render_pass_set_bind_group(render_pass, 1, camera_bind_group.ptr)
-	wgpu.render_pass_set_vertex_buffer(render_pass, 0, vertex_buffer.ptr)
-	wgpu.render_pass_set_index_buffer(render_pass, index_buffer.ptr, .Uint16)
-	wgpu.render_pass_draw_indexed(render_pass, {0, num_indices})
-	wgpu.render_pass_end(render_pass) or_return
-
-	command_buffer := wgpu.command_encoder_finish(encoder) or_return
-	defer wgpu.command_buffer_release(command_buffer)
-
-	wgpu.queue_submit(queue, command_buffer.ptr)
-	wgpu.surface_present(surface)
-
-	return
-}
-
-resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Error) {
-	camera.aspect = cast(f32)size.width / cast(f32)size.height
+resize :: proc(event: rl.Resize_Event, using ctx: ^App_Context) -> (err: rl.Error) {
+	camera.aspect = cast(f32)event.width / cast(f32)event.height
 	update_view_proj(&camera_uniform, &camera)
 	wgpu.queue_write_buffer(
-		queue,
+		gpu.queue,
 		camera_buffer.ptr,
 		0,
 		wgpu.to_bytes(camera_uniform.view_proj),
 	) or_return
 
-	renderer.resize_surface(gpu, {size.width, size.height}) or_return
+	return
+}
+
+update :: proc(dt: f64, using ctx: ^App_Context) -> (err: rl.Error) {
+	update_camera_controller(&camera_controller, &camera)
+	update_view_proj(&camera_uniform, &camera)
+
+	wgpu.queue_write_buffer(
+		gpu.queue,
+		camera_buffer.ptr,
+		0,
+		wgpu.to_bytes(camera_uniform.view_proj),
+	)
 
 	return
 }
 
-handle_events :: proc(using state: ^State) -> (should_quit: bool, err: Error) {
-	event: events.Event
-	for app.poll_event(&event) {
-		#partial switch ev in event {
-		case events.Quit_Event:
-			return true, nil
-		case events.Key_Press_Event:
-			#partial switch ev.key {
-			case .Space:
-				state.camera_controller.is_up_pressed = true
-			case .Lshift:
-				state.camera_controller.is_down_pressed = true
-			case .W:
-				state.camera_controller.is_forward_pressed = true
-			case .A:
-				state.camera_controller.is_left_pressed = true
-			case .S:
-				state.camera_controller.is_backward_pressed = true
-			case .D:
-				state.camera_controller.is_right_pressed = true
-			}
-		case events.Key_Release_Event:
-			#partial switch ev.key {
-			case .Space:
-				state.camera_controller.is_up_pressed = false
-			case .Lshift:
-				state.camera_controller.is_down_pressed = false
-			case .W:
-				state.camera_controller.is_forward_pressed = false
-			case .A:
-				state.camera_controller.is_left_pressed = false
-			case .S:
-				state.camera_controller.is_backward_pressed = false
-			case .D:
-				state.camera_controller.is_right_pressed = false
-			}
-		case events.Framebuffer_Resize_Event:
-			if err = resize_surface(state, {ev.width, ev.height}); err != nil {
-				return true, err
-			}
+draw :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
+	wgpu.render_pass_set_pipeline(gpu.render_pass, render_pipeline.ptr)
+	wgpu.render_pass_set_bind_group(gpu.render_pass, 0, diffuse_bind_group.ptr)
+	wgpu.render_pass_set_bind_group(gpu.render_pass, 1, camera_bind_group.ptr)
+	wgpu.render_pass_set_vertex_buffer(gpu.render_pass, 0, vertex_buffer.ptr)
+	wgpu.render_pass_set_index_buffer(gpu.render_pass, index_buffer.ptr, .Uint16)
+	wgpu.render_pass_draw_indexed(gpu.render_pass, {0, num_indices})
+
+	return
+}
+
+handle_events :: proc(event: rl.Event, using ctx: ^App_Context) {
+	#partial switch ev in event {
+	case rl.Key_Event:
+		controller := &state.camera_controller
+		pressed := ev.action == .Pressed
+		#partial switch ev.key {
+		case .Space:
+			controller.is_up_pressed = true if pressed else false
+		case .Left_Shift:
+			controller.is_down_pressed = true if pressed else false
+		case .W:
+			controller.is_forward_pressed = true if pressed else false
+		case .A:
+			controller.is_left_pressed = true if pressed else false
+		case .S:
+			controller.is_backward_pressed = true if pressed else false
+		case .D:
+			controller.is_right_pressed = true if pressed else false
 		}
 	}
 
@@ -397,20 +335,24 @@ handle_events :: proc(using state: ^State) -> (should_quit: bool, err: Error) {
 }
 
 main :: proc() {
-	state, state_err := init()
+	state, state_err := new(App_Context)
 	if state_err != nil do return
-	defer deinit(state)
+	defer free(state)
 
-	fmt.printf("Entering main loop...\n\n")
-
-	main_loop: for {
-		should_quit, err := handle_events(state)
-		if should_quit || err != nil do break main_loop
-		if err = update(state); err != nil do break main_loop
-		if err = render(state); err != nil do break main_loop
+	state.callbacks = {
+		init          = init,
+		quit          = quit,
+		handle_events = handle_events,
+		update        = update,
+		draw          = draw,
 	}
 
-	fmt.println("Exiting...")
+	settings := rl.DEFAULT_SETTINGS
+	settings.window.title = EXAMPLE_TITLE
+
+	if err := rl.init(state, settings); err != nil do return
+
+	rl.begin_run(state) // Start the main loop
 }
 
 build_view_projection_matrix :: proc(camera: ^Camera) -> la.Matrix4f32 {
@@ -422,7 +364,7 @@ build_view_projection_matrix :: proc(camera: ^Camera) -> la.Matrix4f32 {
 	)
 	view := la.matrix4_look_at_f32(eye = camera.eye, centre = camera.target, up = camera.up)
 	// return la.mul(projection, view)
-	return OPEN_GL_TO_WGPU_MATRIX * projection * view
+	return rl.OPEN_GL_TO_WGPU_MATRIX * projection * view
 }
 
 new_camera_uniform :: proc() -> Camera_Uniform {

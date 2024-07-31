@@ -13,5 +13,7 @@ fn vs_main(
 
 @fragment
 fn fs_main() -> @location(0) vec4f {
-	return vec4(srgb_to_linear(vec3<f32>(1.0, 0.0, 0.0)), 1.0);
+	let color = vec3<f32>(1.0, 0.0, 0.0);
+	let final_color = apply_color_conversion(color);
+	return vec4f(final_color, 1.0);
 }

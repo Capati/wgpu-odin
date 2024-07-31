@@ -1,23 +1,16 @@
 package image_blur_example
 
-// Core
-import "core:fmt"
+// STD Library
 import "core:math"
-import "core:slice"
 
 // Vendor
 import mu "vendor:microui"
 
-// Package
+// Local Packages
 import wgpu "../../wrapper"
 import wmu "./../../utils/microui"
+import rl "./../../utils/renderlink"
 import "./../../utils/shaders"
-import "./../common"
-
-// Framework
-import app "../framework/application"
-import "../framework/application/events"
-import "../framework/renderer"
 
 Settings :: struct {
 	filter_size: i32,
@@ -25,7 +18,6 @@ Settings :: struct {
 }
 
 State :: struct {
-	using _:                  common.State_Base,
 	mu_ctx:                   ^mu.Context,
 	blur_pipeline:            wgpu.Compute_Pipeline,
 	fullscreen_quad_pipeline: wgpu.Render_Pipeline,
@@ -45,10 +37,10 @@ State :: struct {
 	compute_bind_group_2:     wgpu.Bind_Group,
 	show_result_bind_group:   wgpu.Bind_Group,
 	block_dim:                i32,
-	settings:                 Settings,
+	blur_settings:            Settings,
 }
 
-Error :: common.Error
+App_Context :: rl.Context(State)
 
 // Constants from the shader
 TILE_DIM: i32 : 128
@@ -56,26 +48,11 @@ BATCH :: 4
 
 SLIDER_FMT :: "%.0f"
 
-init :: proc() -> (state: ^State, err: Error) {
-	state = new(State) or_return
-	defer if err != nil do free(state)
+EXAMPLE_TITLE :: "Image Blur"
 
-	// Initialize application
-	app_properties := app.Default_Properties
-	app_properties.title = "Image Blur"
-	app_properties.size = {639, 443}
-	app.init(app_properties) or_return
-	defer if err != nil do app.deinit()
-
-	// Initialize wgpu renderer
-	r_properties := renderer.Default_Render_Properties
-	r_properties.desired_maximum_frame_latency = 1
-	r_properties.present_mode = .Fifo
-	state.gpu = renderer.init(r_properties) or_return
-	defer if err != nil do renderer.deinit(state)
-
+init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
 	// Initialize MicroUI renderer
-	state.mu_ctx = wmu.init(state.device, state.queue, state.surface.config) or_return
+	state.mu_ctx = wmu.init(gpu.device, gpu.queue, gpu.surface.config) or_return
 	defer if err != nil {
 		wmu.destroy()
 		free(state.mu_ctx)
@@ -83,10 +60,10 @@ init :: proc() -> (state: ^State, err: Error) {
 
 	// Initialize example objects
 	BLUR_SOURCE :: #load("./blur.wgsl", cstring)
-	blur_shader := wgpu.device_create_shader_module(state.device, {source = BLUR_SOURCE}) or_return
+	blur_shader := wgpu.device_create_shader_module(gpu.device, {source = BLUR_SOURCE}) or_return
 	defer wgpu.shader_module_release(blur_shader)
 	state.blur_pipeline = wgpu.device_create_compute_pipeline(
-		state.device,
+		gpu.device,
 		{compute = {module = blur_shader.ptr, entry_point = "main"}},
 	) or_return
 	defer if err != nil do wgpu.compute_pipeline_release(state.blur_pipeline)
@@ -94,13 +71,13 @@ init :: proc() -> (state: ^State, err: Error) {
 	QUAD_SHADER_SRC: string : #load("./fullscreen_textured_quad.wgsl", string)
 	QUAD_COMBINED_SHADER_SRC :: shaders.SRGB_TO_LINEAR_WGSL + QUAD_SHADER_SRC
 	quad_shader_module := wgpu.device_create_shader_module(
-		state.device,
+		gpu.device,
 		{source = cstring(raw_data(QUAD_COMBINED_SHADER_SRC))},
 	) or_return
 	defer wgpu.shader_module_release(quad_shader_module)
 
 	state.fullscreen_quad_pipeline = wgpu.device_create_render_pipeline(
-		state.device,
+		gpu.device,
 		{
 			vertex = {module = quad_shader_module.ptr, entry_point = "vert_main"},
 			fragment = &{
@@ -108,7 +85,7 @@ init :: proc() -> (state: ^State, err: Error) {
 				entry_point = "frag_main",
 				targets = {
 					{
-						format = state.config.format,
+						format = gpu.config.format,
 						blend = nil,
 						write_mask = wgpu.Color_Write_Mask_All,
 					},
@@ -122,15 +99,15 @@ init :: proc() -> (state: ^State, err: Error) {
 	defer if err != nil do wgpu.render_pipeline_release(state.fullscreen_quad_pipeline)
 
 	state.image_texture = wgpu.queue_copy_image_to_texture(
-		state.device,
-		state.queue,
+		gpu.device,
+		gpu.queue,
 		"./assets/image_blur/nature.jpg",
 	) or_return
 	defer if err != nil do wgpu.texture_release(state.image_texture)
 
 	for &t in state.textures {
 		t.texture = wgpu.device_create_texture(
-			state.device,
+			gpu.device,
 			{
 				usage = {.Copy_Dst, .Storage_Binding, .Texture_Binding},
 				dimension = state.image_texture.dimension,
@@ -150,19 +127,19 @@ init :: proc() -> (state: ^State, err: Error) {
 	}
 
 	state.buffer_0 = wgpu.device_create_buffer_with_data(
-		state.device,
+		gpu.device,
 		{contents = wgpu.to_bytes([1]u32{0}), usage = {.Uniform}},
 	) or_return
 	defer if err != nil do wgpu.buffer_release(state.buffer_0)
 
 	state.buffer_1 = wgpu.device_create_buffer_with_data(
-		state.device,
+		gpu.device,
 		{contents = wgpu.to_bytes([1]u32{1}), usage = {.Uniform}},
 	) or_return
 	defer if err != nil do wgpu.buffer_release(state.buffer_1)
 
 	state.blur_params_buffer = wgpu.device_create_buffer(
-		state.device,
+		gpu.device,
 		{size = size_of(Settings), usage = {.Copy_Dst, .Uniform}},
 	) or_return
 	defer if err != nil do wgpu.buffer_release(state.blur_params_buffer)
@@ -176,11 +153,11 @@ init :: proc() -> (state: ^State, err: Error) {
 	sampler_descriptor := wgpu.DEFAULT_SAMPLER_DESCRIPTOR
 	sampler_descriptor.mag_filter = .Linear
 	sampler_descriptor.min_filter = .Linear
-	state.sampler = wgpu.device_create_sampler(state.device, sampler_descriptor) or_return
+	state.sampler = wgpu.device_create_sampler(gpu.device, sampler_descriptor) or_return
 	defer if err != nil do wgpu.sampler_release(state.sampler)
 
 	state.compute_constants = wgpu.device_create_bind_group(
-		state.device,
+		gpu.device,
 		{
 			layout = blur_pipeline_layout_0.ptr,
 			entries = {
@@ -206,7 +183,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	defer if err != nil do wgpu.texture_view_release(state.image_texture_view)
 
 	state.compute_bind_group_0 = wgpu.device_create_bind_group(
-		state.device,
+		gpu.device,
 		{
 			layout = blur_pipeline_layout_1.ptr,
 			entries = {
@@ -225,7 +202,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	defer if err != nil do wgpu.bind_group_release(state.compute_bind_group_0)
 
 	state.compute_bind_group_1 = wgpu.device_create_bind_group(
-		state.device,
+		gpu.device,
 		{
 			layout = blur_pipeline_layout_1.ptr,
 			entries = {
@@ -244,7 +221,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	defer if err != nil do wgpu.bind_group_release(state.compute_bind_group_1)
 
 	state.compute_bind_group_2 = wgpu.device_create_bind_group(
-		state.device,
+		gpu.device,
 		{
 			layout = blur_pipeline_layout_1.ptr,
 			entries = {
@@ -269,7 +246,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	defer wgpu.bind_group_layout_release(fullscreen_quad_pipeline_layout)
 
 	state.show_result_bind_group = wgpu.device_create_bind_group(
-		state.device,
+		gpu.device,
 		{
 			layout = fullscreen_quad_pipeline_layout.ptr,
 			entries = {
@@ -280,36 +257,17 @@ init :: proc() -> (state: ^State, err: Error) {
 	) or_return
 	defer if err != nil do wgpu.bind_group_release(state.show_result_bind_group)
 
-	state.settings = {
+	state.blur_settings = {
 		filter_size = 15,
 		iterations  = 2,
 	}
 
-	update_settings(state) or_return
-
-	state.render_pass_desc = wgpu.Render_Pass_Descriptor {
-		label             = "Image Blur Render Pass",
-		color_attachments = slice.clone(
-			[]wgpu.Render_Pass_Color_Attachment {
-				{
-					view        = nil, // Assigned later
-					load_op     = .Clear,
-					store_op    = .Store,
-					clear_value = wgpu.Color_Black,
-				},
-			},
-		) or_return,
-	}
-
-	// Get a reference to the first color attachment
-	state.color_attachment = &state.render_pass_desc.color_attachments[0]
+	update_settings(ctx) or_return
 
 	return
 }
 
-deinit :: proc(using state: ^State) {
-	delete(render_pass_desc.color_attachments)
-
+quit :: proc(using ctx: ^App_Context) {
 	wgpu.bind_group_release(show_result_bind_group)
 	wgpu.bind_group_release(compute_bind_group_2)
 	wgpu.bind_group_release(compute_bind_group_1)
@@ -329,26 +287,25 @@ deinit :: proc(using state: ^State) {
 	wgpu.compute_pipeline_release(blur_pipeline)
 
 	wmu.destroy()
-	renderer.deinit(gpu)
-	free(mu_ctx)
-
-	app.deinit()
-	free(state)
 }
 
-update_settings :: proc(using state: ^State) -> (err: Error) {
-	block_dim = TILE_DIM - (settings.filter_size - 1)
+update_settings :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
+	block_dim = TILE_DIM - (state.blur_settings.filter_size - 1)
 	wgpu.queue_write_buffer(
-		queue,
+		gpu.queue,
 		blur_params_buffer.ptr,
 		0,
-		wgpu.to_bytes([2]i32{settings.filter_size, block_dim}),
+		wgpu.to_bytes([2]i32{state.blur_settings.filter_size, block_dim}),
 	) or_return
 
 	return
 }
 
-render :: proc(using state: ^State) -> (err: Error) {
+handle_events :: proc(event: rl.Event, using ctx: ^App_Context) {
+	rl.event_mu_set_event(mu_ctx, event)
+}
+
+update :: proc(dt: f64, using ctx: ^App_Context) -> (err: rl.Error) {
 	// UI definition
 	mu.begin(mu_ctx)
 	if mu.begin_window(mu_ctx, "Settings", {10, 10, 245, 78}, {.NO_RESIZE}) {
@@ -357,12 +314,14 @@ render :: proc(using state: ^State) -> (err: Error) {
 		{
 			mu.layout_row(mu_ctx, {60, -1}, 0)
 			mu.label(mu_ctx, "Filter size:")
-			if .CHANGE in wmu.slider(mu_ctx, &settings.filter_size, 2, 34, 2, SLIDER_FMT) {
-				update_settings(state) or_return
+			if .CHANGE in
+			   wmu.slider(mu_ctx, &state.blur_settings.filter_size, 2, 34, 2, SLIDER_FMT) {
+				update_settings(ctx) or_return
 			}
 			mu.label(mu_ctx, "Iterations:")
-			if .CHANGE in wmu.slider(mu_ctx, &settings.iterations, 1, 20, 1, SLIDER_FMT) {
-				update_settings(state) or_return
+			if .CHANGE in
+			   wmu.slider(mu_ctx, &state.blur_settings.iterations, 1, 20, 1, SLIDER_FMT) {
+				update_settings(ctx) or_return
 			}
 		}
 		mu.layout_end_column(mu_ctx)
@@ -371,17 +330,12 @@ render :: proc(using state: ^State) -> (err: Error) {
 	}
 	mu.end(mu_ctx)
 
-	frame := renderer.get_current_texture_frame(gpu) or_return
-	if skip_frame do return
-	defer renderer.release_current_texture_frame(gpu)
+	return
+}
 
-	view := wgpu.texture_create_view(frame.texture) or_return
-	defer wgpu.texture_view_release(view)
+draw :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
+	compute_pass := wgpu.command_encoder_begin_compute_pass(gpu.encoder) or_return
 
-	encoder := wgpu.device_create_command_encoder(device) or_return
-	defer wgpu.command_encoder_release(encoder)
-
-	compute_pass := wgpu.command_encoder_begin_compute_pass(encoder) or_return
 	wgpu.compute_pass_encoder_set_pipeline(compute_pass, blur_pipeline.ptr)
 	wgpu.compute_pass_encoder_set_bind_group(compute_pass, 0, compute_constants.ptr)
 
@@ -399,7 +353,7 @@ render :: proc(using state: ^State) -> (err: Error) {
 		u32(math.ceil(f32(image_texture.size.width) / BATCH)),
 	)
 
-	for _ in 0 ..< settings.iterations - 1 {
+	for _ in 0 ..< state.blur_settings.iterations - 1 {
 		wgpu.compute_pass_encoder_set_bind_group(compute_pass, 1, compute_bind_group_2.ptr)
 		wgpu.compute_pass_encoder_dispatch_workgroups(
 			compute_pass,
@@ -417,76 +371,33 @@ render :: proc(using state: ^State) -> (err: Error) {
 
 	wgpu.compute_pass_encoder_end(compute_pass) or_return
 
-	color_attachment.view = view.ptr
-	render_pass := wgpu.command_encoder_begin_render_pass(encoder, render_pass_desc)
-	defer wgpu.render_pass_release(render_pass)
-
-	wgpu.render_pass_set_pipeline(render_pass, fullscreen_quad_pipeline.ptr)
-	wgpu.render_pass_set_bind_group(render_pass, 0, show_result_bind_group.ptr)
-	wgpu.render_pass_draw(render_pass, {0, 6})
+	wgpu.render_pass_set_pipeline(gpu.render_pass, fullscreen_quad_pipeline.ptr)
+	wgpu.render_pass_set_bind_group(gpu.render_pass, 0, show_result_bind_group.ptr)
+	wgpu.render_pass_draw(gpu.render_pass, {0, 6})
 
 	// micro-ui rendering
-	wmu.render(mu_ctx, render_pass) or_return
-
-	wgpu.render_pass_end(render_pass) or_return
-
-	command_buffer := wgpu.command_encoder_finish(encoder) or_return
-	defer wgpu.command_buffer_release(command_buffer)
-
-	wgpu.queue_submit(queue, command_buffer.ptr)
-	wgpu.surface_present(surface)
-
-	return
-}
-
-resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Error) {
-	renderer.resize_surface(gpu, {size.width, size.height}) or_return
-	wmu.resize(i32(size.width), i32(size.height))
-	return
-}
-
-handle_events :: proc(state: ^State) -> (should_quit: bool, err: Error) {
-	event: events.Event
-	for app.poll_event(&event) {
-		#partial switch &ev in event {
-		case events.Quit_Event:
-			return true, nil
-		case events.Framebuffer_Resize_Event:
-			if err = resize_surface(state, {ev.width, ev.height}); err != nil {
-				return true, err
-			}
-		case events.Text_Input_Event:
-			mu.input_text(state.mu_ctx, string(cstring(&ev.buf[0])))
-		case events.Mouse_Press_Event:
-			mu.input_mouse_down(state.mu_ctx, ev.pos.x, ev.pos.y, events.mu_input_mouse(ev.button))
-		case events.Mouse_Release_Event:
-			mu.input_mouse_up(state.mu_ctx, ev.pos.x, ev.pos.y, events.mu_input_mouse(ev.button))
-		case events.Mouse_Scroll_Event:
-			mu.input_scroll(state.mu_ctx, ev.x * -25, ev.y * -25)
-		case events.Mouse_Motion_Event:
-			mu.input_mouse_move(state.mu_ctx, ev.x, ev.y)
-		case events.Key_Press_Event:
-			mu.input_key_down(state.mu_ctx, events.mu_input_key(ev.key))
-		case events.Key_Release_Event:
-			mu.input_key_up(state.mu_ctx, events.mu_input_key(ev.key))
-		}
-	}
+	wmu.render(mu_ctx, gpu.render_pass) or_return
 
 	return
 }
 
 main :: proc() {
-	state, state_err := init()
+	state, state_err := new(App_Context)
 	if state_err != nil do return
-	defer deinit(state)
+	defer free(state)
 
-	fmt.printf("Entering main loop...\n\n")
-
-	main_loop: for {
-		should_quit, err := handle_events(state)
-		if should_quit || err != nil do break main_loop
-		if err = render(state); err != nil do break main_loop
+	state.callbacks = {
+		init          = init,
+		quit          = quit,
+		handle_events = handle_events,
+		update        = update,
+		draw          = draw,
 	}
 
-	fmt.println("Exiting...")
+	settings := rl.DEFAULT_SETTINGS
+	settings.title = EXAMPLE_TITLE
+
+	if err := rl.init(state, settings); err != nil do return
+
+	rl.begin_run(state) // Start the main loop
 }

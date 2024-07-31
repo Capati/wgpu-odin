@@ -1,6 +1,6 @@
 struct FragmentInput {
-    @location(0) tex_coord: vec2<f32>,
-    @location(1) index: i32,
+	@location(0) tex_coord: vec2<f32>,
+	@location(1) index: i32,
 }
 
 @group(0) @binding(0)
@@ -12,22 +12,22 @@ var sampler_array: binding_array<sampler>;
 
 @fragment
 fn non_uniform_main(fragment: FragmentInput) -> @location(0) vec4<f32> {
-    var outval: vec3<f32>;
-    if fragment.tex_coord.y <= 0.5 {
-        outval = textureSampleLevel(
-            texture_array_top[fragment.index],
-            sampler_array[fragment.index],
-            fragment.tex_coord,
-            0.0
-        ).rgb;
-    } else {
-        outval = textureSampleLevel(
-            texture_array_bottom[fragment.index],
-            sampler_array[fragment.index],
-            fragment.tex_coord,
-            0.0
-        ).rgb;
-    }
+	var outval: vec3<f32>;
+	if fragment.tex_coord.y <= 0.5 {
+		outval = textureSampleLevel(
+			texture_array_top[fragment.index],
+			sampler_array[fragment.index],
+			fragment.tex_coord,
+			0.0
+		).rgb;
+	} else {
+		outval = textureSampleLevel(
+			texture_array_bottom[fragment.index],
+			sampler_array[fragment.index],
+			fragment.tex_coord,
+			0.0
+		).rgb;
+	}
 
-    return vec4<f32>(srgb_to_linear(vec3<f32>(outval.x, outval.y, outval.z)), 1.0);
+	return vec4<f32>(apply_color_conversion(vec3<f32>(outval.x, outval.y, outval.z)), 1.0);
 }

@@ -24,7 +24,7 @@ if "%RELEASE_MODE%"=="true" (
 )
 
 if "%RELEASE_MODE%"=="true" (
-    set ARGS=-o:speed ^
+    set ARGS=-o:aggressive ^
         -disable-assert ^
         -no-bounds-check ^
         -define:WGPU_CHECK_TO_BYTES=false ^
@@ -57,7 +57,6 @@ if "%ERROR_OCCURRED%"=="true" (
 
 :all
 call :capture
-call :clear_color
 call :compute
 call :cube
 call :cube_textured
@@ -75,10 +74,6 @@ goto :eof
 
 :capture
 call :build_example capture
-goto :eof
-
-:clear_color
-call :build_example clear_color
 goto :eof
 
 :compute
