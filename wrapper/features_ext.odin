@@ -2,7 +2,7 @@ package wgpu
 
 @(private)
 // Webgpu and native features.
-Raw_Feature_Name :: enum ENUM_SIZE {
+Raw_Feature_Name :: enum FLAGS {
 	Undefined                                                     = 0x00000000,
 	Depth_Clip_Control                                            = 0x00000001,
 	Depth32_Float_Stencil8                                        = 0x00000002,
@@ -29,7 +29,7 @@ Raw_Feature_Name :: enum ENUM_SIZE {
 	Partially_Bound_Binding_Array                                 = 0x0003000A,
 }
 
-Feature_Name :: enum ENUM_SIZE {
+Feature_Name :: enum FLAGS {
 	Undefined,
 	Depth_Clip_Control,
 	Depth32_Float_Stencil8,
