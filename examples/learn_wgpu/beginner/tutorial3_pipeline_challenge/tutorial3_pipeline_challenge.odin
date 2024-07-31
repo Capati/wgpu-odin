@@ -1,52 +1,40 @@
 package tutorial3_pipeline_challenge
 
-// Core
-import "core:fmt"
+// STD Library
+import "base:runtime"
 
-// Package
+// Local Packages
 import "../../../../utils/shaders"
 import wgpu "../../../../wrapper"
-import "./../../../common"
-
-// Framework
-import app "../../../framework/application"
-import "../../../framework/application/events"
-import "../../../framework/renderer"
+import rl "./../../../../utils/renderlink"
 
 State :: struct {
-	using _:                   common.State_Base,
 	render_pipeline:           wgpu.Render_Pipeline,
 	challenge_render_pipeline: wgpu.Render_Pipeline,
-	use_color:                 bool,
 }
 
-Error :: common.Error
+App_Context :: rl.Context(State)
 
 EXAMPLE_TITLE :: "Tutorial 3 - Pipeline Challenge"
 
-init :: proc() -> (state: ^State, err: Error) {
-	state = new(State) or_return
-	defer if err != nil do free(state)
-
-	app_properties := app.Default_Properties
-	app_properties.title = "Tutorial 3 - Pipeline Challenge"
-	app.init(app_properties) or_return
-	defer if err != nil do app.deinit()
-
-	state.gpu = renderer.init() or_return
-	defer if err != nil do renderer.deinit(state)
+init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
 	// Use the same shader from the Tutorial 3 - Pipeline
-	SHADER_SRC: string : #load("./../tutorial3_pipeline/shader.wgsl", string)
-	COMBINED_SHADER_SRC :: shaders.SRGB_TO_LINEAR_WGSL + SHADER_SRC
+	SHADER_WGSL: string : #load("./../tutorial3_pipeline/shader.wgsl", string)
+	shader_source := shaders.apply_color_conversion(
+		SHADER_WGSL,
+		gpu.is_srgb,
+		context.temp_allocator,
+	) or_return
 	shader_module := wgpu.device_create_shader_module(
-		state.device,
-		{source = COMBINED_SHADER_SRC},
+		gpu.device,
+		{source = shader_source},
 	) or_return
 	defer wgpu.shader_module_release(shader_module)
 
 	render_pipeline_layout := wgpu.device_create_pipeline_layout(
-		state.device,
+		gpu.device,
 		{label = EXAMPLE_TITLE + " Render Pipeline Layout"},
 	) or_return
 	defer wgpu.pipeline_layout_release(render_pipeline_layout)
@@ -60,7 +48,7 @@ init :: proc() -> (state: ^State, err: Error) {
 			entry_point = "fs_main",
 			targets = {
 				{
-					format = state.config.format,
+					format = gpu.config.format,
 					blend = &wgpu.Blend_State_Replace,
 					write_mask = wgpu.Color_Write_Mask_All,
 				},
@@ -72,7 +60,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	}
 
 	state.render_pipeline = wgpu.device_create_render_pipeline(
-		state.device,
+		gpu.device,
 		render_pipeline_descriptor,
 	) or_return
 	defer if err != nil do wgpu.render_pipeline_release(state.render_pipeline)
@@ -80,7 +68,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	CHALLENGE_SHADER_SRC: string : #load("./challenge.wgsl", string)
 	COMBINED_CHALLENGE_SHADER_SRC :: shaders.SRGB_TO_LINEAR_WGSL + CHALLENGE_SHADER_SRC
 	challenge_shader_module := wgpu.device_create_shader_module(
-		state.device,
+		gpu.device,
 		{source = COMBINED_CHALLENGE_SHADER_SRC},
 	) or_return
 	defer wgpu.shader_module_release(challenge_shader_module)
@@ -94,7 +82,7 @@ init :: proc() -> (state: ^State, err: Error) {
 			entry_point = "fs_main",
 			targets = {
 				{
-					format = state.config.format,
+					format = gpu.config.format,
 					blend = &wgpu.Blend_State_Replace,
 					write_mask = wgpu.Color_Write_Mask_All,
 				},
@@ -106,101 +94,47 @@ init :: proc() -> (state: ^State, err: Error) {
 	}
 
 	state.challenge_render_pipeline = wgpu.device_create_render_pipeline(
-		state.device,
+		gpu.device,
 		challenge_render_pipeline_descriptor,
 	) or_return
 
-	state.render_pass_desc = common.create_render_pass_descriptor(
-		EXAMPLE_TITLE + " Render Pass",
-		wgpu.color_srgb_to_linear(wgpu.Color{0.1, 0.2, 0.3, 1.0}),
-	) or_return
-
-	// Get a reference to the first color attachment
-	state.color_attachment = &state.render_pass_desc.color_attachments[0]
+	rl.graphics_clear(rl.Color{0.1, 0.2, 0.3, 1.0})
 
 	return
 }
 
-deinit :: proc(using state: ^State) {
-	delete(render_pass_desc.color_attachments)
-	wgpu.render_pipeline_release(challenge_render_pipeline)
-	wgpu.render_pipeline_release(render_pipeline)
-	renderer.deinit(gpu)
-	app.deinit()
-	free(state)
+quit :: proc(using ctx: ^App_Context) {
+	wgpu.render_pipeline_release(state.challenge_render_pipeline)
+	wgpu.render_pipeline_release(state.render_pipeline)
 }
 
-render :: proc(using state: ^State) -> (err: Error) {
-	frame := renderer.get_current_texture_frame(gpu) or_return
-	if skip_frame do return
-	defer renderer.release_current_texture_frame(gpu)
-
-	view := wgpu.texture_create_view(frame.texture) or_return
-	defer wgpu.texture_view_release(view)
-
-	encoder := wgpu.device_create_command_encoder(device) or_return
-	defer wgpu.command_encoder_release(encoder)
-
-	color_attachment.view = view.ptr
-	render_pass := wgpu.command_encoder_begin_render_pass(encoder, render_pass_desc)
-	defer wgpu.render_pass_release(render_pass)
-
-	// Use the colored pipeline if `use_color` is `true`
-	if use_color {
-		wgpu.render_pass_set_pipeline(render_pass, challenge_render_pipeline.ptr)
+draw :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
+	if rl.keyboard_is_down(.Space) {
+		wgpu.render_pass_set_pipeline(gpu.render_pass, state.challenge_render_pipeline.ptr)
 	} else {
-		wgpu.render_pass_set_pipeline(render_pass, render_pipeline.ptr)
+		wgpu.render_pass_set_pipeline(gpu.render_pass, state.render_pipeline.ptr)
 	}
 
-	wgpu.render_pass_draw(render_pass, {0, 3})
-	wgpu.render_pass_end(render_pass) or_return
-
-	command_buffer := wgpu.command_encoder_finish(encoder) or_return
-	defer wgpu.command_buffer_release(command_buffer)
-
-	wgpu.queue_submit(queue, command_buffer.ptr)
-	wgpu.surface_present(surface)
-
-	return
-}
-
-resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Error) {
-	renderer.resize_surface(gpu, {size.width, size.height}) or_return
-	return
-}
-
-handle_events :: proc(using state: ^State) -> (should_quit: bool, err: Error) {
-	event: events.Event
-	for app.poll_event(&event) {
-		#partial switch ev in event {
-		case events.Quit_Event:
-			return true, nil
-		case events.Key_Press_Event:
-			if ev.key == .Space do state.use_color = true
-		case events.Key_Release_Event:
-			if ev.key == .Space do state.use_color = false
-		case events.Framebuffer_Resize_Event:
-			if err = resize_surface(state, {ev.width, ev.height}); err != nil {
-				return true, err
-			}
-		}
-	}
+	wgpu.render_pass_draw(gpu.render_pass, {0, 3})
 
 	return
 }
 
 main :: proc() {
-	state, state_err := init()
+	state, state_err := new(App_Context)
 	if state_err != nil do return
-	defer deinit(state)
+	defer free(state)
 
-	fmt.printf("Entering main loop...\n\n")
-
-	main_loop: for {
-		should_quit, err := handle_events(state)
-		if should_quit || err != nil do break main_loop
-		if err = render(state); err != nil do break main_loop
+	state.callbacks = {
+		init = init,
+		quit = quit,
+		draw = draw,
 	}
 
-	fmt.println("Exiting...")
+	settings := rl.DEFAULT_SETTINGS
+	settings.window.title = EXAMPLE_TITLE
+
+	if err := rl.init(state, settings); err != nil do return
+
+	rl.begin_run(state) // Start the main loop
 }

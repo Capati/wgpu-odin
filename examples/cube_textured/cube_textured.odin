@@ -1,25 +1,16 @@
 package cube_textured
 
-// Core
-import "core:fmt"
+// STD Library
+import "base:runtime"
 import "core:math"
 import la "core:math/linalg"
-// import "core:math/linalg/glsl"
 
 // Package
-import wgpu "../../wrapper"
-import "../common"
+import rl "./../../utils/renderlink"
 import "./../../utils/shaders"
-
-// Framework
-import app "../framework/application"
-import "../framework/application/events"
-import "../framework/renderer"
-
-TEXEL_SIZE :: 256
+import wgpu "./../../wrapper"
 
 State :: struct {
-	using _:         common.State_Base,
 	vertex_buffer:   wgpu.Buffer,
 	index_buffer:    wgpu.Buffer,
 	uniform_buffer:  wgpu.Buffer,
@@ -27,41 +18,31 @@ State :: struct {
 	bind_group:      wgpu.Bind_Group,
 }
 
-Error :: common.Error
+App_Context :: rl.Context(State)
 
 EXAMPLE_TITLE :: "Textured Cube"
+TEXEL_SIZE :: 256
 
-init :: proc() -> (state: ^State, err: Error) {
-	state = new(State) or_return
-	defer if err != nil do free(state)
-
-	app_properties := app.Default_Properties
-	app_properties.title = EXAMPLE_TITLE
-	app.init(app_properties) or_return
-	defer if err != nil do app.deinit()
-
-	state.gpu = renderer.init() or_return
-	defer if err != nil do renderer.deinit(state)
-
-	state.vertex_buffer = wgpu.device_create_buffer_with_data(
-		state.device,
+init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
+	vertex_buffer = wgpu.device_create_buffer_with_data(
+		gpu.device,
 		{
 			label = EXAMPLE_TITLE + " Vertex Buffer",
 			contents = wgpu.to_bytes(vertex_data),
 			usage = {.Vertex},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(state.vertex_buffer)
+	defer if err != nil do wgpu.buffer_release(vertex_buffer)
 
-	state.index_buffer = wgpu.device_create_buffer_with_data(
-		state.device,
+	index_buffer = wgpu.device_create_buffer_with_data(
+		gpu.device,
 		{
 			label = EXAMPLE_TITLE + " Index Buffer",
 			contents = wgpu.to_bytes(index_data),
 			usage = {.Index},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(state.index_buffer)
+	defer if err != nil do wgpu.buffer_release(index_buffer)
 
 	texture_extent := wgpu.Extent_3D {
 		width                 = TEXEL_SIZE,
@@ -70,7 +51,7 @@ init :: proc() -> (state: ^State, err: Error) {
 	}
 
 	texture := wgpu.device_create_texture(
-		state.device,
+		gpu.device,
 		{
 			size = texture_extent,
 			mip_level_count = 1,
@@ -88,30 +69,38 @@ init :: proc() -> (state: ^State, err: Error) {
 	texels := create_texels()
 
 	wgpu.queue_write_texture(
-		state.queue,
+		gpu.queue,
 		{texture = texture.ptr, mip_level = 0, origin = {}, aspect = .All},
 		wgpu.to_bytes(texels),
 		{offset = 0, bytes_per_row = TEXEL_SIZE, rows_per_image = wgpu.COPY_STRIDE_UNDEFINED},
 		texture_extent,
 	) or_return
 
-	mx_total := generate_matrix(cast(f32)state.config.width / cast(f32)state.config.height)
+	mx_total := create_view_projection_matrix(
+		cast(f32)gpu.config.width / cast(f32)gpu.config.height,
+	)
 
-	state.uniform_buffer = wgpu.device_create_buffer_with_data(
-		state.device,
+	uniform_buffer = wgpu.device_create_buffer_with_data(
+		gpu.device,
 		{
 			label = EXAMPLE_TITLE + " Uniform Buffer",
 			contents = wgpu.to_bytes(mx_total),
 			usage = {.Uniform, .Copy_Dst},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(state.uniform_buffer)
+	defer if err != nil do wgpu.buffer_release(uniform_buffer)
 
-	SHADER_SRC: string : #load("./cube_textured.wgsl", string)
-	COMBINED_SHADER_SRC := shaders.SRGB_TO_LINEAR_WGSL + SHADER_SRC
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+
+	CUBE_TEXTURED_WGSL: string : #load("./cube_textured.wgsl", string)
+	shader_source := shaders.apply_color_conversion(
+		CUBE_TEXTURED_WGSL,
+		gpu.is_srgb,
+		context.temp_allocator,
+	) or_return
 	shader_module := wgpu.device_create_shader_module(
-		state.device,
-		{label = EXAMPLE_TITLE + " Module", source = COMBINED_SHADER_SRC},
+		gpu.device,
+		{label = EXAMPLE_TITLE + " Module", source = shader_source},
 	) or_return
 	defer wgpu.shader_module_release(shader_module)
 
@@ -128,8 +117,8 @@ init :: proc() -> (state: ^State, err: Error) {
 		},
 	}
 
-	state.render_pipeline = wgpu.device_create_render_pipeline(
-		state.device,
+	render_pipeline = wgpu.device_create_render_pipeline(
+		gpu.device,
 		{
 			vertex = {
 				module = shader_module.ptr,
@@ -141,34 +130,30 @@ init :: proc() -> (state: ^State, err: Error) {
 				entry_point = "fs_main",
 				targets = {
 					{
-						format = state.config.format,
+						format = gpu.config.format,
 						blend = nil,
 						write_mask = wgpu.Color_Write_Mask_All,
 					},
 				},
 			},
 			primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
-			depth_stencil = nil,
 			multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 		},
 	) or_return
-	defer if err != nil do wgpu.render_pipeline_release(state.render_pipeline)
+	defer if err != nil do wgpu.render_pipeline_release(render_pipeline)
 
-	bind_group_layout := wgpu.render_pipeline_get_bind_group_layout(
-		state.render_pipeline,
-		0,
-	) or_return
+	bind_group_layout := wgpu.render_pipeline_get_bind_group_layout(render_pipeline, 0) or_return
 	defer wgpu.bind_group_layout_release(bind_group_layout)
 
-	state.bind_group = wgpu.device_create_bind_group(
-		state.device,
+	bind_group = wgpu.device_create_bind_group(
+		gpu.device,
 		{
 			layout = bind_group_layout.ptr,
 			entries = {
 				{
 					binding = 0,
 					resource = wgpu.Buffer_Binding {
-						buffer = state.uniform_buffer.ptr,
+						buffer = uniform_buffer.ptr,
 						size = wgpu.WHOLE_SIZE,
 					},
 				},
@@ -176,29 +161,19 @@ init :: proc() -> (state: ^State, err: Error) {
 			},
 		},
 	) or_return
-	defer if err != nil do wgpu.bind_group_release(state.bind_group)
+	defer if err != nil do wgpu.bind_group_release(bind_group)
 
-	state.render_pass_desc = common.create_render_pass_descriptor(
-		EXAMPLE_TITLE + " Render Pass",
-		wgpu.color_srgb_to_linear(wgpu.Color{0.1, 0.2, 0.3, 1.0}),
-	) or_return
-
-	// Get a reference to the first color attachment
-	state.color_attachment = &state.render_pass_desc.color_attachments[0]
+	rl.graphics_clear(rl.Color{0.1, 0.2, 0.3, 1.0})
 
 	return
 }
 
-deinit :: proc(using state: ^State) {
-	delete(render_pass_desc.color_attachments)
+quit :: proc(using ctx: ^App_Context) {
 	wgpu.bind_group_release(bind_group)
 	wgpu.render_pipeline_release(render_pipeline)
 	wgpu.buffer_release(uniform_buffer)
 	wgpu.buffer_release(index_buffer)
 	wgpu.buffer_release(vertex_buffer)
-	renderer.deinit(gpu)
-	app.deinit()
-	free(state)
 }
 
 create_texels :: proc() -> (texels: [TEXEL_SIZE * TEXEL_SIZE]u8) {
@@ -218,8 +193,8 @@ create_texels :: proc() -> (texels: [TEXEL_SIZE * TEXEL_SIZE]u8) {
 	return
 }
 
-generate_matrix :: proc(aspect_ratio: f32) -> la.Matrix4f32 {
-	projection := la.matrix4_perspective_f32(math.PI / 4, aspect_ratio, 1.0, 10.0)
+create_view_projection_matrix :: proc(aspect: f32) -> la.Matrix4f32 {
+	projection := la.matrix4_perspective_f32(math.PI / 4, aspect, 1.0, 10.0)
 	view := la.matrix4_look_at_f32(
 		eye = {1.5, -5.0, 3.0},
 		centre = {0.0, 0.0, 0.0},
@@ -228,84 +203,42 @@ generate_matrix :: proc(aspect_ratio: f32) -> la.Matrix4f32 {
 	return la.mul(projection, view)
 }
 
-// generate_matrix :: proc(aspect_ratio: f32) -> glsl.mat4 {
-//     projection := glsl.mat4Perspective(math.PI / 4, aspect_ratio, 1.0, 10.0)
-//     view := glsl.mat4LookAt({1.5, -5.0, 3.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 1.0})
-//     return projection * view
-// }
-
-render :: proc(using state: ^State) -> (err: Error) {
-	frame := renderer.get_current_texture_frame(gpu) or_return
-	if skip_frame do return
-	defer renderer.release_current_texture_frame(gpu)
-
-	view := wgpu.texture_create_view(frame.texture) or_return
-	defer wgpu.texture_view_release(view)
-
-	encoder := wgpu.device_create_command_encoder(device) or_return
-	defer wgpu.command_encoder_release(encoder)
-
-	color_attachment.view = view.ptr
-	render_pass := wgpu.command_encoder_begin_render_pass(encoder, render_pass_desc)
-	defer wgpu.render_pass_release(render_pass)
-
-	wgpu.render_pass_set_pipeline(render_pass, render_pipeline.ptr)
-	wgpu.render_pass_set_bind_group(render_pass, 0, bind_group.ptr, nil)
-	wgpu.render_pass_set_vertex_buffer(render_pass, 0, vertex_buffer.ptr)
-	wgpu.render_pass_set_index_buffer(render_pass, index_buffer.ptr, .Uint16)
-	wgpu.render_pass_draw_indexed(render_pass, {0, u32(len(index_data))}, 0)
-	wgpu.render_pass_end(render_pass) or_return
-
-	command_buffer := wgpu.command_encoder_finish(encoder) or_return
-	defer wgpu.command_buffer_release(command_buffer)
-
-	wgpu.queue_submit(queue, command_buffer.ptr)
-	wgpu.surface_present(surface)
-
-	return
-}
-
-resize_surface :: proc(using state: ^State, size: app.Physical_Size) -> (err: Error) {
+resize :: proc(event: rl.Resize_Event, using ctx: ^App_Context) -> (err: rl.Error) {
 	wgpu.queue_write_buffer(
-		queue,
+		gpu.queue,
 		uniform_buffer.ptr,
 		0,
-		wgpu.to_bytes(generate_matrix(cast(f32)size.width / cast(f32)size.height)),
+		wgpu.to_bytes(create_view_projection_matrix(f32(event.width) / f32(event.height))),
 	) or_return
-
-	renderer.resize_surface(gpu, {size.width, size.height}) or_return
 
 	return
 }
 
-handle_events :: proc(state: ^State) -> (should_quit: bool, err: Error) {
-	event: events.Event
-	for app.poll_event(&event) {
-		#partial switch ev in event {
-		case events.Quit_Event:
-			return true, nil
-		case events.Framebuffer_Resize_Event:
-			if err = resize_surface(state, {ev.width, ev.height}); err != nil {
-				return true, err
-			}
-		}
-	}
-
+draw :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
+	wgpu.render_pass_set_pipeline(gpu.render_pass, render_pipeline.ptr)
+	wgpu.render_pass_set_bind_group(gpu.render_pass, 0, bind_group.ptr)
+	wgpu.render_pass_set_vertex_buffer(gpu.render_pass, 0, vertex_buffer.ptr)
+	wgpu.render_pass_set_index_buffer(gpu.render_pass, index_buffer.ptr, .Uint16)
+	wgpu.render_pass_draw_indexed(gpu.render_pass, {0, u32(len(index_data))}, 0)
 	return
 }
 
 main :: proc() {
-	state, state_err := init()
+	state, state_err := new(App_Context)
 	if state_err != nil do return
-	defer deinit(state)
+	defer free(state)
 
-	fmt.printf("Entering main loop...\n\n")
-
-	main_loop: for {
-		should_quit, err := handle_events(state)
-		if should_quit || err != nil do break main_loop
-		if err = render(state); err != nil do break main_loop
+	state.callbacks = {
+		init   = init,
+		quit   = quit,
+		resize = resize,
+		draw   = draw,
 	}
 
-	fmt.println("Exiting...")
+	settings := rl.DEFAULT_SETTINGS
+	settings.window.title = EXAMPLE_TITLE
+
+	if err := rl.init(state, settings); err != nil do return
+
+	rl.begin_run(state) // Start the main loop
 }
