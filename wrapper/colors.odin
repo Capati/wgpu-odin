@@ -1,7 +1,8 @@
 package wgpu
 
-// Core
+// STD Library
 import "core:math"
+import la "core:math/linalg"
 
 Color_Transparent :: Color{0.0, 0.0, 0.0, 0.0}
 Color_Alice_Blue :: Color{0.941176, 0.972549, 1.0, 1.0}
@@ -225,4 +226,35 @@ color_srgb_to_linear :: proc {
 color_linear_to_srgb :: proc {
 	color_linear_component_to_srgb,
 	color_linear_color_to_srgb,
+}
+
+// Helper function to convert HSV to RGB
+color_hsv_to_rgb :: proc "contextless" (h, s, v: f64) -> la.Vector3f64 {
+	c := v * s
+	x := c * (1.0 - math.abs(math.mod(h * 6.0, 2.0) - 1.0))
+	m := v - c
+
+	rgb: la.Vector3f64
+	// odinfmt: disable
+	switch int(h * 6.0) {
+	case 0: rgb = {c, x, 0}
+	case 1: rgb = {x, c, 0}
+	case 2: rgb = {0, c, x}
+	case 3: rgb = {0, x, c}
+	case 4: rgb = {x, 0, c}
+	case 5: rgb = {c, 0, x}
+	}
+	// odinfmt: enable
+
+	return la.Vector3f64{rgb.x + m, rgb.y + m, rgb.z + m}
+}
+
+// Helper function to convert HSV to Color
+color_hsv_to_color :: proc "contextless" (h, s, v: f64) -> (color: Color) {
+	rgb := color_hsv_to_rgb(h, s, v)
+	color.r = rgb.r
+	color.g = rgb.g
+	color.b = rgb.b
+	color.a = 1.0
+	return
 }
