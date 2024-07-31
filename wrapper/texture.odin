@@ -22,7 +22,7 @@ DEFAULT_TEXTURE_VIEW_DESCRIPTOR :: Texture_View_Descriptor {
 
 // Creates a view of this texture.
 @(require_results)
-texture_create_view :: proc(
+texture_create_view :: proc "contextless" (
 	self: Texture,
 	descriptor: Texture_View_Descriptor = {},
 	loc := #caller_location,

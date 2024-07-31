@@ -150,7 +150,7 @@ Color_Yellow_Green :: Color{0.603922, 0.803922, 0.196078, 1.0}
 //
 // Parameters
 // - `brightness`: The brightness of the color. `0.0` is black, `1.0` is white.
-color_gray :: proc(brightness: f64) -> Color {
+color_gray :: proc "contextless" (brightness: f64) -> Color {
 	b := brightness if brightness <= 1.0 else 1.0
 	return {b, b, b, 1.0}
 }
@@ -159,13 +159,13 @@ color_gray :: proc(brightness: f64) -> Color {
 //
 // Parameters
 // - `transparency`: The transparency of the color. `0.0` is transparent, `1.0` is opaque.
-color_alpha :: proc(transparency: f64) -> Color {
+color_alpha :: proc "contextless" (transparency: f64) -> Color {
 	t := transparency if transparency <= 1.0 else 1.0
 	return {1.0, 1.0, 1.0, t}
 }
 
 // Converts an sRGB color component to its linear (physical) representation.
-color_srgb_component_to_linear :: proc(color: f64) -> f64 {
+color_srgb_component_to_linear :: proc "contextless" (color: f64) -> f64 {
 	c := clamp(color, 0.0, 1.0)
 	if c <= 0.04045 {
 		return c / 12.92
@@ -175,7 +175,7 @@ color_srgb_component_to_linear :: proc(color: f64) -> f64 {
 }
 
 // Converts a linear (physical) color component to its sRGB representation.
-color_linear_component_to_srgb :: proc(color: f64) -> f64 {
+color_linear_component_to_srgb :: proc "contextless" (color: f64) -> f64 {
 	if color <= 0.0031308 {
 		return clamp(color * 12.92, 0.0, 1.0)
 	} else {
@@ -184,7 +184,7 @@ color_linear_component_to_srgb :: proc(color: f64) -> f64 {
 }
 
 // Converts a Color from sRGB space to linear (physical) space
-color_srgb_color_to_linear :: proc(color: Color) -> Color {
+color_srgb_color_to_linear :: proc "contextless" (color: Color) -> Color {
 	return Color {
 		r = color_srgb_component_to_linear(color.r),
 		g = color_srgb_component_to_linear(color.g),
@@ -194,14 +194,14 @@ color_srgb_color_to_linear :: proc(color: Color) -> Color {
 }
 
 // Converts a Color from sRGB space to linear (physical) space
-color_set_srgb_color_to_linear :: proc(color: ^Color) {
+color_set_srgb_color_to_linear :: proc "contextless" (color: ^Color) {
 	color.r = color_srgb_component_to_linear(color.r)
 	color.g = color_srgb_component_to_linear(color.g)
 	color.b = color_srgb_component_to_linear(color.b)
 }
 
 // Converts a Color from linear (physical) space to sRGB space
-color_linear_color_to_srgb :: proc(color: Color) -> Color {
+color_linear_color_to_srgb :: proc "contextless" (color: Color) -> Color {
 	return Color {
 		r = color_linear_component_to_srgb(color.r),
 		g = color_linear_component_to_srgb(color.g),
@@ -211,7 +211,7 @@ color_linear_color_to_srgb :: proc(color: Color) -> Color {
 }
 
 // Converts a Color from linear (physical) space to sRGB space
-color_set_linear_color_to_srgb :: proc(color: ^Color) {
+color_set_linear_color_to_srgb :: proc "contextless" (color: ^Color) {
 	color.r = color_linear_component_to_srgb(color.r)
 	color.g = color_linear_component_to_srgb(color.g)
 	color.b = color_linear_component_to_srgb(color.b)
