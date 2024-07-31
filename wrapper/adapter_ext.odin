@@ -70,5 +70,5 @@ adapter_info_string :: proc(using self: Adapter, allocator := context.allocator)
 // Print adapter information (name, driver, type and backend).
 adapter_print_info :: proc(using self: Adapter) {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-	fmt.printf("%s", adapter_info_string(self, context.temp_allocator))
+	fmt.printfln("%s", adapter_info_string(self, context.temp_allocator))
 }
