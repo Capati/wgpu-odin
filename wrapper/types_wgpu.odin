@@ -174,7 +174,7 @@ Render_Bundle_Descriptor :: wgpu.Render_Bundle_Descriptor
 Render_Pass_Depth_Stencil_Attachment :: wgpu.Render_Pass_Depth_Stencil_Attachment
 // Render_Pass_Descriptor_Max_Draw_Count :: wgpu.Render_Pass_Descriptor_Max_Draw_Count
 Render_Pass_Timestamp_Writes :: wgpu.Render_Pass_Timestamp_Writes
-Request_Adapter_Options :: wgpu.Request_Adapter_Options
+// Request_Adapter_Options :: wgpu.Request_Adapter_Options
 Sampler_Binding_Layout :: wgpu.Sampler_Binding_Layout
 Sampler_Descriptor :: wgpu.Sampler_Descriptor
 Shader_Module_Compilation_Hint :: wgpu.Shader_Module_Compilation_Hint

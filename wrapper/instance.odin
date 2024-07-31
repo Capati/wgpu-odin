@@ -162,6 +162,13 @@ instance_create_surface :: proc(
 	return
 }
 
+Request_Adapter_Options :: struct {
+	compatible_surface:     Raw_Surface,
+	power_preference:       Power_Preference,
+	backend_type:           Backend_Type,
+	force_fallback_adapter: bool,
+}
+
 // Retrieves an `Adapter` which matches the given options.
 @(require_results)
 instance_request_adapter :: proc(
@@ -196,8 +203,12 @@ instance_request_adapter :: proc(
 		}
 	}
 
-	options := options
-	wgpu.instance_request_adapter(ptr, &options, request_adapter_callback, &res)
+	opts: wgpu.Request_Adapter_Options
+	opts.compatible_surface = options.compatible_surface
+	opts.power_preference = options.power_preference
+	opts.backend_type = options.backend_type
+	opts.force_fallback_adapter = b32(options.force_fallback_adapter)
+	wgpu.instance_request_adapter(ptr, &opts, request_adapter_callback, &res)
 
 	if res.status != .Success {
 		err = res.status
