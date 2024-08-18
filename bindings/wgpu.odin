@@ -681,12 +681,7 @@ Buffer_Descriptor :: struct {
 	mapped_at_creation: b32,
 }
 
-Color :: struct {
-	r: f64,
-	g: f64,
-	b: f64,
-	a: f64,
-}
+Color :: [4]f64
 
 Command_Buffer_Descriptor :: struct {
 	next_in_chain: ^Chained_Struct,

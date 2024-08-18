@@ -1,7 +1,9 @@
 package application
 
-Color_Component :: f64
-Color :: [4]Color_Component
+// Vendor Package
+import wgpu "./../../wrapper"
+
+Color :: wgpu.Color
 
 Color_Transparent :: Color{0.0, 0.0, 0.0, 0.0}
 Color_Alice_Blue :: Color{0.941176, 0.972549, 1.0, 1.0}
