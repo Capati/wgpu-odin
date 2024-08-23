@@ -1,4 +1,4 @@
-package application
+package renderlink
 
 Display_Settings :: struct {
 	format:       u32,

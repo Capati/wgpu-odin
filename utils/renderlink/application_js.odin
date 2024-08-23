@@ -1,6 +1,6 @@
 //+private
 //+build js
-package application
+package renderlink
 
 // STD Library
 import "core:mem"

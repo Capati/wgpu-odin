@@ -1,4 +1,4 @@
-package application
+package renderlink
 
 Joystick_Hat :: enum u8 {
 	Invalid,

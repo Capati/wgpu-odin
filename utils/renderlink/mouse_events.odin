@@ -1,4 +1,4 @@
-package application
+package renderlink
 
 Mouse_Moved_Event :: struct {
 	x, y:       f32,

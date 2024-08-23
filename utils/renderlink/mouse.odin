@@ -1,4 +1,4 @@
-package application
+package renderlink
 
 Mouse_Position :: struct {
 	x, y: f32,

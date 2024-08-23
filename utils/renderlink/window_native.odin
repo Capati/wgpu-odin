@@ -1,6 +1,6 @@
 //+private
 //+build linux, darwin, windows
-package application
+package renderlink
 
 // STD Library
 import "base:runtime"
