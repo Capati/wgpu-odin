@@ -87,8 +87,6 @@ main :: proc() {
 	settings := rl.DEFAULT_SETTINGS
 	settings.title = EXAMPLE_TITLE
 
-	settings.gpu.required_features = {.Pipeline_Statistics_Query}
-
 	if ok := rl.init(state, settings); !ok do return
 
 	rl.begin_run(state) // Start the main loop
