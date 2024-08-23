@@ -5,6 +5,7 @@ package application
 import "base:runtime"
 import "core:log"
 
+@(disabled = !ODIN_DEBUG)
 _log_info_contextless :: proc "contextless" (fmt_str: string, args: ..any) {
 	if g_logger.data == nil do return
 	context = runtime.default_context()
@@ -16,6 +17,7 @@ _log_info_contextless :: proc "contextless" (fmt_str: string, args: ..any) {
 	}
 }
 
+@(disabled = !ODIN_DEBUG)
 _log_warn_contextless :: proc "contextless" (fmt_str: string, args: ..any) {
 	if g_logger.data == nil do return
 	context = runtime.default_context()
@@ -27,6 +29,7 @@ _log_warn_contextless :: proc "contextless" (fmt_str: string, args: ..any) {
 	}
 }
 
+@(disabled = !ODIN_DEBUG)
 _log_error_contextless :: proc "contextless" (fmt_str: string, args: ..any) {
 	if g_logger.data == nil do return
 	context = runtime.default_context()
@@ -38,6 +41,7 @@ _log_error_contextless :: proc "contextless" (fmt_str: string, args: ..any) {
 	}
 }
 
+@(disabled = !ODIN_DEBUG)
 _log_fatal_contextless :: proc "contextless" (fmt_str: string, args: ..any) {
 	if g_logger.data == nil do return
 	context = runtime.default_context()

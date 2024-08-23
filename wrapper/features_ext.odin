@@ -1,8 +1,10 @@
 package wgpu
 
-@(private)
-// Webgpu and native features.
-Raw_Feature_Name :: enum FLAGS {
+/* Maximum number of supported features by the webgpu/wgpu */
+MAX_FEATURES :: 22
+
+/* Webgpu and native features. */
+Raw_Feature_Name :: enum ENUM_SIZE {
 	Undefined                                                     = 0x00000000,
 	Depth_Clip_Control                                            = 0x00000001,
 	Depth32_Float_Stencil8                                        = 0x00000002,
@@ -56,50 +58,46 @@ Feature_Name :: enum FLAGS {
 	Partially_Bound_Binding_Array,
 }
 
-// Features that are not guaranteed to be supported.
-//
-// These are either part of the webgpu standard, or are extension features supported by
-// wgpu when targeting native.
-//
-// If you want to use a feature, you need to first verify that the adapter supports
-// the feature. If the adapter does not support the feature, requesting a device with it enabled
-// will panic.
-//
-// Corresponds to [WebGPU `GPUFeatureName`](
-// https://gpuweb.github.io/gpuweb/#enumdef-gpufeaturename).
-Features :: bit_set[Feature_Name;FLAGS]
+/*
+Features that are not guaranteed to be supported.
 
-/*============================================================================
-** Public procedures
-**============================================================================*/
+These are either part of the webgpu standard, or are extension features supported by
+wgpu when targeting native.
 
+If you want to use a feature, you need to first verify that the adapter supports
+the feature. If the adapter does not support the feature, requesting a device with it enabled
+will panic.
 
-// Get the flags of all features which are part of the upstream WebGPU standard.
-features_all_webgpu_flags :: proc(features: Features) -> (ret: Features) {
-	// odinfmt: disable
+Corresponds to [WebGPU `GPUFeatureName`](
+https://gpuweb.github.io/gpuweb/#enumdef-gpufeaturename).
+*/
+Features :: bit_set[Feature_Name; FLAGS]
+
+/*
+Get the flags of all features which are part of the upstream WebGPU standard.
+*/
+features_all_webgpu_flags :: proc "contextless" (features: Features) -> (ret: Features) {
 	for f in features {
 		#partial switch f {
-		case .Depth_Clip_Control: ret += {.Depth_Clip_Control}
-		case .Depth32_Float_Stencil8: ret += {.Depth32_Float_Stencil8}
-		case .Timestamp_Query: ret += {.Timestamp_Query}
-		case .Texture_Compression_Bc: ret += {.Texture_Compression_Bc}
-		case .Texture_Compression_Etc2: ret += {.Texture_Compression_Etc2}
-		case .Texture_Compression_Astc: ret += {.Texture_Compression_Astc}
-		case .Indirect_First_Instance: ret += {.Indirect_First_Instance}
-		case .Shader_F16: ret += {.Shader_F16}
+		case .Depth_Clip_Control: ret         += {.Depth_Clip_Control}
+		case .Depth32_Float_Stencil8: ret     += {.Depth32_Float_Stencil8}
+		case .Timestamp_Query: ret            += {.Timestamp_Query}
+		case .Texture_Compression_Bc: ret     += {.Texture_Compression_Bc}
+		case .Texture_Compression_Etc2: ret   += {.Texture_Compression_Etc2}
+		case .Texture_Compression_Astc: ret   += {.Texture_Compression_Astc}
+		case .Indirect_First_Instance: ret    += {.Indirect_First_Instance}
+		case .Shader_F16: ret                 += {.Shader_F16}
 		case .Rg11_B10_Ufloat_Renderable: ret += {.Rg11_B10_Ufloat_Renderable}
-		case .Bgra8_Unorm_Storage: ret += {.Bgra8_Unorm_Storage}
-		case .Float32_Filterable: ret += {.Float32_Filterable}
+		case .Bgra8_Unorm_Storage: ret        += {.Bgra8_Unorm_Storage}
+		case .Float32_Filterable: ret         += {.Float32_Filterable}
 		}
 	}
-	// odinfmt: enable
 
 	return
 }
 
-// Get the flags of all features that are only available when targeting native (not web).
-features_all_native_flags :: proc(features: Features) -> (ret: Features) {
-	// odinfmt: disable
+/* Get the flags of all features that are only available when targeting native (not web). */
+features_all_native_flags :: proc "contextless" (features: Features) -> (ret: Features) {
 	for f in features {
 		#partial switch f {
 		case .Push_Constants: ret += {.Push_Constants}
@@ -116,19 +114,14 @@ features_all_native_flags :: proc(features: Features) -> (ret: Features) {
 		case .Partially_Bound_Binding_Array: ret += {.Partially_Bound_Binding_Array}
 		}
 	}
-	// odinfmt: enable
-
 	return
 }
 
-/*============================================================================
-** Private procedures
-**============================================================================*/
-
-
-@(private)
-features_slice_to_flags :: proc(features_slice: []Raw_Feature_Name) -> (features: Features) {
-	// odinfmt: disable
+features_slice_to_flags :: proc "contextless" (
+	features_slice: []Raw_Feature_Name,
+) -> (
+	features: Features,
+) {
 	for &f in features_slice {
 		switch f {
 		// webgpu features
@@ -160,18 +153,14 @@ features_slice_to_flags :: proc(features_slice: []Raw_Feature_Name) -> (features
 		case .Partially_Bound_Binding_Array: features += {.Partially_Bound_Binding_Array}
 		}
 	}
-	// odinfmt: enable
-
 	return
 }
 
-@(private)
-features_flag_to_raw_feature_name :: proc(
+features_flag_to_raw_feature_name :: proc "contextless" (
 	feature_name: Feature_Name,
 ) -> (
 	feature: Raw_Feature_Name,
 ) {
-	// odinfmt: disable
 	// webgpu features
 	switch feature_name {
 	case .Undefined: return .Undefined
@@ -211,7 +200,6 @@ features_flag_to_raw_feature_name :: proc(
 	case .Partially_Bound_Binding_Array:
 		return .Partially_Bound_Binding_Array
 	}
-	// odinfmt: enable
 
 	return .Undefined
 }

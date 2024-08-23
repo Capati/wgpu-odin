@@ -4,38 +4,37 @@ package application
 // STD Library
 import "core:container/queue"
 import "core:log"
+import "core:mem"
 import "core:unicode/utf8"
 
 // Vendor
 import sdl "vendor:sdl2"
 
 _event_init :: proc(
+	allocator: mem.Allocator,
 	capacity := DEFAULT_EVENTS_CAPACITY,
-	allocator := context.allocator,
 ) -> (
-	err: Error,
+	ok: bool,
 ) {
-	defer if err != nil {
-		log.errorf("Failed to initialize events queue: [%v]", err)
-	}
-
 	if sdl.InitSubSystem({.EVENTS}) < 0 {
 		log.errorf("Could not initialize SDL events subsystem: [%s]", sdl.GetError())
-		return Event_Error.Init_Failed
+		return
 	}
 
-	queue.init(&g_event.events, capacity, allocator) or_return
+	if err := queue.init(&g_app.events.data, capacity, allocator); err != nil {
+		log.errorf("Failed to initialize events queue: [%v]", err)
+		return
+	}
 
 	when ODIN_OS == .Windows {
 		sdl.AddEventWatch(_win_event_watch, nil)
 		sdl.EventState(.SYSWMEVENT, sdl.ENABLE)
 	}
 
-	return
+	return true
 }
 
 _event_destroy :: proc() {
-	queue.destroy(&g_event.events)
 	sdl.QuitSubSystem({.EVENTS})
 }
 
@@ -171,7 +170,7 @@ _platform_populate_event_queue :: proc() {
 			}
 
 		case .JOYDEVICEADDED:
-			if joy, err := _joystick_add(e.jdevice.which); err != nil {
+			if joy, ok := _joystick_add(e.jdevice.which); !ok {
 				event = Joystick_Status_Event {
 					joystick = joy._base,
 					status   = .Connected,
@@ -223,8 +222,8 @@ _platform_populate_event_queue :: proc() {
 			case .RESIZED, .SIZE_CHANGED:
 				new_size := Window_Size{u32(e.window.data1), u32(e.window.data2)}
 				// Avoid multiple .SIZE_CHANGED and .RESIZED events at the same time.
-				if g_window.size != new_size {
-					g_window.size = new_size
+				if g_app.window.size != new_size {
+					g_app.window.size = new_size
 					event = cast(Resize_Event)new_size
 				}
 
@@ -257,7 +256,7 @@ _platform_populate_event_queue :: proc() {
 			}
 
 		case .QUIT, .APP_TERMINATING:
-			event = Quit_Event(true)
+			event = Quit_Event{}
 		}
 
 		if event != nil {

@@ -1,70 +1,44 @@
 package wgpu
 
-// Base
+// STD Library
 import intr "base:intrinsics"
 
-// Package
+// The raw bindings
 import wgpu "../bindings"
 
-// Handle to a query set.
-//
-// It can be created with `device_create_query_set`.
-Query_Set :: struct {
-	ptr:   Raw_Query_Set,
-	type:  Query_Type,
-	count: u32,
-}
+/*
+Handle to a query set.
 
-// Destroys the `Query_Set`.
-query_set_destroy :: proc "contextless" (using self: Query_Set) {
-	wgpu.query_set_destroy(ptr)
-}
+It can be created with `device_create_query_set`.
 
-// Get the `Query_Set` count.
-query_set_get_count :: proc "contextless" (using self: Query_Set) -> u32 {
-	return count
-}
+Corresponds to [WebGPU `GPUQuerySet`](https://gpuweb.github.io/gpuweb/#queryset).
+*/
+Query_Set :: wgpu.Query_Set
 
-// Get the `Query_Set` type.
-query_set_get_type :: proc "contextless" (
-	self: Query_Set,
-	$T: typeid,
-) -> (
-	value: T,
-	ok: bool,
-) where intr.type_is_variant_of(T, Query_Type) #optional_ok {
-	value, ok = self.type.(T)
+/* Destroys the `Query_Set`. */
+query_set_destroy :: wgpu.query_set_destroy
+
+/* Get the `Query_Set` count. */
+query_set_count :: wgpu.query_set_get_count
+
+/* Get the `Query_Set` type. */
+query_set_type :: proc "contextless" (self: Query_Set) -> (type: Query_Type) {
+	raw_type := cast(i32)(wgpu.query_set_get_type(self))
+
+	switch raw_type {
+	case 0          : type = .Occlusion
+	case 1          : type = .Timestamp
+	case 0x00030000 : type = .Pipeline_Statistics
+	}
+
 	return
 }
 
-// Get the `Query_Set` type from a variant.
-query_set_get_type_assert :: proc(
-	self: Query_Set,
-	$T: typeid,
-) -> T where intr.type_is_variant_of(T, Query_Type) {
-	value, ok := query_set_get_type(self, T)
-	assert(ok, "Invalid query type")
-	return value
-}
+/* Set debug label. */
+query_set_set_label :: wgpu.query_set_set_label
 
-// Set debug label.
-query_set_set_label :: proc "contextless" (using self: Query_Set, label: cstring) {
-	wgpu.query_set_set_label(ptr, label)
-}
+/* Increase the reference count. */
+query_set_reference :: wgpu.query_set_reference
 
-// Increase the reference count.
-query_set_reference :: proc "contextless" (using self: Query_Set) {
-	wgpu.query_set_reference(ptr)
-}
-
-// Release the `Query_Set`.
-query_set_release :: #force_inline proc "contextless" (using self: Query_Set) {
-	wgpu.query_set_release(ptr)
-}
-
-// Release the `Query_Set` and modify the raw pointer to `nil`.
-query_set_release_and_nil :: proc "contextless" (using self: ^Query_Set) {
-	if ptr == nil do return
-	wgpu.query_set_release(ptr)
-	ptr = nil
-}
+/* Release the `Query_Set` resources. */
+query_set_release :: wgpu.query_set_release

@@ -1,78 +1,90 @@
 package wgpu
 
-// Base
+// STD Library
 import "base:runtime"
-
-// Core
-import "core:fmt"
-import "core:mem"
 import "core:strings"
 
-// Package
+// The raw bindings
 import wgpu "../bindings"
 
-// Open connection to a graphics and/or compute device.
-//
-// Responsible for the creation of most rendering and compute resources. These are then used in
-// commands, which are submitted to a `Queue`.
-//
-// A device may be requested from an adapter with `adapter_request_device`.
-Device :: struct {
-	ptr:       Raw_Device,
-	features:  Device_Features,
-	limits:    Limits,
-	_err_data: ^Error_Data,
-}
+/*
+Open connection to a graphics and/or compute device.
 
-// Features that are supported and enabled on device creation.
+Responsible for the creation of most rendering and compute resources.
+These are then used in commands, which are submitted to a `Queue`.
+
+A device may be requested from an adapter with `adapter_request_device`.
+
+Corresponds to [WebGPU `GPUDevice`](https://gpuweb.github.io/gpuweb/#gpu-device).
+*/
+Device :: wgpu.Device
+
+/* Features that are supported and enabled on device creation. */
 Device_Features :: distinct Features
 
-// Describes the segment of a buffer to bind.
+/*
+Describes the segment of a buffer to bind.
+
+Corresponds to [WebGPU `GPUBufferBinding`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpubufferbinding).
+*/
 Buffer_Binding :: struct {
-	buffer: Raw_Buffer,
-	offset: u64,
-	size:   u64,
+	buffer : Buffer,
+	offset : u64,
+	size   : u64,
 }
 
-// Resource that can be bound to a pipeline.
-//
-// Corresponds to [WebGPU `GPUBindingResource`](
-// https://gpuweb.github.io/gpuweb/#typedefdef-gpubindingresource).
+/*
+Resource that can be bound to a pipeline.
+
+Corresponds to [WebGPU `GPUBindingResource`](
+https://gpuweb.github.io/gpuweb/#typedefdef-gpubindingresource).
+*/
 Binding_Resource :: union {
 	Buffer_Binding,
-	[]Raw_Buffer,
-	Raw_Sampler,
-	[]Raw_Sampler,
-	Raw_Texture_View,
-	[]Raw_Texture_View,
+	[]Buffer,
+	Sampler,
+	[]Sampler,
+	Texture_View,
+	[]Texture_View,
 }
 
-// An element of a `Bind_Group_Descriptor`, consisting of a bindable resource
-// and the slot to bind it to.
+/*
+An element of a `Bind_Group_Descriptor`, consisting of a bindable resource
+and the slot to bind it to.
+
+Corresponds to [WebGPU `GPUBindGroupEntry`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpubindgroupentry).
+*/
 Bind_Group_Entry :: struct {
-	binding:  u32,
-	resource: Binding_Resource,
+	binding  : u32,
+	resource : Binding_Resource,
 }
 
-// Describes a group of bindings and the resources to be bound.
-//
-// For use with `device_create_bind_group`.
+/*
+Describes a group of bindings and the resources to be bound.
+
+For use with `device_create_bind_group`.
+
+Corresponds to [WebGPU `GPUBindGroupDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpubindgroupdescriptor).
+*/
 Bind_Group_Descriptor :: struct {
-	label:   cstring,
-	layout:  Raw_Bind_Group_Layout,
-	entries: []Bind_Group_Entry,
+	label   : cstring,
+	layout  : Bind_Group_Layout,
+	entries : []Bind_Group_Entry,
 }
 
-// Creates a new `Bind_Group`.
+/* Creates a new `Bind_Group`. */
 @(require_results)
 device_create_bind_group :: proc(
-	using self: Device,
+	self: Device,
 	descriptor: Bind_Group_Descriptor,
 	loc := #caller_location,
 ) -> (
 	bind_group: Bind_Group,
-	err: Error,
-) {
+	ok: bool,
+) #optional_ok #no_bounds_check {
 	desc: wgpu.Bind_Group_Descriptor
 	desc.label = descriptor.label
 
@@ -81,14 +93,15 @@ device_create_bind_group :: proc(
 	}
 
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+	ta := context.temp_allocator
+
+	extras: [dynamic]wgpu.Bind_Group_Entry_Extras
+	extras.allocator = ta
 
 	entry_count := uint(len(descriptor.entries))
 
-	extras: [dynamic]wgpu.Bind_Group_Entry_Extras
-	extras.allocator = context.temp_allocator
-
 	if entry_count > 0 {
-		entries := make([]wgpu.Bind_Group_Entry, entry_count, context.temp_allocator)
+		entries := make([]wgpu.Bind_Group_Entry, entry_count, ta)
 
 		for &v, i in descriptor.entries {
 			raw_entry := &entries[i]
@@ -96,11 +109,11 @@ device_create_bind_group :: proc(
 			raw_extra: ^wgpu.Bind_Group_Entry_Extras
 
 			#partial switch &res in v.resource {
-			case []Raw_Buffer, []Raw_Sampler, []Raw_Texture_View:
+			case []Buffer, []Sampler, []Texture_View:
 				append(
 					&extras,
 					wgpu.Bind_Group_Entry_Extras {
-						chain = {stype = wgpu.SType(Native_SType.Bind_Group_Entry_Extras)},
+						stype = wgpu.SType(Native_SType.Bind_Group_Entry_Extras),
 					},
 				)
 				raw_extra = &extras[len(extras) - 1]
@@ -111,17 +124,17 @@ device_create_bind_group :: proc(
 				raw_entry.buffer = res.buffer
 				raw_entry.size = res.size
 				raw_entry.offset = res.offset
-			case []Raw_Buffer:
+			case []Buffer:
 				raw_extra.buffer_count = len(res)
 				raw_extra.buffers = raw_data(res)
-			case Raw_Sampler:
+			case Sampler:
 				raw_entry.sampler = res
-			case []Raw_Sampler:
+			case []Sampler:
 				raw_extra.sampler_count = len(res)
 				raw_extra.samplers = raw_data(res)
-			case Raw_Texture_View:
+			case Texture_View:
 				raw_entry.texture_view = res
-			case []Raw_Texture_View:
+			case []Texture_View:
 				raw_extra.texture_view_count = len(res)
 				raw_extra.texture_views = raw_data(res)
 			}
@@ -135,20 +148,28 @@ device_create_bind_group :: proc(
 		desc.entries = raw_data(entries)
 	}
 
-	set_and_reset_err_data(_err_data, loc)
+	_error_reset_data(loc)
 
-	bind_group.ptr = wgpu.device_create_bind_group(ptr, &desc)
+	bind_group = wgpu.device_create_bind_group(self, &desc)
 
-	if err = get_last_error(); err != nil {
-		if bind_group.ptr != nil {
-			wgpu.bind_group_release(bind_group.ptr)
+	if get_last_error() != nil {
+		if bind_group != nil {
+			wgpu.bind_group_release(bind_group)
 		}
+		return
 	}
 
-	return
+	return bind_group, true
 }
 
-// Specific type of a binding layout.
+/*
+Specific type of a binding.
+
+For use in `Bind_Group_Layout_Entry`.
+
+Corresponds to WebGPU's mutually exclusive fields within [`GPUBindGroupLayoutEntry`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpubindgrouplayoutentry).
+*/
 Binding_Type :: union {
 	wgpu.Buffer_Binding_Layout,
 	wgpu.Sampler_Binding_Layout,
@@ -156,61 +177,87 @@ Binding_Type :: union {
 	wgpu.Storage_Texture_Binding_Layout,
 }
 
-// Describes a single binding inside a bind group.
-//
-// Corresponds to [WebGPU `GPUBindGroupLayoutEntry`](
-// https://gpuweb.github.io/gpuweb/#dictdef-gpubindgrouplayoutentry).
+/*
+Describes the shader stages that a binding will be visible from.
+
+These can be combined so something that is visible from both vertex and fragment shaders can
+be defined as:
+
+	flags := Shader_Stage_Flags{.Vertex, .Fragment}
+
+Corresponds to [WebGPU `GPUShaderStageFlags`](
+https://gpuweb.github.io/gpuweb/#typedefdef-gpushaderstageflags).
+*/
+Shader_Stage_Flags :: wgpu.Shader_Stage_Flags
+
+/*
+Describes a single binding inside a bind group.
+
+Corresponds to [WebGPU `GPUBindGroupLayoutEntry`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpubindgrouplayoutentry).
+*/
 Bind_Group_Layout_Entry :: struct {
-	binding:    u32,
-	visibility: Shader_Stage_Flags,
-	type:       Binding_Type,
-	// Extra values
-	count:      Maybe(u32),
+	binding    : u32,
+	visibility : Shader_Stage_Flags,
+	type       : Binding_Type,
+	count      : Maybe(u32),
 }
 
-// Describes a `Bind_Group_Layout`.
+/*
+Describes a `Bind_Group_Layout`.
+
+For use with `device_create_bind_group_layout`.
+
+Corresponds to [WebGPU `GPUBindGroupLayoutDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpubindgrouplayoutdescriptor).
+*/
 Bind_Group_Layout_Descriptor :: struct {
-	label:   cstring,
-	entries: []Bind_Group_Layout_Entry,
+	label   : cstring,
+	entries : []Bind_Group_Layout_Entry,
 }
 
-// Creates a `Bind_Group_Layout`.
+/* Creates a new `Bind_Group_Layout`. */
 @(require_results)
 device_create_bind_group_layout :: proc(
-	using self: Device,
-	descriptor: Bind_Group_Layout_Descriptor = {},
+	self: Device,
+	descriptor: Maybe(Bind_Group_Layout_Descriptor) = nil,
 	loc := #caller_location,
 ) -> (
 	bind_group_layout: Bind_Group_Layout,
-	err: Error,
-) {
-	if (descriptor.label == "" || descriptor.label == nil) && len(descriptor.entries) == 0 {
-		set_and_reset_err_data(_err_data, loc)
-		bind_group_layout.ptr = wgpu.device_create_bind_group_layout(ptr, nil)
+	ok: bool,
+) #optional_ok #no_bounds_check {
+	desc, desc_ok := descriptor.?
 
-		if err = get_last_error(); err != nil {
-			if bind_group_layout.ptr != nil {
-				wgpu.bind_group_layout_release(bind_group_layout.ptr)
+	if !desc_ok {
+		_error_reset_data(loc)
+
+		bind_group_layout = wgpu.device_create_bind_group_layout(self, nil)
+
+		if get_last_error() != nil {
+			if bind_group_layout != nil {
+				wgpu.bind_group_layout_release(bind_group_layout)
 			}
+			return
 		}
 
-		return
+		return bind_group_layout, true
 	}
 
-	desc: wgpu.Bind_Group_Layout_Descriptor
-	desc.label = descriptor.label
+	raw_desc: wgpu.Bind_Group_Layout_Descriptor
+	raw_desc.label = desc.label
 
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-
-	entry_count := uint(len(descriptor.entries))
+	ta := context.temp_allocator
 
 	extras: [dynamic]wgpu.Bind_Group_Layout_Entry_Extras
-	extras.allocator = context.temp_allocator
+	extras.allocator = ta
+
+	entry_count := uint(len(desc.entries))
 
 	if entry_count > 0 {
-		entries := make([]wgpu.Bind_Group_Layout_Entry, entry_count, context.temp_allocator)
+		entries := make([]wgpu.Bind_Group_Layout_Entry, entry_count, ta)
 
-		for &v, i in descriptor.entries {
+		for &v, i in desc.entries {
 			raw_entry := &entries[i]
 
 			raw_entry.binding = v.binding
@@ -227,13 +274,11 @@ device_create_bind_group_layout :: proc(
 				raw_entry.storage_texture = e
 			}
 
-			if count, ok := v.count.?; ok {
+			if count, count_ok := v.count.?; count_ok {
 				append(
 					&extras,
 					wgpu.Bind_Group_Layout_Entry_Extras {
-						chain = {
-							stype = wgpu.SType(wgpu.Native_SType.Bind_Group_Layout_Entry_Extras),
-						},
+						stype = wgpu.SType(wgpu.Native_SType.Bind_Group_Layout_Entry_Extras),
 						count = count,
 					},
 				)
@@ -241,200 +286,182 @@ device_create_bind_group_layout :: proc(
 			}
 		}
 
-		desc.entry_count = entry_count
-		desc.entries = raw_data(entries)
+		raw_desc.entry_count = entry_count
+		raw_desc.entries = raw_data(entries)
 	}
 
-	set_and_reset_err_data(_err_data, loc)
+	_error_reset_data(loc)
 
-	bind_group_layout.ptr = wgpu.device_create_bind_group_layout(ptr, &desc)
+	bind_group_layout = wgpu.device_create_bind_group_layout(self, &raw_desc)
 
-	if err = get_last_error(); err != nil {
-		if bind_group_layout.ptr != nil {
-			wgpu.bind_group_layout_release(bind_group_layout.ptr)
+	if get_last_error() != nil {
+		if bind_group_layout != nil {
+			wgpu.bind_group_layout_release(bind_group_layout)
 		}
+		return
 	}
 
-	return
+	return bind_group_layout, true
 }
 
-// Creates a `Buffer`.
+/*
+Describes a `Buffer`.
+
+For use with `device_create_buffer`.
+
+Corresponds to [WebGPU `GPUBufferDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpubufferdescriptor).
+*/
+Buffer_Descriptor :: wgpu.Buffer_Descriptor
+
+/* Creates a new `Buffer`. */
 @(require_results)
 device_create_buffer :: proc "contextless" (
-	using self: Device,
+	self: Device,
 	descriptor: Buffer_Descriptor,
 	loc := #caller_location,
 ) -> (
 	buffer: Buffer,
-	err: Error,
-) {
-	set_and_reset_err_data(_err_data, loc)
+	ok: bool,
+) #optional_ok {
+	_error_reset_data(loc)
 
 	descriptor := descriptor
-	buffer.ptr = wgpu.device_create_buffer(ptr, &descriptor)
+	buffer = wgpu.device_create_buffer(self, &descriptor)
 
-	if err = get_last_error(); err != nil {
-		if buffer.ptr != nil {
-			wgpu.buffer_release(buffer.ptr)
+	if get_last_error() != nil {
+		if buffer != nil {
+			wgpu.buffer_release(buffer)
 		}
 		return
 	}
 
-	buffer.size = descriptor.size
-	buffer.usage = descriptor.usage
-	buffer._err_data = _err_data
-
-	return
+	return buffer, true
 }
 
-// Creates an empty `Command_Encoder`.
+/*
+Describes a `Command_Encoder`.
+
+For use with `device_create_command_encoder`.
+
+Corresponds to [WebGPU `GPUCommandEncoderDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpucommandencoderdescriptor).
+*/
+Command_Encoder_Descriptor :: wgpu.Command_Encoder_Descriptor
+
+/* Creates an empty `Command_Encoder`. */
 @(require_results)
 device_create_command_encoder :: proc "contextless" (
-	using self: Device,
-	descriptor: Command_Encoder_Descriptor = {},
+	self: Device,
+	descriptor: Maybe(Command_Encoder_Descriptor) = nil,
 	loc := #caller_location,
 ) -> (
 	command_encoder: Command_Encoder,
-	err: Error,
-) {
-	set_and_reset_err_data(_err_data, loc)
+	ok: bool,
+) #optional_ok {
+	_error_reset_data(loc)
 
-	if descriptor != {} {
-		descriptor := descriptor
-		command_encoder.ptr = wgpu.device_create_command_encoder(ptr, &descriptor)
-	} else {
-		command_encoder.ptr = wgpu.device_create_command_encoder(ptr, nil)
-	}
+	descriptor := descriptor
+	command_encoder = wgpu.device_create_command_encoder(self, &descriptor.? or_else nil)
 
-	if err = get_last_error(); err != nil {
-		if command_encoder.ptr != nil {
-			wgpu.command_encoder_release(command_encoder.ptr)
+	if get_last_error() != nil {
+		if command_encoder != nil {
+			wgpu.command_encoder_release(command_encoder)
 		}
 		return
 	}
 
-	command_encoder._err_data = _err_data
-
-	return
+	return command_encoder, true
 }
 
-Programmable_Stage_Descriptor :: struct {
-	module:      Raw_Shader_Module,
-	entry_point: cstring,
-	constants:   []Constant_Entry,
-}
+/*
+Describes a compute pipeline.
 
-// Describes a compute pipeline.
-//
-// For use with `device_create_compute_pipeline`.
+For use with `device_create_compute_pipeline`.
+
+Corresponds to [WebGPU `GPUComputePipelineDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpucomputepipelinedescriptor).
+*/
 Compute_Pipeline_Descriptor :: struct {
-	label:   cstring,
-	layout:  Raw_Pipeline_Layout,
-	compute: Programmable_Stage_Descriptor,
+	label       : cstring,
+	layout      : Pipeline_Layout,
+	module      : Shader_Module,
+	entry_point : cstring,
+	constants   : []Constant_Entry,
 }
 
-@(private = "file")
-_device_create_compute_pipeline_descriptor :: proc "contextless" (
+/* Creates a new `Compute_Pipeline`. */
+@(require_results)
+device_create_compute_pipeline :: proc "contextless" (
+	self: Device,
 	descriptor: Compute_Pipeline_Descriptor,
+	loc := #caller_location,
 ) -> (
-	desc: wgpu.Compute_Pipeline_Descriptor,
-) {
+	compute_pipeline: Compute_Pipeline,
+	ok: bool,
+) #optional_ok {
+	desc: wgpu.Compute_Pipeline_Descriptor
 	desc.label = descriptor.label
 
 	if descriptor.layout != nil {
 		desc.layout = descriptor.layout
 	}
 
-	if descriptor.compute.module != nil {
-		desc.compute.module = descriptor.compute.module
+	if descriptor.module != nil {
+		desc.compute.module = descriptor.module
 	}
 
-	desc.compute.entry_point = descriptor.compute.entry_point
+	desc.compute.entry_point = descriptor.entry_point
 
-	if len(descriptor.compute.constants) > 0 {
-		desc.compute.constant_count = len(descriptor.compute.constants)
-		desc.compute.constants = raw_data(descriptor.compute.constants)
+	if len(descriptor.constants) > 0 {
+		desc.compute.constant_count = len(descriptor.constants)
+		desc.compute.constants = raw_data(descriptor.constants)
 	}
 
-	return
-}
+	_error_reset_data(loc)
 
-// Creates a `Compute_Pipeline`.
-@(require_results)
-device_create_compute_pipeline :: proc "contextless" (
-	using self: Device,
-	descriptor: Compute_Pipeline_Descriptor,
-	loc := #caller_location,
-) -> (
-	compute_pipeline: Compute_Pipeline,
-	err: Error,
-) {
-	desc := _device_create_compute_pipeline_descriptor(descriptor)
+	compute_pipeline = wgpu.device_create_compute_pipeline(self, &desc)
 
-	set_and_reset_err_data(_err_data, loc)
-
-	compute_pipeline.ptr = wgpu.device_create_compute_pipeline(ptr, &desc)
-
-	if err = get_last_error(); err != nil {
-		if compute_pipeline.ptr != nil {
-			wgpu.compute_pipeline_release(compute_pipeline.ptr)
+	if get_last_error() != nil {
+		if compute_pipeline != nil {
+			wgpu.compute_pipeline_release(compute_pipeline)
 		}
 		return
 	}
 
-	compute_pipeline._err_data = _err_data
-
-	return
+	return compute_pipeline, true
 }
 
-// Creates a `Compute_Pipeline` async.
-@(require_results)
-device_create_compute_pipeline_async :: proc "contextless" (
-	using self: Device,
-	descriptor: Compute_Pipeline_Descriptor,
-	callback: Create_Compute_Pipeline_Async_Callback,
-	user_data: rawptr,
-	loc := #caller_location,
-) -> (
-	err: Error,
-) {
-	desc := _device_create_compute_pipeline_descriptor(descriptor)
-
-	set_and_reset_err_data(_err_data, loc)
-	wgpu.device_create_compute_pipeline_async(ptr, &desc, callback, user_data)
-	err = get_last_error()
-
-	return
-}
-
-// A range of push constant memory to pass to a shader stage.
+/* A range of push constant memory to pass to a shader stage. */
 Push_Constant_Range :: struct {
-	stages: Shader_Stage_Flags,
-	range:  Range(u32),
+	stages : Shader_Stage_Flags,
+	range  : Range(u32),
 }
 
-// Describes a [`Pipeline_Layout`].
-//
-// For use with [`device_create_pipeline_layout`].
-//
-// Corresponds to [WebGPU `GPUPipelineLayoutDescriptor`](
-// https://gpuweb.github.io/gpuweb/#dictdef-gpupipelinelayoutdescriptor).
+/*
+Describes a `Pipeline_Layout`.
+
+For use with `device_create_pipeline_layout`.
+
+Corresponds to [WebGPU `GPUPipelineLayoutDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpupipelinelayoutdescriptor).
+*/
 Pipeline_Layout_Descriptor :: struct {
-	label:                cstring,
-	bind_group_layouts:   []Raw_Bind_Group_Layout,
-	push_constant_ranges: []Push_Constant_Range,
+	label                : cstring,
+	bind_group_layouts   : []Bind_Group_Layout,
+	push_constant_ranges : []Push_Constant_Range,
 }
 
-// Creates a `Pipeline_Layout`.
+/* Creates a `Pipeline_Layout`. */
 @(require_results)
 device_create_pipeline_layout :: proc(
-	using self: Device,
+	self: Device,
 	descriptor: Pipeline_Layout_Descriptor,
 	loc := #caller_location,
 ) -> (
 	pipeline_layout: Pipeline_Layout,
-	err: Error,
-) {
+	ok: bool,
+) #optional_ok {
 	desc: wgpu.Pipeline_Layout_Descriptor
 	desc.label = descriptor.label
 
@@ -450,116 +477,76 @@ device_create_pipeline_layout :: proc(
 	push_constant_range_count := len(descriptor.push_constant_ranges)
 
 	if push_constant_range_count > 0 {
-		when WGPU_ENABLE_ERROR_HANDLING {
-			if .Push_Constants not_in features {
-				err = .Validation
-				set_and_update_err_data(
-					_err_data,
-					.General,
-					err,
-					"Push Constants feature is not enabled. Enable the 'Push_Constants' feature in the device creation to use push constant ranges in the pipeline layout",
-					loc,
-				)
-				return
-			}
-		}
-
 		push_constant_ranges := make(
 			[]wgpu.Push_Constant_Range,
 			push_constant_range_count,
 			context.temp_allocator,
-		) or_return
+		)
 
 		for &r, i in descriptor.push_constant_ranges {
-			when WGPU_ENABLE_ERROR_HANDLING {
-				if r.range.start >= limits.max_push_constant_size ||
-				   r.range.end > limits.max_push_constant_size {
-					err = .Validation
-					set_and_update_err_data(
-						_err_data,
-						.General,
-						err,
-						fmt.tprintf(
-							"Invalid push constant range: %d-%d. Range must be within 0-%d",
-							r.range.start,
-							r.range.end,
-							limits.max_push_constant_size,
-						),
-						loc,
-					)
-					return
-				}
-			}
-
 			raw_range := &push_constant_ranges[i]
 			raw_range.stages = r.stages
 			raw_range.start = r.range.start
 			raw_range.end = r.range.end
 		}
 
-		extras.chain.stype = wgpu.SType(wgpu.Native_SType.Pipeline_Layout_Extras)
+		extras.stype = wgpu.SType(wgpu.Native_SType.Pipeline_Layout_Extras)
 		extras.push_constant_range_count = uint(push_constant_range_count)
 		extras.push_constant_ranges = raw_data(push_constant_ranges)
 		desc.next_in_chain = &extras.chain
 	}
 
-	set_and_reset_err_data(_err_data, loc)
+	_error_reset_data(loc)
 
-	pipeline_layout.ptr = wgpu.device_create_pipeline_layout(ptr, &desc)
+	pipeline_layout = wgpu.device_create_pipeline_layout(self, &desc)
 
-	if err = get_last_error(); err != nil {
-		if pipeline_layout.ptr != nil {
-			wgpu.pipeline_layout_release(pipeline_layout.ptr)
+	if get_last_error() != nil {
+		if pipeline_layout != nil {
+			wgpu.pipeline_layout_release(pipeline_layout)
 		}
 		return
 	}
 
-	return
+	return pipeline_layout, true
 }
 
-// Query returns a single 64-bit number, serving as an occlusion boolean.
-Query_Type_Occlusion :: struct {}
+/*
+Type of query contained in a `Query_Set`.
 
-// Query returns a 64-bit number indicating the GPU-timestamp where all previous commands
-// have finished executing.
-Query_Type_Timestamp :: struct {}
-
-Pipeline_Statistic_Type :: wgpu.Pipeline_Statistic_Name
-// Flags for which pipeline data should be recorded.
-Pipeline_Statistics_Types :: []Pipeline_Statistic_Type
-
-// Type of query contained in a Query_Set.
-//
-// Corresponds to [WebGPU `GPUQueryType`](
-// https://gpuweb.github.io/gpuweb/#enumdef-gpuquerytype).
-Query_Type :: union {
-	Query_Type_Occlusion,
-	Query_Type_Timestamp,
-	Pipeline_Statistics_Types,
+Corresponds to [WebGPU `GPUQueryType`](
+https://gpuweb.github.io/gpuweb/#enumdef-gpuquerytype).
+*/
+Query_Type :: enum ENUM_SIZE {
+	Occlusion           = 0,
+	Timestamp           = 1,
+	Pipeline_Statistics = 0x00030000, /* Extras */
 }
 
-// Describes a [`Query_Set`].
-//
-// For use with [`device_create_query_set`].
-//
-// Corresponds to [WebGPU `GPUQuerySetDescriptor`](
-// https://gpuweb.github.io/gpuweb/#dictdef-gpuquerysetdescriptor).
+/*
+Describes a [`Query_Set`].
+
+For use with [`device_create_query_set`].
+
+Corresponds to [WebGPU `GPUQuerySetDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpuquerysetdescriptor).
+*/
 Query_Set_Descriptor :: struct {
-	label: cstring,
-	type:  Query_Type,
-	count: u32,
+	label               : cstring,
+	type                : Query_Type,
+	count               : u32,
+	pipeline_statistics : []wgpu.Pipeline_Statistic_Name, /* Extras */
 }
 
-// Creates a new `Query_Set`.
+/* Creates a new `Query_Set`. */
 @(require_results)
 device_create_query_set :: proc "contextless" (
-	using self: Device,
+	self: Device,
 	descriptor: Query_Set_Descriptor,
 	loc := #caller_location,
 ) -> (
 	query_set: Query_Set,
-	err: Error,
-) {
+	ok: bool,
+) #optional_ok {
 	desc: wgpu.Query_Set_Descriptor
 
 	desc.label = descriptor.label
@@ -567,58 +554,60 @@ device_create_query_set :: proc "contextless" (
 
 	extras: wgpu.Query_Set_Descriptor_Extras
 
-	switch type in descriptor.type {
-	case Query_Type_Occlusion:
+	switch descriptor.type {
+	case .Occlusion:
 		desc.type = .Occlusion
-	case Query_Type_Timestamp:
+	case .Timestamp:
 		desc.type = .Timestamp
-	case Pipeline_Statistics_Types:
+	case .Pipeline_Statistics:
 		desc.type = cast(wgpu.Query_Type)wgpu.Native_Query_Type.Pipeline_Statistics
-		extras.chain.stype = wgpu.SType(wgpu.Native_SType.Query_Set_Descriptor_Extras)
-		extras.pipeline_statistic_count = len(type)
-		extras.pipeline_statistics = raw_data(type)
+		extras.stype = wgpu.SType(wgpu.Native_SType.Query_Set_Descriptor_Extras)
+		extras.pipeline_statistic_count = len(descriptor.pipeline_statistics)
+		extras.pipeline_statistics = raw_data(descriptor.pipeline_statistics)
 		desc.next_in_chain = &extras.chain
 	}
 
-	set_and_reset_err_data(_err_data, loc)
+	_error_reset_data(loc)
 
-	query_set.ptr = wgpu.device_create_query_set(ptr, &desc)
+	query_set = wgpu.device_create_query_set(self, &desc)
 
-	if err = get_last_error(); err != nil {
-		if query_set.ptr != nil {
-			wgpu.query_set_release(query_set.ptr)
+	if get_last_error() != nil {
+		if query_set != nil {
+			wgpu.query_set_release(query_set)
 		}
 		return
 	}
 
-	query_set.type = descriptor.type
-	query_set.count = descriptor.count
-
-	return
+	return query_set, true
 }
 
-// Describes a `Render_Bundle_Encoder`.
-//
-// For use with `device_create_render_bundle_encoder`.
+/*
+Describes a `Render_Bundle`.
+
+For use with `render_bundle_encoder_finish`.
+
+Corresponds to [WebGPU `GPURenderBundleDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpurenderbundledescriptor).
+*/
 Render_Bundle_Encoder_Descriptor :: struct {
-	label:                cstring,
-	color_formats:        []Texture_Format,
-	depth_stencil_format: Texture_Format,
-	sample_count:         u32,
-	depth_read_only:      bool,
-	stencil_read_only:    bool,
+	label                : cstring,
+	color_formats        : []Texture_Format,
+	depth_stencil_format : Texture_Format,
+	sample_count         : u32,
+	depth_read_only      : bool,
+	stencil_read_only    : bool,
 }
 
-// Creates an empty `Render_Bundle_Encoder`.
+/* Creates an empty `Render_Bundle_Encoder`. */
 @(require_results)
 device_create_render_bundle_encoder :: proc "contextless" (
-	using self: Device,
+	self: Device,
 	descriptor: Render_Bundle_Encoder_Descriptor,
 	loc := #caller_location,
 ) -> (
 	render_bundle_encoder: Render_Bundle_Encoder,
-	err: Error,
-) {
+	ok: bool,
+) #optional_ok {
 	desc: wgpu.Render_Bundle_Encoder_Descriptor
 	desc.label = descriptor.label
 
@@ -634,29 +623,136 @@ device_create_render_bundle_encoder :: proc "contextless" (
 	desc.depth_read_only = b32(descriptor.depth_read_only)
 	desc.stencil_read_only = b32(descriptor.stencil_read_only)
 
-	set_and_reset_err_data(_err_data, loc)
+	_error_reset_data(loc)
 
-	render_bundle_encoder.ptr = wgpu.device_create_render_bundle_encoder(ptr, &desc)
+	render_bundle_encoder = wgpu.device_create_render_bundle_encoder(self, &desc)
 
-	if err = get_last_error(); err != nil {
-		if render_bundle_encoder.ptr != nil {
-			wgpu.render_bundle_encoder_release(render_bundle_encoder.ptr)
+	if get_last_error() != nil {
+		if render_bundle_encoder != nil {
+			wgpu.render_bundle_encoder_release(render_bundle_encoder)
 		}
 		return
 	}
 
-	render_bundle_encoder._err_data = _err_data
-
-	return
+	return render_bundle_encoder, true
 }
 
-@(private = "file")
-_device_create_render_pipeline_descriptor :: proc(
-	descriptor: ^Render_Pipeline_Descriptor,
-	allocator: mem.Allocator,
+/*
+Describes how the vertex buffer is interpreted.
+
+For use in [`VertexState`].
+
+Corresponds to [WebGPU `GPUVertexBufferLayout`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpuvertexbufferlayout).
+*/
+Vertex_Buffer_Layout :: struct {
+	array_stride : u64,
+	step_mode    : Vertex_Step_Mode,
+	attributes   : []Vertex_Attribute,
+}
+
+/*
+Describes the vertex processing in a render pipeline.
+
+For use in [`RenderPipelineDescriptor`].
+
+Corresponds to [WebGPU `GPUVertexState`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpuvertexstate).
+*/
+Vertex_State :: struct {
+	module      : Shader_Module,
+	entry_point : cstring,
+	constants   : []Constant_Entry,
+	buffers     : []Vertex_Buffer_Layout,
+}
+
+/*
+Describes the fragment processing in a render pipeline.
+
+For use in [`RenderPipelineDescriptor`].
+
+Corresponds to [WebGPU `GPUFragmentState`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpufragmentstate).
+*/
+Fragment_State :: struct {
+	module      : Shader_Module,
+	entry_point : cstring,
+	constants   : []Constant_Entry,
+	targets     : []Color_Target_State,
+}
+
+/*
+Primitive type the input mesh is composed of.
+
+Corresponds to [WebGPU `GPUPrimitiveTopology`](
+https://gpuweb.github.io/gpuweb/#enumdef-gpuprimitivetopology).
+*/
+Primitive_Topology :: enum {
+	Triangle_List, // Default here, not in wgpu
+	Point_List,
+	Line_List,
+	Line_Strip,
+	Triangle_Strip,
+}
+
+/*
+Vertex winding order which classifies the "front" face of a triangle.
+
+Corresponds to [WebGPU `GPUFrontFace`](
+https://gpuweb.github.io/gpuweb/#enumdef-gpufrontface).
+*/
+Front_Face :: wgpu.Front_Face
+
+/*
+Face of a vertex.
+
+Corresponds to [WebGPU `GPUCullMode`](
+https://gpuweb.github.io/gpuweb/#enumdef-gpucullmode).
+*/
+Face :: wgpu.Cull_Mode
+
+/*
+Describes the state of primitive assembly and rasterization in a render pipeline.
+
+Corresponds to [WebGPU `GPUPrimitiveState`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpuprimitivestate).
+*/
+Primitive_State :: struct {
+	topology           : Primitive_Topology,
+	strip_index_format : Index_Format,
+	front_face         : Front_Face,
+	cull_mode          : Face,
+}
+
+/*
+Describes a render (graphics) pipeline.
+
+For use with `device_create_render_pipeline`.
+
+Corresponds to [WebGPU `GPURenderPipelineDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpurenderpipelinedescriptor).
+*/
+Render_Pipeline_Descriptor :: struct {
+	label         : cstring,
+	layout        : Pipeline_Layout,
+	vertex        : Vertex_State,
+	primitive     : Primitive_State,
+	depth_stencil : ^Depth_Stencil_State,
+	multisample   : Multisample_State,
+	fragment      : ^Fragment_State,
+}
+
+/* Creates a `Render_Pipeline`. */
+@(require_results)
+device_create_render_pipeline :: proc(
+	self: Device,
+	descriptor: Render_Pipeline_Descriptor,
+	loc := #caller_location,
 ) -> (
-	desc: wgpu.Render_Pipeline_Descriptor,
-) {
+	render_pipeline: Render_Pipeline,
+	ok: bool,
+) #optional_ok {
+	desc: wgpu.Render_Pipeline_Descriptor
 	desc.label = descriptor.label
 
 	if descriptor.layout != nil {
@@ -676,8 +772,14 @@ _device_create_render_pipeline_descriptor :: proc(
 
 	vertex_buffer_count := uint(len(descriptor.vertex.buffers))
 
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+
 	if vertex_buffer_count > 0 {
-		vertex_buffers := make([]wgpu.Vertex_Buffer_Layout, vertex_buffer_count, allocator)
+		vertex_buffers := make(
+			[]wgpu.Vertex_Buffer_Layout,
+			vertex_buffer_count,
+			context.temp_allocator,
+		)
 
 		for v, i in descriptor.vertex.buffers {
 			raw_buffer := &vertex_buffers[i]
@@ -730,7 +832,7 @@ _device_create_render_pipeline_descriptor :: proc(
 		desc.multisample.count = 1
 	}
 
-	fragment := new(wgpu.Fragment_State, allocator)
+	fragment: wgpu.Fragment_State
 
 	if descriptor.fragment != nil {
 		if descriptor.fragment.module != nil {
@@ -749,166 +851,65 @@ _device_create_render_pipeline_descriptor :: proc(
 			fragment.targets = raw_data(descriptor.fragment.targets)
 		}
 
-		desc.fragment = fragment
+		desc.fragment = &fragment
 	}
 
-	return
-}
+	_error_reset_data(loc)
 
-// Describes how the vertex buffer is interpreted.
-//
-// For use in `Vertex_State`.
-Vertex_Buffer_Layout :: struct {
-	array_stride: u64,
-	step_mode:    Vertex_Step_Mode,
-	attributes:   []Vertex_Attribute,
-}
+	render_pipeline = wgpu.device_create_render_pipeline(self, &desc)
 
-// Describes the vertex processing in a render pipeline.
-//
-// For use in `Render_Pipeline_Descriptor`.
-Vertex_State :: struct {
-	module:      Raw_Shader_Module,
-	entry_point: cstring,
-	constants:   []Constant_Entry,
-	buffers:     []Vertex_Buffer_Layout,
-}
-
-// Describes the fragment processing in a render pipeline.
-//
-// For use in `Render_Pipeline_Descriptor`.
-Fragment_State :: struct {
-	module:      Raw_Shader_Module,
-	entry_point: cstring,
-	constants:   []Constant_Entry,
-	targets:     []Color_Target_State,
-}
-
-// Primitive type the input mesh is composed of.
-Primitive_Topology :: enum {
-	Triangle_List, // Default here, not in wgpu
-	Point_List,
-	Line_List,
-	Line_Strip,
-	Triangle_Strip,
-}
-
-// Describes the state of primitive assembly and rasterization in a render pipeline.
-Primitive_State :: struct {
-	topology:           Primitive_Topology,
-	strip_index_format: Index_Format,
-	front_face:         Front_Face,
-	cull_mode:          Cull_Mode,
-}
-
-// Describes a render (graphics) pipeline.
-//
-// For use with `device_create_render_pipeline`.
-Render_Pipeline_Descriptor :: struct {
-	label:         cstring,
-	layout:        Raw_Pipeline_Layout,
-	vertex:        Vertex_State,
-	primitive:     Primitive_State,
-	depth_stencil: ^Depth_Stencil_State,
-	multisample:   Multisample_State,
-	fragment:      ^Fragment_State,
-}
-
-// Creates a `Render_Pipeline`.
-@(require_results)
-device_create_render_pipeline :: proc(
-	using self: Device,
-	descriptor: Render_Pipeline_Descriptor,
-	loc := #caller_location,
-) -> (
-	render_pipeline: Render_Pipeline,
-	err: Error,
-) {
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-
-	descriptor := descriptor
-	desc := _device_create_render_pipeline_descriptor(&descriptor, context.temp_allocator)
-
-	set_and_reset_err_data(_err_data, loc)
-
-	render_pipeline.ptr = wgpu.device_create_render_pipeline(ptr, &desc)
-
-	if err = get_last_error(); err != nil {
-		if render_pipeline.ptr != nil {
-			wgpu.render_pipeline_release(render_pipeline.ptr)
+	if get_last_error() != nil {
+		if render_pipeline != nil {
+			wgpu.render_pipeline_release(render_pipeline)
 		}
 		return
 	}
 
-	render_pipeline._err_data = _err_data
-
-	return
+	return render_pipeline, true
 }
 
-// Creates a `Render_Pipeline` async.
-@(require_results)
-device_create_render_pipeline_async :: proc(
-	using self: Device,
-	descriptor: Render_Pipeline_Descriptor,
-	callback: Create_Render_Pipeline_Async_Callback,
-	user_data: rawptr,
-	loc := #caller_location,
-) -> (
-	err: Error,
-) {
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-
-	descriptor := descriptor
-	desc := _device_create_render_pipeline_descriptor(&descriptor, context.temp_allocator)
-
-	set_and_reset_err_data(_err_data, loc)
-	wgpu.device_create_render_pipeline_async(ptr, &desc, callback, user_data)
-	err = get_last_error()
-
-	return
-}
-
-// Creates a new `Sampler`.
+/* Creates a new `Sampler`. */
 @(require_results)
 device_create_sampler :: proc "contextless" (
-	using self: Device,
+	self: Device,
 	descriptor: Sampler_Descriptor = DEFAULT_SAMPLER_DESCRIPTOR,
 	loc := #caller_location,
 ) -> (
 	sampler: Sampler,
-	err: Error,
-) {
-	set_and_reset_err_data(_err_data, loc)
+	ok: bool,
+) #optional_ok {
+	_error_reset_data(loc)
 
 	descriptor := descriptor
-	sampler.ptr = wgpu.device_create_sampler(ptr, &descriptor)
+	sampler = wgpu.device_create_sampler(self, &descriptor)
 
-	if err = get_last_error(); err != nil {
-		if sampler.ptr != nil {
-			wgpu.sampler_release(sampler.ptr)
+	if get_last_error() != nil {
+		if sampler != nil {
+			wgpu.sampler_release(sampler)
 		}
+		return
 	}
 
-	return
+	return sampler, true
 }
 
 // Creates a shader module from either `SPIR-V` or `WGSL` source code.
 @(require_results)
 device_create_shader_module :: proc(
-	using self: Device,
+	self: Device,
 	descriptor: Shader_Module_Descriptor,
 	loc := #caller_location,
 ) -> (
 	shader_module: Shader_Module,
-	err: Error,
-) {
+	ok: bool,
+) #optional_ok {
 	desc: wgpu.Shader_Module_Descriptor
 	desc.label = descriptor.label
 
-	set_and_reset_err_data(_err_data, loc)
+	_error_reset_data(loc)
 
 	switch &source in descriptor.source {
-	case WGSL_Source_String:
+	case string:
 		runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
 		wgsl := wgpu.Shader_Module_WGSL_Descriptor {
@@ -918,8 +919,8 @@ device_create_shader_module :: proc(
 
 		desc.next_in_chain = &wgsl.chain
 
-		shader_module.ptr = wgpu.device_create_shader_module(ptr, &desc)
-	case WGSL_Source_C_String:
+		shader_module = wgpu.device_create_shader_module(self, &desc)
+	case cstring:
 		wgsl := wgpu.Shader_Module_WGSL_Descriptor {
 			chain = {next = nil, stype = .Shader_Module_WGSL_Descriptor},
 			code = source,
@@ -927,8 +928,8 @@ device_create_shader_module :: proc(
 
 		desc.next_in_chain = &wgsl.chain
 
-		shader_module.ptr = wgpu.device_create_shader_module(ptr, &desc)
-	case SPIRV_Source:
+		shader_module = wgpu.device_create_shader_module(self, &desc)
+	case []u32:
 		spirv := wgpu.Shader_Module_SPIRV_Descriptor {
 			chain = {next = nil, stype = .Shader_Module_SPIRV_Descriptor},
 			code = nil,
@@ -945,138 +946,131 @@ device_create_shader_module :: proc(
 
 		desc.next_in_chain = &spirv.chain
 
-		shader_module.ptr = wgpu.device_create_shader_module(ptr, &desc)
+		shader_module = wgpu.device_create_shader_module(self, &desc)
 	}
 
-	if err = get_last_error(); err != nil {
-		if shader_module.ptr != nil {
-			wgpu.shader_module_release(shader_module.ptr)
+	if get_last_error() != nil {
+		if shader_module != nil {
+			wgpu.shader_module_release(shader_module)
 		}
+		return
 	}
 
-	return
+	return shader_module, true
 }
 
-// Describes a `Texture`.
+/*
+Describes a `Texture`.
+
+For use with `device_create_texture`.
+
+Corresponds to [WebGPU `GPUTextureDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gputexturedescriptor).
+*/
 Texture_Descriptor :: struct {
-	label:           cstring,
-	usage:           Texture_Usage_Flags,
-	dimension:       Texture_Dimension,
-	size:            Extent_3D,
-	format:          Texture_Format,
-	mip_level_count: u32,
-	sample_count:    u32,
-	view_formats:    []Texture_Format,
+	label           : cstring,
+	usage           : Texture_Usage_Flags,
+	dimension       : Texture_Dimension,
+	size            : Extent_3D,
+	format          : Texture_Format,
+	mip_level_count : u32,
+	sample_count    : u32,
+	view_formats    : []Texture_Format,
 }
 
-// Creates a new `Texture`.
-//
-// `descriptor` specifies the general format of the texture.
+/*  Creates a new `Texture`. */
 @(require_results)
 device_create_texture :: proc "contextless" (
-	using self: Device,
+	self: Device,
 	descriptor: Texture_Descriptor,
 	loc := #caller_location,
 ) -> (
 	texture: Texture,
-	err: Error,
-) {
+	ok: bool,
+) #optional_ok {
 	desc: wgpu.Texture_Descriptor
 
-	desc.label = descriptor.label
-	desc.usage = descriptor.usage
-	desc.dimension = descriptor.dimension
-	desc.size = descriptor.size
-	desc.format = descriptor.format
+	desc.label           = descriptor.label
+	desc.usage           = descriptor.usage
+	desc.dimension       = descriptor.dimension
+	desc.size            = descriptor.size
+	desc.format          = descriptor.format
 	desc.mip_level_count = descriptor.mip_level_count
-	desc.sample_count = descriptor.sample_count
+	desc.sample_count    = descriptor.sample_count
 
 	view_format_count := uint(len(descriptor.view_formats))
 
 	if view_format_count > 0 {
 		desc.view_format_count = view_format_count
-		desc.view_formats = raw_data(descriptor.view_formats)
+		desc.view_formats      = raw_data(descriptor.view_formats)
 	}
 
-	set_and_reset_err_data(_err_data, loc)
+	_error_reset_data(loc)
 
-	texture.ptr = wgpu.device_create_texture(ptr, &desc)
+	texture = wgpu.device_create_texture(self, &desc)
 
-	if err = get_last_error(); err != nil {
-		if texture.ptr != nil {
-			wgpu.texture_release(texture.ptr)
+	if get_last_error() != nil {
+		if texture != nil {
+			wgpu.texture_release(texture)
 		}
 		return
 	}
 
-	texture.descriptor = descriptor
-	texture._err_data = _err_data
-
-	return
+	return texture, true
 }
 
-device_destroy :: proc "contextless" (using self: Device) {
-	wgpu.device_destroy(ptr)
-}
+/* Destroy the device immediately. */
+device_destroy :: wgpu.device_destroy
 
-@(private)
-_device_get_features :: proc(
-	self: Device,
-	loc := #caller_location,
-) -> (
-	features: Device_Features,
-	err: Error,
-) {
-	count := wgpu.device_enumerate_features(self.ptr, nil)
+/*
+List all features that may be used with this device.
 
+Functions may panic if you use unsupported features.
+*/
+device_get_features :: proc "contextless" (self: Device) -> (features: Device_Features) {
+	count := wgpu.device_enumerate_features(self, nil)
 	if count == 0 do return
 
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+	raw_features: [MAX_FEATURES]wgpu.Feature_Name
 
-	raw_features, alloc_err := make([]wgpu.Feature_Name, count, context.temp_allocator)
+	wgpu.device_enumerate_features(self, raw_data(raw_features[:count]))
 
-	if alloc_err != nil {
-		err = alloc_err
-		set_and_update_err_data(nil, .General, err, "Failed to get device features", loc)
-		return
-	}
-
-	wgpu.device_enumerate_features(self.ptr, raw_data(raw_features))
-
-	features_slice := transmute([]Raw_Feature_Name)raw_features
+	features_slice := transmute([]Raw_Feature_Name)(raw_features[:count])
 	features = cast(Device_Features)features_slice_to_flags(features_slice)
 
 	return
 }
 
-// List all features that may be used with this device.
-//
-// Functions may panic if you use unsupported features.
-device_get_features :: proc "contextless" (self: Device) -> Device_Features {
-	return self.features // filled on request device
-}
+/*
+List all limits that were requested of this device.
 
-@(private)
-_device_get_limits :: proc(self: Device, loc := #caller_location) -> (limits: Limits, err: Error) {
+If any of these limits are exceeded, functions may panic.
+*/
+device_get_limits :: proc "contextless" (
+	self: Device,
+	loc := #caller_location,
+) -> (
+	limits: Limits,
+	ok: bool,
+) #optional_ok {
 	native := Supported_Limits_Extras {
-		chain = {stype = SType(Native_SType.Supported_Limits_Extras)},
+		stype = SType(Native_SType.Supported_Limits_Extras),
 	}
 
 	supported := Supported_Limits {
 		next_in_chain = &native.chain,
 	}
 
-	set_and_reset_err_data(self._err_data, loc)
+	_error_reset_data(loc)
 
-	result := wgpu.device_get_limits(self.ptr, &supported)
+	ok = bool(wgpu.device_get_limits(self, &supported))
 
-	if err = get_last_error(); err != nil {
+	if get_last_error() != nil {
 		return
 	}
 
-	if !result {
-		err = Error_Type.Unknown
-		update_error_data(self._err_data, .Request_Device, err, "Failed to fill device limits")
+	if !ok {
+		error_update_data(Error_Type.Unknown, "Failed to fill device limits")
 		return
 	}
 
@@ -1085,108 +1079,78 @@ _device_get_limits :: proc(self: Device, loc := #caller_location) -> (limits: Li
 	// Set minimum values for all limits even if the supported values are lower
 	limits_ensure_minimum(&limits, minimum = DOWNLEVEL_WEBGL2_LIMITS)
 
-	return
+	return limits, true
 }
 
-// List all limits that were requested of this device.
-//
-// If any of these limits are exceeded, functions may panic.
-device_get_limits :: proc "contextless" (self: Device) -> Limits {
-	return self.limits // filled on request device
-}
+/* Get a handle to a command queue on the device. */
+device_get_queue :: wgpu.device_get_queue
 
-// Get a handle to a command queue on the device
-device_get_queue :: proc "contextless" (using self: Device) -> (queue: Queue) {
-	queue = Queue {
-		ptr       = wgpu.device_get_queue(ptr),
-		_err_data = _err_data,
-	}
-
-	return
-}
-
-// Check if device support the given feature name.
-device_has_feature_name :: proc "contextless" (self: Device, feature: Feature_Name) -> bool {
-	return feature in self.features
-}
-
-// Check if device support all features in the given flags.
+/* Check if device support all features in the given flags. */
 device_has_feature :: proc "contextless" (self: Device, features: Features) -> bool {
 	if features == {} do return true
+	available := device_get_features(self)
+	if available == {} do return false
 	for f in features {
-		if f not_in self.features || f == .Undefined do return false
+		if f not_in available || f == .Undefined do return false
 	}
 	return true
 }
 
-device_pop_error_scope :: proc "contextless" (
-	using self: Device,
-	callback: Error_Callback,
-	user_data: rawptr,
-) {
-	wgpu.device_pop_error_scope(ptr, callback, user_data)
+/* Check if device support the given feature name. */
+device_has_feature_name :: proc "contextless" (self: Device, feature: Feature_Name) -> bool {
+	return device_has_feature(self, {feature})
 }
 
-device_push_error_scope :: proc "contextless" (using self: Device, filter: Error_Filter) {
-	wgpu.device_push_error_scope(ptr, filter)
-}
+device_pop_error_scope :: wgpu.device_pop_error_scope
+
+device_push_error_scope :: wgpu.device_push_error_scope
 
 device_set_uncaptured_error_callback :: proc "contextless" (
-	using self: Device,
+	self: Device,
 	callback: Error_Callback,
 	user_data: rawptr,
 ) {
-	when WGPU_ENABLE_ERROR_HANDLING {
-		set_user_data_uncaptured_error_callback(_err_data, callback, user_data)
+	when ENABLE_ERROR_HANDLING {
+		set_uncaptured_error_callback(callback, user_data)
 	} else {
-		wgpu.device_set_uncaptured_error_callback(ptr, callback, user_data)
+		wgpu.device_set_uncaptured_error_callback(self, callback, user_data)
 	}
 }
 
-// Set debug label.
-device_set_label :: proc "contextless" (using self: Device, label: cstring) {
-	wgpu.device_set_label(ptr, label)
+/* Set debug label. */
+device_set_label :: proc "contextless" (self: Device, label: cstring) {
+	wgpu.device_set_label(self, label)
 }
 
 // Increase the reference count.
-device_reference :: proc "contextless" (using self: Device) {
-	wgpu.device_reference(ptr)
-}
+device_reference :: wgpu.device_reference
 
 
 // Release the `Device` and delete internal objects.
-device_release :: #force_inline proc "contextless" (using self: Device) {
-	wgpu.device_release(ptr)
-}
+device_release :: wgpu.device_release
 
-// Release the `Device` and delete internal objects and modify the raw pointer to `nil`.
-device_release_and_nil :: proc "contextless" (using self: ^Device) {
-	if ptr == nil do return
-	wgpu.device_release(ptr)
-	ptr = nil
-}
+/*
+Check for resource cleanups and mapping callbacks. Will block if [`Maintain::Wait`] is passed.
 
-// Check for resource cleanups and mapping callbacks. Will block if [`Maintain::Wait`] is passed.
-//
-// Return `true` if the queue is empty, or `false` if there are more queue
-// submissions still in flight. (Note that, unless access to the [`Queue`] is
-// coordinated somehow, this information could be out of date by the time
-// the caller receives it. `Queue`s can be shared between threads, so
-// other threads could submit new work at any time.)
-//
-// When running on WebGPU, this is a no-op. `Device`s are automatically polled.
+Return `true` if the queue is empty, or `false` if there are more queue
+submissions still in flight. (Note that, unless access to the [`Queue`] is
+coordinated somehow, this information could be out of date by the time
+the caller receives it. `Queue`s can be shared between threads, so
+other threads could submit new work at any time.)
+
+When running on WebGPU, this is a no-op. `Device`s are automatically polled.
+*/
 device_poll :: proc "contextless" (
-	using self: Device,
+	self: Device,
 	wait: bool = true,
 	wrapped_submission_index: ^Wrapped_Submission_Index = nil,
 	loc := #caller_location,
 ) -> (
 	result: bool,
-	err: Error,
-) {
-	set_and_reset_err_data(_err_data, loc)
-	result = bool(wgpu.device_poll(ptr, b32(wait), wrapped_submission_index))
-	err = get_last_error()
-
+	ok: bool,
+) #optional_ok {
+	_error_reset_data(loc)
+	result = bool(wgpu.device_poll(self, b32(wait), wrapped_submission_index))
+	ok = get_last_error() == nil
 	return
 }

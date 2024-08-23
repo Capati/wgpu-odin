@@ -1,50 +1,52 @@
 package cube_example
 
 // STD Library
+import "base:builtin"
 import "base:runtime"
+@(require) import "core:log"
 
-// Package
+// Local packages
 import "../common"
 import rl "./../../utils/renderlink"
 import "./../../utils/shaders"
 import wgpu "./../../wrapper"
 
 State :: struct {
-	vertex_buffer:   wgpu.Buffer,
-	render_pipeline: wgpu.Render_Pipeline,
-	uniform_buffer:  wgpu.Buffer,
-	bind_group:      wgpu.Bind_Group,
+	vertex_buffer   : wgpu.Buffer,
+	render_pipeline : wgpu.Render_Pipeline,
+	uniform_buffer  : wgpu.Buffer,
+	bind_group      : wgpu.Bind_Group,
 }
 
-App_Context :: rl.Context(State)
+State_Context :: rl.Context(State)
 
 EXAMPLE_TITLE :: "Colored Cube"
 DEPTH_FORMAT :: wgpu.Texture_Format.Depth24_Plus
 
-init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
+init :: proc(ctx: ^State_Context) -> (ok: bool) {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
 	CUBE_WGSL: string : #load("./cube.wgsl", string)
 	shader_source := shaders.apply_color_conversion(
 		CUBE_WGSL,
-		gpu.is_srgb,
+		ctx.gpu.is_srgb,
 		context.temp_allocator,
 	) or_return
 	shader_module := wgpu.device_create_shader_module(
-		gpu.device,
+		ctx.gpu.device,
 		{label = EXAMPLE_TITLE + " Module", source = shader_source},
 	) or_return
 	defer wgpu.shader_module_release(shader_module)
 
-	vertex_buffer = wgpu.device_create_buffer_with_data(
-		gpu.device,
+	ctx.vertex_buffer = wgpu.device_create_buffer_with_data(
+		ctx.gpu.device,
 		{
-			label = EXAMPLE_TITLE + " Buffer",
+			label    = EXAMPLE_TITLE + " Buffer",
 			contents = wgpu.to_bytes(vertex_data),
-			usage = {.Vertex},
+			usage    = {.Vertex},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(vertex_buffer)
+	defer if !ok do wgpu.buffer_release(ctx.vertex_buffer)
 
 	vertex_attributes := wgpu.vertex_attr_array(2, {0, .Float32x3}, {1, .Float32x3})
 
@@ -57,17 +59,17 @@ init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
 	pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
 		label = EXAMPLE_TITLE + " Render Pipeline",
 		vertex = {
-			module = shader_module.ptr,
+			module      = shader_module,
 			entry_point = "vs_main",
-			buffers = {vertex_buffer_layout},
+			buffers     = {vertex_buffer_layout},
 		},
 		fragment = &{
-			module = shader_module.ptr,
+			module = shader_module,
 			entry_point = "fs_main",
 			targets = {
 				{
-					format = gpu.config.format,
-					blend = &wgpu.Blend_State_Normal,
+					format     = ctx.gpu.config.format,
+					blend      = &wgpu.Blend_State_Normal,
 					write_mask = wgpu.Color_Write_Mask_All,
 				},
 			},
@@ -77,85 +79,99 @@ init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
 		// is rendered in front.
 		depth_stencil = &{
 			depth_write_enabled = true,
-			depth_compare = .Less,
-			format = DEPTH_FORMAT,
-			stencil_front = {compare = .Always},
-			stencil_back = {compare = .Always},
-			stencil_read_mask = 0xFFFFFFFF,
-			stencil_write_mask = 0xFFFFFFFF,
+			depth_compare       = .Less,
+			format              = DEPTH_FORMAT,
+			stencil_front       = {compare = .Always},
+			stencil_back        = {compare = .Always},
+			stencil_read_mask   = 0xFFFFFFFF,
+			stencil_write_mask  = 0xFFFFFFFF,
 		},
 		multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 	}
 
-	render_pipeline = wgpu.device_create_render_pipeline(gpu.device, pipeline_descriptor) or_return
-	defer if err != nil do wgpu.render_pipeline_release(render_pipeline)
+	ctx.render_pipeline = wgpu.device_create_render_pipeline(ctx.gpu.device, pipeline_descriptor) or_return
+	defer if !ok do wgpu.render_pipeline_release(ctx.render_pipeline)
 
-	aspect := f32(gpu.config.width) / f32(gpu.config.height)
+	aspect := f32(ctx.gpu.config.width) / f32(ctx.gpu.config.height)
 	mvp_mat := common.create_view_projection_matrix(aspect)
 
-	uniform_buffer = wgpu.device_create_buffer_with_data(
-		gpu.device,
+	ctx.uniform_buffer = wgpu.device_create_buffer_with_data(
+		ctx.gpu.device,
 		{
 			label = EXAMPLE_TITLE + " Uniform Buffer",
 			contents = wgpu.to_bytes(mvp_mat),
 			usage = {.Uniform, .Copy_Dst},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(uniform_buffer)
+	defer if !ok do wgpu.buffer_release(ctx.uniform_buffer)
 
-	bind_group_layout := wgpu.render_pipeline_get_bind_group_layout(render_pipeline, 0) or_return
+	bind_group_layout := wgpu.render_pipeline_get_bind_group_layout(
+		ctx.render_pipeline,
+		0,
+	) or_return
 	defer wgpu.bind_group_layout_release(bind_group_layout)
 
-	bind_group = wgpu.device_create_bind_group(
-		gpu.device,
+	ctx.bind_group = wgpu.device_create_bind_group(
+		ctx.gpu.device,
 		{
-			layout = bind_group_layout.ptr,
+			layout = bind_group_layout,
 			entries = {
 				{
 					binding = 0,
 					resource = wgpu.Buffer_Binding {
-						buffer = uniform_buffer.ptr,
-						size = uniform_buffer.size,
+						buffer = ctx.uniform_buffer,
+						size = wgpu.WHOLE_SIZE,
 					},
 				},
 			},
 		},
 	) or_return
-	defer if err != nil do wgpu.bind_group_release(bind_group)
+	defer if !ok do wgpu.bind_group_release(ctx.bind_group)
 
 	rl.graphics_clear(rl.Color_Dark_Gray)
 
-	return
+	return true
 }
 
-quit :: proc(using ctx: ^App_Context) {
-	wgpu.bind_group_release(bind_group)
-	wgpu.buffer_release(uniform_buffer)
-	wgpu.render_pipeline_release(render_pipeline)
-	wgpu.buffer_release(vertex_buffer)
+quit :: proc(ctx: ^State_Context) {
+	wgpu.bind_group_release(ctx.bind_group)
+	wgpu.buffer_release(ctx.uniform_buffer)
+	wgpu.render_pipeline_release(ctx.render_pipeline)
+	wgpu.buffer_release(ctx.vertex_buffer)
 }
 
-resize :: proc(event: rl.Resize_Event, using ctx: ^App_Context) -> (err: rl.Error) {
+resize :: proc(event: rl.Resize_Event, ctx: ^State_Context) -> bool {
 	// Update uniform buffer with new aspect ratio
 	aspect := f32(event.width) / f32(event.height)
 	new_matrix := common.create_view_projection_matrix(aspect)
-	wgpu.queue_write_buffer(gpu.queue, uniform_buffer.ptr, 0, wgpu.to_bytes(new_matrix)) or_return
+	wgpu.queue_write_buffer(
+		ctx.gpu.queue,
+		ctx.uniform_buffer,
+		0,
+		wgpu.to_bytes(new_matrix),
+	) or_return
 
-	return
+	return true
 }
 
-draw :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
-	wgpu.render_pass_set_pipeline(gpu.render_pass, render_pipeline.ptr)
-	wgpu.render_pass_set_bind_group(gpu.render_pass, 0, bind_group.ptr)
-	wgpu.render_pass_set_vertex_buffer(gpu.render_pass, 0, vertex_buffer.ptr)
-	wgpu.render_pass_draw(gpu.render_pass, {0, u32(len(vertex_data))})
-	return
+draw :: proc(ctx: ^State_Context) -> bool {
+	wgpu.render_pass_set_pipeline(ctx.gpu.render_pass, ctx.render_pipeline)
+	wgpu.render_pass_set_bind_group(ctx.gpu.render_pass, 0, ctx.bind_group)
+	wgpu.render_pass_set_vertex_buffer(ctx.gpu.render_pass, 0, ctx.vertex_buffer)
+	wgpu.render_pass_draw(ctx.gpu.render_pass, {0, u32(len(vertex_data))})
+
+	return true
 }
 
 main :: proc() {
-	state, state_err := new(App_Context)
-	if state_err != nil do return
-	defer free(state)
+	when ODIN_DEBUG {
+		context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
+		defer log.destroy_console_logger(context.logger)
+	}
+
+	state := builtin.new(State_Context)
+	assert(state != nil, "Failed to allocate application state")
+	defer builtin.free(state)
 
 	state.callbacks = {
 		init   = init,
@@ -172,7 +188,7 @@ main :: proc() {
 	settings.renderer.use_depth_stencil = true
 	settings.renderer.depth_format = DEPTH_FORMAT
 
-	if err := rl.init(state, settings); err != nil do return
+	if ok := rl.init(state, settings); !ok do return
 
 	rl.begin_run(state) // Start the main loop
 }

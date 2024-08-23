@@ -1,15 +1,12 @@
 package wgpu
 
-// Package
+// The raw bindings
 import wgpu "../bindings"
 
 // Backends are set to `Primary`, and `FXC` is chosen as the `dx12_shader_compiler`.
 DEFAULT_INSTANCE_DESCRIPTOR :: Instance_Descriptor {
-	backends             = wgpu.Instance_Backend_Primary,
-	dx12_shader_compiler = DEFAULT_DX12_COMPILER,
+	backends            = wgpu.Instance_Backend_Primary,
 }
-
-DEFAULT_DX12_COMPILER :: Dx12_Compiler.Fxc
 
 // High_Performance.
 DEFAULT_POWER_PREFERENCE: Power_Preference = .High_Performance

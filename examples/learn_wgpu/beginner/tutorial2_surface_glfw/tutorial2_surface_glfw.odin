@@ -1,35 +1,28 @@
 package tutorial2_surface_glfw
 
-// Base
+// STD Library
 import "base:runtime"
-
 import "core:fmt"
-import "core:mem"
 
 // Vendor
 import "vendor:glfw"
 
-// Package
+// Local packages
 import wgpu_glfw "../../../../utils/glfw"
 import wgpu "../../../../wrapper"
 
 State :: struct {
-	window:    glfw.WindowHandle,
-	minimized: bool,
-	surface:   wgpu.Surface,
-	device:    wgpu.Device,
-	queue:     wgpu.Queue,
-	config:    wgpu.Surface_Configuration,
+	window    : glfw.WindowHandle,
+	minimized : bool,
+	surface   : wgpu.Surface,
+	device    : wgpu.Device,
+	queue     : wgpu.Queue,
+	config    : wgpu.Surface_Configuration,
 }
 
 Physical_Size :: struct {
-	width:  u32,
-	height: u32,
-}
-
-Error :: union #shared_nil {
-	wgpu.Error,
-	mem.Allocator_Error,
+	width  : u32,
+	height : u32,
 }
 
 _log_callback :: proc "c" (level: wgpu.Log_Level, message: cstring, user_data: rawptr) {
@@ -37,18 +30,18 @@ _log_callback :: proc "c" (level: wgpu.Log_Level, message: cstring, user_data: r
 	fmt.eprintf("[wgpu] [%v] %s\n\n", level, message)
 }
 
-init :: proc() -> (state: ^State, err: Error) {
-	state = new(State) or_return
-	defer if err != nil do free(state)
+init :: proc() -> (state: ^State, ok: bool) {
+	state = new(State)
+	defer if !ok do free(state)
 
 	if !glfw.Init() {
 		panic("[glfw] init failure")
 	}
-	defer if err != nil do glfw.Terminate()
+	defer if !ok do glfw.Terminate()
 
 	glfw.WindowHint(glfw.CLIENT_API, glfw.NO_API)
 	state.window = glfw.CreateWindow(800, 600, "Tutorial 1 - Window", nil, nil)
-	defer if err != nil do glfw.DestroyWindow(state.window)
+	defer if !ok do glfw.DestroyWindow(state.window)
 
 	glfw.SetWindowUserPointer(state.window, state)
 	glfw.SetFramebufferSizeCallback(state.window, size_callback)
@@ -59,7 +52,6 @@ init :: proc() -> (state: ^State, err: Error) {
 
 	instance_descriptor := wgpu.Instance_Descriptor {
 		backends             = wgpu.Instance_Backend_Primary,
-		dx12_shader_compiler = wgpu.DEFAULT_DX12_COMPILER,
 	}
 
 	instance := wgpu.create_instance(instance_descriptor) or_return
@@ -67,45 +59,47 @@ init :: proc() -> (state: ^State, err: Error) {
 
 	surface_descriptor := wgpu_glfw.get_surface_descriptor(state.window) or_return
 	state.surface = wgpu.instance_create_surface(instance, surface_descriptor) or_return
-	defer if err != nil do wgpu.surface_release(state.surface)
+	defer if !ok do wgpu.surface_release(state.surface)
 
 	adapter_options := wgpu.Request_Adapter_Options {
 		power_preference       = .High_Performance,
-		compatible_surface     = state.surface.ptr,
+		compatible_surface     = state.surface,
 		force_fallback_adapter = false,
 	}
 
 	adapter := wgpu.instance_request_adapter(instance, adapter_options) or_return
 	defer wgpu.adapter_release(adapter)
 
+	adapter_info := wgpu.adapter_get_info(adapter) or_return
+
 	device_descriptor := wgpu.Device_Descriptor {
-		label           = adapter.info.name,
+		label           = adapter_info.name,
 		required_limits = wgpu.DEFAULT_LIMITS,
 	}
 
-	state.device, state.queue = wgpu.adapter_request_device(adapter, device_descriptor) or_return
-	defer if err != nil {
-		wgpu.queue_release(state.queue)
-		wgpu.device_release(state.device)
-	}
+	state.device = wgpu.adapter_request_device(adapter, device_descriptor) or_return
+	defer if !ok do wgpu.device_release(state.device)
 
-	caps := wgpu.surface_get_capabilities(state.surface, adapter.ptr) or_return
+	state.queue = wgpu.device_get_queue(state.device)
+	defer if !ok do wgpu.queue_release(state.queue)
+
+	caps := wgpu.surface_get_capabilities(state.surface, adapter) or_return
 	defer wgpu.surface_capabilities_free_members(caps)
 
 	width, height := glfw.GetWindowSize(state.window)
 
 	state.config = {
 		usage        = {.Render_Attachment},
-		format       = wgpu.surface_get_preferred_format(state.surface, adapter.ptr) or_return,
+		format       = wgpu.surface_get_preferred_format(state.surface, adapter) or_return,
 		width        = cast(u32)width,
 		height       = cast(u32)height,
 		present_mode = .Fifo,
 		alpha_mode   = caps.alpha_modes[0],
 	}
 
-	wgpu.surface_configure(&state.surface, state.device, state.config) or_return
+	wgpu.surface_configure(state.surface, state.device, state.config) or_return
 
-	return state, nil
+	return state, true
 }
 
 deinit :: proc(using state: ^State) {
@@ -117,7 +111,7 @@ deinit :: proc(using state: ^State) {
 	free(state)
 }
 
-render :: proc(using state: ^State) -> wgpu.Error {
+render :: proc(using state: ^State) -> bool {
 	frame := wgpu.surface_get_current_texture(state.surface) or_return
 	defer wgpu.texture_release(frame.texture)
 
@@ -136,7 +130,7 @@ render :: proc(using state: ^State) -> wgpu.Error {
 			label = "Render Pass",
 			color_attachments = []wgpu.Render_Pass_Color_Attachment {
 				{
-					view = view.ptr,
+					view = view,
 					resolve_target = nil,
 					load_op = .Clear,
 					store_op = .Store,
@@ -152,24 +146,24 @@ render :: proc(using state: ^State) -> wgpu.Error {
 	command_buffer := wgpu.command_encoder_finish(encoder) or_return
 	defer wgpu.command_buffer_release(command_buffer)
 
-	wgpu.queue_submit(queue, command_buffer.ptr)
+	wgpu.queue_submit(queue, command_buffer)
 	wgpu.surface_present(surface)
 
-	return nil
+	return true
 }
 
-resize_surface :: proc(state: ^State, size: Physical_Size) -> wgpu.Error {
+resize_surface :: proc(state: ^State, size: Physical_Size) -> bool {
 	if size.width == 0 && size.height == 0 {
-		return nil
+		return true
 	}
 
 	state.config.width = size.width
 	state.config.height = size.height
 
 	wgpu.surface_unconfigure(state.surface)
-	wgpu.surface_configure(&state.surface, state.device, state.config) or_return
+	wgpu.surface_configure(state.surface, state.device, state.config) or_return
 
-	return nil
+	return true
 }
 
 iconify_callback :: proc "c" (window: glfw.WindowHandle, iconified: i32) {
@@ -184,15 +178,15 @@ size_callback :: proc "c" (window: glfw.WindowHandle, width, height: i32) {
 }
 
 main :: proc() {
-	state, state_err := init()
-	if state_err != nil do return
+	state, state_ok := init()
+	if !state_ok do return
 	defer deinit(state)
 
 	for !glfw.WindowShouldClose(state.window) {
 		glfw.PollEvents()
 
 		if !state.minimized {
-			if err := render(state); err != nil {
+			if ok := render(state); !ok {
 				glfw.SetWindowShouldClose(state.window, true)
 			}
 		}

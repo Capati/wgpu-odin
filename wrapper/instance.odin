@@ -1,69 +1,75 @@
 package wgpu
 
-// Core
-import "base:runtime"
+// STD Library
+@(require) import "base:runtime"
 import "core:fmt"
-import "core:mem"
 
-// Package
+// The raw bindings
 import wgpu "../bindings"
 
-// Context for all other wgpu objects.
-//
-// This is the first thing you create when using wgpu. Its primary use is to create `Adapter`s and
-// `Surface`s.
-//
-// Does not have to be kept alive.
-Instance :: struct {
-	ptr:  Raw_Instance,
-	_pad: POINTER_PROMOTION_PADDING,
-}
+/*
+Context for all other wgpu objects. Instance of wgpu.
 
-// Options for creating an instance.
+This is the first thing you create when using wgpu.
+Its primary use is to create `Adapter`s and `Surface`s.
+
+Does not have to be kept alive.
+
+Corresponds to [WebGPU `GPU`](https://gpuweb.github.io/gpuweb/#gpu-interface).
+*/
+Instance :: wgpu.Instance
+
+/* Options for creating an instance. */
 Instance_Descriptor :: struct {
-	backends:             Instance_Backend_Flags,
-	flags:                Instance_Flags,
-	dx12_shader_compiler: Dx12_Compiler,
-	gles3_minor_version:  Gles3_Minor_Version,
-	dxil_path:            cstring,
-	dxc_path:             cstring,
+	backends             : Instance_Backend_Flags,
+	flags                : Instance_Flags,
+	dx12_shader_compiler : Dx12_Compiler,
+	gles3_minor_version  : Gles3_Minor_Version,
 }
 
-// Create an new instance of wgpu.
+/*
+Create an new instance of wgpu.
+
+**Panics**
+- If no backend feature for the active target platform is enabled.
+*/
 @(require_results)
 create_instance :: proc(
-	descriptor: Instance_Descriptor = {},
+	descriptor: Maybe(Instance_Descriptor) = nil,
 	loc := #caller_location,
 ) -> (
 	instance: Instance,
-	err: Error,
-) {
-	if descriptor == {} {
-		instance.ptr = wgpu.create_instance(nil)
-	} else {
+	ok: bool,
+) #optional_ok {
+	if desc, desc_ok := descriptor.?; desc_ok {
 		instance_extras := Instance_Extras {
-			chain = {next = nil, stype = cast(SType)Native_SType.Instance_Extras},
-			backends = descriptor.backends,
-			flags = descriptor.flags,
-			dx12_shader_compiler = descriptor.dx12_shader_compiler,
-			gles3_minor_version = descriptor.gles3_minor_version,
-			dxil_path = descriptor.dxil_path,
-			dxc_path = descriptor.dxc_path,
+			stype                = cast(SType)Native_SType.Instance_Extras,
+			backends             = desc.backends,
+			flags                = desc.flags,
+			gles3_minor_version  = desc.gles3_minor_version,
 		}
 
-		desc: wgpu.Instance_Descriptor
-		desc.next_in_chain = &instance_extras.chain
+		// Check the use for the Dxc/Fxc compiler on Windows (DX12 only)
+		when ODIN_OS == .Windows {
+			runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+			_set_dx12_compiler(&instance_extras, desc.dx12_shader_compiler, context.temp_allocator)
+		}
 
-		instance.ptr = wgpu.create_instance(&desc)
+		raw_desc: wgpu.Instance_Descriptor
+		raw_desc.next_in_chain = &instance_extras.chain
+
+		instance = wgpu.create_instance(&raw_desc)
+	} else {
+		instance = wgpu.create_instance(nil)
 	}
 
-	if instance.ptr == nil {
-		err = wgpu.Error_Type.Unknown
-		set_and_update_err_data(
-			nil,
-			.Create_Instance,
-			err,
-			"Failed to acquire an instance, for more information check log callback with 'wgpu.set_log_callback'",
+	ok = instance != nil
+
+	if !ok {
+		error_reset_and_update(
+			wgpu.Error_Type.Unknown,
+			"Failed to acquire an instance, for more information check log callback with " +
+			"'wgpu.set_log_callback'",
 			loc,
 		)
 	}
@@ -71,7 +77,7 @@ create_instance :: proc(
 	return
 }
 
-// Describes a surface target.
+/* Describes a surface target. */
 Surface_Descriptor :: struct {
 	label:  cstring,
 	target: union {
@@ -85,19 +91,21 @@ Surface_Descriptor :: struct {
 	},
 }
 
-// Creates a surface from a window target.
-//
-// If the specified display and window target are not supported by any of the backends, then the
-// surface will not be supported by any adapters.
+/*
+Creates a surface from a window target.
+
+If the specified display and window target are not supported by any of the backends, then the
+surface will not be supported by any adapters.
+*/
 @(require_results)
 instance_create_surface :: proc(
-	using self: Instance,
+	self: Instance,
 	descriptor: Surface_Descriptor,
 	loc := #caller_location,
 ) -> (
 	surface: Surface,
-	err: Error,
-) {
+	ok: bool,
+) #optional_ok {
 	desc: wgpu.Surface_Descriptor
 	desc.label = descriptor.label
 
@@ -146,15 +154,15 @@ instance_create_surface :: proc(
 		desc.next_in_chain = &t.chain
 	}
 
-	surface.ptr = wgpu.instance_create_surface(ptr, &desc)
+	surface = wgpu.instance_create_surface(self, &desc)
 
-	if surface.ptr == nil {
-		err = wgpu.Error_Type.Unknown
-		set_and_update_err_data(
-			nil,
-			.Create_Surface,
-			err,
-			"Failed to create surface, for more information check log callback with 'wgpu.set_log_callback'",
+	ok = surface != nil
+
+	if !ok {
+		error_reset_and_update(
+			wgpu.Error_Type.Unknown,
+			"Failed to create surface, for more information check log callback with " +
+			"'wgpu.set_log_callback'",
 			loc,
 		)
 	}
@@ -162,147 +170,126 @@ instance_create_surface :: proc(
 	return
 }
 
+/*
+Power Preference when choosing a physical adapter.
+
+Corresponds to [WebGPU `GPUPowerPreference`](
+https://gpuweb.github.io/gpuweb/#enumdef-gpupowerpreference).
+*/
+Power_Preference :: wgpu.Power_Preference
+
+/*
+Additional information required when requesting an adapter.
+
+For use with `instance_request_adapter`.
+
+Corresponds to [WebGPU `GPURequestAdapterOptions`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpurequestadapteroptions).
+*/
 Request_Adapter_Options :: struct {
-	compatible_surface:     Raw_Surface,
-	power_preference:       Power_Preference,
-	backend_type:           Backend_Type,
-	force_fallback_adapter: bool,
+	compatible_surface     : Surface,
+	power_preference       : Power_Preference,
+	backend_type           : Backend_Type,
+	force_fallback_adapter : bool,
 }
 
-// Retrieves an `Adapter` which matches the given options.
+/*
+Retrieves an `Adapter` which matches the given `Request_Adapter_Options`.
+
+Some options are "soft", so treated as non-mandatory. Others are "hard". If no adapters are found
+that suffice all the "hard" options, `nil` is returned.
+
+A `compatible_surface` is required when targeting WebGL2.
+*/
 @(require_results)
 instance_request_adapter :: proc(
-	using self: Instance,
+	self: Instance,
 	options: Request_Adapter_Options,
 	loc := #caller_location,
 ) -> (
 	adapter: Adapter,
-	err: Error,
-) {
-	Adapter_Response :: struct {
-		status:  Request_Adapter_Status,
-		message: cstring,
-		adapter: Raw_Adapter,
-	}
-
+	ok: bool,
+) #optional_ok {
 	res: Adapter_Response
 
-	request_adapter_callback :: proc "c" (
-		status: Request_Adapter_Status,
-		adapter: Raw_Adapter,
-		message: cstring,
-		user_data: rawptr,
-	) {
-		response := cast(^Adapter_Response)user_data
-
-		response.status = status
-		response.message = message
-
-		if status == .Success {
-			response.adapter = adapter
-		}
+	opts := wgpu.Request_Adapter_Options {
+		compatible_surface     = options.compatible_surface,
+		power_preference       = options.power_preference,
+		backend_type           = options.backend_type,
+		force_fallback_adapter = b32(options.force_fallback_adapter),
 	}
 
-	opts: wgpu.Request_Adapter_Options
-	opts.compatible_surface = options.compatible_surface
-	opts.power_preference = options.power_preference
-	opts.backend_type = options.backend_type
-	opts.force_fallback_adapter = b32(options.force_fallback_adapter)
-	wgpu.instance_request_adapter(ptr, &opts, request_adapter_callback, &res)
+	wgpu.instance_request_adapter(self, &opts, request_adapter_callback, &res)
 
 	if res.status != .Success {
-		err = res.status
-		set_and_update_err_data(nil, .Request_Adapter, err, string(res.message), loc)
+		error_reset_and_update(res.status, string(res.message), loc)
 		return
 	}
 
-	adapter.ptr = res.adapter
-	defer if err != nil do wgpu.adapter_release(adapter.ptr)
-
-	// Fill adapter details
-	adapter.features = _adapter_get_features(adapter, loc) or_return
-	adapter.limits = _adapter_get_limits(adapter, loc) or_return
-	adapter.info = _adapter_get_info(adapter) or_return
-
-	return
+	return res.adapter, true
 }
 
-// Retrieves all available `Adapters` that match the given options.
+Adapter_Response :: struct {
+	status  : Request_Adapter_Status,
+	message : cstring,
+	adapter : Adapter,
+}
+
+request_adapter_callback :: proc "c" (
+	status: Request_Adapter_Status,
+	adapter: Adapter,
+	message: cstring,
+	user_data: rawptr,
+) {
+	response := cast(^Adapter_Response)user_data
+
+	response.status = status
+	response.message = message
+
+	if status == .Success {
+		response.adapter = adapter
+	}
+}
+
+/* Retrieves all available `Adapter`s that match the given `Instance_Backend_Flags`. */
 @(require_results)
 instance_enumerate_adapters :: proc(
-	using self: Instance,
+	self: Instance,
 	backends: Instance_Backend_Flags,
-	allocator := context.allocator,
 	loc := #caller_location,
 ) -> (
 	adapters: []Adapter,
-	err: Error,
 ) {
 	options := Instance_Enumerate_Adapter_Options {
 		backends = backends,
 	}
 
-	adapter_count: uint = wgpu.instance_enumerate_adapters(ptr, &options, nil)
+	count := wgpu.instance_enumerate_adapters(self, &options, nil)
+	if count == 0 do return
 
-	if adapter_count == 0 {
-		return
-	}
+	wgpu.instance_enumerate_adapters(self, &options, raw_data(adapters))
 
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
-
-	raw_adapters: []Raw_Adapter
-	alloc_err: mem.Allocator_Error
-
-	if raw_adapters, alloc_err = make([]Raw_Adapter, adapter_count, context.temp_allocator);
-	   alloc_err != nil {
-		err = alloc_err
-		set_and_update_err_data(nil, .General, err, "Failed to allocate adapters", loc)
-		return
-	}
-
-	wgpu.instance_enumerate_adapters(ptr, &options, raw_data(raw_adapters))
-
-	if adapters, alloc_err = make([]Adapter, adapter_count, allocator); alloc_err != nil {
-		err = alloc_err
-		set_and_update_err_data(nil, .General, err, "Failed to allocate adapters", loc)
-		return
-	}
-	defer if err != nil {
-		if len(adapters) > 0 {
-			for &a in adapters {
-				if a.ptr != nil do adapter_release(a)
-			}
-			delete(adapters)
-		}
-	}
-
-	for i: uint = 0; i < adapter_count; i += 1 {
-		adapters[i] = {
-			ptr = raw_adapters[i],
-		}
-
-		adapters[i].features = _adapter_get_features(adapters[i], loc) or_return
-		adapters[i].limits = _adapter_get_limits(adapters[i], loc) or_return
-		adapters[i].info = _adapter_get_info(adapters[i]) or_return
-	}
-
-	return
+	return adapters
 }
 
-// Generates memory report.
+/* Generates memory report. */
 instance_generate_report :: proc "contextless" (self: Instance) -> Global_Report {
 	report: Global_Report
-	wgpu.generate_report(self.ptr, &report)
+	wgpu.generate_report(self, &report)
 	return report
 }
 
-// Processes pending WebGPU events on the instance.
-instance_process_events :: proc "contextless" (self: Instance) {
-	wgpu.instance_process_events(self.ptr)
-}
+/* Processes pending WebGPU events on the instance. */
+instance_process_events :: wgpu.instance_process_events
 
-// Print memory report.
-instance_print_report :: proc(using self: Instance, backend_type: Backend_Type = .Undefined) {
+/*
+Print memory report.
+
+**Inputs**
+- `self` - The `Instance` to query.
+- `backend_type` - Which backend to retrieve information, leave `Undefined` to get from the report.
+*/
+instance_print_report :: proc(self: Instance, backend_type: Backend_Type = .Undefined) {
 	report := instance_generate_report(self)
 
 	print_registry_report :: proc(report: Registry_Report, prefix: cstring, separator := true) {
@@ -355,19 +342,8 @@ instance_print_report :: proc(using self: Instance, backend_type: Backend_Type =
 	fmt.print("}\n")
 }
 
-// Increase the reference count.
-instance_reference :: proc "contextless" (using self: Instance) {
-	wgpu.instance_reference(ptr)
-}
+/* Increase the reference count. */
+instance_reference :: wgpu.instance_reference
 
-// Release the `Instance`.
-instance_release :: #force_inline proc "contextless" (using self: Instance) {
-	wgpu.instance_release(ptr)
-}
-
-// Release the `Instance` and modify the raw pointer to `nil`.
-instance_release_and_nil :: proc "contextless" (using self: ^Instance) {
-	if ptr == nil do return
-	wgpu.instance_release(ptr)
-	ptr = nil
-}
+/* Release the `Instance` resources. */
+instance_release :: wgpu.instance_release

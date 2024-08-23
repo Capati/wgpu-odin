@@ -1,52 +1,26 @@
 package wgpu
 
-// Base
+// STD Library
 import intr "base:intrinsics"
+import "base:builtin"
 import "base:runtime"
-
-// Core
-import "core:fmt"
 import "core:mem"
-import "core:strings"
 import "core:sync"
 import "core:time"
 
-// Enable the global error handling
-WGPU_ENABLE_ERROR_HANDLING :: #config(WGPU_ENABLE_ERROR_HANDLING, true)
-// Logging when an error is captured
-WGPU_LOG_ON_ERROR :: #config(WGPU_LOG_ON_ERROR, true)
-// Panic as soon an error is encountered (will log too if enabled)
-WGPU_PANIC_ON_ERROR :: #config(WGPU_PANIC_ON_ERROR, false)
-// An attempt to ensure thread safe for errors
-WGPU_ENABLE_MUTEX_ERROR_HANDLING :: #config(WGPU_ENABLE_MUTEX_ERROR_HANDLING, false)
+/* Enable the global error handling. */
+ENABLE_ERROR_HANDLING :: #config(WGPU_ENABLE_ERROR_HANDLING, true)
+/* Logging when an error is captured. */
+LOG_ON_ERROR :: #config(WGPU_LOG_ON_ERROR, true)
+/* Panic as soon an error is encountered (will log too if enabled). */
+PANIC_ON_ERROR :: #config(WGPU_PANIC_ON_ERROR, false)
+/* An attempt to ensure thread safe for errors. */
+ENABLE_MUTEX_ERROR_HANDLING :: #config(WGPU_ENABLE_MUTEX_ERROR_HANDLING, false)
+/* A "safe" value for the maximum message length in bytes for error messages. */
+ERROR_MESSAGE_BUFFER_LEN ::  #config(WGPU_ERROR_MESSAGE_BUFFER_LEN, 1024)
 
-@(private = "file")
-LOG_ENABLED :: WGPU_ENABLE_ERROR_HANDLING && WGPU_LOG_ON_ERROR
-
-@(private = "file")
-MUTEX_ENABLED :: WGPU_ENABLE_ERROR_HANDLING && WGPU_ENABLE_MUTEX_ERROR_HANDLING
-
-@(private = "file")
-// Start with 2 instances, for 1 fallback and 1 device
-WGPU_ERROR_STORAGE_CAPACITY: int : #config(WGPU_ERROR_STORAGE_CAPACITY, 2)
-
-Error_Data_Type :: enum {
-	Undefined,
-	General,
-	Assert,
-	Create_Instance,
-	Create_Surface,
-	Request_Adapter,
-	Request_Device,
-	Surface_Texture,
-	Shader,
-	File_System,
-	Buffer_Map_Async,
-	Compilation_Info_Request,
-	Create_Pipeline_Async,
-	Queue_Work_Done,
-	Surface_Get_Current_Texture,
-}
+LOG_ENABLED :: ENABLE_ERROR_HANDLING && LOG_ON_ERROR
+MUTEX_ENABLED :: ENABLE_ERROR_HANDLING && ENABLE_MUTEX_ERROR_HANDLING
 
 IO_Error :: enum {
 	None,
@@ -54,12 +28,7 @@ IO_Error :: enum {
 	Load_Image_Failed,
 }
 
-Data_Error :: enum {
-	None,
-	Nil_Data,
-}
-
-// General error type merged with other types
+/* General WGPU error types "merged" with custom types. */
 Error :: union #shared_nil {
 	Error_Type,
 	Request_Adapter_Status,
@@ -71,211 +40,95 @@ Error :: union #shared_nil {
 	Surface_Get_Current_Texture_Status,
 	mem.Allocator_Error,
 	IO_Error,
-	Data_Error,
 }
 
 Error_Data_Info :: struct {
-	id:        int,
-	type:      Error_Data_Type,
-	error:     Error,
-	message:   string,
-	file_path: string,
-	line:      i32,
-	procedure: string,
-	timestamp: time.Time,
-	thread_id: int,
+	error     : Error,                          /*  */
+	message   : [ERROR_MESSAGE_BUFFER_LEN]byte, /* Last message from the error callback */
+	loc       : runtime.Source_Code_Location,   /* Where the api was called */
+	timestamp : time.Time,                      /* The time when the api was called */
+	thread_id : int,                            /* The thread that called the api */
 }
 
 @(private)
 Error_Data :: struct {
-	using _info: Error_Data_Info,
-	user_cb:     Error_Callback,
-	user_data:   rawptr,
-	is_fallback: bool,
+	using _info : Error_Data_Info,
+	user_cb     : Error_Callback,
+	user_data   : rawptr,
 }
 
-@(private = "file")
+@(private)
 Error_Data_Storage :: struct {
-	id:        int, // current error data instance in use
-	allocator: mem.Allocator,
-	mutex:     sync.Mutex,
-	data:      [dynamic]Error_Data,
+	mutex : sync.Mutex,
+	data  : Error_Data,
 }
 
 @(thread_local, private = "file")
-_storage: Error_Data_Storage
+g_error : Error_Data_Storage
 
-@(private)
-// Fallback errors that are not from wgpu uncaptured_error_callback
-FALLBACK_ERROR_DATA :: 0
+@(private, disabled = !ENABLE_ERROR_HANDLING)
+_error_reset_data :: proc "contextless" (loc: runtime.Source_Code_Location) {
+	when MUTEX_ENABLED do sync.guard(&g_error.mutex)
 
-@(init, private = "file")
-_init_error_data :: proc() {
-	when !WGPU_ENABLE_ERROR_HANDLING do return
-
-	// Keep the initial allocator
-	// TODO(Capati): Refactor to set as a parameter?
-	_storage.allocator = context.allocator
-	_storage.data.allocator = _storage.allocator
-
-	reserve(&_storage.data, WGPU_ERROR_STORAGE_CAPACITY)
-
-	assign_at(
-		&_storage.data,
-		FALLBACK_ERROR_DATA,
-		Error_Data{type = .Undefined, error = nil, message = "", is_fallback = true},
-	)
-}
-
-@(fini, private = "file")
-_deinit_error_data :: proc() {
-	when !WGPU_ENABLE_ERROR_HANDLING do return
-
-	for &value in _storage.data {
-		delete(value.message, _storage.allocator)
-	}
-
-	delete(_storage.data)
+	data := &g_error.data
+	data.error     = nil
+	data.loc       = loc
+	data.thread_id = sync.current_thread_id()
 }
 
 @(private)
-add_error_data :: proc() -> (err_data: ^Error_Data, err: Error) {
-	when MUTEX_ENABLED {
-		sync.guard(&_storage.mutex)
-	}
-
-	id := len(_storage.data)
-	append(&_storage.data, Error_Data{id = id}) or_return
-
-	err_data = &_storage.data[id]
-
-	return
-}
-
-@(private)
-set_user_data_uncaptured_error_callback :: proc "contextless" (
-	err_data: ^Error_Data,
-	callback: Error_Callback,
-	user_data: rawptr,
-) {
-	when MUTEX_ENABLED {
-		sync.guard(&_storage.mutex)
-	}
-
-	current_err := &_storage.data[err_data.id]
-
-	current_err.user_cb = callback
-	current_err.user_data = user_data
-}
-
-@(private = "file", disabled = !WGPU_ENABLE_ERROR_HANDLING)
-_set_and_reset_err_data :: proc "contextless" (
-	err_data: ^Error_Data,
-	loc: runtime.Source_Code_Location,
-) #no_bounds_check {
-	when MUTEX_ENABLED {
-		sync.guard(&_storage.mutex)
-	}
-
-	if err_data != nil {
-		_storage.id = err_data.id
-	} else {
-		_storage.id = FALLBACK_ERROR_DATA // use the fallback error
-	}
-
-	current_err := &_storage.data[_storage.id]
-
-	current_err.type = .Undefined
-	current_err.error = nil
-	current_err.message = "" // Don't delete, just set to empty
-	current_err.file_path = loc.file_path
-	current_err.line = loc.line
-	current_err.procedure = loc.procedure
-	current_err.thread_id = sync.current_thread_id()
-}
-
-@(private = "file")
-_update_err_data :: proc(
-	err_data: ^Error_Data,
-	type: Error_Data_Type,
+_error_update_data :: proc "contextless" (
 	error: Error,
 	message: string,
-) {
-	when MUTEX_ENABLED {
-		sync.guard(&_storage.mutex)
+) #no_bounds_check {
+	when MUTEX_ENABLED do sync.guard(&g_error.mutex)
+
+	data := &g_error.data
+
+	mem.zero_slice(data.message[:]) // previous error message was valid until here
+
+	src_message := transmute([]u8)message
+	src_len := len(message)
+
+	if src_len >= ERROR_MESSAGE_BUFFER_LEN {
+		src_len = max(0, ERROR_MESSAGE_BUFFER_LEN - 4)
+		builtin.copy(data.message[:src_len], src_message[:src_len])
+		builtin.copy(data.message[src_len:], "...")
+	} else {
+		builtin.copy(data.message[:], src_message)
 	}
 
-	// TODO(Capati): Test to replicate how this problem occur
-	if err_data != nil && _storage.id != err_data.id {
-		fmt.printf(
-			"Error data mismatch [%d:%d], this might be a bug or concurrency problem. Threads: [%d:%d]\n",
-			_storage.id,
-			err_data.id,
-			_storage.data[_storage.id].thread_id,
-			err_data.thread_id,
-		)
-		_storage.id = err_data.id
-	}
+	data.error = error
+	data.timestamp = time.now()
 
-	current_err := &_storage.data[_storage.id]
-
-	delete(current_err.message, _storage.allocator)
-	current_err.message = strings.clone(message, _storage.allocator)
-
-	current_err.type = type
-	current_err.error = error
-	current_err.timestamp = time.now()
-
-	when LOG_ENABLED && !WGPU_PANIC_ON_ERROR {
+	when LOG_ENABLED {
 		print_last_error()
 	}
 
-	when WGPU_PANIC_ON_ERROR {
-		fmt.panicf(
-			"\nWGPU error: %s\nError Type: %v | %v\nFile Path: %s:%d\nProcedure: %s\nTimestamp: %v\nThread ID: %d\n",
-			current_err.message,
-			current_err.type,
-			current_err.error,
-			current_err.file_path,
-			current_err.line,
-			current_err.procedure,
-			current_err.timestamp,
-			current_err.thread_id,
-		)
+	when PANIC_ON_ERROR {
+		panic("nWGPU error occurred!", data.loc)
 	}
 }
 
-@(private, disabled = !WGPU_ENABLE_ERROR_HANDLING)
-set_and_reset_err_data :: proc "contextless" (
-	err_data: ^Error_Data,
-	loc: runtime.Source_Code_Location,
-) {
-	_set_and_reset_err_data(err_data, loc)
-}
-
-@(private, disabled = !WGPU_ENABLE_ERROR_HANDLING)
-update_error_data :: proc(
-	err_data: ^Error_Data,
-	type: Error_Data_Type,
+@(disabled = !ENABLE_ERROR_HANDLING)
+error_update_data :: proc "contextless" (
 	error: Error,
 	message: string,
 ) {
-	_update_err_data(err_data, type, error, message)
+	_error_update_data(error, message)
 }
 
-@(private, disabled = !WGPU_ENABLE_ERROR_HANDLING)
-set_and_update_err_data :: proc(
-	err_data: ^Error_Data,
-	type: Error_Data_Type,
+@(disabled = !ENABLE_ERROR_HANDLING)
+error_reset_and_update :: proc "contextless" (
 	error: Error,
 	message: string,
 	loc: runtime.Source_Code_Location,
 ) {
-	_set_and_reset_err_data(err_data, loc)
-	_update_err_data(err_data, type, error, message)
+	_error_reset_data(loc)
+	_error_update_data(error, message)
 }
 
-// Callback procedure for handling uncaptured errors from C code.
+/* Callback procedure for handling uncaptured errors from the api. */
 uncaptured_error_data_callback :: proc "c" (
 	type: Error_Type,
 	message: cstring,
@@ -285,91 +138,105 @@ uncaptured_error_data_callback :: proc "c" (
 
 	error := type // Uncaptured error type is the current general error
 
-	context = runtime.default_context()
-
-	err_data := cast(^Error_Data)user_data
-
-	if err_data.user_cb != nil {
-		err_data.user_cb(error, message, err_data.user_data)
+	if g_error.data.user_cb != nil {
+		g_error.data.user_cb(error, message, g_error.data.user_data)
 	}
 
-	update_error_data(err_data, .General, error, string(message))
+	error_update_data(error, string(message))
+}
+
+@(private)
+set_uncaptured_error_callback :: proc "contextless" (
+	callback: Error_Callback,
+	user_data: rawptr,
+) {
+	sync.guard(&g_error.mutex)
+
+	data := &g_error.data
+	data.user_cb = callback
+	data.user_data = user_data
 }
 
 /*============================================================================
 ** Public procedures
 **============================================================================*/
 
-when WGPU_ENABLE_ERROR_HANDLING {
-	// Get last error message. Ownership not transferred. String valid until next error
-	get_last_error_message :: #force_inline proc "contextless" () -> string #no_bounds_check {
-		return _storage.data[_storage.id].message
+when ENABLE_ERROR_HANDLING {
+/*
+Get last error message.
+
+**Notes**
+1. Ownership not transferred.
+2. String valid until next error.
+*/
+get_last_error_message :: #force_inline proc "contextless" () -> string #no_bounds_check {
+	return string(g_error.data.message[:])
+}
+
+/*
+Get the last error value.
+
+**Returns**
+- The error ocurred in the last procedure/API call. Returns nil if error handling is disabled or
+no error has occurred.
+
+**Notes**
+1. Error is set to nil in the next procedure/API all.
+*/
+get_last_error :: #force_inline proc "contextless" () -> Error #no_bounds_check {
+	return g_error.data.error
+}
+
+/*
+Get more information about the last error.
+
+**Returns**
+
+	Error_Data_Info :: struct {
+		id        : int,
+		type      : Error_Data_Type,
+		error     : Error,
+		message   : string,
+		loc       : runtime.Source_Code_Location,
+		timestamp : time.Time,
+		thread_id : int,
 	}
-} else {
-	get_last_error_message :: #force_inline proc "contextless" () -> string {
-		return ""
+
+- The last error data as an `Error_Data_Info`. Returns an empty struct if error handling is
+disabled or no error has occurred.
+
+**Notes**
+1. Error data is set to `{}` in the next procedure/API all.
+*/
+get_last_error_data :: #force_inline proc "contextless" () -> Error_Data_Info #no_bounds_check {
+	current_err := g_error.data
+	return {
+		error     = current_err.error,
+		message   = current_err.message,
+		loc       = current_err.loc,
+		timestamp = current_err.timestamp,
+		thread_id = current_err.thread_id,
 	}
 }
 
-when WGPU_ENABLE_ERROR_HANDLING {
-	// Get the last error value.
-	// Returns nil if error handling is disabled or no error has occurred.
-	//
-	// Error is set to nil in the next API all.
-	get_last_error :: #force_inline proc "contextless" () -> Error #no_bounds_check {
-		return _storage.data[_storage.id].error
-	}
-} else {
-	get_last_error :: #force_inline proc "contextless" () -> Error {
-		return nil
-	}
+/*
+Print the last error message.
+
+**Notes**
+1. Disabled if error handling or logging is disabled.
+2. For more information, check `get_last_error_data`.
+*/
+print_last_error :: proc "contextless" () #no_bounds_check {
+	data := &g_error.data
+	runtime.print_string("WGPU error: ")
+	runtime.print_string(get_last_error_message())
+	runtime.print_byte('\n')
+	runtime.print_caller_location(data.loc)
+	runtime.print_byte('\n')
 }
-
-when WGPU_ENABLE_ERROR_HANDLING {
-	// Get the last error data as an `Error_Data_Info`.
-	// Returns an empty struct if error handling is disabled or no error has occurred.
-	//
-	// Error message is set to empty in the next API all.
-	get_last_error_data :: #force_inline proc "contextless" (
-	) -> Error_Data_Info #no_bounds_check {
-		current_err := _storage.data[_storage.id]
-
-		return {
-			type = current_err.type,
-			error = current_err.error,
-			message = current_err.message,
-			file_path = current_err.file_path,
-			line = current_err.line,
-			procedure = current_err.procedure,
-			timestamp = current_err.timestamp,
-			thread_id = current_err.thread_id,
-		}
-	}
 } else {
-	get_last_error_data :: #force_inline proc "contextless" () -> Error_Data_Info {
-		return {}
-	}
-}
-
-when WGPU_ENABLE_ERROR_HANDLING {
-	// Print the last error message.
-	// Disabled if error handling or logging is disabled.
-	print_last_error :: proc() #no_bounds_check {
-		current_err := &_storage.data[_storage.id]
-
-		fmt.printfln(
-			"WGPU error: %s\nError Type: %v | %v\nFile Path: %s:%d\nProcedure: %s\nTimestamp: %v\nThread ID: %d\n",
-			current_err.message,
-			current_err.type,
-			current_err.error,
-			current_err.file_path,
-			current_err.line,
-			current_err.procedure,
-			current_err.timestamp,
-			current_err.thread_id,
-		)
-	}
-} else {
-	print_last_error :: proc "contextless" () #no_bounds_check {
-	}
+get_last_error_message :: #force_inline proc "contextless" () -> string { return "" }
+get_last_error :: #force_inline proc "contextless" () -> Error { return nil }
+get_last_error_data :: #force_inline proc "contextless" () -> Error_Data_Info { return {} }
+print_last_error :: proc "contextless" () {}
 }

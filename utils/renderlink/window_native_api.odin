@@ -4,6 +4,7 @@ package application
 // STD Library
 import "base:runtime"
 import "core:log"
+import "core:mem"
 import "core:strings"
 
 // Vendor
@@ -14,20 +15,17 @@ import wgpu_sdl "./../../utils/sdl"
 import wgpu "./../../wrapper"
 
 Window_State :: struct {
-	using _base: Window,
-	handle:      ^sdl.Window,
+	using _base  : Window,
+	handle       : ^sdl.Window,
 }
-
-@(private)
-g_window: Window_State
 
 when WINDOW_PACKAGE {
 	@(require_results)
 	_window_init :: proc(
 		settings: Window_Settings,
-		allocator := context.allocator,
+		allocator: mem.Allocator,
 	) -> (
-		err: Error,
+		ok: bool,
 	) {
 		if sdl.Init(SDL_INIT_FLAGS) < 0 {
 			log.errorf("Could not initialize SDL: [%s]", sdl.GetError())
@@ -36,26 +34,23 @@ when WINDOW_PACKAGE {
 
 		_window_set_display_sleep_enabled(false)
 
-		g_window.allocator = allocator
 		_set_window(settings) or_return
 
-		return
+		return true
 	}
 
 	_window_destroy :: proc() {
-		if g_window.handle != nil {
-			sdl.DestroyWindow(g_window.handle)
+		w := &g_app.window
+
+		if w.handle != nil {
+			sdl.DestroyWindow(w.handle)
 			sdl.FlushEvent(.WINDOWEVENT)
 		}
 
-		g_window.open = false
+		w.open = false
 
 		sdl.Quit()
 	}
-
-	// _close :: proc() {
-	// 	quit()
-	// }
 
 	_window_from_pixels_value :: proc "contextless" (pixel_value: f32) -> f32 {
 		return pixel_value / _window_get_dpi_scale()
@@ -74,11 +69,11 @@ when WINDOW_PACKAGE {
 	}
 
 	_window_get_dpi_scale :: proc "contextless" () -> f32 {
-		return g_window.use_dpi_scale ? _get_dpi_scale() : 1.0
+		return g_app.window.use_dpi_scale ? _get_dpi_scale() : 1.0
 	}
 
 	_window_get_size :: proc "contextless" () -> Window_Size {
-		return g_window.size
+		return g_app.window.size
 	}
 
 	_window_get_desktop_dimensions :: proc "contextless" (
@@ -122,7 +117,7 @@ when WINDOW_PACKAGE {
 	}
 
 	_window_get_fullscreen :: proc "contextless" () -> Fullscreen_State {
-		return g_window.fullscreen
+		return g_app.window.fullscreen
 	}
 
 	_window_get_fullscreen_modes :: proc(
@@ -131,7 +126,7 @@ when WINDOW_PACKAGE {
 		allocator := context.allocator,
 	) -> (
 		modes: []Display_Settings,
-		err: Error,
+		ok: bool,
 	) {
 		runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 		temp_modes: [dynamic]Display_Settings
@@ -160,10 +155,10 @@ when WINDOW_PACKAGE {
 					height = mode.h,
 					refresh_rate = mode.refresh_rate,
 				},
-			) or_return
+			)
 		}
 
-		modes = make([]Display_Settings, len(temp_modes), allocator) or_return
+		modes = make([]Display_Settings, len(temp_modes), allocator)
 		copy(modes, temp_modes[:])
 
 		return
@@ -173,7 +168,7 @@ when WINDOW_PACKAGE {
 	}
 
 	_window_get_settings :: proc "contextless" () -> Window_Settings {
-		return g_window.settings
+		return g_app.window.settings
 	}
 
 	_window_get_position :: proc "contextless" () -> (x, y, display_index: i32) {
@@ -181,13 +176,13 @@ when WINDOW_PACKAGE {
 	}
 
 	_window_get_safe_area :: proc "contextless" () -> (x, y, w, h: i32) {
-		dw, dh := _window_from_pixels(f32(g_window.pixel.width), f32(g_window.pixel.height))
+		dw, dh := _window_from_pixels(f32(g_app.window.pixel.width), f32(g_app.window.pixel.height))
 		return 0, 0, i32(dw), i32(dh)
 	}
 
 	_window_get_title :: proc "contextless" () -> string {
-		// return string(sdl.GetWindowTitle(g_window.handle))
-		return g_window.title
+		// return string(sdl.GetWindowTitle(g_app.window.handle))
+		return g_app.window.title
 	}
 
 	_window_get_vsync_type :: proc "contextless" () -> Vsync_Mode {
@@ -195,11 +190,11 @@ when WINDOW_PACKAGE {
 	}
 
 	_window_has_focus :: proc "contextless" () -> bool {
-		return g_window.handle == sdl.GetKeyboardFocus()
+		return g_app.window.handle == sdl.GetKeyboardFocus()
 	}
 
 	_window_has_mouse_focus :: proc "contextless" () -> bool {
-		return g_window.handle == sdl.GetMouseFocus()
+		return g_app.window.handle == sdl.GetMouseFocus()
 	}
 
 	_window_is_display_sleep_enabled :: proc "contextless" () -> bool {
@@ -207,40 +202,40 @@ when WINDOW_PACKAGE {
 	}
 
 	_window_is_maximized :: proc "contextless" () -> bool {
-		flags := sdl.GetWindowFlags(g_window.handle)
+		flags := sdl.GetWindowFlags(g_app.window.handle)
 		return (u32(sdl.WINDOW_MAXIMIZED) & flags) != 0
 	}
 
 	_window_is_minimized :: proc "contextless" () -> bool {
-		flags := sdl.GetWindowFlags(g_window.handle)
+		flags := sdl.GetWindowFlags(g_app.window.handle)
 		return (u32(sdl.WINDOW_MINIMIZED) & flags) != 0
 	}
 
 	_window_is_open :: proc "contextless" () -> bool {
-		return g_window.open
+		return g_app.window.open
 	}
 
 	_window_is_visible :: proc "contextless" () -> bool {
-		flags := sdl.GetWindowFlags(g_window.handle)
+		flags := sdl.GetWindowFlags(g_app.window.handle)
 		return (u32(sdl.WINDOW_SHOWN) & flags) != 0
 	}
 
 	_window_maximize :: proc "contextless" () {
-		sdl.MaximizeWindow(g_window.handle)
-		_update_settings(g_window.settings)
+		sdl.MaximizeWindow(g_app.window.handle)
+		_update_settings(g_app.window.settings)
 	}
 
 	_window_minimize :: proc "contextless" () {
-		sdl.MinimizeWindow(g_window.handle)
+		sdl.MinimizeWindow(g_app.window.handle)
 	}
 
 	_window_request_attention :: proc "contextless" () {
-		sdl.RaiseWindow(g_window.handle)
+		sdl.RaiseWindow(g_app.window.handle)
 	}
 
 	_window_restore :: proc "contextless" () {
-		sdl.RestoreWindow(g_window.handle)
-		_update_settings(g_window.settings)
+		sdl.RestoreWindow(g_app.window.handle)
+		_update_settings(g_app.window.settings)
 	}
 
 	_window_set_display_sleep_enabled :: proc "contextless" (enabled: bool) {
@@ -252,7 +247,7 @@ when WINDOW_PACKAGE {
 	}
 
 	_window_set_fullscreen :: proc "contextless" (state: Fullscreen_State) -> bool {
-		new_settings := g_window.settings
+		new_settings := g_app.window.settings
 		new_settings.fullscreen = state
 
 		flags: sdl.WindowFlags
@@ -264,15 +259,15 @@ when WINDOW_PACKAGE {
 				flags += {.FULLSCREEN}
 
 				mode: sdl.DisplayMode
-				mode.w = i32(g_window.size.width)
-				mode.h = i32(g_window.size.height)
+				mode.w = i32(g_app.window.size.width)
+				mode.h = i32(g_app.window.size.height)
 
-				sdl.GetClosestDisplayMode(sdl.GetWindowDisplayIndex(g_window.handle), &mode, &mode)
-				sdl.SetWindowDisplayMode(g_window.handle, &mode)
+				sdl.GetClosestDisplayMode(sdl.GetWindowDisplayIndex(g_app.window.handle), &mode, &mode)
+				sdl.SetWindowDisplayMode(g_app.window.handle, &mode)
 			}
 		}
 
-		if sdl.SetWindowFullscreen(g_window.handle, flags) == 0 {
+		if sdl.SetWindowFullscreen(g_app.window.handle, flags) == 0 {
 			_update_settings(new_settings)
 			return true
 		}
@@ -299,20 +294,20 @@ when WINDOW_PACKAGE {
 		_x := x + display_bounds.x
 		_y := y + display_bounds.y
 
-		sdl.SetWindowPosition(g_window.handle, _x, _y)
+		sdl.SetWindowPosition(g_app.window.handle, _x, _y)
 
-		g_window.settings.use_position = true
+		g_app.window.settings.use_position = true
 	}
 
 	_window_set_title_string :: proc(title: string) {
 		runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 		c_title := strings.clone_to_cstring(title, context.temp_allocator)
-		sdl.SetWindowTitle(g_window.handle, c_title)
-		g_window.settings.title = title
+		sdl.SetWindowTitle(g_app.window.handle, c_title)
+		g_app.window.settings.title = title
 	}
 
 	_window_set_title_c_string :: proc "contextless" (title: cstring) {
-		sdl.SetWindowTitle(g_window.handle, title)
+		sdl.SetWindowTitle(g_app.window.handle, title)
 	}
 
 	_window_set_title :: proc {
@@ -403,19 +398,19 @@ when WINDOW_PACKAGE {
 	_window_set_mouse_position :: proc "contextless" (x, y: f32) {
 		x, y := x, y
 		_dpi_to_coords(&x, &y)
-		sdl.WarpMouseInWindow(g_window.handle, i32(x), i32(y))
+		sdl.WarpMouseInWindow(g_app.window.handle, i32(x), i32(y))
 		sdl.PumpEvents()
 	}
 
-	_window_create_wgpu_surface :: proc(instance: wgpu.Instance) -> (wgpu.Surface, wgpu.Error) {
-		return wgpu_sdl.create_surface(g_window.handle, instance)
+	_window_create_wgpu_surface :: proc(instance: wgpu.Instance) -> (wgpu.Surface, bool) {
+		return wgpu_sdl.create_surface(g_app.window.handle, instance)
 	}
 } else {
 	_ :: runtime
 	_ :: log
 	_ :: strings
 	_ :: wgpu_sdl
-	_window_init :: proc(_: Window_Settings, _ := context.allocator) -> (err: Error) {return}
+	_window_init :: proc(_: Window_Settings, _ := context.allocator) -> (ok: bool) {return}
 	_window_destroy :: proc() {}
 	_window_from_pixels_value :: proc "contextless" (_: f32) -> f32 {return 0}
 	_window_from_pixels_values :: proc "contextless" (_, _: f32) -> (wx, wy: f32) {return}
@@ -441,7 +436,7 @@ when WINDOW_PACKAGE {
 		_ := context.allocator,
 	) -> (
 		modes: []Display_Settings,
-		err: Error,
+		ok: bool,
 	) {
 		return
 	}

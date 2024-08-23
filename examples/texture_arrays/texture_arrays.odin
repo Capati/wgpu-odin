@@ -1,21 +1,20 @@
 package texture_arrays_example
 
 // STD Library
+import "base:builtin"
 import "base:runtime"
-import "core:log"
+@(require) import "core:log"
 
-// Package
+// Local packages
 import rl "./../../utils/renderlink"
 import "./../../utils/shaders"
 import wgpu "./../../wrapper"
 
-_ :: log
-
 Texture_Data :: struct {
-	label: cstring,
-	tex:   wgpu.Texture,
-	view:  wgpu.Texture_View,
-	data:  [4]u8,
+	label : cstring,
+	tex   : wgpu.Texture,
+	view  : wgpu.Texture_View,
+	data  : [4]u8,
 }
 
 Texture_Name :: enum {
@@ -26,9 +25,9 @@ Texture_Name :: enum {
 }
 
 Vertex :: struct {
-	pos:       [2]f32,
-	tex_coord: [2]f32,
-	index:     u32,
+	pos       : [2]f32,
+	tex_coord : [2]f32,
+	index     : u32,
 }
 
 VERTICES: []Vertex : {
@@ -44,7 +43,6 @@ VERTICES: []Vertex : {
 	{{1, -1}, {1, 1}, 1},
 }
 
-// odinfmt: disable
 INDICES: []u16 = {
 	// Left rectangle
 	0, 1, 2,  // First triangle
@@ -54,39 +52,38 @@ INDICES: []u16 = {
 	4, 5, 6,  // First triangle
 	6, 4, 7,  // Second triangle
 }
-// odinfmt: enable
 
 State :: struct {
-	optional_features:            wgpu.Features,
-	device_has_optional_features: bool,
-	use_uniform_workaround:       bool,
-	fragment_entry_point:         cstring,
-	vertex_buffer:                wgpu.Buffer,
-	index_buffer:                 wgpu.Buffer,
-	texture_index_buffer:         wgpu.Buffer,
-	textures:                     [Texture_Name]Texture_Data,
-	bind_group_layout:            wgpu.Bind_Group_Layout,
-	sampler:                      wgpu.Sampler,
-	bind_group:                   wgpu.Bind_Group,
-	pipeline_layout:              wgpu.Pipeline_Layout,
-	render_pipeline:              wgpu.Render_Pipeline,
+	optional_features            : wgpu.Features,
+	device_has_optional_features : bool,
+	use_uniform_workaround       : bool,
+	fragment_entry_point         : cstring,
+	vertex_buffer                : wgpu.Buffer,
+	index_buffer                 : wgpu.Buffer,
+	texture_index_buffer         : wgpu.Buffer,
+	textures                     : [Texture_Name]Texture_Data,
+	bind_group_layout            : wgpu.Bind_Group_Layout,
+	sampler                      : wgpu.Sampler,
+	bind_group                   : wgpu.Bind_Group,
+	pipeline_layout              : wgpu.Pipeline_Layout,
+	render_pipeline              : wgpu.Render_Pipeline,
 }
 
-App_Context :: rl.Context(State)
+State_Context :: rl.Context(State)
 
 EXAMPLE_TITLE :: "Texture Arrays"
 
-init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
-	state.device_has_optional_features = wgpu.device_has_feature(
-		gpu.device,
-		state.optional_features,
+init :: proc(ctx: ^State_Context) -> (ok: bool) {
+	ctx.device_has_optional_features = wgpu.device_has_feature(
+		ctx.gpu.device,
+		ctx.optional_features,
 	)
 
-	if state.device_has_optional_features {
-		state.fragment_entry_point = "non_uniform_main"
+	if ctx.device_has_optional_features {
+		ctx.fragment_entry_point = "non_uniform_main"
 	} else {
-		state.use_uniform_workaround = true
-		state.fragment_entry_point = "uniform_main"
+		ctx.use_uniform_workaround = true
+		ctx.fragment_entry_point = "uniform_main"
 	}
 
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
@@ -94,26 +91,26 @@ init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
 	INDEXING_WGSL: string : #load("./indexing.wgsl", string)
 	base_shader_source := shaders.apply_color_conversion(
 		INDEXING_WGSL,
-		gpu.is_srgb,
+		ctx.gpu.is_srgb,
 		context.temp_allocator,
 	) or_return
 	base_shader_module := wgpu.device_create_shader_module(
-		gpu.device,
+		ctx.gpu.device,
 		{source = base_shader_source},
 	) or_return
 	defer wgpu.shader_module_release(base_shader_module)
 
 	fragment_shader_module: wgpu.Shader_Module
 
-	if !state.use_uniform_workaround {
+	if !ctx.use_uniform_workaround {
 		NON_UNIFORM_INDEXING_WGSL: string : #load("./non_uniform_indexing.wgsl", string)
 		non_uniform_shader_source := shaders.apply_color_conversion(
 			NON_UNIFORM_INDEXING_WGSL,
-			gpu.is_srgb,
+			ctx.gpu.is_srgb,
 			context.temp_allocator,
 		) or_return
 		fragment_shader_module = wgpu.device_create_shader_module(
-			gpu.device,
+			ctx.gpu.device,
 			{source = non_uniform_shader_source},
 		) or_return
 	} else {
@@ -121,40 +118,40 @@ init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
 	}
 	defer wgpu.shader_module_release(fragment_shader_module)
 
-	log.infof("Using fragment entry point: %s", state.fragment_entry_point)
+	log.infof("Using fragment entry point: %s", ctx.fragment_entry_point)
 
-	state.vertex_buffer = wgpu.device_create_buffer_with_data(
-		gpu.device,
+	ctx.vertex_buffer = wgpu.device_create_buffer_with_data(
+		ctx.gpu.device,
 		{
 			label = EXAMPLE_TITLE + " Vertex buffer",
 			contents = wgpu.to_bytes(VERTICES),
 			usage = {.Vertex},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(state.vertex_buffer)
+	defer if !ok do wgpu.buffer_release(ctx.vertex_buffer)
 
-	state.index_buffer = wgpu.device_create_buffer_with_data(
-		gpu.device,
+	ctx.index_buffer = wgpu.device_create_buffer_with_data(
+		ctx.gpu.device,
 		{
 			label = EXAMPLE_TITLE + " Index buffer",
 			contents = wgpu.to_bytes(INDICES),
 			usage = {.Index},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(state.index_buffer)
+	defer if !ok do wgpu.buffer_release(ctx.index_buffer)
 
 	texture_index_buffer_contents: [128]u32 = {}
 	texture_index_buffer_contents[64] = 1
 
-	state.texture_index_buffer = wgpu.device_create_buffer_with_data(
-		gpu.device,
+	ctx.texture_index_buffer = wgpu.device_create_buffer_with_data(
+		ctx.gpu.device,
 		{
 			label = EXAMPLE_TITLE + "Texture index buffer",
 			contents = wgpu.to_bytes(texture_index_buffer_contents),
 			usage = {.Uniform},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(state.texture_index_buffer)
+	defer if !ok do wgpu.buffer_release(ctx.texture_index_buffer)
 
 	extent_3d_default: wgpu.Extent_3D = {1, 1, 1}
 
@@ -162,7 +159,7 @@ init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
 		usage           = {.Texture_Binding, .Copy_Dst},
 		dimension       = .D2,
 		size            = extent_3d_default,
-		format          = gpu.config.format,
+		format          = ctx.gpu.config.format,
 		mip_level_count = 1,
 		sample_count    = 1,
 	}
@@ -173,37 +170,37 @@ init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
 		rows_per_image = wgpu.COPY_STRIDE_UNDEFINED,
 	}
 
-	state.textures[.RED].label = "red"
-	state.textures[.GREEN].label = "green"
-	state.textures[.BLUE].label = "blue"
-	state.textures[.WHITE].label = "white"
+	ctx.textures[.RED].label = "red"
+	ctx.textures[.GREEN].label = "green"
+	ctx.textures[.BLUE].label = "blue"
+	ctx.textures[.WHITE].label = "white"
 
-	state.textures[.RED].data = {255, 0, 0, 255}
-	state.textures[.GREEN].data = {0, 255, 0, 255}
-	state.textures[.BLUE].data = {0, 0, 255, 255}
-	state.textures[.WHITE].data = {255, 255, 255, 255}
+	ctx.textures[.RED].data = {255, 0, 0, 255}
+	ctx.textures[.GREEN].data = {0, 255, 0, 255}
+	ctx.textures[.BLUE].data = {0, 0, 255, 255}
+	ctx.textures[.WHITE].data = {255, 255, 255, 255}
 
-	defer if err != nil {
-		for i in 0 ..< len(state.textures) {
-			ref := &state.textures[cast(Texture_Name)i]
-			if ref.view.ptr != nil {
+	defer if !ok {
+		for i in 0 ..< len(ctx.textures) {
+			ref := &ctx.textures[cast(Texture_Name)i]
+			if ref.view != nil {
 				wgpu.texture_view_release(ref.view)
 				wgpu.texture_release(ref.tex)
 			}
 		}
 	}
 
-	for i in 0 ..< len(state.textures) {
-		ref := &state.textures[cast(Texture_Name)i]
+	for i in 0 ..< len(ctx.textures) {
+		ref := &ctx.textures[cast(Texture_Name)i]
 
 		texture_descriptor_common.label = ref.label
 
-		ref.tex = wgpu.device_create_texture(gpu.device, texture_descriptor_common) or_return
+		ref.tex = wgpu.device_create_texture(ctx.gpu.device, texture_descriptor_common) or_return
 
 		ref.view = wgpu.texture_create_view(ref.tex) or_return
 
 		wgpu.queue_write_texture(
-			gpu.queue,
+			ctx.gpu.queue,
 			wgpu.texture_as_image_copy(ref.tex),
 			wgpu.to_bytes(wgpu.to_bytes(ref.data)),
 			texture_data_layout_common,
@@ -211,9 +208,9 @@ init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
 		) or_return
 	}
 
-	state.bind_group_layout = wgpu.device_create_bind_group_layout(
-		gpu.device,
-		{
+	ctx.bind_group_layout = wgpu.device_create_bind_group_layout(
+		ctx.gpu.device,
+		wgpu.Bind_Group_Layout_Descriptor{
 			label = EXAMPLE_TITLE + " Bind group layout",
 			entries = {
 				{
@@ -254,36 +251,36 @@ init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
 			},
 		},
 	) or_return
-	defer if err != nil do wgpu.bind_group_layout_release(state.bind_group_layout)
+	defer if !ok do wgpu.bind_group_layout_release(ctx.bind_group_layout)
 
-	state.sampler = wgpu.device_create_sampler(gpu.device) or_return
-	defer if err != nil do wgpu.sampler_release(state.sampler)
+	ctx.sampler = wgpu.device_create_sampler(ctx.gpu.device) or_return
+	defer if !ok do wgpu.sampler_release(ctx.sampler)
 
-	state.bind_group = wgpu.device_create_bind_group(
-		gpu.device,
+	ctx.bind_group = wgpu.device_create_bind_group(
+		ctx.gpu.device,
 		{
 			label = EXAMPLE_TITLE + " Bind Group",
-			layout = state.bind_group_layout.ptr,
+			layout = ctx.bind_group_layout,
 			entries = {
 				{
 					binding = 0,
-					resource = []wgpu.Raw_Texture_View {
-						state.textures[.RED].view.ptr,
-						state.textures[.GREEN].view.ptr,
+					resource = []wgpu.Texture_View {
+						ctx.textures[.RED].view,
+						ctx.textures[.GREEN].view,
 					},
 				},
 				{
 					binding = 1,
-					resource = []wgpu.Raw_Texture_View {
-						state.textures[.BLUE].view.ptr,
-						state.textures[.WHITE].view.ptr,
+					resource = []wgpu.Texture_View {
+						ctx.textures[.BLUE].view,
+						ctx.textures[.WHITE].view,
 					},
 				},
-				{binding = 2, resource = []wgpu.Raw_Sampler{state.sampler.ptr, state.sampler.ptr}},
+				{binding = 2, resource = []wgpu.Sampler{ctx.sampler, ctx.sampler}},
 				{
 					binding = 3,
 					resource = wgpu.Buffer_Binding {
-						buffer = state.texture_index_buffer.ptr,
+						buffer = ctx.texture_index_buffer,
 						offset = 0,
 						size = 4,
 					},
@@ -291,20 +288,20 @@ init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
 			},
 		},
 	) or_return
-	defer if err != nil do wgpu.bind_group_release(state.bind_group)
+	defer if !ok do wgpu.bind_group_release(ctx.bind_group)
 
-	state.pipeline_layout = wgpu.device_create_pipeline_layout(
-		gpu.device,
-		{label = EXAMPLE_TITLE + " main", bind_group_layouts = {state.bind_group_layout.ptr}},
+	ctx.pipeline_layout = wgpu.device_create_pipeline_layout(
+		ctx.gpu.device,
+		{label = EXAMPLE_TITLE + " main", bind_group_layouts = {ctx.bind_group_layout}},
 	) or_return
-	defer if err != nil do wgpu.pipeline_layout_release(state.pipeline_layout)
+	defer if !ok do wgpu.pipeline_layout_release(ctx.pipeline_layout)
 
-	state.render_pipeline = wgpu.device_create_render_pipeline(
-		gpu.device,
+	ctx.render_pipeline = wgpu.device_create_render_pipeline(
+		ctx.gpu.device,
 		{
-			layout = state.pipeline_layout.ptr,
+			layout = ctx.pipeline_layout,
 			vertex = {
-				module = base_shader_module.ptr,
+				module = base_shader_module,
 				entry_point = "vert_main",
 				buffers = {
 					{
@@ -327,67 +324,72 @@ init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
 				},
 			},
 			fragment = &{
-				module = fragment_shader_module.ptr,
-				entry_point = state.fragment_entry_point,
-				targets = {{format = gpu.config.format, write_mask = wgpu.Color_Write_Mask_All}},
+				module = fragment_shader_module,
+				entry_point = ctx.fragment_entry_point,
+				targets = {{format = ctx.gpu.config.format, write_mask = wgpu.Color_Write_Mask_All}},
 			},
 			primitive = wgpu.DEFAULT_PRIMITIVE_STATE,
 			multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 		},
 	) or_return
-	defer if err != nil do wgpu.render_pipeline_release(state.render_pipeline)
+	defer if !ok do wgpu.render_pipeline_release(ctx.render_pipeline)
 
-	return
+	return true
 }
 
-quit :: proc(using ctx: ^App_Context) {
-	wgpu.render_pipeline_release(state.render_pipeline)
-	wgpu.pipeline_layout_release(state.pipeline_layout)
-	wgpu.bind_group_release(state.bind_group)
-	wgpu.sampler_release(state.sampler)
-	wgpu.bind_group_layout_release(state.bind_group_layout)
+quit :: proc(ctx: ^State_Context) {
+	wgpu.render_pipeline_release(ctx.render_pipeline)
+	wgpu.pipeline_layout_release(ctx.pipeline_layout)
+	wgpu.bind_group_release(ctx.bind_group)
+	wgpu.sampler_release(ctx.sampler)
+	wgpu.bind_group_layout_release(ctx.bind_group_layout)
 
-	for i in 0 ..< len(state.textures) {
-		ref := &state.textures[cast(Texture_Name)i]
+	for i in 0 ..< len(ctx.textures) {
+		ref := &ctx.textures[cast(Texture_Name)i]
 		wgpu.texture_view_release(ref.view)
 		wgpu.texture_destroy(ref.tex)
 		wgpu.texture_release(ref.tex)
 	}
 
-	wgpu.buffer_release(state.texture_index_buffer)
-	wgpu.buffer_release(state.index_buffer)
-	wgpu.buffer_release(state.vertex_buffer)
+	wgpu.buffer_release(ctx.texture_index_buffer)
+	wgpu.buffer_release(ctx.index_buffer)
+	wgpu.buffer_release(ctx.vertex_buffer)
 }
 
-draw :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
-	wgpu.render_pass_set_pipeline(gpu.render_pass, state.render_pipeline.ptr)
-	wgpu.render_pass_set_vertex_buffer(gpu.render_pass, 0, state.vertex_buffer.ptr)
-	wgpu.render_pass_set_index_buffer(gpu.render_pass, state.index_buffer.ptr, .Uint16)
+draw :: proc(ctx: ^State_Context) -> bool {
+	wgpu.render_pass_set_pipeline(ctx.gpu.render_pass, ctx.render_pipeline)
+	wgpu.render_pass_set_vertex_buffer(ctx.gpu.render_pass, 0, ctx.vertex_buffer)
+	wgpu.render_pass_set_index_buffer(ctx.gpu.render_pass, ctx.index_buffer, .Uint16)
 
-	if state.use_uniform_workaround {
+	if ctx.use_uniform_workaround {
 		// Draw left rectangle
-		wgpu.render_pass_set_bind_group(gpu.render_pass, 0, state.bind_group.ptr, {0})
-		wgpu.render_pass_draw_indexed(gpu.render_pass, {0, 6})
+		wgpu.render_pass_set_bind_group(ctx.gpu.render_pass, 0, ctx.bind_group, {0})
+		wgpu.render_pass_draw_indexed(ctx.gpu.render_pass, {0, 6})
 		// Draw right rectangle
-		wgpu.render_pass_set_bind_group(gpu.render_pass, 0, state.bind_group.ptr, {256})
-		wgpu.render_pass_draw_indexed(gpu.render_pass, {6, 12})
+		wgpu.render_pass_set_bind_group(ctx.gpu.render_pass, 0, ctx.bind_group, {256})
+		wgpu.render_pass_draw_indexed(ctx.gpu.render_pass, {6, 12})
 	} else {
-		wgpu.render_pass_set_bind_group(gpu.render_pass, 0, state.bind_group.ptr, {0})
-		wgpu.render_pass_draw_indexed(gpu.render_pass, {0, 12})
+		wgpu.render_pass_set_bind_group(ctx.gpu.render_pass, 0, ctx.bind_group, {0})
+		wgpu.render_pass_draw_indexed(ctx.gpu.render_pass, {0, 12})
 	}
 
-	return
+	return true
 }
 
 main :: proc() {
-	state, state_err := new(App_Context)
-	if state_err != nil do return
-	defer free(state)
+	when ODIN_DEBUG {
+		context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
+		defer log.destroy_console_logger(context.logger)
+	}
+
+	state := builtin.new(State_Context)
+	assert(state != nil, "Failed to allocate application state")
+	defer builtin.free(state)
 
 	state.callbacks = {
-		init = init,
-		quit = quit,
-		draw = draw,
+		init   = init,
+		quit   = quit,
+		draw   = draw,
 	}
 
 	settings := rl.DEFAULT_SETTINGS
@@ -402,7 +404,7 @@ main :: proc() {
 	// Set required features to use texture arrays
 	settings.gpu.required_features = {.Texture_Binding_Array}
 
-	if err := rl.init(state, settings); err != nil do return
+	if ok := rl.init(state, settings); !ok do return
 
 	rl.begin_run(state) // Start the main loop
 }

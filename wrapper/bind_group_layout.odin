@@ -1,37 +1,28 @@
 package wgpu
 
-// Package
+// The raw bindings
 import wgpu "../bindings"
 
-// Handle to a binding group layout.
-//
-// A `Bind_Group_Layout` is a handle to the GPU-side layout of a binding group. It can be used to
-// create a `Bind_Group_Descriptor` object, which in turn can be used to create a `Bind_Group`
-// object with `device_create_bind_group`. A series of `Bind_Group_Layout`s can also be used to
-// create a `Pipeline_Layout_Descriptor`, which can be used to create a `Pipeline_Layout`.
-Bind_Group_Layout :: struct {
-	ptr:  Raw_Bind_Group_Layout,
-	_pad: POINTER_PROMOTION_PADDING,
-}
+/*
+Handle to a binding group layout.
 
-// Set debug label.
-bind_group_layout_set_label :: proc "contextless" (using self: Bind_Group_Layout, label: cstring) {
-	wgpu.bind_group_layout_set_label(ptr, label)
-}
+A `Bind_Group_Layout` is a handle to the GPU-side layout of a binding group. It can be used to
+create a `Bind_Group_Descriptor` object, which in turn can be used to create a `Bind_Group`
+object with `device_create_bind_group`. A series of `Bind_Group_Layout`s can also be used to
+create a `Pipeline_Layout_Descriptor`, which can be used to create a `Pipeline_Layout`.
 
-// Increase the reference count.
-bind_group_layout_reference :: proc "contextless" (using self: Bind_Group_Layout) {
-	wgpu.bind_group_layout_reference(ptr)
-}
+It can be created with `device_create_bind_group_layout`.
 
-// Release the `Bind_Group_Layout`.
-bind_group_layout_release :: #force_inline proc "contextless" (using self: Bind_Group_Layout) {
-	wgpu.bind_group_layout_release(ptr)
-}
+Corresponds to [WebGPU `GPUBindGroupLayout`](
+https://gpuweb.github.io/gpuweb/#gpubindgrouplayout).
+*/
+Bind_Group_Layout :: wgpu.Bind_Group_Layout
 
-// Release the `Bind_Group_Layout` and modify the raw pointer to `nil`..
-bind_group_layout_release_and_nil :: proc "contextless" (using self: ^Bind_Group_Layout) {
-	if ptr == nil do return
-	wgpu.bind_group_layout_release(ptr)
-	ptr = nil
-}
+/* Set debug label. */
+bind_group_layout_set_label :: wgpu.bind_group_layout_set_label
+
+/* Increase the reference count. */
+bind_group_layout_reference :: wgpu.bind_group_layout_reference
+
+/* Release the `Bind_Group_Layout` resources. */
+bind_group_layout_release :: wgpu.bind_group_layout_release

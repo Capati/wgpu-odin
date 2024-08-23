@@ -1,51 +1,54 @@
 package wgpu
 
-// Base
+// STD Library
 import intr "base:intrinsics"
 
-// Package
+// The raw bindings
 import wgpu "../bindings"
 
-// Handle to a GPU-accessible buffer.
-//
-// Created with `device_create_buffer` or `device_create_buffer_with_data`.
-Buffer :: struct {
-	ptr:       Raw_Buffer,
-	size:      Buffer_Size,
-	usage:     Buffer_Usage_Flags,
-	_err_data: ^Error_Data,
+/*
+Handle to a GPU-accessible buffer.
+
+Created with `device_create_buffer` or `device_create_buffer_with_data`.
+
+Corresponds to [WebGPU `GPUBuffer`](https://gpuweb.github.io/gpuweb/#buffer-interface)..
+*/
+Buffer :: wgpu.Buffer
+
+/* Return the binding view of the entire buffer with the current size. */
+buffer_as_entire_binding :: proc "contextless" (self: Buffer) -> Buffer_Binding {
+	size := buffer_get_size(self)
+	return {buffer = self, offset = 0, size = size}
 }
 
-// Return the binding view of the entire buffer with the current size.
-buffer_as_entire_binding :: proc "contextless" (using self: Buffer) -> Buffer_Binding {
-	return {buffer = ptr, offset = 0, size = size}
-}
-
-// Destroys the `Buffer` from the GPU side.
-buffer_destroy :: proc "contextless" (using self: Buffer) {
-	wgpu.buffer_destroy(ptr)
+/* Destroy the associated native resources as soon as possible. */
+buffer_destroy :: proc "contextless" (self: Buffer) {
+	wgpu.buffer_destroy(self)
 }
 
 Buffer_Range :: struct {
-	offset: Buffer_Address,
-	size:   Buffer_Size,
+	offset : Buffer_Address,
+	size   : Buffer_Size,
 }
 
-buffer_range_default :: #force_inline proc "contextless" (using self: Buffer) -> Buffer_Range {
+buffer_range_default :: #force_inline proc "contextless" (self: Buffer) -> Buffer_Range {
+	size := buffer_get_size(self)
 	return {0, size}
 }
 
 buffer_range_from_offset :: #force_inline proc "contextless" (
-	using self: Buffer,
+	self: Buffer,
 	offset: Buffer_Address,
 ) -> Buffer_Range {
+	size := buffer_get_size(self)
 	return {offset, size}
 }
 
 buffer_range_from_range :: #force_inline proc "contextless" (
-	using self: Buffer,
+	self: Buffer,
 	bounds: Range(Buffer_Address) = {},
 ) -> Buffer_Range {
+	size := buffer_get_size(self)
 	return {bounds.start, bounds.end if bounds.end > 0 else size}
 }
 
@@ -57,32 +60,37 @@ buffer_range :: proc {
 
 @(private = "file")
 _buffer_get_mapped_range_bytes :: proc "contextless" (
-	using self: Buffer,
+	self: Buffer,
 	is_const: bool,
 	range: Buffer_Range = {},
 	loc := #caller_location,
 ) -> (
 	data: []byte,
-	err: Error,
+	ok: bool,
 ) {
 	range := range if range != {} else buffer_range_default(self)
 	end := uint(range.size - range.offset)
 
-	set_and_reset_err_data(_err_data, loc)
+	_error_reset_data(loc)
+
 	raw_data :=
 		is_const \
-		? wgpu.buffer_get_const_mapped_range(ptr, uint(range.offset), end) \
-		: wgpu.buffer_get_mapped_range(ptr, uint(range.offset), end)
-	if err = get_last_error(); err != nil do return
+		? wgpu.buffer_get_const_mapped_range(self, uint(range.offset), end) \
+		: wgpu.buffer_get_mapped_range(self, uint(range.offset), end)
+
+	if get_last_error() != nil do return
 
 	if raw_data == nil {
-		err = .Nil_Data
-		return
+		return {}, true
 	}
 
-	data = ([^]byte)(raw_data)[:end]
+	when ODIN_DEBUG {
+		data = ([^]byte)(raw_data)[:end]
+	} else {
+		#no_bounds_check data = ([^]byte)(raw_data)[:end]
+	}
 
-	return
+	return data, true
 }
 
 @(private = "file")
@@ -94,66 +102,71 @@ _buffer_get_mapped_range_typed :: proc "contextless" (
 	loc := #caller_location,
 ) -> (
 	data: ^T,
-	err: Error,
+	ok: bool,
 ) where !intr.type_is_sliceable(T) {
 	size := range.size if range.size > 0 else size_of(T)
 
-	set_and_reset_err_data(_err_data, loc)
+	_error_reset_data(loc)
 	raw_data :=
 		is_const \
-		? wgpu.buffer_get_const_mapped_range(self.ptr, uint(range.offset), size) \
-		: wgpu.buffer_get_mapped_range(self.ptr, uint(range.offset), size)
-	if err = get_last_error(); err != nil do return
+		? wgpu.buffer_get_const_mapped_range(self, uint(range.offset), size) \
+		: wgpu.buffer_get_mapped_range(self, uint(range.offset), size)
+
+	if get_last_error() != nil do return
 
 	if raw_data == nil {
-		err = .Nil_Data
-		return
+		return {}, true
 	}
 
 	data = (^T)(raw_data)
 
-	return
+	return data, true
 }
 
 @(private = "file")
 _buffer_get_mapped_range_sliced :: proc "contextless" (
-	using self: Buffer,
+	self: Buffer,
 	is_const: bool,
 	$T: typeid/[]$U,
 	range: Buffer_Range = {},
 	loc := #caller_location,
 ) -> (
 	data: []U,
-	err: Error,
+	ok: bool,
 ) where intr.type_is_sliceable(T) {
 	range := range if range != {} else buffer_range_default(self)
 	length := uint(range.size - range.offset)
 
-	set_and_reset_err_data(_err_data, loc)
+	_error_reset_data(loc)
+
 	raw_data :=
 		is_const \
-		? wgpu.buffer_get_const_mapped_range(self.ptr, uint(range.offset), length) \
-		: wgpu.buffer_get_mapped_range(self.ptr, uint(range.offset), length)
-	if err = get_last_error(); err != nil do return
+		? wgpu.buffer_get_const_mapped_range(self, uint(range.offset), length) \
+		: wgpu.buffer_get_mapped_range(self, uint(range.offset), length)
+
+	if get_last_error() != nil do return
 
 	if raw_data == nil {
-		err = .Nil_Data
-		return
+		return {}, true
 	}
 
-	data = ([^]U)(raw_data)[:length]
+	when ODIN_DEBUG {
+		data = ([^]U)(raw_data)[:length]
+	} else {
+		#no_bounds_check data = ([^]U)(raw_data)[:length]
+	}
 
-	return
+	return data, true
 }
 
 buffer_get_const_mapped_range_bytes :: proc "contextless" (
-	using self: Buffer,
+	self: Buffer,
 	range: Buffer_Range = {},
 	loc := #caller_location,
 ) -> (
 	data: []byte,
-	err: Error,
-) {
+	ok: bool,
+) #optional_ok {
 	return _buffer_get_mapped_range_bytes(self, true, range, loc)
 }
 
@@ -164,20 +177,20 @@ buffer_get_const_mapped_range_typed :: proc "contextless" (
 	loc := #caller_location,
 ) -> (
 	data: ^T,
-	err: Error,
-) where !intr.type_is_sliceable(T) {
+	ok: bool,
+) where !intr.type_is_sliceable(T) #optional_ok {
 	return _buffer_get_mapped_range_typed(self, true, T, range, loc)
 }
 
 buffer_get_const_mapped_range_sliced :: proc "contextless" (
-	using self: Buffer,
+	self: Buffer,
 	$T: typeid/[]$U,
 	range: Buffer_Range = {},
 	loc := #caller_location,
 ) -> (
 	data: []U,
-	err: Error,
-) where intr.type_is_sliceable(T) {
+	ok: bool,
+) where intr.type_is_sliceable(T) #optional_ok {
 	return _buffer_get_mapped_range_sliced(self, true, T, range, loc)
 }
 
@@ -188,13 +201,13 @@ buffer_get_const_mapped_range :: proc {
 }
 
 buffer_get_mapped_range_bytes :: proc "contextless" (
-	using self: Buffer,
+	self: Buffer,
 	range: Buffer_Range = {},
 	loc := #caller_location,
 ) -> (
 	data: []byte,
-	err: Error,
-) {
+	ok: bool,
+) #optional_ok {
 	return _buffer_get_mapped_range_bytes(self, false, range, loc)
 }
 
@@ -205,20 +218,20 @@ buffer_get_mapped_range_typed :: proc "contextless" (
 	loc := #caller_location,
 ) -> (
 	data: ^T,
-	err: Error,
-) where !intr.type_is_sliceable(T) {
+	ok: bool,
+) where !intr.type_is_sliceable(T) #optional_ok {
 	return _buffer_get_mapped_range_typed(self, false, T, range, loc)
 }
 
 buffer_get_mapped_range_sliced :: proc "contextless" (
-	using self: Buffer,
+	self: Buffer,
 	$T: typeid/[]$U,
 	range: Buffer_Range = {},
 	loc := #caller_location,
 ) -> (
 	data: []U,
-	err: Error,
-) where intr.type_is_sliceable(T) {
+	ok: bool,
+) where intr.type_is_sliceable(T) #optional_ok {
 	return _buffer_get_mapped_range_sliced(self, false, T, range, loc)
 }
 
@@ -228,74 +241,65 @@ buffer_get_mapped_range :: proc {
 	buffer_get_mapped_range_sliced,
 }
 
-// Get current `Buffer_Map_State` state.
-buffer_get_map_state :: proc "contextless" (using self: Buffer) -> Buffer_Map_State {
-	return wgpu.buffer_get_map_state(ptr)
+/* Get current `Buffer_Map_State` state. */
+buffer_get_map_state :: wgpu.buffer_get_map_state
+
+/*
+Returns the length of the buffer allocation in bytes.
+
+This is always equal to the `size` that was specified when creating the buffer.
+*/
+buffer_get_size :: wgpu.buffer_get_size
+
+/*
+Returns the allowed usages for this Buffer.
+
+This is always equal to the `usage` that was specified when creating the buffer.
+*/
+buffer_get_usage :: proc "contextless" (self: Buffer) -> Buffer_Usage_Flags {
+	return transmute(Buffer_Usage_Flags)(wgpu.buffer_get_usage(self))
 }
 
-// Returns the length of the buffer allocation in bytes.
-buffer_get_size :: proc "contextless" (using self: Buffer) -> u64 {
-	return size
-}
-
-// Returns the allowed usages for this Buffer.
-buffer_get_usage :: proc "contextless" (using self: Buffer) -> Buffer_Usage_Flags {
-	return usage
-}
-
-// Maps the given range of the buffer.
+/* Maps the given range of the buffer. */
 buffer_map_async :: proc "contextless" (
-	using self: Buffer,
+	self: Buffer,
 	mode: Map_Mode_Flags,
 	callback: Buffer_Map_Callback,
 	user_data: rawptr = nil,
 	range: Buffer_Range = {},
 	loc := #caller_location,
 ) -> (
-	err: Error,
+	ok: bool,
 ) {
-	set_and_reset_err_data(self._err_data, loc)
+	_error_reset_data(loc)
+
 	wgpu.buffer_map_async(
-		self.ptr,
+		self,
 		mode,
 		uint(range.offset),
-		uint(range.size) if range.size > 0 else uint(size),
+		uint(range.size) if range.size > 0 else uint(WHOLE_SIZE),
 		callback,
 		user_data,
 	)
-	err = get_last_error()
 
-	return
+	return get_last_error() == nil
 }
 
-// Set debug label.
-buffer_set_label :: proc "contextless" (using self: Buffer, label: cstring) {
-	wgpu.buffer_set_label(ptr, label)
+/*
+Flushes any pending write operations and unmaps the buffer from host memory and makes it's
+contents available for use by the GPU again.
+*/
+buffer_unmap :: proc "contextless" (self: Buffer, loc := #caller_location) -> (ok: bool) {
+	_error_reset_data(loc)
+	wgpu.buffer_unmap(self)
+	return get_last_error() == nil
 }
 
-// Unmaps the mapped range of the `Buffer` and makes it's contents available for use
-// by the GPU again.
-buffer_unmap :: proc "contextless" (using self: Buffer, loc := #caller_location) -> (err: Error) {
-	set_and_reset_err_data(_err_data, loc)
-	wgpu.buffer_unmap(ptr)
-	err = get_last_error()
+/* Set debug label. */
+buffer_set_label :: wgpu.buffer_set_label
 
-	return
-}
+/* Increase the reference count. */
+buffer_reference :: wgpu.buffer_reference
 
-// Increase the reference count.
-buffer_reference :: proc "contextless" (using self: Buffer) {
-	wgpu.buffer_reference(ptr)
-}
-
-// Release the `Buffer`.
-buffer_release :: #force_inline proc "contextless" (using self: Buffer) {
-	wgpu.buffer_release(ptr)
-}
-
-// Release the `Buffer` and modify the raw pointer to `nil`.
-buffer_release_and_nil :: proc "contextless" (using self: ^Buffer) {
-	if ptr == nil do return
-	wgpu.buffer_release(ptr)
-	ptr = nil
-}
+/* Release the `Buffer` resources. */
+buffer_release :: wgpu.buffer_release

@@ -1,12 +1,12 @@
 package info
 
-// Core
+// STD Library
 import "core:fmt"
 
-// Package
+// Local packages
 import wgpu "../../wrapper"
 
-main :: proc() {
+run :: proc() -> (ok: bool) {
 	wgpu_version := wgpu.get_version()
 
 	fmt.printf(
@@ -21,17 +21,21 @@ main :: proc() {
 		backends = wgpu.Instance_Backend_Primary,
 	}
 
-	instance, instance_err := wgpu.create_instance(instance_descriptor)
-	if instance_err != nil do return
+	instance := wgpu.create_instance(instance_descriptor) or_return
 	defer wgpu.instance_release(instance)
 
-	adapter, adapter_err := wgpu.instance_request_adapter(
+	adapter := wgpu.instance_request_adapter(
 		instance,
 		{power_preference = .High_Performance},
-	)
-	if adapter_err != nil do return
+	) or_return
 	defer wgpu.adapter_release(adapter)
 
 	fmt.print("Device information:\n\n")
 	wgpu.adapter_print_info(adapter)
+
+	return true
+}
+
+main :: proc() {
+	run()
 }

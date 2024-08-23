@@ -24,7 +24,7 @@ if "%RELEASE_MODE%"=="true" (
 )
 
 if "%RELEASE_MODE%"=="true" (
-    set ARGS=-o:aggressive ^
+    set ARGS=-o:speed ^
         -disable-assert ^
         -no-bounds-check ^
         -define:WGPU_CHECK_TO_BYTES=false ^

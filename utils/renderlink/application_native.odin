@@ -4,89 +4,101 @@ package application
 
 // STD Library
 import intr "base:intrinsics"
-import "core:log"
+import "core:mem"
 import "core:sync"
-import "core:time"
-
-_ :: log
-_ :: time
+@(require) import "core:log"
+@(require) import "core:time"
 
 Application_Native :: struct {
-	using _app: Application_Context,
-	renderer:   Renderer,
-	mutex:      sync.Mutex,
+	using _app : Application_Context,
+	heap_block : []byte,
+	arena      : mem.Arena,
+	events     : Event_State,
+	window     : Window_State,
+	renderer   : Renderer,
+	keyboard   : Keyboard_State,
+	mouse      : Mouse_State,
+	joystick   : Joystick_State,
+	mutex      : sync.Mutex,
 }
 
-_app_context: Application_Native
-g_app := &_app_context
+@(private)
+g_app: Application_Native
 
 @(require_results)
 _init :: proc(
 	state: ^$T,
 	settings: Settings,
-	allocator := context.allocator,
+	loc := #caller_location,
 ) -> (
-	err: Error,
+	ok: bool,
 ) where intr.type_is_specialization_of(T, Context) {
-	if g_app.initialized {
-		log.warn("Application already initialized! Ignoring...")
-		return
-	}
+	app := &g_app
 
-	log.infof("Initializing '%s'", settings.title)
+	assert(!app.initialized, "Application already initialized!", loc)
 
-	state.app = g_app // Set the application for this state
+	app.heap_block = make([]byte, 4 * mem.Megabyte)
+	assert(app.heap_block != nil, "Failed to allocate application memory block")
+	defer if !ok do delete(app.heap_block)
+	mem.arena_init(&app.arena, app.heap_block[:])
 
-	g_app.allocator = allocator
+	state.app = &app._app // Set the application subtype for this state
 
 	settings := settings
 
+	ally := mem.arena_allocator(&app.arena)
+
 	when EVENT_PACKAGE {
-		_event_init(allocator = allocator) or_return
-		defer if err != nil do _event_destroy()
+		_event_init(ally) or_return
+		defer if !ok do _event_destroy()
 	}
 
 	when WINDOW_PACKAGE {
-		_window_init(settings.window, allocator) or_return
-		defer if err != nil do _window_destroy()
+		_window_init(settings.window, ally) or_return
+		defer if !ok do _window_destroy()
 	}
 
 	when GRAPHICS_PACKAGE {
-		_graphics_init(settings.renderer, allocator) or_return
-		defer if err != nil do _graphics_destroy()
+		_graphics_init(settings.renderer, ally) or_return
+		defer if !ok do _graphics_destroy()
 		state.gpu = _graphics_get_gpu() // Set the graphics context for this state
 	}
 
 	when KEYBOARD_PACKAGE {
-		_keyboard_init(allocator) or_return
-		defer if err != nil do _keyboard_destroy()
+		_keyboard_init(ally) or_return
+		defer if !ok do _keyboard_destroy()
 	}
 
 	when MOUSE_PACKAGE {
-		_mouse_init(allocator) or_return
-		defer if err != nil do _mouse_destroy()
+		_mouse_init(ally) or_return
+		defer if !ok do _mouse_destroy()
 	}
 
 	when JOYSTICK_PACKAGE {
-		_joystick_init(allocator) or_return
-		defer if err != nil do _joystick_destroy()
+		_joystick_init(ally) or_return
+		defer if !ok do _joystick_destroy()
 	}
 
-	g_app.settings = settings
-	g_app.target_frame_time = time.Millisecond // 1000 FPS target (1ms per frame)
+	app.settings = settings
+	app.target_frame_time = time.Millisecond // 1000 FPS target (1ms per frame)
 
 	// Initialize application specific
 	if state.callbacks.init != nil {
-		state.callbacks.init(state)
+		log.infof("Initializing '%s'", settings.title)
+		if !state.callbacks.init(state) {
+			log.fatal(
+				"Failed to initialize application specific. " +
+				"Make sure your 'init' procedure is returning 'true'.",
+			)
+			return
+		}
 	}
 
-	free_all(context.temp_allocator)
-
-	g_app.initialized = true
+	app.initialized = true
 
 	log.info("Application initialized successfully!")
 
-	return
+	return true
 }
 
 _destroy :: proc() {
@@ -96,4 +108,5 @@ _destroy :: proc() {
 	when GRAPHICS_PACKAGE do _graphics_destroy()
 	when WINDOW_PACKAGE do _window_destroy()
 	when EVENT_PACKAGE do _event_destroy()
+	delete(g_app.heap_block)
 }

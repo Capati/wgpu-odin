@@ -549,7 +549,6 @@ _scancode_to_sdl_scancode :: proc "contextless" (
 }
 
 _sdl_to_key :: proc "contextless" (sdl_key: sdl.Keycode) -> Keyboard_Key {
-	// odinfmt: disable
 	#partial switch sdl_key {
 	case .UNKNOWN:            return .Unknown
 	case .RETURN:             return .Return
@@ -792,13 +791,11 @@ _sdl_to_key :: proc "contextless" (sdl_key: sdl.Keycode) -> Keyboard_Key {
 	case .AUDIOREWIND:        return .Audio_Rewind
 	case .AUDIOFASTFORWARD:   return .Audio_Fastforward
 	}
-	// odinfmt: enable
 
 	return .Unknown
 }
 
 _key_to_sdl :: proc "contextless" (key: Keyboard_Key) -> sdl.Keycode {
-	// odinfmt: disable
 	switch key {
 	case .Unknown:             return .UNKNOWN
 	case .Return:              return .RETURN
@@ -1041,7 +1038,6 @@ _key_to_sdl :: proc "contextless" (key: Keyboard_Key) -> sdl.Keycode {
 	case .Audio_Rewind:        return .AUDIOREWIND
 	case .Audio_Fastforward:   return .AUDIOFASTFORWARD
 	}
-	// odinfmt: enable
 
 	return .UNKNOWN
 }

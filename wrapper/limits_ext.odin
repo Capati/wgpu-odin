@@ -1,18 +1,16 @@
 package wgpu
 
-// Base
+// STD Library
 import "base:runtime"
-
-// Core
 import "core:fmt"
 import "core:reflect"
 import "core:slice"
 import "core:strings"
 
-// Package
+/* The raw bindings */
 import wgpu "./../bindings"
 
-// Represents the sets of limits an adapter/device supports.
+/* Represents the sets of limits an adapter/device supports. */
 Limits :: struct {
 	max_texture_dimension_1d:                        u32,
 	max_texture_dimension_2d:                        u32,
@@ -52,10 +50,12 @@ Limits :: struct {
 	max_non_sampler_bindings:                        u32,
 }
 
-// This is the set of limits that is guaranteed to work on all modern backends and is
-// guaranteed to be supported by WebGPU. Applications needing more modern features can
-// use this as a reasonable set of limits if they are targeting only desktop and modern
-// mobile devices.
+/*
+This is the set of limits that is guaranteed to work on all modern backends and is
+guaranteed to be supported by WebGPU. Applications needing more modern features can
+use this as a reasonable set of limits if they are targeting only desktop and modern
+mobile devices.
+*/
 DEFAULT_LIMITS :: Limits {
 	max_texture_dimension_1d                        = 8192,
 	max_texture_dimension_2d                        = 8192,
@@ -95,10 +95,12 @@ DEFAULT_LIMITS :: Limits {
 	max_non_sampler_bindings                        = 1_000_000,
 }
 
-// This is a set of limits that is guaranteed to work on almost all backends, including
-// “downlevel” backends such as OpenGL and D3D11, other than WebGL. For most applications
-// we recommend using these limits, assuming they are high enough for your application,
-// and you do not intent to support WebGL.
+/*
+This is a set of limits that is guaranteed to work on almost all backends, including
+“downlevel” backends such as OpenGL and D3D11, other than WebGL. For most applications
+we recommend using these limits, assuming they are high enough for your application,
+and you do not intent to support WebGL.
+*/
 DOWNLEVEL_LIMITS :: Limits {
 	max_texture_dimension_1d                        = 2048,
 	max_texture_dimension_2d                        = 2048,
@@ -138,8 +140,10 @@ DOWNLEVEL_LIMITS :: Limits {
 	max_non_sampler_bindings                        = 1_000_000,
 }
 
-// This is a set of limits that is lower even than the `DOWNLEVEL_LIMITS`, configured
-// to be low enough to support running in the browser using WebGL2.
+/*
+This is a set of limits that is lower even than the `DOWNLEVEL_LIMITS`, configured
+to be low enough to support running in the browser using WebGL2.
+*/
 DOWNLEVEL_WEBGL2_LIMITS :: Limits {
 	max_texture_dimension_1d                        = 2048,
 	max_texture_dimension_2d                        = 2048,
@@ -179,7 +183,7 @@ DOWNLEVEL_WEBGL2_LIMITS :: Limits {
 	max_non_sampler_bindings                        = 1_000_000,
 }
 
-// Modify the current limits to use the resolution limits of the other.
+/* Modify the current limits to use the resolution limits of the other. */
 limits_using_resolution :: proc(using self: ^Limits, other: Limits) -> Limits {
 	max_texture_dimension_1d = other.max_texture_dimension_1d
 	max_texture_dimension_2d = other.max_texture_dimension_2d
@@ -187,7 +191,7 @@ limits_using_resolution :: proc(using self: ^Limits, other: Limits) -> Limits {
 	return self^
 }
 
-// For `Limits` check. Doesn't use `Ada_Case` for consistency with the struct name.
+/* For `Limits` check. Doesn't use `Ada_Case` for consistency with the struct name. */
 Limits_Name :: enum {
 	max_texture_dimension_1d,
 	max_texture_dimension_2d,
@@ -247,11 +251,11 @@ Limit_Violation :: struct {
 Compares two `Limits` structures and identifies any violations where the `self` limits exceed or
 fall short of the `allowed` limits.
 
-Parameters
+**Inputs**
 - `self: Limits`: The limits to be checked.
 - `allowed: Limits`: The reference limits that `self` is checked against.
 
-Returns
+**Returns**
 - `violations: Limit_Violation`: A structure containing information about any limit violations.
 */
 @(require_results)
@@ -406,7 +410,7 @@ limits_violation_to_string :: proc(
 	return
 }
 
-limits_ensure_minimum :: proc(limits: ^Limits, minimum := DOWNLEVEL_WEBGL2_LIMITS) {
+limits_ensure_minimum :: proc "contextless" (limits: ^Limits, minimum := DOWNLEVEL_WEBGL2_LIMITS) {
 	limits.max_texture_dimension_1d = max(
 		limits.max_texture_dimension_1d,
 		minimum.max_texture_dimension_1d,
@@ -530,8 +534,7 @@ limits_ensure_minimum :: proc(limits: ^Limits, minimum := DOWNLEVEL_WEBGL2_LIMIT
 	)
 }
 
-@(private)
-limits_merge_webgpu_with_native :: proc(
+limits_merge_webgpu_with_native :: proc "contextless" (
 	webgpu: wgpu.Limits,
 	native: wgpu.Native_Limits,
 ) -> (

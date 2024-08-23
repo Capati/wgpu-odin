@@ -1,8 +1,5 @@
 package application
 
-// STD Library
-import "base:runtime"
-
 Display_Settings :: struct {
 	format:       u32,
 	width:        i32,
@@ -110,7 +107,6 @@ DEFAULT_WINDOW_SETTINGS :: Window_Settings {
 
 Window :: struct {
 	using settings: Window_Settings,
-	allocator:      runtime.Allocator,
 	pixel:          Window_Size,
 	open:           bool,
 	mouse_grabbed:  bool,

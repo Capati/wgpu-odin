@@ -8,7 +8,7 @@ import "core:time"
 
 _ :: log
 
-Quit_Event :: distinct bool
+Quit_Event :: struct{}
 
 Event :: union {
 	Key_Event,
@@ -40,95 +40,94 @@ Event_Error :: enum {
 	Init_Failed,
 }
 
-// FIFO Queue
+/* FIFO Queue */
 Event_List :: distinct queue.Queue(Event)
 
-// Default events queue capacity
+/* Default events queue capacity */
 DEFAULT_EVENTS_CAPACITY :: #config(DEFAULT_EVENTS_CAPACITY, 16)
 
 DRAG_TIMEOUT :: time.Millisecond * 100 // 100ms timeout
 
 Event_State :: struct {
-	events:          Event_List,
-	window_dragging: bool,
+	data            : Event_List,
+	window_dragging : bool,
 }
 
-@(private)
-g_event: Event_State
-
 when EVENT_PACKAGE {
-	// Clears the event queue.
-	event_clear :: proc() {
-		queue.clear(&g_event.events)
-	}
+/* Clears the event queue. */
+event_clear :: proc() {
+	queue.clear(&g_app.events.data)
+}
 
-	// Pop the next event from the front of the FIFO event queue, if any, and return it.
-	event_poll :: proc(event: ^Event) -> (has_next: bool) {
-		if event_is_empty() {
-			_platform_populate_event_queue()
+// Pop the next event from the front of the FIFO event queue, if any, and return it.
+event_poll :: proc(event: ^Event) -> (has_next: bool) {
+	if event_is_empty() {
+		_platform_populate_event_queue()
+	}
+	event^, has_next = event_pop()
+	return
+}
+
+// Pump events into the event queue.
+event_pump :: proc() {
+}
+
+// Adds an event to the event queue.
+event_push :: proc(event: Event) {
+	queue.push_front(&g_app.events.data, event)
+}
+
+// Wait for and return the next available window event
+event_wait :: proc(event: ^Event, timeout: time.Duration = 0) -> (has_next: bool) {
+	start_time := time.now()
+
+	timed_out :: proc(start: time.Time, timeout: time.Duration) -> bool {
+		if timeout == 0 {
+			return false // Infinite timeout
 		}
-		event^, has_next = event_pop()
-		return
+		return time.since(start) >= timeout
 	}
 
-	// Pump events into the event queue.
-	event_pump :: proc() {
+	// If the event queue is empty, first check if new events are available
+	if event_is_empty() {
+		_platform_populate_event_queue()
 	}
 
-	// Adds an event to the event queue.
-	event_push :: proc(event: Event) {
-		queue.push_front(&g_event.events, event)
+	// Manual wait loop to avoid skipping joystick events
+	for event_is_empty() && !timed_out(start_time, timeout) {
+		time.sleep(time.Millisecond * 10)
+		_platform_populate_event_queue()
 	}
 
-	// Wait for and return the next available window event
-	event_wait :: proc(event: ^Event, timeout: time.Duration = 0) -> (has_next: bool) {
-		start_time := time.now()
+	event^, has_next = event_pop()
+	return
+}
 
-		timed_out :: proc(start: time.Time, timeout: time.Duration) -> bool {
-			if timeout == 0 {
-				return false // Infinite timeout
-			}
-			return time.since(start) >= timeout
-		}
-
-		// If the event queue is empty, first check if new events are available
-		if event_is_empty() {
-			_platform_populate_event_queue()
-		}
-
-		// Manual wait loop to avoid skipping joystick events
-		for event_is_empty() && !timed_out(start_time, timeout) {
-			time.sleep(time.Millisecond * 10)
-			_platform_populate_event_queue()
-		}
-
-		event^, has_next = event_pop()
-		return
+event_pop :: proc() -> (Event, bool) {
+	if !event_is_empty() {
+		return queue.pop_back_safe(&g_app.events.data)
 	}
+	return nil, false
+}
 
-	event_pop :: proc() -> (Event, bool) {
-		if !event_is_empty() {
-			return queue.pop_back_safe(&g_event.events)
-		}
-		return nil, false
-	}
+event_has_next :: proc() -> bool {
+	return g_app.events.data.len > 0
+}
 
-	event_has_next :: proc() -> bool {
-		return g_event.events.len > 0
-	}
+event_is_empty :: proc() -> bool {
+	return g_app.events.data.len == 0
+}
 
-	event_is_empty :: proc() -> bool {
-		return g_event.events.len == 0
-	}
 } else {
-	event_clear :: proc() {}
-	event_poll :: proc(_: ^Event) -> (has_next: bool) {return}
-	event_pump :: proc() {}
-	event_push :: proc(_: Event) {}
-	event_wait :: proc(_: ^Event, _: time.Duration = 0) -> (has_next: bool) {return}
-	event_pop :: proc() -> (Event, bool) {return nil, false}
-	event_has_next :: proc() -> bool {return false}
-	event_is_empty :: proc() -> bool {return false}
+
+event_clear :: proc() {}
+event_poll :: proc(_: ^Event) -> (has_next: bool) {return}
+event_pump :: proc() {}
+event_push :: proc(_: Event) {}
+event_wait :: proc(_: ^Event, _: time.Duration = 0) -> (has_next: bool) {return}
+event_pop :: proc() -> (Event, bool) {return nil, false}
+event_has_next :: proc() -> bool {return false}
+event_is_empty :: proc() -> bool {return false}
 }
 
 when EVENT_PACKAGE {
@@ -295,14 +294,14 @@ when EVENT_PACKAGE {
 				log.infof("Window resized: %d x %d", ev.width, ev.height)
 
 				if state.callbacks.resize != nil {
-					if err := state.callbacks.resize(ev, state); err != nil {
+					if ok := state.callbacks.resize(ev, state); !ok {
 						log.error("Error occurred during 'resized' callback")
 						quit();return
 					}
 				}
 
 				when GRAPHICS_PACKAGE {
-					if err := _graphics_resize_surface({ev.width, ev.height}); err != nil {
+					if ok := _graphics_resize_surface({ev.width, ev.height}); !ok {
 						log.error("Error occurred during renderer resizing surface")
 						quit();return
 					}

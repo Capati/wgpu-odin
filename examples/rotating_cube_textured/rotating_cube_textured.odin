@@ -1,67 +1,58 @@
 package rotating_cube_textured
 
-// Base
+// STD Library
+import "base:builtin"
 import "base:runtime"
-
-// Core
-import "core:log"
 import "core:math"
 import la "core:math/linalg"
 import "core:time"
+@(require) import "core:log"
 
-// Package
+// Local packages
 import rl "./../../utils/renderlink"
 import "./../../utils/shaders"
 import wgpu "./../../wrapper"
 
-_ :: log
-
 State :: struct {
-	vertex_buffer:      wgpu.Buffer,
-	index_buffer:       wgpu.Buffer,
-	render_pipeline:    wgpu.Render_Pipeline,
-	depth_stencil_view: wgpu.Texture_View,
-	uniform_buffer:     wgpu.Buffer,
-	cube_texture:       wgpu.Texture,
-	cube_texture_view:  wgpu.Texture_View,
-	sampler:            wgpu.Sampler,
-	uniform_bind_group: wgpu.Bind_Group,
-	aspect:             f32,
-	projection_matrix:  la.Matrix4f32,
-	start_time:         time.Time,
+	vertex_buffer      : wgpu.Buffer,
+	index_buffer       : wgpu.Buffer,
+	render_pipeline    : wgpu.Render_Pipeline,
+	depth_stencil_view : wgpu.Texture_View,
+	uniform_buffer     : wgpu.Buffer,
+	cube_texture       : wgpu.Texture,
+	cube_texture_view  : wgpu.Texture_View,
+	sampler            : wgpu.Sampler,
+	uniform_bind_group : wgpu.Bind_Group,
+	aspect             : f32,
+	projection_matrix  : la.Matrix4f32,
+	start_time         : time.Time,
 }
 
-App_Context :: rl.Context(State)
+State_Context :: rl.Context(State)
 
 EXAMPLE_TITLE :: "Rotating Cube Textured"
 DEFAULT_DEPTH_FORMAT :: rl.DEFAULT_DEPTH_FORMAT
 
-init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
-	state.vertex_buffer = wgpu.device_create_buffer_with_data(
-		gpu.device,
+init :: proc(ctx: ^State_Context) -> (ok: bool) {
+	ctx.vertex_buffer = wgpu.device_create_buffer_with_data(
+		ctx.gpu.device,
 		{
 			label = EXAMPLE_TITLE + " Vertex Data",
 			contents = wgpu.to_bytes(CUBE_VERTEX_DATA),
 			usage = {.Vertex},
 		},
 	) or_return
-	defer if err != nil {
-		wgpu.buffer_destroy(state.vertex_buffer)
-		wgpu.buffer_release(state.vertex_buffer)
-	}
+	defer if !ok do wgpu.buffer_release(ctx.vertex_buffer)
 
-	state.index_buffer = wgpu.device_create_buffer_with_data(
-		gpu.device,
+	ctx.index_buffer = wgpu.device_create_buffer_with_data(
+		ctx.gpu.device,
 		{
 			label = EXAMPLE_TITLE + " Index Buffer",
 			contents = wgpu.to_bytes(CUBE_INDICES_DATA),
 			usage = {.Index},
 		},
 	) or_return
-	defer if err != nil {
-		wgpu.buffer_destroy(state.index_buffer)
-		wgpu.buffer_release(state.index_buffer)
-	}
+	defer if !ok do wgpu.buffer_release(ctx.index_buffer)
 
 	attributes := wgpu.vertex_attr_array(2, {0, .Float32x4}, {1, .Float32x2})
 
@@ -84,29 +75,29 @@ init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
 	ROTATING_CUBE_TEXTURED_WGSL: string : #load("rotating_cube_textured.wgsl", string)
 	shader_source := shaders.apply_color_conversion(
 		ROTATING_CUBE_TEXTURED_WGSL,
-		gpu.is_srgb,
+		ctx.gpu.is_srgb,
 		context.temp_allocator,
 	) or_return
 	shader_module := wgpu.device_create_shader_module(
-		gpu.device,
+		ctx.gpu.device,
 		{source = shader_source},
 	) or_return
 	defer wgpu.shader_module_release(shader_module)
 
-	state.render_pipeline = wgpu.device_create_render_pipeline(
-		gpu.device,
+	ctx.render_pipeline = wgpu.device_create_render_pipeline(
+		ctx.gpu.device,
 		descriptor = wgpu.Render_Pipeline_Descriptor {
 			vertex = {
-				module = shader_module.ptr,
+				module = shader_module,
 				entry_point = "vs_main",
 				buffers = {vertex_buffer_layout},
 			},
 			fragment = &{
-				module = shader_module.ptr,
+				module = shader_module,
 				entry_point = "fs_main",
 				targets = {
 					{
-						format = gpu.config.format,
+						format = ctx.gpu.config.format,
 						blend = &wgpu.Blend_State_Normal,
 						write_mask = wgpu.Color_Write_Mask_All,
 					},
@@ -134,91 +125,91 @@ init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
 			multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 		},
 	) or_return
-	defer if err != nil do wgpu.render_pipeline_release(state.render_pipeline)
+	defer if !ok do wgpu.render_pipeline_release(ctx.render_pipeline)
 
-	state.uniform_buffer = wgpu.device_create_buffer(
-		gpu.device,
+	ctx.uniform_buffer = wgpu.device_create_buffer(
+		ctx.gpu.device,
 		descriptor = wgpu.Buffer_Descriptor {
 			label = EXAMPLE_TITLE + " Uniform Buffer",
 			size  = size_of(la.Matrix4f32), // 4x4 matrix
 			usage = {.Uniform, .Copy_Dst},
 		},
 	) or_return
-	defer if err != nil do wgpu.buffer_release(state.uniform_buffer)
+	defer if !ok do wgpu.buffer_release(ctx.uniform_buffer)
 
 	// Load the image and upload it into a Texture.
-	state.cube_texture = wgpu.queue_copy_image_to_texture(
-		gpu.device,
-		gpu.queue,
+	ctx.cube_texture = wgpu.queue_copy_image_to_texture(
+		ctx.gpu.device,
+		ctx.gpu.queue,
 		"./assets/rotating_cube_textured/odin_logo.png",
 	) or_return
-	defer if err != nil do wgpu.texture_release(state.cube_texture)
+	defer if !ok do wgpu.texture_release(ctx.cube_texture)
 
-	state.cube_texture_view = wgpu.texture_create_view(state.cube_texture) or_return
-	defer if err != nil do wgpu.texture_view_release(state.cube_texture_view)
+	ctx.cube_texture_view = wgpu.texture_create_view(ctx.cube_texture) or_return
+	defer if !ok do wgpu.texture_view_release(ctx.cube_texture_view)
 
 	sampler_descriptor := wgpu.DEFAULT_SAMPLER_DESCRIPTOR
 	// Create a sampler with linear filtering for smooth interpolation.
 	sampler_descriptor.mag_filter = .Linear
 	sampler_descriptor.min_filter = .Linear
 
-	state.sampler = wgpu.device_create_sampler(gpu.device, sampler_descriptor) or_return
-	defer if err != nil do wgpu.sampler_release(state.sampler)
+	ctx.sampler = wgpu.device_create_sampler(ctx.gpu.device, sampler_descriptor) or_return
+	defer if !ok do wgpu.sampler_release(ctx.sampler)
 
 	bind_group_layout := wgpu.render_pipeline_get_bind_group_layout(
-		state.render_pipeline,
+		ctx.render_pipeline,
 		0,
 	) or_return
 	defer wgpu.bind_group_layout_release(bind_group_layout)
 
-	state.uniform_bind_group = wgpu.device_create_bind_group(
-		gpu.device,
+	ctx.uniform_bind_group = wgpu.device_create_bind_group(
+		ctx.gpu.device,
 		{
-			layout = bind_group_layout.ptr,
+			layout = bind_group_layout,
 			entries = {
 				{
 					binding = 0,
 					resource = wgpu.Buffer_Binding {
-						buffer = state.uniform_buffer.ptr,
-						size = state.uniform_buffer.size,
+						buffer = ctx.uniform_buffer,
+						size = wgpu.WHOLE_SIZE,
 					},
 				},
-				{binding = 1, resource = state.sampler.ptr},
-				{binding = 2, resource = state.cube_texture_view.ptr},
+				{binding = 1, resource = ctx.sampler},
+				{binding = 2, resource = ctx.cube_texture_view},
 			},
 		},
 	) or_return
-	defer if err != nil do wgpu.bind_group_release(state.uniform_bind_group)
+	defer if !ok do wgpu.bind_group_release(ctx.uniform_bind_group)
 
 	rl.graphics_clear(rl.Color_Dark_Gray)
 
-	set_projection_matrix(&state, gpu.config.width, gpu.config.height)
+	set_projection_matrix(&ctx.state, ctx.gpu.config.width, ctx.gpu.config.height)
 
-	state.start_time = time.now()
+	ctx.start_time = time.now()
 
-	return
+	return true
 }
 
-quit :: proc(using ctx: ^App_Context) {
-	wgpu.bind_group_release(state.uniform_bind_group)
-	wgpu.texture_view_release(state.cube_texture_view)
-	wgpu.sampler_release(state.sampler)
-	wgpu.texture_release(state.cube_texture)
-	wgpu.buffer_destroy(state.uniform_buffer)
-	wgpu.buffer_release(state.uniform_buffer)
-	wgpu.render_pipeline_release(state.render_pipeline)
-	wgpu.buffer_destroy(state.index_buffer)
-	wgpu.buffer_release(state.index_buffer)
-	wgpu.buffer_destroy(state.vertex_buffer)
-	wgpu.buffer_release(state.vertex_buffer)
+quit :: proc(ctx: ^State_Context) {
+	wgpu.bind_group_release(ctx.uniform_bind_group)
+	wgpu.texture_view_release(ctx.cube_texture_view)
+	wgpu.sampler_release(ctx.sampler)
+	wgpu.texture_release(ctx.cube_texture)
+	wgpu.buffer_destroy(ctx.uniform_buffer)
+	wgpu.buffer_release(ctx.uniform_buffer)
+	wgpu.render_pipeline_release(ctx.render_pipeline)
+	wgpu.buffer_destroy(ctx.index_buffer)
+	wgpu.buffer_release(ctx.index_buffer)
+	wgpu.buffer_destroy(ctx.vertex_buffer)
+	wgpu.buffer_release(ctx.vertex_buffer)
 }
 
-set_projection_matrix :: proc(using state: ^State, w, h: u32) {
+set_projection_matrix :: proc(state: ^State, w, h: u32) {
 	state.aspect = f32(w) / f32(h)
 	state.projection_matrix = la.matrix4_perspective(2 * math.PI / 5, state.aspect, 1, 100.0)
 }
 
-get_transformation_matrix :: proc(using state: ^State) -> (mvp_mat: la.Matrix4f32) {
+get_transformation_matrix :: proc(state: ^State) -> (mvp_mat: la.Matrix4f32) {
 	view_matrix := la.MATRIX4F32_IDENTITY
 
 	// Translate
@@ -232,43 +223,48 @@ get_transformation_matrix :: proc(using state: ^State) -> (mvp_mat: la.Matrix4f3
 	view_matrix = la.matrix_mul(view_matrix, rotation_matrix)
 
 	// Multiply projection and view matrices
-	mvp_mat = la.matrix_mul(projection_matrix, view_matrix)
+	mvp_mat = la.matrix_mul(state.projection_matrix, view_matrix)
 
 	return
 }
 
-resize :: proc(event: rl.Resize_Event, using ctx: ^App_Context) -> (err: rl.Error) {
-	set_projection_matrix(&state, event.width, event.height)
-	return
+resize :: proc(event: rl.Resize_Event, ctx: ^State_Context) -> bool {
+	set_projection_matrix(&ctx.state, event.width, event.height)
+	return true
 }
 
-update :: proc(dt: f64, using ctx: ^App_Context) -> (err: rl.Error) {
-	transformation_matrix := get_transformation_matrix(&state)
+update :: proc(dt: f64, ctx: ^State_Context) -> bool {
+	transformation_matrix := get_transformation_matrix(&ctx.state)
 	wgpu.queue_write_buffer(
-		gpu.queue,
-		state.uniform_buffer.ptr,
+		ctx.gpu.queue,
+		ctx.uniform_buffer,
 		0,
 		wgpu.to_bytes(transformation_matrix),
 	) or_return
 
-	return
+	return true
 }
 
-draw :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
-	wgpu.render_pass_set_pipeline(gpu.render_pass, render_pipeline.ptr)
-	wgpu.render_pass_set_bind_group(gpu.render_pass, 0, uniform_bind_group.ptr)
-	wgpu.render_pass_set_vertex_buffer(gpu.render_pass, 0, vertex_buffer.ptr)
-	wgpu.render_pass_set_index_buffer(gpu.render_pass, index_buffer.ptr, .Uint16)
-	wgpu.render_pass_draw_indexed(gpu.render_pass, {0, u32(len(CUBE_INDICES_DATA))})
+draw :: proc(ctx: ^State_Context) -> bool {
+	wgpu.render_pass_set_pipeline(ctx.gpu.render_pass, ctx.render_pipeline)
+	wgpu.render_pass_set_bind_group(ctx.gpu.render_pass, 0, ctx.uniform_bind_group)
+	wgpu.render_pass_set_vertex_buffer(ctx.gpu.render_pass, 0, ctx.vertex_buffer)
+	wgpu.render_pass_set_index_buffer(ctx.gpu.render_pass, ctx.index_buffer, .Uint16)
+	wgpu.render_pass_draw_indexed(ctx.gpu.render_pass, {0, u32(len(CUBE_INDICES_DATA))})
 
-	return
+	return true
 }
 
 
 main :: proc() {
-	state, state_err := new(App_Context)
-	if state_err != nil do return
-	defer free(state)
+	when ODIN_DEBUG {
+		context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
+		defer log.destroy_console_logger(context.logger)
+	}
+
+	state := builtin.new(State_Context)
+	assert(state != nil, "Failed to allocate application state")
+	defer builtin.free(state)
 
 	state.callbacks = {
 		init   = init,
@@ -286,7 +282,7 @@ main :: proc() {
 	settings.renderer.use_depth_stencil = true
 	settings.renderer.depth_format = DEFAULT_DEPTH_FORMAT
 
-	if err := rl.init(state, settings); err != nil do return
+	if ok := rl.init(state, settings); !ok do return
 
 	rl.begin_run(state) // Start the main loop
 }

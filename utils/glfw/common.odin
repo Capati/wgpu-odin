@@ -3,7 +3,7 @@ package wgpu_utils_glfw
 // Vendor
 import "vendor:glfw"
 
-// Package
+// Local packages
 import wgpu "../../wrapper"
 
 create_surface :: proc(
@@ -11,8 +11,8 @@ create_surface :: proc(
 	instance: wgpu.Instance,
 ) -> (
 	surface: wgpu.Surface,
-	err: wgpu.Error,
-) {
+	ok: bool,
+) #optional_ok {
 	surface_descriptor := get_surface_descriptor(window) or_return
 	return wgpu.instance_create_surface(instance, surface_descriptor)
 }

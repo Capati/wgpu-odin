@@ -1,6 +1,6 @@
 package tutorial1_window_sdl
 
-// Core
+// STD Library
 import "core:fmt"
 
 // Vendor
