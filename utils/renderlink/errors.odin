@@ -16,7 +16,7 @@ Error :: union #shared_nil {
 	Window_Error,
 	Mouse_Error,
 	Joystick_Error,
-	Graphics_Error,
+	Renderer_Error,
 	Platform_Error,
 	mem.Allocator_Error,
 	wgpu.Error,

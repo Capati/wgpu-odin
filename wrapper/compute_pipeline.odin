@@ -1,64 +1,52 @@
 package wgpu
 
-// Package
+// The raw bindings
 import wgpu "../bindings"
 
-// Handle to a compute pipeline.
-//
-// A `Compute_Pipeline` object represents a compute pipeline and its single shader stage. It can be
-// created with `device_create_compute_pipeline`.
-Compute_Pipeline :: struct {
-	ptr:       Raw_Compute_Pipeline,
-	_err_data: ^Error_Data,
-}
+/*
+Handle to a compute pipeline.
 
-// Get an object representing the bind group layout at a given index.
+A `Compute_Pipeline` object represents a compute pipeline and its single shader stage.
+It can be created with `device_create_compute_pipeline`.
+
+Corresponds to [WebGPU `GPUComputePipeline`](https://gpuweb.github.io/gpuweb/#compute-pipeline).
+*/
+Compute_Pipeline :: wgpu.Compute_Pipeline
+
+/* Get an object representing the bind group layout at a given index. */
 @(require_results)
-compute_pipeline_get_bind_group_layout :: proc(
-	using self: Compute_Pipeline,
+compute_pipeline_get_bind_group_layout :: proc "contextless" (
+	self: Compute_Pipeline,
 	group_index: u32,
 	loc := #caller_location,
 ) -> (
 	bind_group_layout: Bind_Group_Layout,
-	err: Error,
-) {
-	set_and_reset_err_data(_err_data, loc)
+	ok: bool,
+) #optional_ok {
+	_error_reset_data(loc)
 
-	bind_group_layout.ptr = wgpu.compute_pipeline_get_bind_group_layout(ptr, group_index)
+	bind_group_layout = wgpu.compute_pipeline_get_bind_group_layout(self, group_index)
 
-	if err = get_last_error(); err != nil {
-		if bind_group_layout.ptr != nil {
-			wgpu.bind_group_layout_release(bind_group_layout.ptr)
+	if get_last_error() != nil {
+		if bind_group_layout != nil {
+			wgpu.bind_group_layout_release(bind_group_layout)
 		}
 		return
 	}
 
-	if bind_group_layout.ptr == nil {
-		err = Error_Type.Unknown
-		update_error_data(_err_data, .Assert, err, "Failed to acquire Bind_Group_Layout")
+	if bind_group_layout == nil {
+		error_update_data(Error_Type.Unknown, "Failed to acquire 'Bind_Group_Layout'")
+		return
 	}
 
-	return
+	return bind_group_layout, true
 }
 
-// Set debug label.
-compute_pipeline_set_label :: proc "contextless" (using self: Compute_Pipeline, label: cstring) {
-	wgpu.compute_pipeline_set_label(ptr, label)
-}
+/* Set debug label. */
+compute_pipeline_set_label :: wgpu.compute_pipeline_set_label
 
-// Increase the reference count.
-compute_pipeline_reference :: proc "contextless" (using self: Compute_Pipeline) {
-	wgpu.compute_pipeline_reference(ptr)
-}
+/* Increase the reference count. */
+compute_pipeline_reference :: wgpu.compute_pipeline_reference
 
-// Release the `Compute_Pipeline`.
-compute_pipeline_release :: #force_inline proc "contextless" (using self: Compute_Pipeline) {
-	wgpu.compute_pipeline_release(ptr)
-}
-
-// Release the `Compute_Pipeline`and modify the raw pointer to `nil`.
-compute_pipeline_release_and_nil :: proc "contextless" (using self: ^Compute_Pipeline) {
-	if ptr == nil do return
-	wgpu.compute_pipeline_release(ptr)
-	ptr = nil
-}
+/* Release the `Compute_Pipeline` resources. */
+compute_pipeline_release :: wgpu.compute_pipeline_release

@@ -2,36 +2,32 @@ package application
 
 // STD Library
 import intr "base:intrinsics"
-import "base:runtime"
 import "core:log"
 import "core:time"
 
 Application_Context :: struct {
-	gpu:               ^Graphics_Context,
-	allocator:         runtime.Allocator,
-	settings:          Settings,
-	initialized:       bool,
-	target_frame_time: time.Duration,
-	timer:             Timer,
-	running:           bool,
+	gpu               : ^Graphics_Context,
+	settings          : Settings,
+	initialized       : bool,
+	target_frame_time : time.Duration,
+	timer             : Timer,
+	running           : bool,
 }
 
 Context :: struct($T: typeid) where intr.type_is_struct(T) {
-	using app:   ^Application_Context,
-	using state: T,
-	callbacks:   Callback_List(T),
+	using app   : ^Application_Context,
+	using state : T,
+	callbacks   : Callback_List(T),
 }
 
 Settings :: struct {
-	using window:   Window_Settings,
-	using renderer: Renderer_Settings,
-	packages:       Packages_Flags,
+	using window   : Window_Settings,
+	using renderer : Renderer_Settings,
 }
 
 DEFAULT_SETTINGS :: Settings {
 	window   = DEFAULT_WINDOW_SETTINGS,
 	renderer = DEFAULT_RENDERER_SETTINGS,
-	packages = PACKAGES_ALL,
 }
 
 @(private)
@@ -41,15 +37,14 @@ g_logger: log.Logger // For "contextless" and "c" procedures
 init :: proc(
 	state: ^$T,
 	settings := DEFAULT_SETTINGS,
-	allocator := context.allocator,
+	loc := #caller_location,
 ) -> (
-	err: Error,
+	ok: bool,
 ) where intr.type_is_specialization_of(T, Context) {
 	when ODIN_DEBUG {
 		g_logger = context.logger
 	}
-
-	return _init(state, settings, allocator)
+	return _init(state, settings, loc)
 }
 
 destroy :: proc() {
@@ -58,13 +53,13 @@ destroy :: proc() {
 
 Callback_List :: struct($T: typeid) where intr.type_is_struct(T) {
 	// This procedure is called exactly once at the beginning of the game.
-	init:                    proc(ctx: ^Context(T)) -> Error,
+	init:                    proc(ctx: ^Context(T)) -> bool,
 	// Callback procedure triggered when the game is closed.
 	quit:                    proc(ctx: ^Context(T)),
 	// Callback procedure used to update the state of the game every frame.
-	update:                  proc(dt: f64, ctx: ^Context(T)) -> Error,
+	update:                  proc(dt: f64, ctx: ^Context(T)) -> bool,
 	// Callback procedure used to draw on the screen every frame.
-	draw:                    proc(ctx: ^Context(T)) -> Error,
+	draw:                    proc(ctx: ^Context(T)) -> bool,
 
 	// Callback procedure triggered when a directory is dragged and dropped onto the window.
 	display_rotated:         proc(event: Display_Rotated_Event, ctx: ^Context(T)),
@@ -73,7 +68,7 @@ Callback_List :: struct($T: typeid) where intr.type_is_struct(T) {
 	// Callback procedure triggered when window receives or loses mouse focus.
 	mouse_focus:             proc(event: Mouse_Focus_Event, ctx: ^Context(T)),
 	// Called when the window is resized.
-	resize:                  proc(event: Resize_Event, ctx: ^Context(T)) -> Error,
+	resize:                  proc(event: Resize_Event, ctx: ^Context(T)) -> bool,
 	// Callback procedure triggered when window is shown or hidden.
 	visible:                 proc(event: Visible_Event, ctx: ^Context(T)),
 	// Callback procedure triggered when window is moved (dragged).

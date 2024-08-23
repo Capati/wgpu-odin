@@ -5,7 +5,6 @@ Vertex :: struct {
 	tex_coords: [2]f32,
 }
 
-// odinfmt: disable
 CUBE_VERTEX_DATA := []Vertex {
     // top (0, 0, 1)
     vertex(-1, -1,  1,  0, 0),
@@ -54,4 +53,3 @@ CUBE_INDICES_DATA :: []u16 {
     16, 17, 18, 18, 19, 16, // front
     20, 21, 22, 22, 23, 20, // back
 }
-// odinfmt: enable

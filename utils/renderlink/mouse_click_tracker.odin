@@ -17,7 +17,7 @@ MULTI_CLICK_TIME_MS: f64 : #config(RL_MULTI_CLICK_TIME, 350)
 MULTI_CLICK_DISTANCE_PX: f32 : #config(RL_MULTI_CLICK_DISTANCE_PX, 5)
 
 _mouse_click_tracker_tick :: proc "contextless" (event: Mouse_Button_Event) -> (presses: u32) {
-	tracker := &g_mouse.tracker
+	tracker := &g_app.mouse.tracker
 
 	current_time := time.now()
 

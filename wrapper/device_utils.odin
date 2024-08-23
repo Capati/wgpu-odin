@@ -1,27 +1,27 @@
 package wgpu
 
-// Describes `Buffer` when allocating.
+/* Describes `Buffer` when allocating. */
 Buffer_Data_Descriptor :: struct {
-	// Debug label of a buffer. This will show up in graphics debuggers for easy
-	// identification.
+	/* Debug label of a buffer. This will show up in graphics debuggers for easy
+	identification. */
 	label:    cstring,
-	// Contents size of a buffer on creation.
+	/* Contents size of a buffer on creation. */
 	contents: []byte,
-	// Usages of a buffer. If the buffer is used in any way that isn't specified here,
-	// the operation will panic.
+	/* Usages of a buffer. If the buffer is used in any way that isn't specified here,
+	the operation will panic. */
 	usage:    Buffer_Usage_Flags,
 }
 
-// Creates a `Buffer` with data to initialize it.
+/* Creates a `Buffer` with data to initialize it. */
 @(require_results)
 device_create_buffer_with_data :: proc(
-	using self: Device,
+	self: Device,
 	descriptor: Buffer_Data_Descriptor,
 	loc := #caller_location,
 ) -> (
 	buffer: Buffer,
-	err: Error,
-) {
+	ok: bool,
+) #optional_ok {
 	// Skip mapping if the buffer is zero sized
 	if descriptor.contents == nil || len(descriptor.contents) == 0 {
 		buffer_descriptor: Buffer_Descriptor = {
@@ -65,16 +65,16 @@ device_create_buffer_with_data :: proc(
 	copy(mapped_buffer_slice, descriptor.contents)
 	buffer_unmap(buffer, loc) or_return
 
-	return
+	return buffer, true
 }
 
-// Order in which texture data is laid out in memory.
+/* Order in which texture data is laid out in memory. */
 Texture_Data_Order :: enum {
-	Layer_Major, // default
+	Layer_Major, /* default */
 	Mip_Major,
 }
 
-// Upload an entire texture and its mipmaps from a source buffer.
+/*  Upload an entire texture and its mipmaps from a source buffer. */
 @(require_results)
 device_create_texture_with_data :: proc(
 	self: Device,
@@ -85,8 +85,8 @@ device_create_texture_with_data :: proc(
 	loc := #caller_location,
 ) -> (
 	texture: Texture,
-	err: Error,
-) {
+	ok: bool,
+) #optional_ok {
 	desc := desc
 
 	// Implicitly add the .Copy_Dst usage
@@ -95,7 +95,7 @@ device_create_texture_with_data :: proc(
 	}
 
 	texture = device_create_texture(self, desc, loc) or_return
-	defer if err != nil do texture_release(texture)
+	defer if !ok do texture_release(texture)
 
 	// Will return 0 only if it's a combined depth-stencil format
 	// If so, default to 4, validation will fail later anyway since the depth or stencil
@@ -165,7 +165,7 @@ device_create_texture_with_data :: proc(
 
 			queue_write_texture(
 				queue,
-				{texture = texture.ptr, mip_level = mip, origin = {0, 0, layer}, aspect = .All},
+				{texture = texture, mip_level = mip, origin = {0, 0, layer}, aspect = .All},
 				data[binary_offset:end_offset],
 				{offset = 0, bytes_per_row = bytes_per_row, rows_per_image = height_blocks},
 				mip_physical,
@@ -176,5 +176,5 @@ device_create_texture_with_data :: proc(
 		}
 	}
 
-	return
+	return texture, true
 }

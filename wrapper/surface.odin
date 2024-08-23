@@ -1,129 +1,124 @@
 package wgpu
 
-// Core
+// STD Library
 import "base:runtime"
 import "core:mem"
 import "core:slice"
 
-// Package
+// The raw bindings
 import wgpu "../bindings"
 
-// Handle to a presentable surface.
-//
-// A `Surface` represents a platform-specific surface (e.g. a window) onto which rendered images
-// may be presented. A `Surface` may be created with `instance_create_surface`.
-Surface :: struct {
-	ptr:       Raw_Surface,
-	config:    Surface_Configuration,
-	_err_data: ^Error_Data,
-}
+/*
+Handle to a presentable surface.
 
-// Describes a `Surface`.
-//
-// For use with `surface_configure`.
+A `Surface` represents a platform-specific surface (e.g. a window) onto which rendered images may
+be presented. A `Surface` may be created with the function `instance_create_surface`.
+
+This type is unique to the API of `wgpu-native`. In the WebGPU specification,
+[`GPUCanvasContext`](https://gpuweb.github.io/gpuweb/#canvas-context)
+serves a similar role.
+*/
+Surface :: wgpu.Surface
+
+/*
+Describes a `Surface`.
+
+For use with `surface_configure`.
+
+Corresponds to [WebGPU `GPUCanvasConfiguration`](
+https://gpuweb.github.io/gpuweb/#canvas-configuration).
+*/
 Surface_Configuration :: struct {
-	format:                        Texture_Format,
-	usage:                         Texture_Usage_Flags,
-	view_formats:                  []Texture_Format,
-	alpha_mode:                    Composite_Alpha_Mode,
-	width:                         u32,
-	height:                        u32,
-	present_mode:                  Present_Mode,
-	desired_maximum_frame_latency: u32,
+	format                        : Texture_Format,
+	usage                         : Texture_Usage_Flags,
+	view_formats                  : []Texture_Format,
+	alpha_mode                    : Composite_Alpha_Mode,
+	width                         : u32,
+	height                        : u32,
+	present_mode                  : Present_Mode,
+	desired_maximum_frame_latency : u32,
 }
 
-// Initializes `Surface` for presentation.
+/*
+Initializes `Surface` for presentation.
+
+**Panics**
+- A old `Surface_Texture` is still alive referencing an old surface.
+- Texture format requested is unsupported on the surface.
+- `config.width` or `config.height` is zero.
+*/
 surface_configure :: proc "contextless" (
-	self: ^Surface,
+	self: Surface,
 	device: Device,
 	config: Surface_Configuration,
 	loc := #caller_location,
 ) -> (
-	err: Error,
+	ok: bool,
 ) {
-	cfg := wgpu.Surface_Configuration {
-		device = device.ptr,
+	raw_config := wgpu.Surface_Configuration {
+		device = device,
 	}
 
-	cfg.format = config.format
-	cfg.usage = config.usage
-	cfg.alpha_mode = config.alpha_mode
-	cfg.width = config.width
-	cfg.height = config.height
-	cfg.present_mode = config.present_mode
+	raw_config.format = config.format
+	raw_config.usage = config.usage
+	raw_config.alpha_mode = config.alpha_mode
+	raw_config.width = config.width
+	raw_config.height = config.height
+	raw_config.present_mode = config.present_mode
 
 	view_format_count := len(config.view_formats)
 
 	if view_format_count > 0 {
-		cfg.view_format_count = uint(view_format_count)
-		cfg.view_formats = raw_data(config.view_formats)
+		raw_config.view_format_count = uint(view_format_count)
+		raw_config.view_formats = raw_data(config.view_formats)
 	} else {
-		cfg.view_format_count = 0
-		cfg.view_formats = nil
+		raw_config.view_format_count = 0
+		raw_config.view_formats = nil
 	}
-
-	self.config = config
 
 	extras: wgpu.Surface_Configuration_Extras
 
 	if config.desired_maximum_frame_latency > 0 {
-		extras.chain.next = nil
-		extras.chain.stype = wgpu.SType(wgpu.Native_SType.Surface_Configuration_Extras)
+		extras.stype = wgpu.SType(wgpu.Native_SType.Surface_Configuration_Extras)
 		extras.desired_maximum_frame_latency = config.desired_maximum_frame_latency
-		cfg.next_in_chain = &extras.chain
+		raw_config.next_in_chain = &extras.chain
 	}
 
-	set_and_reset_err_data(self._err_data, loc)
+	_error_reset_data(loc)
 
-	wgpu.surface_configure(self.ptr, &cfg)
+	wgpu.surface_configure(self, &raw_config)
 
-	if err = get_last_error(); err != nil {
-		return
-	}
-
-	self._err_data = device._err_data
-
-	return
+	return get_last_error() == nil
 }
 
-// Returns the capabilities of the surface when used with the given adapter.
+/*
+Returns the capabilities of the surface when used with the given adapter.
+
+Returns specified values if surface is incompatible with the adapter.
+*/
 @(require_results)
 surface_get_capabilities :: proc(
-	using self: Surface,
-	adapter: Raw_Adapter,
+	self: Surface,
+	adapter: Adapter,
 	allocator := context.allocator,
 	loc := #caller_location,
 ) -> (
 	caps: Surface_Capabilities,
-	err: Error,
-) {
+	ok: bool,
+) #optional_ok {
 	raw_caps: wgpu.Surface_Capabilities
-	wgpu.surface_get_capabilities(ptr, adapter, &raw_caps)
+
+	wgpu.surface_get_capabilities(self, adapter, &raw_caps)
 	defer wgpu.surface_capabilities_free_members(raw_caps)
-
-	if raw_caps.format_count == 0 &&
-	   raw_caps.present_mode_count == 0 &&
-	   raw_caps.alpha_mode_count == 0 {
-		return
-	}
-
-	defer if err != nil {
-		if len(caps.formats) > 0 do delete(caps.formats)
-		if len(caps.alpha_modes) > 0 do delete(caps.alpha_modes)
-		if len(caps.present_modes) > 0 do delete(caps.present_modes)
-	}
 
 	alloc_err: mem.Allocator_Error
 
 	if raw_caps.format_count > 0 {
 		formats_tmp := slice.from_ptr(raw_caps.formats, int(raw_caps.format_count))
-		if caps.formats, alloc_err = make([]Texture_Format, raw_caps.format_count, allocator);
-		   alloc_err != nil {
-			err = alloc_err
-			set_and_update_err_data(
-				nil,
-				.General,
-				err,
+		caps.formats, alloc_err = make([]Texture_Format, raw_caps.format_count, allocator)
+		if alloc_err != nil {
+			error_reset_and_update(
+				alloc_err,
 				"Failed to allocate formats capabilities",
 				loc,
 			)
@@ -142,14 +137,7 @@ surface_get_capabilities :: proc(
 			raw_caps.present_mode_count,
 			allocator,
 		); alloc_err != nil {
-			err = alloc_err
-			set_and_update_err_data(
-				nil,
-				.General,
-				err,
-				"Failed to allocate present modes capabilities",
-				loc,
-			)
+			error_reset_and_update(alloc_err, "Failed to allocate present modes capabilities", loc)
 			return
 		}
 		copy(caps.present_modes, present_modes_tmp)
@@ -162,37 +150,53 @@ surface_get_capabilities :: proc(
 			raw_caps.alpha_mode_count,
 			allocator,
 		); alloc_err != nil {
-			err = alloc_err
-			set_and_update_err_data(
-				nil,
-				.General,
-				err,
-				"Failed to allocate alpha modes capabilities",
-				loc,
-			)
+			error_reset_and_update(alloc_err, "Failed to allocate alpha modes capabilities", loc)
 			return
 		}
 		copy(caps.alpha_modes, alpha_modes_tmp)
 	}
 
-	return
+	return caps, true
 }
 
-// Returns the next texture to be presented by the swapchain for drawing.
+/*
+Surface texture that can be rendered to.
+Result of a successful call to `surface_get_current_texture`.
+
+This type is unique to the `wgpu-native`. In the WebGPU specification,
+the [`GPUCanvasContext`](https://gpuweb.github.io/gpuweb/#canvas-context) provides
+a texture without any additional information.
+*/
+Surface_Texture :: struct {
+	texture    : Texture,
+	suboptimal : bool,
+	status     : wgpu.Surface_Get_Current_Texture_Status,
+}
+
+/*
+Returns the next texture to be presented by the swapchain for drawing.
+
+In order to present the `Surface_Texture` returned by this method,
+first a `queue_submit` needs to be done with some work rendering to this texture.
+Then `surface_present` needs to be called.
+
+If a `Surface_Texture` referencing this surface is alive when the swapchain is recreated,
+recreating the swapchain will panic.
+*/
 @(require_results)
 surface_get_current_texture :: proc "contextless" (
-	using self: Surface,
+	self: Surface,
 	loc := #caller_location,
 ) -> (
 	surface_texture: Surface_Texture,
-	err: Error,
-) {
-	set_and_reset_err_data(_err_data, loc)
+	ok: bool,
+) #optional_ok {
+	_error_reset_data(loc)
 
 	texture: wgpu.Surface_Texture
-	wgpu.surface_get_current_texture(ptr, &texture)
+	wgpu.surface_get_current_texture(self, &texture)
 
-	if err = get_last_error(); err != nil {
+	if get_last_error() != nil {
 		if texture.texture != nil {
 			wgpu.texture_release(texture.texture)
 		}
@@ -200,73 +204,73 @@ surface_get_current_texture :: proc "contextless" (
 	}
 
 	surface_texture = {
-		texture = Texture {
-			ptr = texture.texture,
-			descriptor = {
-				size = {config.width, config.height, 1},
-				format = config.format,
-				usage = config.usage,
-				mip_level_count = 1,
-				sample_count = 1,
-				dimension = .D2,
-			},
-			_err_data = _err_data,
-		},
+		texture    = texture.texture,
 		suboptimal = bool(texture.suboptimal),
-		status = texture.status,
+		status     = texture.status,
 	}
 
-	return
+	return surface_texture, true
 }
 
-// Returns the best format for the provided surface and adapter.
+/* Returns the best format for the provided surface and adapter. */
 surface_get_preferred_format :: proc "contextless" (
-	using self: Surface,
-	adapter: Raw_Adapter,
+	self: Surface,
+	adapter: Adapter,
 	loc := #caller_location,
 ) -> (
 	format: Texture_Format,
-	err: Error,
-) {
-	set_and_reset_err_data(_err_data, loc)
-	format = wgpu.surface_get_preferred_format(ptr, adapter)
-	err = get_last_error()
-
-	return
+	ok: bool,
+) #optional_ok {
+	_error_reset_data(loc)
+	format = wgpu.surface_get_preferred_format(self, adapter)
+	if get_last_error() != nil do return
+	return format, true
 }
 
-// Schedule this surface to be presented on the owning surface.
+/*
+Schedule this texture to be presented on the owning surface.
+
+Needs to be called after any work on the texture is scheduled via [`Queue::submit`].
+
+**Platform dependent behavior**
+
+On Wayland, `present` will attach a `wl_buffer` to the underlying `wl_surface` and commit the new
+surface state. If it is desired to do things such as request a frame callback, scale the surface
+ using the viewporter or synchronize other double buffered state, then these operations should be
+ done before the call to `present`.
+*/
 surface_present :: proc "contextless" (
-	using self: Surface,
+	self: Surface,
 	loc := #caller_location,
 ) -> (
-	err: Error,
+	ok: bool,
 ) {
-	set_and_reset_err_data(_err_data, loc)
-	wgpu.surface_present(ptr)
-	err = get_last_error()
-
-	return
+	_error_reset_data(loc)
+	wgpu.surface_present(self)
+	return get_last_error() == nil
 }
 
-// Removes the surface configuration. Destroys any textures produced while configured.
-surface_unconfigure :: proc "contextless" (using self: Surface) {
-	wgpu.surface_unconfigure(ptr)
+/* Removes the surface configuration. Destroys any textures produced while configured. */
+surface_unconfigure :: proc "contextless" (self: Surface) {
+	wgpu.surface_unconfigure(self)
 }
 
-// Return a default `Surface_Configuration` from `width` and `height` to use for the
-// `Surface` with this adapter.
+/*
+Return a default `Surface_Configuration` from `width` and `height` to use for the `Surface` with
+this adapter.
+
+Returns `false` if the surface isn't supported by this adapter
+*/
 surface_get_default_config :: proc(
 	self: Surface,
-	adapter: Raw_Adapter,
+	adapter: Adapter,
 	width, height: u32,
 	loc := #caller_location,
 ) -> (
 	config: Surface_Configuration,
-	err: Error,
-) {
+	ok: bool,
+) #optional_ok {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-
 	caps := surface_get_capabilities(self, adapter, context.temp_allocator, loc) or_return
 
 	config = {
@@ -277,22 +281,11 @@ surface_get_default_config :: proc(
 		present_mode = caps.present_modes[0],
 	}
 
-	return
+	return config, true
 }
 
-// Increase the reference count.
-surface_reference :: proc "contextless" (using self: Surface) {
-	wgpu.surface_reference(ptr)
-}
+/* Increase the reference count. */
+surface_reference :: wgpu.surface_reference
 
-// Release the `Surface`.
-surface_release :: #force_inline proc "contextless" (using self: Surface) {
-	wgpu.surface_release(ptr)
-}
-
-// Release the `Surface` and modify the raw pointer to `nil`.
-surface_release_and_nil :: proc "contextless" (using self: ^Surface) {
-	if ptr == nil do return
-	wgpu.surface_release(ptr)
-	ptr = nil
-}
+/* Release the `Surface` resources. */
+surface_release :: wgpu.surface_release

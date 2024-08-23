@@ -1,11 +1,10 @@
 package cube_map_example
 
 Vertex :: struct {
-	position:   [4]f32,
-	tex_coords: [2]f32,
+	position   : [4]f32,
+	tex_coords : [2]f32,
 }
 
-// odinfmt: disable
 CUBE_VERTEX_DATA := []Vertex {
 	// Front face
 	vertex(-1, -1,  1,  0, 0),  // 0
@@ -21,7 +20,7 @@ CUBE_VERTEX_DATA := []Vertex {
 
 vertex :: proc(pos1, pos2, pos3, tc1, tc2: f32) -> Vertex {
 	return Vertex {
-		position = {pos1, pos2, pos3, 1},
+		position   = {pos1, pos2, pos3, 1},
 		tex_coords = {tc1, tc2},
 	}
 }
@@ -34,4 +33,3 @@ CUBE_INDICES_DATA :: []u16 {
 	3, 2, 6, 6, 7, 3,  // top
 	4, 5, 1, 1, 0, 4,  // bottom
 }
-// odinfmt: enable

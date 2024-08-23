@@ -5,51 +5,46 @@ package application
 // STD Library
 import "base:runtime"
 import "core:log"
+import "core:mem"
 import "core:strings"
 
 // Vendor
 import sdl "vendor:sdl2"
 
 Joystick_Vibration_Impl :: struct {
-	using _base: Joystick_Vibration,
-	data:        [4]u16,
-	effect:      sdl.HapticEffect,
+	using _base : Joystick_Vibration,
+	data        : [4]u16,
+	effect      : sdl.HapticEffect,
 }
 
 Joystick_Impl :: struct {
-	using _base: Joystick,
-	handle:      ^sdl.Joystick,
-	controller:  ^sdl.GameController,
-	haptic:      ^sdl.Haptic,
-	instance_id: sdl.JoystickID,
-	axes:        []f32,
-	vibration:   Joystick_Vibration_Impl,
+	using _base : Joystick,
+	handle      : ^sdl.Joystick,
+	controller  : ^sdl.GameController,
+	haptic      : ^sdl.Haptic,
+	instance_id : sdl.JoystickID,
+	axes        : []f32,
+	vibration   : Joystick_Vibration_Impl,
 }
 
-Joystick_List_Type_Impl :: map[sdl.JoystickID]^Joystick_Impl
+Joystick_List_Type_Impl :: map[sdl.JoystickID]Joystick_Impl
 
 Joystick_State :: struct {
-	allocator:           runtime.Allocator,
-	found:               Joystick_List_Type_Impl,
-	connected:           Joystick_List_Type,
-	recent_gamepad_guid: map[string]bool,
+	found               : Joystick_List_Type_Impl,
+	connected           : Joystick_List_Type,
+	recent_gamepad_guid : map[string]bool,
 }
 
-g_joystick: Joystick_State
-
 @(require_results)
-_joystick_init :: proc(allocator := context.allocator) -> (err: Error) {
+_joystick_init :: proc(allocator: mem.Allocator) -> (ok: bool) {
 	if sdl.InitSubSystem({.JOYSTICK, .GAMECONTROLLER}) < 0 {
 		log.errorf("Could not initialize SDL joystick/gamepad subsystem: [%s]", sdl.GetError())
-		return Joystick_Error.Init_Failed
+		return
 	}
 
-	g_joystick.allocator = allocator
-	defer if err != nil do destroy()
-
-	g_joystick.found.allocator = allocator
-	g_joystick.connected.allocator = allocator
-	g_joystick.recent_gamepad_guid.allocator = allocator
+	g_app.joystick.found = make(Joystick_List_Type_Impl, allocator = allocator)
+	g_app.joystick.connected = make(Joystick_List_Type, allocator = allocator)
+	g_app.joystick.recent_gamepad_guid = make(map[string]bool, allocator = allocator)
 
 	num_joysticks := sdl.NumJoysticks()
 	for i in 0 ..< num_joysticks {
@@ -62,31 +57,22 @@ _joystick_init :: proc(allocator := context.allocator) -> (err: Error) {
 	num_keys: i32
 	sdl.GetKeyboardState(&num_keys)
 
-	return
+	return true
 }
 
 _joystick_destroy :: proc() {
-	for _, joystick in g_joystick.found {
-		_joystick_destroy_joystick(joystick, g_joystick.allocator)
+	for _, &joystick in g_app.joystick.found {
+		_joystick_destroy_joystick(&joystick)
 	}
-
-	delete(g_joystick.found)
-	delete(g_joystick.connected)
-	delete(g_joystick.recent_gamepad_guid)
 }
 
-_joystick_destroy_joystick :: proc(joystick: ^Joystick_Impl, allocator: runtime.Allocator) {
+_joystick_destroy_joystick :: proc(joystick: ^Joystick_Impl) {
 	_joystick_close(joystick)
-	delete(joystick.guid)
-	delete(joystick.name)
-	delete(joystick.axes)
-	free(joystick, allocator)
 }
 
 // Attempts to add a new joystick or reuse an existing disconnected one.
-_joystick_add :: proc(device_id: i32) -> (joystick: ^Joystick_Impl, err: Error) {
+_joystick_add :: proc(device_id: i32) -> (out: ^Joystick_Impl, ok: bool) {
 	if device_id < 0 || device_id > sdl.NumJoysticks() {
-		err = .Invalid_Joystick_Device
 		log.errorf("Invalid joystick device id: [%d]", device_id)
 		return
 	}
@@ -95,54 +81,48 @@ _joystick_add :: proc(device_id: i32) -> (joystick: ^Joystick_Impl, err: Error) 
 	temp_guid := _joystick_get_device_guid(device_id, context.temp_allocator) or_return
 
 	// Try to re-use a disconnected Joystick with the same GUID.
-	for _, joy in g_joystick.found {
+	for _, &joy in g_app.joystick.found {
 		if joy.guid == temp_guid {
-			joystick = joy
-			if !_joystick_native_is_connected(joy) {
-				_joystick_add_to_connected(joystick)
+			out = &joy
+			if !_joystick_native_is_connected(out) {
+				_joystick_add_to_connected(out)
 			}
-			return
+			return out, true
 		}
 	}
 
-	joystick = _joystick_create(device_id, g_joystick.allocator) or_return
-	defer if err != nil do free(joystick)
-	g_joystick.found[joystick.instance_id] = joystick
+	joystick := _joystick_create(device_id) or_return
+	g_app.joystick.found[joystick.instance_id] = joystick
 
 	if joystick.is_gamepad {
-		g_joystick.recent_gamepad_guid[joystick.guid] = true
+		g_app.joystick.recent_gamepad_guid[joystick.guid] = true
 	}
 
-	_joystick_add_to_connected(joystick)
+	out = &g_app.joystick.found[joystick.instance_id]
 
-	return
+	_joystick_add_to_connected(out)
+
+	return out, true
 }
 
 _joystick_add_to_connected :: proc(joystick: ^Joystick_Impl) {
 	connected_id := i32(joystick.instance_id)
-	if connected_id not_in g_joystick.connected {
-		g_joystick.connected[connected_id] = joystick._base
+	if connected_id not_in g_app.joystick.connected {
+		g_app.joystick.connected[connected_id] = joystick._base
 		log.infof("Connected joystick %d: [%s]", joystick.id, joystick.name)
 	}
 }
 
-_joystick_create :: proc(
-	device_id: i32,
-	allocator := context.allocator,
-) -> (
-	joystick: ^Joystick_Impl,
-	err: Error,
-) {
-	joystick = new(Joystick_Impl, allocator) or_return
-	defer if err != nil do free(joystick)
+_joystick_create :: proc(device_id: i32) -> (joystick: Joystick_Impl, ok: bool) {
+	allocator := mem.arena_allocator(&g_app.arena)
+	defer if !ok do free_all(allocator)
 
 	joystick.handle = sdl.JoystickOpen(device_id)
 	if joystick.handle == nil {
-		err = .Failed_To_Open_Joystick
 		log.errorf("Failed to open joystick [%d]", device_id)
 		return
 	}
-	defer if err != nil do sdl.JoystickClose(joystick.handle)
+	defer if !ok do sdl.JoystickClose(joystick.handle)
 
 	when SDL_MAJOR_VERSION_ATLEAST_2_0_18 {
 		joystick.rumble_supported = bool(sdl.JoystickHasRumble(joystick.handle))
@@ -159,13 +139,12 @@ _joystick_create :: proc(
 	sdl.JoystickGetGUIDString(sdl_guid, &guid_buffer[0], len(guid_buffer))
 	nul := nul_search_bytes(guid_buffer[:])
 	guid_buffer[nul] = 0
-	joystick.guid = strings.clone_from_bytes(guid_buffer[:nul], allocator) or_return
-	defer if err != nil do delete(joystick.guid)
+	joystick.guid = strings.clone_from_bytes(guid_buffer[:nul], allocator)
 
 	// Open as Game Controller if possible
 	joystick.controller = sdl.GameControllerOpen(device_id)
 	joystick.is_gamepad = joystick.controller != nil
-	defer if err != nil && joystick.is_gamepad do sdl.GameControllerClose(joystick.controller)
+	defer if !ok && joystick.is_gamepad do sdl.GameControllerClose(joystick.controller)
 
 	// Get name
 	joy_name := sdl.JoystickName(joystick.handle)
@@ -173,9 +152,8 @@ _joystick_create :: proc(
 		joy_name = sdl.GameControllerName(joystick.controller)
 	}
 	if joy_name != nil {
-		joystick.name = strings.clone_from_cstring(joy_name, allocator) or_return
+		joystick.name = strings.clone_from_cstring(joy_name, allocator)
 	}
-	defer if err != nil && joy_name != nil do delete(joystick.name)
 
 	sdl_type := sdl.JoystickGetType(joystick.handle)
 
@@ -203,18 +181,17 @@ _joystick_create :: proc(
 	}
 
 	num_axes := max(0, sdl.JoystickNumAxes(joystick.handle))
-	joystick.axes = make([]f32, num_axes, allocator) or_return
-	defer if err != nil do delete(joystick.axes)
+	joystick.axes = make([]f32, num_axes, allocator)
 
 	joystick.vibration.end_time = sdl.HAPTIC_INFINITY
 	joystick.vibration.id = -1
 
-	return
+	return joystick, true
 }
 
 _joystick_remove_connected_guid :: proc(guid: string) {
 	id: i32 = -1
-	for key, joy in g_joystick.connected {
+	for key, joy in g_app.joystick.connected {
 		if guid == joy.guid {
 			id = key
 			break
@@ -222,13 +199,13 @@ _joystick_remove_connected_guid :: proc(guid: string) {
 	}
 
 	if id != -1 {
-		delete_key(&g_joystick.connected, id)
+		delete_key(&g_app.joystick.connected, id)
 	}
 }
 
 _joystick_remove_connected_joystick :: proc(joystick: ^Joystick_Impl) {
-	if joy, ok := g_joystick.connected[i32(joystick.instance_id)]; ok {
-		delete_key(&g_joystick.connected, joy.id)
+	if joy, ok := g_app.joystick.connected[i32(joystick.instance_id)]; ok {
+		delete_key(&g_app.joystick.connected, joy.id)
 	}
 }
 
@@ -244,7 +221,7 @@ _joystick_get_device_guid :: proc(
 	allocator := context.allocator,
 ) -> (
 	str: string,
-	err: Error,
+	ok: bool,
 ) {
 	buffer: [GUID_BUFFER_SIZE]byte
 
@@ -256,9 +233,9 @@ _joystick_get_device_guid :: proc(
 	sdl.JoystickGetGUIDString(guid, &buffer[0], len(buffer))
 
 	nul := nul_search_bytes(buffer[:])
-	str = strings.clone_from_bytes(buffer[:nul], allocator) or_return
+	str = strings.clone_from_bytes(buffer[:nul], allocator)
 
-	return
+	return str, true
 }
 
 _joystick_close :: proc "contextless" (joystick: ^Joystick_Impl) {
@@ -310,7 +287,7 @@ _joystick_sdl_button_to_gamepad_button :: proc(
 		button = SDL_BUTTON_TO_GAMEPAD_BUTTON_MAP[index]
 		ok = button != .Invalid
 	}
-	return
+	return button, true
 }
 
 _joystick_get_from_id :: #force_inline proc "contextless" (
@@ -328,7 +305,7 @@ _joystick_get_from_instance_id :: #force_inline proc "contextless" (
 	^Joystick_Impl,
 	bool,
 ) #no_bounds_check #optional_ok {
-	if joy, ok := g_joystick.found[instance_id]; ok {
+	if joy, ok := &g_app.joystick.found[instance_id]; ok {
 		if joy != nil do return joy, true
 	}
 	return nil, false
@@ -467,7 +444,6 @@ _joystick_native_get_gamepad_mapping :: proc "contextless" (
 }
 
 _joystick_sdl_hat_to_joystick_hat :: proc "contextless" (index: u8) -> (hat: Joystick_Hat) {
-	// odinfmt: disable
 	switch index {
 	case sdl.HAT_CENTERED:  hat = .Centered
 	case sdl.HAT_UP:  hat = .Up
@@ -479,7 +455,6 @@ _joystick_sdl_hat_to_joystick_hat :: proc "contextless" (index: u8) -> (hat: Joy
 	case sdl.HAT_LEFTUP:  hat = .Left_Up
 	case sdl.HAT_LEFTDOWN:  hat = .Left_Down
 	}
-	// odinfmt: enable
 
 	return
 }
@@ -613,7 +588,5 @@ _joystick_clamp_value :: #force_inline proc "contextless" (x: f32) -> f32 {
 	return x
 }
 
-// odinfmt: disable
 SDL_MAJOR_VERSION_ATLEAST_2_0_18 :: sdl.MAJOR_VERSION == 2 && sdl.MINOR_VERSION > 0 ||
                                 	(sdl.MINOR_VERSION == 0 && sdl.PATCHLEVEL >= 18)
-// odinfmt: enable

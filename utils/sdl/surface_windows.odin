@@ -4,14 +4,14 @@ package wgpu_utils_sdl
 // Vendor
 import sdl "vendor:sdl2"
 
-// Package
+// Local packages
 import wgpu "../../wrapper"
 
 get_surface_descriptor :: proc(
 	window: ^sdl.Window,
 ) -> (
 	descriptor: wgpu.Surface_Descriptor,
-	err: wgpu.Error,
+	ok: bool,
 ) {
 	wm_info := get_sys_info(window) or_return
 
@@ -21,5 +21,5 @@ get_surface_descriptor :: proc(
 		hwnd      = wm_info.info.win.window,
 	}
 
-	return
+	return descriptor, true
 }

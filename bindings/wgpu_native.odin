@@ -43,9 +43,14 @@ Instance_Backend :: enum ENUM_SIZE {
 	DX11,
 	Browser_WebGPU,
 }
-Instance_Backend_Flags :: bit_set[Instance_Backend;FLAGS]
+Instance_Backend_Flags :: distinct bit_set[Instance_Backend;FLAGS]
 Instance_Backend_All :: Instance_Backend_Flags{}
-Instance_Backend_Primary :: Instance_Backend_Flags{.Vulkan, .Metal, .DX12, .Browser_WebGPU}
+Instance_Backend_Primary :: Instance_Backend_Flags{
+	.Vulkan,
+	.Metal,
+	.DX12,
+	.Browser_WebGPU,
+}
 Instance_Backend_Secondary :: Instance_Backend_Flags{.GL, .DX11}
 
 Instance_Flag :: enum ENUM_SIZE {
@@ -53,7 +58,7 @@ Instance_Flag :: enum ENUM_SIZE {
 	Validation,
 	Discard_Hal_Labels,
 }
-Instance_Flags :: bit_set[Instance_Flag;FLAGS]
+Instance_Flags :: distinct bit_set[Instance_Flag; FLAGS]
 Instance_Flags_Default :: Instance_Flags{}
 
 Dx12_Compiler :: enum ENUM_SIZE {
@@ -82,139 +87,138 @@ Native_Query_Type :: enum ENUM_SIZE {
 }
 
 Instance_Extras :: struct {
-	chain:                Chained_Struct,
-	backends:             Instance_Backend_Flags,
-	flags:                Instance_Flags,
-	dx12_shader_compiler: Dx12_Compiler,
-	gles3_minor_version:  Gles3_Minor_Version,
-	dxil_path:            cstring,
-	dxc_path:             cstring,
+	using chain          : Chained_Struct,
+	backends             : Instance_Backend_Flags,
+	flags                : Instance_Flags,
+	dx12_shader_compiler : Dx12_Compiler,
+	gles3_minor_version  : Gles3_Minor_Version,
+	dxil_path            : cstring,
+	dxc_path             : cstring,
 }
 
 Device_Extras :: struct {
-	chain:      Chained_Struct,
-	trace_path: cstring,
+	using chain : Chained_Struct,
+	trace_path  : cstring,
 }
 
 Native_Limits :: struct {
-	max_push_constant_size:   u32,
-	max_non_sampler_bindings: u32,
+	max_push_constant_size   : u32,
+	max_non_sampler_bindings : u32,
 }
 
 Required_Limits_Extras :: struct {
-	chain:  Chained_Struct,
-	limits: Native_Limits,
+	using chain : Chained_Struct,
+	limits      : Native_Limits,
 }
 
 Supported_Limits_Extras :: struct {
-	chain:  Chained_Struct_Out,
-	limits: Native_Limits,
+	using chain  : Chained_Struct_Out,
+	limits       : Native_Limits,
 }
 
 Push_Constant_Range :: struct {
-	stages: Shader_Stage_Flags,
-	start:  u32,
-	end:    u32,
+	stages : Shader_Stage_Flags,
+	start  : u32,
+	end    : u32,
 }
 
 Pipeline_Layout_Extras :: struct {
-	chain:                     Chained_Struct,
-	push_constant_range_count: uint,
-	push_constant_ranges:      [^]Push_Constant_Range `fmt:"v,push_constant_range_count"`,
+	using chain               : Chained_Struct,
+	push_constant_range_count : uint,
+	push_constant_ranges      : [^]Push_Constant_Range `fmt:"v,push_constant_range_count"`,
 }
 
 Submission_Index :: distinct u64
 
 Wrapped_Submission_Index :: struct {
-	queue:            Queue,
-	submission_index: Submission_Index,
+	queue            : Queue,
+	submission_index : Submission_Index,
 }
 
 Shader_Define :: struct {
-	name:  cstring,
-	value: cstring,
+	name  : cstring,
+	value : cstring,
 }
 
 Shader_Module_Glsl_Descriptor :: struct {
-	chain:        Chained_Struct,
-	stage:        Shader_Stage,
-	code:         cstring,
-	define_count: u32,
-	defines:      [^]Shader_Define `fmt:"v,define_count"`,
+	using chain  : Chained_Struct,
+	stage        : Shader_Stage,
+	code         : cstring,
+	define_count : u32,
+	defines      : [^]Shader_Define `fmt:"v,define_count"`,
 }
 
 Registry_Report :: struct {
-	num_allocated:          uint,
-	num_kept_from_user:     uint,
-	num_released_from_user: uint,
-	num_error:              uint,
-	element_size:           uint,
+	num_allocated          : uint,
+	num_kept_from_user     : uint,
+	num_released_from_user : uint,
+	num_error              : uint,
+	element_size           : uint,
 }
 
 Hub_Report :: struct {
-	adapters:           Registry_Report,
-	devices:            Registry_Report,
-	queues:             Registry_Report,
-	pipeline_layouts:   Registry_Report,
-	shader_modules:     Registry_Report,
-	bind_group_layouts: Registry_Report,
-	bind_groups:        Registry_Report,
-	command_buffers:    Registry_Report,
-	render_bundles:     Registry_Report,
-	render_pipelines:   Registry_Report,
-	compute_pipelines:  Registry_Report,
-	query_sets:         Registry_Report,
-	buffers:            Registry_Report,
-	textures:           Registry_Report,
-	texture_views:      Registry_Report,
-	samplers:           Registry_Report,
+	adapters           : Registry_Report,
+	devices            : Registry_Report,
+	queues             : Registry_Report,
+	pipeline_layouts   : Registry_Report,
+	shader_modules     : Registry_Report,
+	bind_group_layouts : Registry_Report,
+	bind_groups        : Registry_Report,
+	command_buffers    : Registry_Report,
+	render_bundles     : Registry_Report,
+	render_pipelines   : Registry_Report,
+	compute_pipelines  : Registry_Report,
+	query_sets         : Registry_Report,
+	buffers            : Registry_Report,
+	textures           : Registry_Report,
+	texture_views      : Registry_Report,
+	samplers           : Registry_Report,
 }
 
 Global_Report :: struct {
-	surfaces:     Registry_Report,
-	backend_type: Backend_Type,
-	vulkan:       Hub_Report,
-	metal:        Hub_Report,
-	dx12:         Hub_Report,
-	gl:           Hub_Report,
+	surfaces     : Registry_Report,
+	backend_type : Backend_Type,
+	vulkan       : Hub_Report,
+	metal        : Hub_Report,
+	dx12         : Hub_Report,
+	gl           : Hub_Report,
 }
 
 Instance_Enumerate_Adapter_Options :: struct {
-	next_int_chain: ^Chained_Struct,
-	backends:       Instance_Backend_Flags,
+	next_int_chain : ^Chained_Struct,
+	backends       : Instance_Backend_Flags,
 }
 
 Bind_Group_Entry_Extras :: struct {
-	chain:              Chained_Struct,
-	buffers:            [^]Buffer `fmt:"v,buffer_count"`,
-	buffer_count:       uint,
-	samplers:           [^]Sampler `fmt:"v,sampler_count"`,
-	sampler_count:      uint,
-	texture_views:      [^]Texture_View `fmt:"v,texture_view_count"`,
-	texture_view_count: uint,
+	using chain        : Chained_Struct,
+	buffers            : [^]Buffer `fmt:"v,buffer_count"`,
+	buffer_count       : uint,
+	samplers           : [^]Sampler `fmt:"v,sampler_count"`,
+	sampler_count      : uint,
+	texture_views      : [^]Texture_View `fmt:"v,texture_view_count"`,
+	texture_view_count : uint,
 }
 
 Bind_Group_Layout_Entry_Extras :: struct {
-	chain: Chained_Struct,
-	count: u32,
+	using chain : Chained_Struct,
+	count       : u32,
 }
 
 Query_Set_Descriptor_Extras :: struct {
-	chain:                    Chained_Struct,
-	pipeline_statistics:      [^]Pipeline_Statistic_Name `fmt:"v,pipeline_statistic_count"`,
-	pipeline_statistic_count: uint,
+	using chain              : Chained_Struct,
+	pipeline_statistics      : [^]Pipeline_Statistic_Name `fmt:"v,pipeline_statistic_count"`,
+	pipeline_statistic_count : uint,
 }
 
 Surface_Configuration_Extras :: struct {
-	chain:                         Chained_Struct,
-	desired_maximum_frame_latency: u32,
+	using chain                   : Chained_Struct,
+	desired_maximum_frame_latency : u32,
 }
 
 Log_Callback :: #type proc "c" (level: Log_Level, message: cstring, user_data: rawptr)
 
 @(default_calling_convention = "c")
 foreign _ {
-	// odinfmt: disable
 	@(link_name = "wgpuGenerateReport")
 	generate_report :: proc(instance: Instance, report: ^Global_Report) ---
 
@@ -316,5 +320,4 @@ foreign _ {
 	render_pass_encoder_end_pipeline_statistics_query :: proc(
 		render_pass_encoder: Render_Pass_Encoder,
 	) ---
-	// odinfmt: enable
 }

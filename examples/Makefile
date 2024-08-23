@@ -13,7 +13,7 @@ ifeq ($(MODE),release)
 		-disable-assert \
 		-no-bounds-check \
 		-define:WGPU_CHECK_TO_BYTES=false \
-		-define:WGPU_ENABLE_ERROR_HANDLING=false
+		-define:ENABLE_ERROR_HANDLING=false
 endif
 
 # Set the default linking

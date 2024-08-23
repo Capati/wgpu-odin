@@ -1,8 +1,5 @@
 package application
 
-// STD Library
-import "base:runtime"
-
 Mouse_Position :: struct {
 	x, y: f32,
 }
@@ -25,13 +22,12 @@ Mouse_Error :: enum u8 {
 }
 
 Mouse_State :: struct {
-	allocator:      runtime.Allocator,
-	position:       Mouse_Position,
-	scroll:         Mouse_Position,
-	current_state:  u32,
-	previous_state: u32,
-	tracker:        Click_Tracker,
-	system_cursors: map[System_Cursor]Cursor_Impl,
+	position       : Mouse_Position,
+	scroll         : Mouse_Position,
+	current_state  : u32,
+	previous_state : u32,
+	tracker        : Click_Tracker,
+	system_cursors : map[System_Cursor]Cursor_Impl,
 }
 
 // Initialize the mouse subsystem.

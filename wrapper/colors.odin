@@ -4,6 +4,187 @@ package wgpu
 import "core:math"
 import la "core:math/linalg"
 
+/* Standard blending state that blends source and destination based on source alpha. */
+Blend_Component_Normal :: Blend_Component {
+	operation  = .Add,
+	src_factor = .Src_Alpha,
+	dst_factor = .One_Minus_Src_Alpha,
+}
+
+// Default blending state that replaces destination with the source.
+Blend_Component_Replace :: Blend_Component {
+	operation  = .Add,
+	src_factor = .One,
+	dst_factor = .Zero,
+}
+
+// Blend state of (1 * src) + ((1 - src_alpha) * dst)
+Blend_Component_Over :: Blend_Component {
+	operation  = .Add,
+	src_factor = .One,
+	dst_factor = .One_Minus_Src_Alpha,
+}
+
+Default_Blend_Component :: Blend_Component_Replace
+
+/*
+Returns `true` if the state relies on the constant color, which is
+set independently on a render command encoder.
+*/
+blend_component_uses_constant :: proc(using self: ^Blend_Component) -> bool {
+	return(
+		src_factor == .Constant ||
+		src_factor == .One_Minus_Constant ||
+		dst_factor == .Constant ||
+		dst_factor == .One_Minus_Constant \
+	)
+}
+
+/* Blend mode that uses alpha blending for both color and alpha channels. */
+@(rodata)
+Blend_State_Normal := Blend_State {
+	color = Blend_Component_Normal,
+	alpha = Blend_Component_Normal,
+}
+
+/*
+Blend mode that does no color blending, just overwrites the output with the contents
+of the shader.
+*/
+@(rodata)
+Blend_State_Replace := Blend_State {
+	color = Blend_Component_Replace,
+	alpha = Blend_Component_Replace,
+}
+
+/* Blend mode that does standard alpha blending with non-premultiplied alpha. */
+@(rodata)
+Blend_State_Alpha_Blending := Blend_State {
+	color = Blend_Component_Normal,
+	alpha = Blend_Component_Over,
+}
+
+/* Blend mode that does standard alpha blending with premultiplied alpha. */
+@(rodata)
+Blend_State_Premultiplied_Alpha_Blending := Blend_State {
+	color = Blend_Component_Over,
+	alpha = Blend_Component_Over,
+}
+
+Color_Space :: enum {
+	Undefined,
+	Srgb,
+	Linear,
+}
+
+/*
+Returns a gray color.
+
+**Parameters**:
+- `brightness`: The brightness of the color. `0.0` is black, `1.0` is white.
+*/
+color_gray :: proc "contextless" (brightness: f64) -> Color {
+	b := brightness if brightness <= 1.0 else 1.0
+	return {b, b, b, 1.0}
+}
+
+/*
+Returns a semi-transparent white color.
+
+**Parameters**:
+- `transparency`: The transparency of the color. `0.0` is transparent, `1.0` is opaque.
+*/
+color_alpha :: proc "contextless" (transparency: f64) -> Color {
+	t := transparency if transparency <= 1.0 else 1.0
+	return {1.0, 1.0, 1.0, t}
+}
+
+/* Converts an sRGB color component to its linear (physical) representation. */
+color_srgb_component_to_linear :: proc "contextless" (color: f64) -> f64 {
+	c := clamp(color, 0.0, 1.0)
+	if c <= 0.04045 {
+		return c / 12.92
+	} else {
+		return math.pow((c + 0.055) / 1.055, 2.4)
+	}
+}
+
+/* Converts a linear (physical) color component to its sRGB representation. */
+color_linear_component_to_srgb :: proc "contextless" (color: f64) -> f64 {
+	if color <= 0.0031308 {
+		return clamp(color * 12.92, 0.0, 1.0)
+	} else {
+		return clamp(math.pow(color, 1.0 / 2.4) * 1.055 - 0.055, 0.0, 1.0)
+	}
+}
+
+/* Converts a Color from sRGB space to linear (physical) space. */
+color_srgb_color_to_linear :: proc "contextless" (color: Color) -> Color {
+	color := color
+	color_set_srgb_color_to_linear(&color)
+	return color
+}
+
+/* Converts a Color from sRGB space to linear (physical) space. */
+color_set_srgb_color_to_linear :: proc "contextless" (color: ^Color) {
+	color.r = color_srgb_component_to_linear(color.r)
+	color.g = color_srgb_component_to_linear(color.g)
+	color.b = color_srgb_component_to_linear(color.b)
+}
+
+/* Converts a Color from linear (physical) space to sRGB space. */
+color_linear_color_to_srgb :: proc "contextless" (color: Color) -> Color {
+	color := color
+	color_set_linear_color_to_srgb(&color)
+	return color
+}
+
+/* Converts a Color from linear (physical) space to sRGB space. */
+color_set_linear_color_to_srgb :: proc "contextless" (color: ^Color) {
+	color.r = color_linear_component_to_srgb(color.r)
+	color.g = color_linear_component_to_srgb(color.g)
+	color.b = color_linear_component_to_srgb(color.b)
+}
+
+color_srgb_to_linear :: proc {
+	color_srgb_component_to_linear,
+	color_srgb_color_to_linear,
+}
+
+color_linear_to_srgb :: proc {
+	color_linear_component_to_srgb,
+	color_linear_color_to_srgb,
+}
+
+/* Helper function to convert HSV to RGB. */
+color_hsv_to_rgb :: proc "contextless" (h, s, v: f64) -> la.Vector3f64 {
+	c := v * s
+	x := c * (1.0 - math.abs(math.mod(h * 6.0, 2.0) - 1.0))
+	m := v - c
+
+	rgb: la.Vector3f64
+	switch int(h * 6.0) {
+	case 0: rgb = {c, x, 0}
+	case 1: rgb = {x, c, 0}
+	case 2: rgb = {0, c, x}
+	case 3: rgb = {0, x, c}
+	case 4: rgb = {x, 0, c}
+	case 5: rgb = {c, 0, x}
+	}
+
+	return la.Vector3f64{rgb.x + m, rgb.y + m, rgb.z + m}
+}
+
+/* Helper function to convert HSV to Color. */
+color_hsv_to_color :: proc "contextless" (h, s, v: f64) -> (color: Color) {
+	rgb := color_hsv_to_rgb(h, s, v)
+	color.r = rgb.r
+	color.g = rgb.g
+	color.b = rgb.b
+	color.a = 1.0
+	return
+}
+
 Color_Transparent            :: Color{0.0, 0.0, 0.0, 0.0}
 Color_Alice_Blue             :: Color{0.941176, 0.972549, 1.0, 1.0}
 Color_Antique_White          :: Color{0.980392, 0.921569, 0.843137, 1.0}
@@ -146,111 +327,3 @@ Color_White                  :: Color{1.0, 1.0, 1.0, 1.0}
 Color_White_Smoke            :: Color{0.960784, 0.960784, 0.960784, 1.0}
 Color_Yellow                 :: Color{1.0, 1.0, 0.0, 1.0}
 Color_Yellow_Green           :: Color{0.603922, 0.803922, 0.196078, 1.0}
-
-/*
-Returns a gray color.
-
-**Parameters**:
-- `brightness`: The brightness of the color. `0.0` is black, `1.0` is white.
-*/
-color_gray :: proc "contextless" (brightness: f64) -> Color {
-	b := brightness if brightness <= 1.0 else 1.0
-	return {b, b, b, 1.0}
-}
-
-/*
-Returns a semi-transparent white color.
-
-**Parameters**:
-- `transparency`: The transparency of the color. `0.0` is transparent, `1.0` is opaque.
-*/
-color_alpha :: proc "contextless" (transparency: f64) -> Color {
-	t := transparency if transparency <= 1.0 else 1.0
-	return {1.0, 1.0, 1.0, t}
-}
-
-/* Converts an sRGB color component to its linear (physical) representation. */
-color_srgb_component_to_linear :: proc "contextless" (color: f64) -> f64 {
-	c := clamp(color, 0.0, 1.0)
-	if c <= 0.04045 {
-		return c / 12.92
-	} else {
-		return math.pow((c + 0.055) / 1.055, 2.4)
-	}
-}
-
-/* Converts a linear (physical) color component to its sRGB representation. */
-color_linear_component_to_srgb :: proc "contextless" (color: f64) -> f64 {
-	if color <= 0.0031308 {
-		return clamp(color * 12.92, 0.0, 1.0)
-	} else {
-		return clamp(math.pow(color, 1.0 / 2.4) * 1.055 - 0.055, 0.0, 1.0)
-	}
-}
-
-/* Converts a Color from sRGB space to linear (physical) space. */
-color_srgb_color_to_linear :: proc "contextless" (color: Color) -> Color {
-	color := color
-	color_set_srgb_color_to_linear(&color)
-	return color
-}
-
-/* Converts a Color from sRGB space to linear (physical) space. */
-color_set_srgb_color_to_linear :: proc "contextless" (color: ^Color) {
-	color.r = color_srgb_component_to_linear(color.r)
-	color.g = color_srgb_component_to_linear(color.g)
-	color.b = color_srgb_component_to_linear(color.b)
-}
-
-/* Converts a Color from linear (physical) space to sRGB space. */
-color_linear_color_to_srgb :: proc "contextless" (color: Color) -> Color {
-	color := color
-	color_set_linear_color_to_srgb(&color)
-	return color
-}
-
-/* Converts a Color from linear (physical) space to sRGB space. */
-color_set_linear_color_to_srgb :: proc "contextless" (color: ^Color) {
-	color.r = color_linear_component_to_srgb(color.r)
-	color.g = color_linear_component_to_srgb(color.g)
-	color.b = color_linear_component_to_srgb(color.b)
-}
-
-color_srgb_to_linear :: proc {
-	color_srgb_component_to_linear,
-	color_srgb_color_to_linear,
-}
-
-color_linear_to_srgb :: proc {
-	color_linear_component_to_srgb,
-	color_linear_color_to_srgb,
-}
-
-/* Helper function to convert HSV to RGB. */
-color_hsv_to_rgb :: proc "contextless" (h, s, v: f64) -> la.Vector3f64 {
-	c := v * s
-	x := c * (1.0 - math.abs(math.mod(h * 6.0, 2.0) - 1.0))
-	m := v - c
-
-	rgb: la.Vector3f64
-	switch int(h * 6.0) {
-	case 0: rgb = {c, x, 0}
-	case 1: rgb = {x, c, 0}
-	case 2: rgb = {0, c, x}
-	case 3: rgb = {0, x, c}
-	case 4: rgb = {x, 0, c}
-	case 5: rgb = {c, 0, x}
-	}
-
-	return la.Vector3f64{rgb.x + m, rgb.y + m, rgb.z + m}
-}
-
-/* Helper function to convert HSV to Color. */
-color_hsv_to_color :: proc "contextless" (h, s, v: f64) -> (color: Color) {
-	rgb := color_hsv_to_rgb(h, s, v)
-	color.r = rgb.r
-	color.g = rgb.g
-	color.b = rgb.b
-	color.a = 1.0
-	return
-}

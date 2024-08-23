@@ -13,7 +13,7 @@ _ :: math
 
 SHOW_FPS: bool : (ODIN_DEBUG && TIMER_PACKAGE)
 
-begin_run :: proc(state: ^$T) -> (err: Error) where intr.type_is_specialization_of(T, Context) {
+begin_run :: proc(state: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Context) {
 	assert(g_app.initialized, "Application not initialized!")
 
 	when TIMER_PACKAGE {
@@ -29,7 +29,10 @@ begin_run :: proc(state: ^$T) -> (err: Error) where intr.type_is_specialization_
 	main_loop: for true {
 		when EVENT_PACKAGE {
 			event_process(state)
-			if !g_app.running do break main_loop // Quit requested from some callback?
+			if !g_app.running {
+				ok = true
+				break main_loop // Quit requested from some callback?
+			}
 		}
 
 		when TIMER_PACKAGE {
@@ -38,7 +41,7 @@ begin_run :: proc(state: ^$T) -> (err: Error) where intr.type_is_specialization_
 		}
 
 		if state.callbacks.update != nil {
-			if err = state.callbacks.update(dt, state); err != nil {
+			if ok = state.callbacks.update(dt, state); !ok {
 				log.error("Error occurred during 'update' procedure")
 				break main_loop
 			}
@@ -46,12 +49,12 @@ begin_run :: proc(state: ^$T) -> (err: Error) where intr.type_is_specialization_
 
 		// Skip frame when window is minimized
 		if window_is_minimized() {
-			_throttle_main_loop()
+			throttle_main_loop()
 			continue
 		}
 
 		when GRAPHICS_PACKAGE {
-			if err = _graphics_start(); err != nil {
+			if ok = _graphics_start(); !ok {
 				log.error("Error occurred during frame start")
 				break main_loop
 			}
@@ -60,13 +63,13 @@ begin_run :: proc(state: ^$T) -> (err: Error) where intr.type_is_specialization_
 			if g_app.renderer.skip_frame do continue
 
 			if state.callbacks.draw != nil {
-				if err = state.callbacks.draw(state); err != nil {
+				if ok = state.callbacks.draw(state); !ok {
 					log.error("Error occurred during 'draw' procedure")
 					break main_loop
 				}
 			}
 
-			if err = _graphics_end(); err != nil {
+			if ok = _graphics_end(); !ok {
 				log.error("Error occurred during frame end")
 				break main_loop
 			}
@@ -98,37 +101,36 @@ quit :: proc() {
 }
 
 when SHOW_FPS {
-	@(private)
-	_should_update_window_title_with_fps :: proc "contextless" () -> bool {
-		if g_app.timer.prev_fps_update == g_app.timer.curr_time {
-			if g_app.timer.prev_fps != g_app.timer.fps {
-				return true
-			}
+@(private)
+_should_update_window_title_with_fps :: proc "contextless" () -> bool {
+	if g_app.timer.prev_fps_update == g_app.timer.curr_time {
+		if g_app.timer.prev_fps != g_app.timer.fps {
+			return true
 		}
-		return false
 	}
-
-	WINDOW_TITLE_BUFFER_LEN: int : #config(WINDOW_TITLE_BUFFER_LEN, 256)
-	WINDOW_TITLE_FPS_STR: string : #config(WINDOW_TITLE_FPS_STR, " FPS")
-
-	@(private)
-	_update_window_title_with_fps :: proc(fps: int) {
-		buffer: [WINDOW_TITLE_BUFFER_LEN]byte
-		fmt.bprintf(buffer[:], "%s [%d%s]", window_get_title(), fps, WINDOW_TITLE_FPS_STR)
-
-		nul := nul_search_bytes(buffer[:])
-
-		// Add null terminator
-		buffer[nul] = 0
-
-		// Set the window title, including the null terminator
-		window_set_title_c_string(cstring(raw_data(buffer[:nul + 1])))
-	}
+	return false
 }
+
+WINDOW_TITLE_BUFFER_LEN: int : #config(WINDOW_TITLE_BUFFER_LEN, 256)
+WINDOW_TITLE_FPS_STR: string : #config(WINDOW_TITLE_FPS_STR, " FPS")
+
+@(private)
+_update_window_title_with_fps :: proc(fps: int) {
+	buffer: [WINDOW_TITLE_BUFFER_LEN]byte
+	fmt.bprintf(buffer[:], "%s [%d%s]", window_get_title(), fps, WINDOW_TITLE_FPS_STR)
+
+	nul := nul_search_bytes(buffer[:])
+
+	// Add null terminator
+	buffer[nul] = 0
+
+	// Set the window title, including the null terminator
+	window_set_title_c_string(cstring(raw_data(buffer[:nul + 1])))
+}
+} // when SHOW_FPS
 
 MAIN_LOOP_THROTTLE_DURATION :: THROTTLE_DURATION
 
-@(private)
-_throttle_main_loop :: proc "contextless" () {
+throttle_main_loop :: proc "contextless" () {
 	time.sleep(MAIN_LOOP_THROTTLE_DURATION)
 }

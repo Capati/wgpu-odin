@@ -1,71 +1,74 @@
 package wgpu
 
-// Base
-import "base:runtime"
-
-// Package
+// The raw bindings
 import wgpu "../bindings"
 
-// Encodes a series of GPU operations.
-//
-// A command encoder can record `Render_Passes`, `Compute_Passes`, and transfer operations between
-// driver-managed resources like `Buffer`s and `Texture`s.
-//
-// When finished recording, call `command_encoder_finish` to obtain a `Command_Buffer` which may be
-// submitted for execution.
-Command_Encoder :: struct {
-	ptr:       Raw_Command_Encoder,
-	_err_data: ^Error_Data,
-}
+/*
+Encodes a series of GPU operations.
 
-// Finishes recording and returns a `Command_Buffer` that can be submitted for execution.
+A command encoder can record `Render_Pass`es, `Compute_Pass`es,
+and transfer operations between driver-managed resources like `Buffer`s and `Texture`s.
+
+When finished recording, call `command_encoder_finish` to obtain a `Command_Buffer` which may
+be submitted for execution.
+
+Corresponds to [WebGPU `GPUCommandEncoder`](https://gpuweb.github.io/gpuweb/#command-encoder).
+*/
+Command_Encoder :: wgpu.Command_Encoder
+
+/* Finishes recording and returns a `Command_Buffer` that can be submitted for execution. */
 @(require_results)
 command_encoder_finish :: proc "contextless" (
-	using self: Command_Encoder,
-	descriptor: Command_Buffer_Descriptor = {},
+	self: Command_Encoder,
+	descriptor: Maybe(Command_Buffer_Descriptor) = nil,
 	loc := #caller_location,
 ) -> (
 	command_buffer: Command_Buffer,
-	err: Error,
-) {
-	set_and_reset_err_data(_err_data, loc)
+	ok: bool,
+) #optional_ok {
+	_error_reset_data(loc)
 
 	descriptor := descriptor
-	command_buffer.ptr = wgpu.command_encoder_finish(ptr, &descriptor if descriptor != {} else nil)
+	command_buffer = wgpu.command_encoder_finish(self, &descriptor.? or_else nil)
 
-	if err = get_last_error(); err != nil {
-		if command_buffer.ptr != nil {
-			wgpu.command_buffer_release(command_buffer.ptr)
+	if get_last_error() != nil {
+		if command_buffer != nil {
+			wgpu.command_buffer_release(command_buffer)
 		}
+		return
 	}
 
-	return
+	return command_buffer, true
 }
 
-// Describes the attachments of a render pass.
-//
-// For use with [`command_encoder_begin_render_pass`].
-//
-// Note: separate lifetimes are needed because the texture views
-// have to live as long as the pass is recorded, while everything else doesn't.
-//
-// Corresponds to [WebGPU `GPURenderPassDescriptor`](
-// https://gpuweb.github.io/gpuweb/#dictdef-gpurenderpassdescriptor).
+/*
+Describes the attachments of a render pass.
+
+For use with [`command_encoder_begin_render_pass`].
+
+Note: separate lifetimes are needed because the texture views
+have to live as long as the pass is recorded, while everything else doesn't.
+
+Corresponds to [WebGPU `GPURenderPassDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpurenderpassdescriptor).
+*/
 Render_Pass_Descriptor :: struct {
-	label:                    cstring,
-	color_attachments:        []Render_Pass_Color_Attachment,
-	depth_stencil_attachment: ^Render_Pass_Depth_Stencil_Attachment,
-	timestamp_writes:         []Render_Pass_Timestamp_Writes,
-	occlusion_query_set:      Raw_Query_Set,
-	max_draw_count:           u64,
+	label                    : cstring,
+	color_attachments        : []Render_Pass_Color_Attachment,
+	depth_stencil_attachment : ^Render_Pass_Depth_Stencil_Attachment,
+	timestamp_writes         : []Render_Pass_Timestamp_Writes,
+	occlusion_query_set      : Query_Set,
+	max_draw_count           : u64,
 }
 
-// Begins recording of a render pass.
-//
-// This procedure returns a [`Render_Pass`] object which records a single render pass.
+/*
+Begins recording of a render pass.
+
+This procedure returns a [`Render_Pass`] object which records a single render pass.
+*/
 @(require_results)
 command_encoder_begin_render_pass :: proc "contextless" (
-	using self: Command_Encoder,
+	self: Command_Encoder,
 	descriptor: Render_Pass_Descriptor,
 ) -> (
 	render_pass: Render_Pass,
@@ -98,73 +101,52 @@ command_encoder_begin_render_pass :: proc "contextless" (
 		desc.next_in_chain = &max_draw_count.chain
 	}
 
-	render_pass.ptr = wgpu.command_encoder_begin_render_pass(ptr, &desc)
-	render_pass._err_data = _err_data
+	render_pass = wgpu.command_encoder_begin_render_pass(self, &desc)
 
 	return
 }
 
-// Begins recording of a compute pass.
-//
-// This procedure returns a `Compute_Pass_Encoder` object which records a single render pass.
+/*
+Begins recording of a compute pass.
+
+This procedure returns a `Compute_Pass` object which records a single render pass.
+*/
 @(require_results)
 command_encoder_begin_compute_pass :: proc "contextless" (
-	using self: Command_Encoder,
-	descriptor: Compute_Pass_Descriptor = {},
+	self: Command_Encoder,
+	descriptor: Maybe(Compute_Pass_Descriptor) = nil,
 	loc := #caller_location,
 ) -> (
-	compute_pass: Compute_Pass_Encoder,
-	err: Error,
-) {
+	compute_pass: Compute_Pass,
+	ok: bool,
+) #optional_ok {
 	descriptor := descriptor
-	compute_pass.ptr = wgpu.command_encoder_begin_compute_pass(
-		ptr,
-		&descriptor if descriptor != {} else nil,
-	)
+	compute_pass = wgpu.command_encoder_begin_compute_pass(self, &descriptor.? or_else nil)
 
-	when WGPU_ENABLE_ERROR_HANDLING {
-		context = runtime.default_context()
-
-		if compute_pass.ptr == nil {
-			err = wgpu.Error_Type.Unknown
-			set_and_update_err_data(
-				_err_data,
-				.General,
-				err,
-				"Failed to acquire Compute_Pass_Encoder",
-				loc,
-			)
-			return
-		}
+	if compute_pass == nil {
+		error_reset_and_update(wgpu.Error_Type.Unknown, "Failed to acquire 'Compute_Pass'", loc)
+		return
 	}
 
-	compute_pass._err_data = _err_data
-
-	return
+	return compute_pass, true
 }
 
-// Copy data from one buffer to another.
+/* Copy data from one buffer to another. */
 command_encoder_copy_buffer_to_buffer :: proc "contextless" (
-	using self: Command_Encoder,
-	source: Raw_Buffer,
+	self: Command_Encoder,
+	source: Buffer,
 	source_offset: Buffer_Address,
-	destination: Raw_Buffer,
+	destination: Buffer,
 	destination_offset: Buffer_Address,
 	copy_size: Buffer_Address,
 	loc := #caller_location,
 ) -> (
-	err: Error,
+	ok: bool,
 ) {
-	when WGPU_ENABLE_ERROR_HANDLING {
-		err = .Validation
-
-		context = runtime.default_context()
-
+	when ENABLE_ERROR_HANDLING {
 		if source_offset % COPY_BUFFER_ALIGNMENT != 0 {
-			set_and_update_err_data(
-				_err_data,
-				.Assert,
-				err,
+			error_reset_and_update(
+				.Validation,
 				"'source_offset' must be a multiple of 4 COPY_BUFFER_ALIGNMENT",
 				loc,
 			)
@@ -172,10 +154,8 @@ command_encoder_copy_buffer_to_buffer :: proc "contextless" (
 		}
 
 		if destination_offset % COPY_BUFFER_ALIGNMENT != 0 {
-			set_and_update_err_data(
-				_err_data,
-				.Assert,
-				err,
+			error_reset_and_update(
+				.Validation,
 				"'destination_offset' must be a multiple of 4 COPY_BUFFER_ALIGNMENT",
 				loc,
 			)
@@ -183,10 +163,8 @@ command_encoder_copy_buffer_to_buffer :: proc "contextless" (
 		}
 
 		if copy_size % COPY_BUFFER_ALIGNMENT != 0 {
-			set_and_update_err_data(
-				_err_data,
-				.Assert,
-				err,
+			error_reset_and_update(
+				.Validation,
 				"'size' must be a multiple of 4 COPY_BUFFER_ALIGNMENT",
 				loc,
 			)
@@ -194,10 +172,10 @@ command_encoder_copy_buffer_to_buffer :: proc "contextless" (
 		}
 	}
 
-	set_and_reset_err_data(_err_data, loc)
+	_error_reset_data(loc)
 
 	wgpu.command_encoder_copy_buffer_to_buffer(
-		ptr,
+		self,
 		source,
 		source_offset,
 		destination,
@@ -205,30 +183,23 @@ command_encoder_copy_buffer_to_buffer :: proc "contextless" (
 		copy_size,
 	)
 
-	err = get_last_error()
-
-	return
+	return get_last_error() == nil
 }
 
-// Copy data from a buffer to a texture.
+/* Copy data from a buffer to a texture. */
 command_encoder_copy_buffer_to_texture :: proc "contextless" (
-	using self: Command_Encoder,
+	self: Command_Encoder,
 	source: Image_Copy_Buffer,
 	destination: Image_Copy_Texture,
 	copy_size: Extent_3D,
 	loc := #caller_location,
 ) -> (
-	err: Error,
+	ok: bool,
 ) {
-	when WGPU_ENABLE_ERROR_HANDLING {
-		context = runtime.default_context()
-
+	when ENABLE_ERROR_HANDLING {
 		if source.layout.bytes_per_row % COPY_BYTES_PER_ROW_ALIGNMENT != 0 {
-			err = .Validation
-			set_and_update_err_data(
-				_err_data,
-				.Assert,
-				err,
+			error_reset_and_update(
+				.Validation,
 				"bytes_per_row must be a multiple of 256",
 				loc,
 			)
@@ -236,35 +207,28 @@ command_encoder_copy_buffer_to_texture :: proc "contextless" (
 		}
 	}
 
-	set_and_reset_err_data(_err_data, loc)
+	_error_reset_data(loc)
 
 	source, destination, copy_size := source, destination, copy_size
-	wgpu.command_encoder_copy_buffer_to_texture(ptr, &source, &destination, &copy_size)
+	wgpu.command_encoder_copy_buffer_to_texture(self, &source, &destination, &copy_size)
 
-	err = get_last_error()
-
-	return
+	return get_last_error() == nil
 }
 
-// Copy data from a texture to a buffer.
+/* Copy data from a texture to a buffer. */
 command_encoder_copy_texture_to_buffer :: proc "contextless" (
-	using self: Command_Encoder,
+	self: Command_Encoder,
 	source: Image_Copy_Texture,
 	destination: Image_Copy_Buffer,
 	copy_size: Extent_3D,
 	loc := #caller_location,
 ) -> (
-	err: Error,
+	ok: bool,
 ) {
-	when WGPU_ENABLE_ERROR_HANDLING {
-		context = runtime.default_context()
-
+	when ENABLE_ERROR_HANDLING {
 		if destination.layout.bytes_per_row % COPY_BYTES_PER_ROW_ALIGNMENT != 0 {
-			err = .Validation
-			set_and_update_err_data(
-				_err_data,
-				.Assert,
-				err,
+			error_reset_and_update(
+				.Validation,
 				"'bytes_per_row' must be a multiple of 256",
 				loc,
 			)
@@ -272,56 +236,46 @@ command_encoder_copy_texture_to_buffer :: proc "contextless" (
 		}
 	}
 
-	set_and_reset_err_data(_err_data, loc)
+	_error_reset_data(loc)
 
 	source, destination, copy_size := source, destination, copy_size
-	wgpu.command_encoder_copy_texture_to_buffer(ptr, &source, &destination, &copy_size)
+	wgpu.command_encoder_copy_texture_to_buffer(self, &source, &destination, &copy_size)
 
-	err = get_last_error()
-
-	return
+	return get_last_error() == nil
 }
 
-// Copy data from one texture to another.
+/* Copy data from one texture to another. */
 command_encoder_copy_texture_to_texture :: proc "contextless" (
-	using self: Command_Encoder,
+	self: Command_Encoder,
 	source: Image_Copy_Texture,
 	destination: Image_Copy_Texture,
 	copy_size: Extent_3D,
 	loc := #caller_location,
 ) -> (
-	err: Error,
+	ok: bool,
 ) {
-	set_and_reset_err_data(_err_data, loc)
+	_error_reset_data(loc)
 
 	source, destination, copy_size := source, destination, copy_size
-	wgpu.command_encoder_copy_texture_to_texture(ptr, &source, &destination, &copy_size)
+	wgpu.command_encoder_copy_texture_to_texture(self, &source, &destination, &copy_size)
 
-	err = get_last_error()
-
-	return
+	return get_last_error() == nil
 }
 
-// Clears buffer to zero.
+/* Clears buffer to zero. */
 command_encoder_clear_buffer :: proc "contextless" (
-	using self: Command_Encoder,
-	buffer: Raw_Buffer,
+	self: Command_Encoder,
+	buffer: Buffer,
 	offset: Buffer_Address,
 	size: Buffer_Address = WHOLE_SIZE,
 	loc := #caller_location,
 ) -> (
-	err: Error,
+	ok: bool,
 ) {
-	when WGPU_ENABLE_ERROR_HANDLING {
-		err = wgpu.Error_Type.Validation
-
-		context = runtime.default_context()
-
+	when ENABLE_ERROR_HANDLING {
 		if offset % COPY_BUFFER_ALIGNMENT != 0 {
-			set_and_update_err_data(
-				_err_data,
-				.Assert,
-				err,
+			error_reset_and_update(
+				.Validation,
 				"'offset' must be a multiple of COPY_BUFFER_ALIGNMENT",
 				loc,
 			)
@@ -329,15 +283,13 @@ command_encoder_clear_buffer :: proc "contextless" (
 		}
 
 		if size <= 0 {
-			set_and_update_err_data(_err_data, .Assert, err, "'size' size must be > 0", loc)
+			error_reset_and_update(.Validation, "'size' size must be > 0", loc)
 			return
 		}
 
 		if size % COPY_BUFFER_ALIGNMENT != 0 {
-			set_and_update_err_data(
-				_err_data,
-				.Assert,
-				err,
+			error_reset_and_update(
+				.Validation,
 				"'size' must be a multiple of COPY_BUFFER_ALIGNMENT",
 				loc,
 			)
@@ -345,79 +297,73 @@ command_encoder_clear_buffer :: proc "contextless" (
 		}
 
 		if offset + size > size {
-			set_and_update_err_data(_err_data, .Assert, err, "buffer size out of range", loc)
+			error_reset_and_update(.Validation, "buffer size out of range", loc)
 			return
 		}
 	}
 
-	set_and_reset_err_data(_err_data, loc)
-	wgpu.command_encoder_clear_buffer(ptr, buffer, offset, size)
-	err = get_last_error()
-
-	return
+	_error_reset_data(loc)
+	wgpu.command_encoder_clear_buffer(self, buffer, offset, size)
+	return get_last_error() == nil
 }
 
-// Inserts debug marker.
+/* Inserts debug marker. */
 command_encoder_insert_debug_marker :: proc "contextless" (
-	using self: Command_Encoder,
+	self: Command_Encoder,
 	marker_label: cstring,
 	loc := #caller_location,
 ) -> (
-	err: Error,
+	ok: bool,
 ) {
-	set_and_reset_err_data(_err_data, loc)
-	wgpu.command_encoder_insert_debug_marker(ptr, marker_label)
-	err = get_last_error()
-
-	return
+	_error_reset_data(loc)
+	wgpu.command_encoder_insert_debug_marker(self, marker_label)
+	return get_last_error() == nil
 }
 
-// Start record commands and group it into debug marker group.
+/* Start record commands and group it into debug marker group. */
 command_encoder_push_debug_group :: proc "contextless" (
-	using self: Command_Encoder,
+	self: Command_Encoder,
 	group_label: cstring,
 	loc := #caller_location,
 ) -> (
-	err: Error,
+	ok: bool,
 ) {
-	set_and_reset_err_data(_err_data, loc)
-	wgpu.command_encoder_push_debug_group(ptr, group_label)
-	err = get_last_error()
-
-	return
+	_error_reset_data(loc)
+	wgpu.command_encoder_push_debug_group(self, group_label)
+	return get_last_error() == nil
 }
 
-// Stops command recording and creates debug group.
+/* Stops command recording and creates debug group. */
 command_encoder_pop_debug_group :: proc "contextless" (
-	using self: Command_Encoder,
+	self: Command_Encoder,
 	loc := #caller_location,
 ) -> (
-	err: Error,
+	ok: bool,
 ) {
-	set_and_reset_err_data(_err_data, loc)
-	wgpu.command_encoder_pop_debug_group(ptr)
-	err = get_last_error()
-
-	return
+	_error_reset_data(loc)
+	wgpu.command_encoder_pop_debug_group(self)
+	return get_last_error() == nil
 }
 
-// Resolve a query set, writing the results into the supplied destination buffer.
-//
-// Queries may be between 8 and 40 bytes each. See `Pipeline_Statistics_Types` for more information.
+/*
+Resolve a query set, writing the results into the supplied destination buffer.
+
+Queries may be between 8 and 40 bytes each. See `Pipeline_Statistics_Types` for more information.
+*/
 command_encoder_resolve_query_set :: proc "contextless" (
-	using self: Command_Encoder,
-	query_set: Raw_Query_Set,
+	self: Command_Encoder,
+	query_set: Query_Set,
 	query_range: Range(u32),
-	destination: Raw_Buffer,
+	destination: Buffer,
 	destination_offset: Buffer_Address,
 	loc := #caller_location,
 ) -> (
-	err: Error,
+	ok: bool,
 ) {
-	set_and_reset_err_data(_err_data, loc)
+	_error_reset_data(loc)
 
 	wgpu.command_encoder_resolve_query_set(
-		ptr,
+		self,
 		query_set,
 		query_range.start,
 		query_range.end,
@@ -425,46 +371,31 @@ command_encoder_resolve_query_set :: proc "contextless" (
 		destination_offset,
 	)
 
-	err = get_last_error()
-
-	return
+	return get_last_error() == nil
 }
 
-// Set debug label.
-command_encoder_set_label :: proc "contextless" (using self: Command_Encoder, label: cstring) {
-	wgpu.command_encoder_set_label(ptr, label)
-}
+/* Set debug label. */
+command_encoder_set_label :: wgpu.command_encoder_set_label
 
-// Issue a timestamp command at this point in the queue. The timestamp will be written to the
-// specified query set, at the specified index.
+/*
+Issue a timestamp command at this point in the queue. The timestamp will be written to the
+specified query set, at the specified index.
+*/
 command_encoder_write_timestamp :: proc "contextless" (
-	using self: Command_Encoder,
-	query_set: Raw_Query_Set,
+	self: Command_Encoder,
+	query_set: Query_Set,
 	query_index: u32,
 	loc := #caller_location,
 ) -> (
-	err: Error,
+	ok: bool,
 ) {
-	set_and_reset_err_data(_err_data, loc)
-	wgpu.command_encoder_write_timestamp(ptr, query_set, query_index)
-	err = get_last_error()
-
-	return
+	_error_reset_data(loc)
+	wgpu.command_encoder_write_timestamp(self, query_set, query_index)
+	return get_last_error() == nil
 }
 
-// Increase the reference count.
-command_encoder_reference :: proc "contextless" (using self: Command_Encoder) {
-	wgpu.command_encoder_reference(ptr)
-}
+/* Increase the reference count. */
+command_encoder_reference :: wgpu.command_encoder_reference
 
-// Release the `Command_Encoder`.
-command_encoder_release :: #force_inline proc "contextless" (using self: Command_Encoder) {
-	wgpu.command_encoder_release(ptr)
-}
-
-// Release the `Command_Encoder` and modify the raw pointer to `nil`.
-command_encoder_release_and_nil :: proc "contextless" (using self: ^Command_Encoder) {
-	if ptr == nil do return
-	wgpu.command_encoder_release(ptr)
-	ptr = nil
-}
+/* Release the `Command_Encoder` resources. */
+command_encoder_release :: wgpu.command_encoder_release

@@ -1,6 +1,8 @@
 package wgpu
 
-// Check if the format is a depth or stencil component of the given combined depth-stencil format.
+/*
+Check if the format is a depth or stencil component of the given combined depth-stencil format.
+*/
 texture_format_is_depth_stencil_component :: proc "contextless" (
 	self, combined_format: Texture_Format,
 ) -> bool {
@@ -12,9 +14,11 @@ texture_format_is_depth_stencil_component :: proc "contextless" (
 	)
 }
 
-// Check if the format is a depth and/or stencil format.
-//
-// see <https://gpuweb.github.io/gpuweb/#depth-formats>
+/*
+Check if the format is a depth and/or stencil format.
+
+see <https://gpuweb.github.io/gpuweb/#depth-formats>
+*/
 texture_format_is_depth_stencil_format :: proc "contextless" (self: Texture_Format) -> bool {
 	#partial switch self {
 	case .Stencil8,
@@ -29,9 +33,11 @@ texture_format_is_depth_stencil_format :: proc "contextless" (self: Texture_Form
 	return false
 }
 
-// Returns `true` if the format is a combined depth-stencil format
-//
-// see <https://gpuweb.github.io/gpuweb/#combined-depth-stencil-format>
+/*
+Returns `true` if the format is a combined depth-stencil format
+
+see <https://gpuweb.github.io/gpuweb/#combined-depth-stencil-format>
+*/
 texture_format_is_combined_depth_stencil_format :: proc "contextless" (
 	self: Texture_Format,
 ) -> bool {
@@ -43,7 +49,7 @@ texture_format_is_combined_depth_stencil_format :: proc "contextless" (
 	return false
 }
 
-// Returns `true` if the format has a depth aspect
+/* Returns `true` if the format has a depth aspect. */
 texture_format_has_depth_aspect :: proc "contextless" (self: Texture_Format) -> bool {
 	#partial switch self {
 	case .Depth16_Unorm,
@@ -57,11 +63,12 @@ texture_format_has_depth_aspect :: proc "contextless" (self: Texture_Format) -> 
 	return false
 }
 
-// Returns the dimension of a [block](https://gpuweb.github.io/gpuweb/#texel-block) of texels.
-//
-// Uncompressed formats have a block dimension of `(1, 1)`.
+/*
+Returns the dimension of a [block](https://gpuweb.github.io/gpuweb/#texel-block) of texels.
+
+Uncompressed formats have a block dimension of `(1, 1)`.
+*/
 texture_format_block_dimensions :: proc "contextless" (self: Texture_Format) -> (w, h: u32) {
-	// odinfmt: disable
 	// Commented formats are unimplemented in webgpu.h
 	#partial switch self {
 	case .R8_Unorm, .R8_Snorm, .R8_Uint, .R8_Sint, .R16_Uint, .R16_Sint, /*.R16_Unorm,*/
@@ -98,20 +105,18 @@ texture_format_block_dimensions :: proc "contextless" (self: Texture_Format) -> 
 	case .Astc12x10_Unorm, .Astc12x10_Unorm_Srgb: return 12, 10
 	case .Astc12x12_Unorm, .Astc12x12_Unorm_Srgb: return 12, 12
 	}
-	// odinfmt: enable
 
 	return 1, 1
 }
 
-// Returns `true` for compressed formats.
+/* Returns `true` for compressed formats. */
 texture_format_is_compressed :: proc "contextless" (self: Texture_Format) -> bool {
 	w, h := texture_format_block_dimensions(self)
 	return w != 1 && h != 1
 }
 
-// Returns the required features (if any) in order to use the texture.
+/* Returns the required features (if any) in order to use the texture. */
 texture_format_required_features :: proc "contextless" (self: Texture_Format) -> Features {
-	// odinfmt: disable
 	#partial switch self {
 	case .R8_Unorm, .R8_Snorm, .R8_Uint, .R8_Sint, .R16_Uint, .R16_Sint, .R16_Float, .Rg8_Unorm,
 		 .Rg8_Snorm, .Rg8_Uint, .Rg8_Sint, .R32_Float, .R32_Uint, .R32_Sint, .Rg16_Uint,
@@ -152,7 +157,6 @@ texture_format_required_features :: proc "contextless" (self: Texture_Format) ->
 		 .Astc12x10_Unorm_Srgb, .Astc12x12_Unorm, .Astc12x12_Unorm_Srgb:
 		return {.Texture_Compression_Astc}
 	}
-	// odinfmt: enable
 
 	return {}
 }
@@ -168,10 +172,10 @@ Texture_Usage_Feature :: enum ENUM_SIZE {
 	Blendable,
 }
 
-// Feature flags for a texture format.
+/* Feature flags for a texture format. */
 Texture_Usage_Feature_Flags :: bit_set[Texture_Usage_Feature;FLAGS]
 
-// Features supported by a given texture format
+/* Features supported by a given texture format */
 Texture_Format_Features :: struct {
 	allowed_usages: Texture_Usage_Flags,
 	flags:          Texture_Usage_Feature_Flags,
@@ -181,7 +185,6 @@ texture_usage_feature_flags_sample_count_supported :: proc "contextless" (
 	self: Texture_Usage_Feature_Flags,
 	count: u32,
 ) -> bool {
-	// odinfmt: disable
 	switch count {
 	case 1: return true
 	case 2: return .Multisample_X2 in self
@@ -189,15 +192,16 @@ texture_usage_feature_flags_sample_count_supported :: proc "contextless" (
 	case 8: return .Multisample_X8 in self
 	case 16: return .Multisample_X16 in self
 	}
-	// odinfmt: enable
 
 	return false
 }
 
-// Returns the sample type compatible with this format and aspect.
-//
-// Returns `Undefined` only if this is a combined depth-stencil format or a multi-planar format
-// and `TextureAspect::All`.
+/*
+Returns the sample type compatible with this format and aspect.
+
+Returns `Undefined` only if this is a combined depth-stencil format or a multi-planar format
+and `TextureAspect::All`.
+*/
 texture_format_sample_type :: proc "contextless" (
 	self: Texture_Format,
 	aspect: Maybe(Texture_Aspect) = nil,
@@ -212,8 +216,7 @@ texture_format_sample_type :: proc "contextless" (
 	depth := Texture_Sample_Type.Depth
 	_uint := Texture_Sample_Type.Uint
 	sint := Texture_Sample_Type.Sint
-	
-	// odinfmt: disable
+
 	#partial switch self {
 	case .R8_Unorm, .R8_Snorm, .Rg8_Unorm, .Rg8_Snorm, .Rgba8_Unorm, .Rgba8_Unorm_Srgb,
 	     .Rgba8_Snorm, .Bgra8_Unorm, .Bgra8_Unorm_Srgb, .R16_Float, .Rg16_Float, .Rgba16_Float,
@@ -266,15 +269,16 @@ texture_format_sample_type :: proc "contextless" (
 	     .Astc12x10_Unorm_Srgb, .Astc12x12_Unorm, .Astc12x12_Unorm_Srgb:
 		return float_filterable
 	}
-	// odinfmt: enable
 
 	return .Undefined
 }
 
-// Returns the format features guaranteed by the WebGPU spec.
-//
-// Additional features are available if `Features.Texture_Adapter_Specific_Format_Features`
-// is enabled.
+/*
+Returns the format features guaranteed by the WebGPU spec.
+
+Additional features are available if `Features.Texture_Adapter_Specific_Format_Features`
+is enabled.
+*/
 texture_format_guaranteed_format_features :: proc "contextless" (
 	self: Texture_Format,
 	device_features: Device_Features,
@@ -297,8 +301,7 @@ texture_format_guaranteed_format_features :: proc "contextless" (
 
 	flags: Texture_Usage_Feature_Flags
 	allowed_usages: Texture_Usage_Flags
-	
-	// odinfmt: disable
+
 	#partial switch self {
 	case .R8_Unorm: flags = msaa_resolve; allowed_usages = attachment
 	case .R8_Snorm: flags = noaa; allowed_usages = basic
@@ -403,30 +406,31 @@ texture_format_guaranteed_format_features :: proc "contextless" (
 
 	features.flags = flags
 	features.allowed_usages = allowed_usages
-	// odinfmt: enable
 
 	return
 }
 
-// The number of bytes one [texel block](https://gpuweb.github.io/gpuweb/#texel-block) occupies during an image copy, if applicable.
-//
-// Known as the [texel block copy footprint](https://gpuweb.github.io/gpuweb/#texel-block-copy-footprint).
-//
-// Note that for uncompressed formats this is the same as the size of a single texel,
-// since uncompressed formats have a block size of 1x1.
-//
-// Returns `0` if any of the following are true:
-//  - the format is a combined depth-stencil and no `aspect` was provided
-//  - the format is a multi-planar format and no `aspect` was provided
-//  - the format is `Depth24Plus`
-//  - the format is `Depth24PlusStencil8` and `aspect` is depth.
+/*
+The number of bytes one [texel block](https://gpuweb.github.io/gpuweb/#texel-block) occupies
+during an image copy, if applicable.
+
+Known as the [texel block copy footprint](https://gpuweb.github.io/gpuweb/#texel-block-copy-footprint).
+
+Note that for uncompressed formats this is the same as the size of a single texel,
+since uncompressed formats have a block size of 1x1.
+
+Returns `0` if any of the following are true:
+ - the format is a combined depth-stencil and no `aspect` was provided
+ - the format is a multi-planar format and no `aspect` was provided
+ - the format is `Depth24Plus`
+ - the format is `Depth24PlusStencil8` and `aspect` is depth.
+*/
 texture_format_block_size :: proc "contextless" (
 	self: Texture_Format,
 	aspect: Maybe(Texture_Aspect) = nil,
 ) -> u32 {
 	_aspect, aspect_ok := aspect.?
-	
-	// odinfmt: disable
+
 	#partial switch self {
 	case .R8_Unorm, .R8_Snorm, .R8_Uint, .R8_Sint:
 		return 1
@@ -493,12 +497,11 @@ texture_format_block_size :: proc "contextless" (
 		}
 		return 0
 	}
-	// odinfmt: enable
 
 	return 0
 }
 
-// Calculate bytes per row from the given row width.
+/* Calculate bytes per row from the given row width. */
 texture_format_bytes_per_row :: proc "contextless" (
 	format: Texture_Format,
 	width: u32,
@@ -522,10 +525,11 @@ texture_format_bytes_per_row :: proc "contextless" (
 	return
 }
 
-// The number of bytes occupied per pixel in a color attachment
-// <https://gpuweb.github.io/gpuweb/#render-target-pixel-byte-cost>
+/*
+The number of bytes occupied per pixel in a color attachment
+<https://gpuweb.github.io/gpuweb/#render-target-pixel-byte-cost>
+*/
 texture_format_target_pixel_byte_cost :: proc "contextless" (self: Texture_Format) -> u32 {
-	// odinfmt: disable
 	#partial switch self {
 	case .R8_Unorm, .R8_Uint, .R8_Sint:
 		return 1
@@ -545,14 +549,12 @@ texture_format_target_pixel_byte_cost :: proc "contextless" (self: Texture_Forma
 	case .Rgba32_Uint, .Rgba32_Sint, .Rgba32_Float:
 		return 16
 	}
-	// odinfmt: enable
 
 	return 0
 }
 
-// See <https://gpuweb.github.io/gpuweb/#render-target-component-alignment>
+/* See <https://gpuweb.github.io/gpuweb/#render-target-component-alignment> */
 texture_format_target_component_alignment :: proc "contextless" (self: Texture_Format) -> u32 {
-	// odinfmt: disable
 	#partial switch self {
 	case .R8_Unorm, .R8_Snorm, .R8_Uint, .R8_Sint, .Rg8_Unorm, .Rg8_Snorm, .Rg8_Uint,
 	     .Rg8_Sint, .Rgba8_Unorm, .Rgba8_Unorm_Srgb, .Rgba8_Snorm, .Rgba8_Uint, .Rgba8_Sint,
@@ -567,19 +569,19 @@ texture_format_target_component_alignment :: proc "contextless" (self: Texture_F
 		 .Rgba32_Sint, .Rgba32_Float, .Rgb10_A2_Uint, .Rgb10_A2_Unorm, .Rg11_B10_Ufloat:
 		return 4
 	}
-	// odinfmt: enable
 
 	return 0
 }
 
-// Returns the number of components this format has taking into account the `aspect`.
-//
-// The `aspect` is only relevant for combined depth-stencil formats and multi-planar formats.
+/*
+Returns the number of components this format has taking into account the `aspect`.
+
+The `aspect` is only relevant for combined depth-stencil formats and multi-planar formats.
+*/
 texture_format_components_with_aspect :: proc "contextless" (
 	self: Texture_Format,
 	aspect: Texture_Aspect,
 ) -> u8 {
-	// odinfmt: disable
 	#partial switch self {
 	case .R8_Unorm, .R8_Snorm, .R8_Uint, .R8_Sint, /*.R16_Unorm,*/ /*.R16_Snorm,*/
 	     .R16_Uint, .R16_Sint, .R16_Float, .R32_Uint, .R32_Sint, .R32_Float:
@@ -627,25 +629,23 @@ texture_format_components_with_aspect :: proc "contextless" (
 	     .Astc12x10_Unorm_Srgb, .Astc12x12_Unorm, .Astc12x12_Unorm_Srgb:
 		return 4
 	}
-	// odinfmt: enable
 
 	return 0
 }
 
-// Returns the number of components this format has.
+/* Returns the number of components this format has. */
 texture_format_components :: proc "contextless" (self: Texture_Format) -> u8 {
 	return texture_format_components_with_aspect(self, .All)
 }
 
-// Strips the `Srgb` suffix from the given texture format.
+/* Strips the `Srgb` suffix from the given texture format. */
 texture_format_remove_srgb_suffix :: proc "contextless" (
 	self: Texture_Format,
 ) -> (
 	ret: Texture_Format,
 ) {
 	ret = self
-	
-	// odinfmt: disable
+
 	#partial switch self {
 	case .Rgba8_Unorm_Srgb: return .Rgba8_Unorm
 	case .Bgra8_Unorm_Srgb: return .Bgra8_Unorm
@@ -671,20 +671,18 @@ texture_format_remove_srgb_suffix :: proc "contextless" (
 	case .Astc12x10_Unorm_Srgb: return .Astc12x10_Unorm
 	case .Astc12x12_Unorm_Srgb: return .Astc12x12_Unorm
 	}
-	// odinfmt: enable
 
 	return
 }
 
-// Adds an `Srgb` suffix to the given texture format, if the format supports it.
+/* Adds an `Srgb` suffix to the given texture format, if the format supports it. */
 texture_format_add_srgb_suffix :: proc "contextless" (
 	self: Texture_Format,
 ) -> (
 	ret: Texture_Format,
 ) {
 	ret = self
-	
-	// odinfmt: disable
+
 	#partial switch self {
 	case .Rgba8_Unorm: return .Rgba8_Unorm_Srgb
 	case .Bgra8_Unorm: return .Bgra8_Unorm_Srgb
@@ -710,12 +708,11 @@ texture_format_add_srgb_suffix :: proc "contextless" (
 	case .Astc12x10_Unorm: return .Astc12x10_Unorm_Srgb
 	case .Astc12x12_Unorm: return .Astc12x12_Unorm_Srgb
 	}
-	// odinfmt: enable
 
 	return
 }
 
-// Returns `true` for srgb formats.
+/* Returns `true` for srgb formats. */
 texture_format_is_srgb :: proc "contextless" (self: Texture_Format) -> bool {
 	return self != texture_format_remove_srgb_suffix(self)
 }

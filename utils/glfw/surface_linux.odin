@@ -1,36 +1,32 @@
 //+build linux
 package wgpu_utils_glfw
 
-// Core
-import "core:fmt"
-
 // Vendor
 import "vendor:glfw"
 
-// Package
+// Local packages
 import wgpu "../../wrapper"
 
 get_surface_descriptor :: proc(
-	w: glfw.WindowHandle,
+	window: glfw.WindowHandle,
 ) -> (
 	descriptor: wgpu.Surface_Descriptor,
-	err: wgpu.Error,
+	ok: bool,
 ) {
 	switch glfw.GetPlatform() {
 	case glfw.PLATFORM_WAYLAND:
 		descriptor.target = wgpu.Surface_Descriptor_From_Wayland_Surface {
 			display = glfw.GetWaylandDisplay(),
-			surface = glfw.GetWaylandWindow(w),
+			surface = glfw.GetWaylandWindow(window),
 		}
 	case glfw.PLATFORM_X11:
 		descriptor.target = wgpu.Surface_Descriptor_From_Xlib_Window {
 			display = glfw.GetX11Display(),
-			window  = u64(glfw.GetX11Window(w)),
+			window  = u64(glfw.GetX11Window(window)),
 		}
 	case:
-		fmt.eprintf("ERROR: Unable to recognize the current desktop session.")
-		return {}, .Internal
+		return
 	}
 
-	return
+	return descriptor, true
 }

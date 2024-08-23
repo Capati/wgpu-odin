@@ -1,7 +1,7 @@
 //+private
 package application
 
-// Vendor Package
+// Local packages
 import wgpu "./../../wrapper"
 
 _create_framebuffer :: proc "contextless" (
@@ -11,12 +11,11 @@ _create_framebuffer :: proc "contextless" (
 	loc := #caller_location,
 ) -> (
 	fb: Framebuffer,
-	err: Error,
+	ok: bool,
 ) {
-	format_features := wgpu.texture_format_guaranteed_format_features(
-		format,
-		g_graphics.gpu.device.features,
-	)
+	r := &g_app.renderer
+
+	format_features := wgpu.texture_format_guaranteed_format_features(format, r.gpu.features)
 
 	size := _window_get_size()
 
@@ -29,77 +28,78 @@ _create_framebuffer :: proc "contextless" (
 		usage           = format_features.allowed_usages,
 	}
 
-	fb.texture = wgpu.device_create_texture(
-		g_graphics.gpu.device,
-		texture_descriptor,
-		loc,
-	) or_return
+	fb.texture = wgpu.device_create_texture(r.gpu.device, texture_descriptor, loc) or_return
+
 	fb.view = wgpu.texture_create_view(fb.texture) or_return
 	fb.format = format
 	fb.sample_count = sample_count
 	fb.is_depth = is_depth
 
-	return
+	return fb, true
 }
 
-_create_msaa_framebuffer :: proc "contextless" (sample_count: u32 = 1) -> (err: Error) {
-	g_graphics.msaa_framebuffer = _create_framebuffer(
-		g_graphics.gpu.config.format,
-		sample_count,
-		false,
-	) or_return
+_create_msaa_framebuffer :: proc "contextless" (sample_count: u32 = 1) -> (ok: bool) {
+	r := &g_app.renderer
 
-	return
+	r.msaa_framebuffer = _create_framebuffer(r.gpu.config.format, sample_count, false) or_return
+
+	return true
 }
 
 _create_depth_framebuffer :: proc "contextless" (
 	depth_format: wgpu.Texture_Format,
 	sample_count: u32 = 1,
 ) -> (
-	err: Error,
+	ok: bool,
 ) {
-	g_graphics.depth_framebuffer = _create_framebuffer(depth_format, sample_count, true) or_return
+	r := &g_app.renderer
+
+	r.depth_framebuffer = _create_framebuffer(depth_format, sample_count, true) or_return
 
 	// Setup depth stencil attachment
-	g_graphics.depth_stencil_attachment = wgpu.Render_Pass_Depth_Stencil_Attachment {
-		view              = g_graphics.depth_framebuffer.view.ptr,
+	r.depth_stencil_attachment = wgpu.Render_Pass_Depth_Stencil_Attachment {
+		view              = r.depth_framebuffer.view,
 		depth_load_op     = .Clear,
 		depth_store_op    = .Store,
 		depth_clear_value = 1.0,
 	}
 
 	// Update render pass descriptor
-	g_graphics.render_pass_desc.depth_stencil_attachment = &g_graphics.depth_stencil_attachment
+	r.render_pass_desc.depth_stencil_attachment = &r.depth_stencil_attachment
 
-	return
+	return true
 }
 
 _destroy_framebuffer :: proc "contextless" (fb: Framebuffer) {
-	if fb.view.ptr != nil {
+	if fb.view != nil {
 		wgpu.texture_view_release(fb.view)
 	}
 
-	if fb.texture.ptr != nil {
+	if fb.texture != nil {
 		wgpu.texture_destroy(fb.texture)
 		wgpu.texture_release(fb.texture)
 	}
 }
 
-_resize_framebuffers :: proc "contextless" (new_size: Window_Size) -> (err: Error) {
-	if g_graphics.settings.sample_count == 1 && !g_graphics.settings.use_depth_stencil do return
+_resize_framebuffers :: proc "contextless" (new_size: Window_Size) -> (ok: bool) {
+	r := &g_app.renderer
 
-	if g_graphics.settings.sample_count > 1 {
-		_destroy_framebuffer(g_graphics.msaa_framebuffer)
-		_create_msaa_framebuffer(g_graphics.settings.sample_count) or_return
+	if r.settings.sample_count == 1 && !r.settings.use_depth_stencil {
+		return true /* No framebuffer to resize */
 	}
 
-	if g_graphics.settings.use_depth_stencil {
-		_destroy_framebuffer(g_graphics.depth_framebuffer)
+	if r.settings.sample_count > 1 {
+		_destroy_framebuffer(r.msaa_framebuffer)
+		_create_msaa_framebuffer(r.settings.sample_count) or_return
+	}
+
+	if r.settings.use_depth_stencil {
+		_destroy_framebuffer(r.depth_framebuffer)
 		_create_depth_framebuffer(
-			g_graphics.settings.depth_format,
-			g_graphics.settings.sample_count,
+			r.settings.depth_format,
+			r.settings.sample_count,
 		) or_return
 	}
 
-	return
+	return true
 }

@@ -1,6 +1,5 @@
 package wgpu_bindings
 
-// odinfmt: disable
 @(private) WGPU_SHARED :: #config(WGPU_SHARED, true)
 @(private) WGPU_USE_SYSTEM_LIBRARIES :: #config(WGPU_USE_SYSTEM_LIBRARIES, false)
 
@@ -70,19 +69,18 @@ when ODIN_OS == .Windows {
 } else {
 	foreign import wgpu_native "system:wgpu_native"
 }
-// odinfmt: enable
 
 ARRAY_LAYER_COUNT_UNDEFINED :: max(u32)
-COPY_STRIDE_UNDEFINED :: max(u32)
-DEPTH_SLICE_UNDEFINED :: max(u32)
-LIMIT_U32_UNDEFINED :: max(u32)
-LIMIT_U64_UNDEFINED :: max(u64)
-MIP_LEVEL_COUNT_UNDEFINED :: max(u32)
-QUERY_SET_INDEX_UNDEFINED :: max(u32)
-WHOLE_MAP_SIZE :: max(uint)
-WHOLE_SIZE :: max(u64)
+COPY_STRIDE_UNDEFINED       :: max(u32)
+DEPTH_SLICE_UNDEFINED       :: max(u32)
+LIMIT_U32_UNDEFINED         :: max(u32)
+LIMIT_U64_UNDEFINED         :: max(u64)
+MIP_LEVEL_COUNT_UNDEFINED   :: max(u32)
+QUERY_SET_INDEX_UNDEFINED   :: max(u32)
+WHOLE_MAP_SIZE              :: max(uint)
+WHOLE_SIZE                  :: max(u64)
 
-FLAGS :: u32
+FLAGS     :: u32
 ENUM_SIZE :: i32
 
 Adapter :: distinct rawptr
@@ -1251,7 +1249,6 @@ Request_Device_Callback :: #type proc "c" (
 
 @(default_calling_convention = "c")
 foreign wgpu_native {
-	// odinfmt: disable
 	@(link_name = "wgpuCreateInstance")
 	create_instance :: proc(descriptor: ^Instance_Descriptor) -> Instance ---
 
@@ -2132,5 +2129,4 @@ foreign wgpu_native {
 
 	@(link_name = "wgpuTextureViewRelease")
 	texture_view_release :: proc(texture_view: Texture_View) ---
-	// odinfmt: enable
 }

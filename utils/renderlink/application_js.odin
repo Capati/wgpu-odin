@@ -6,18 +6,25 @@ package application
 import "core:mem"
 import "core:sync"
 
-Engine_Context_Js :: struct {
+Application_JS :: struct {
 	using _app: Application_Context,
 	mutex:      sync.Mutex,
 }
 
-_engine_context: Engine_Context_Js
-g_app := &_engine_context
+@(private)
+g_app: Application_JS
 
-_init_platform :: proc(settings: ^Settings, allocator: runtime.Allocator) -> (err: Error) {
+@(require_results)
+_init :: proc(
+	state: ^$T,
+	settings: Settings,
+	loc := #caller_location,
+) -> (
+	ok: bool,
+) where intr.type_is_specialization_of(T, Context) {
 	unimplemented()
 }
 
-_platform_destroy :: proc() {
+_destroy :: proc() {
 	unimplemented()
 }

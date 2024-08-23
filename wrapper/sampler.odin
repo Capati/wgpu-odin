@@ -1,37 +1,26 @@
 package wgpu
 
-// Package
+// The raw bindings
 import wgpu "../bindings"
 
-// Handle to a sampler.
-//
-// A `Sampler` object defines how a pipeline will sample from a `Texture_View`. Samplers define
-// image filters (including anisotropy) and address (wrapping) modes, among other things.
-//
-// It can be created with `device_create_sampler`.
-Sampler :: struct {
-	ptr:  Raw_Sampler,
-	_pad: POINTER_PROMOTION_PADDING,
-}
+/*
+Handle to a sampler.
 
-// Set debut label.
-sampler_set_label :: proc "contextless" (using self: Sampler, label: cstring) {
-	wgpu.sampler_set_label(ptr, label)
-}
+A `Sampler` object defines how a pipeline will sample from a `Texture_View`. Samplers define
+image filters (including anisotropy) and address (wrapping) modes, among other things. See
+the documentation for `Sampler_Descriptor` for more information.
 
-// Increase the reference count.
-sampler_reference :: proc "contextless" (using self: Sampler) {
-	wgpu.sampler_reference(ptr)
-}
+It can be created with `device_create_sampler`.
 
-// Release the `Sampler`.
-sampler_release :: #force_inline proc "contextless" (using self: Sampler) {
-	wgpu.sampler_release(ptr)
-}
+Corresponds to [WebGPU `GPUSampler`](https://gpuweb.github.io/gpuweb/#sampler-interface).
+*/
+Sampler :: wgpu.Sampler
 
-// Release the `Sampler` and modify the raw pointer to `nil`.
-sampler_release_and_nil :: proc "contextless" (using self: ^Sampler) {
-	if ptr == nil do return
-	wgpu.sampler_release(ptr)
-	ptr = nil
-}
+/* Set debut label. */
+sampler_set_label :: wgpu.sampler_set_label
+
+/* Increase the reference count. */
+sampler_reference :: wgpu.sampler_reference
+
+/* Release the `Sampler`. */
+sampler_release :: wgpu.sampler_release

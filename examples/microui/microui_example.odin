@@ -1,76 +1,85 @@
 package microui_example
 
+// STD Library
+import "base:builtin"
+@(require) import "core:log"
+
 // Vendor
 import mu "vendor:microui"
 
-// Package
+// Local packages
 import wgpu "../../wrapper"
 import wmu "./../../utils/microui"
 import rl "./../../utils/renderlink"
 
 State :: struct {
-	mu_ctx:          ^mu.Context,
-	log_buf:         [64000]u8,
-	log_buf_len:     int,
-	log_buf_updated: bool,
-	bg:              mu.Color,
+	mu_ctx          : ^mu.Context,
+	log_buf         : [64000]u8,
+	log_buf_len     : int,
+	log_buf_updated : bool,
+	bg              : mu.Color,
 }
 
-App_Context :: rl.Context(State)
+State_Context :: rl.Context(State)
 
 EXAMPLE_TITLE :: "MicroUI Example"
 
-init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
+init :: proc(ctx: ^State_Context) -> (ok: bool) {
 	// Initialize the MicroUI renderer and context
-	mu_ctx = wmu.init(gpu.device, gpu.queue, gpu.surface.config) or_return
+	ctx.mu_ctx = wmu.init(ctx.gpu.device, ctx.gpu.queue, ctx.gpu.config) or_return
 
 	// Set initial state
-	bg = {56, 130, 210, 255}
+	ctx.bg = {56, 130, 210, 255}
 
-	return
+	return true
 }
 
-quit :: proc(using ctx: ^App_Context) {
+quit :: proc(ctx: ^State_Context) {
 	wmu.destroy()
-	free(mu_ctx)
+	free(ctx.mu_ctx)
 }
 
 get_color_from_mu_color :: proc(color: mu.Color) -> wgpu.Color {
 	return {f64(color.r) / 255.0, f64(color.g) / 255.0, f64(color.b) / 255.0, 1.0}
 }
 
-handle_events :: proc(event: rl.Event, using ctx: ^App_Context) {
-	rl.event_mu_set_event(mu_ctx, event)
+handle_events :: proc(event: rl.Event, ctx: ^State_Context) {
+	rl.event_mu_set_event(ctx.mu_ctx, event)
 }
 
-resize :: proc(event: rl.Resize_Event, using ctx: ^App_Context) -> (err: rl.Error) {
+resize :: proc(event: rl.Resize_Event, ctx: ^State_Context) -> bool {
 	wmu.resize(i32(event.width), i32(event.height))
-	return
+	return true
 }
 
-update :: proc(dt: f64, using ctx: ^App_Context) -> (err: rl.Error) {
+update :: proc(dt: f64, ctx: ^State_Context) -> bool {
 	// UI definition and update
-	mu.begin(mu_ctx)
+	mu.begin(ctx.mu_ctx)
 	test_window(&ctx.state)
 	log_window(&ctx.state)
 	style_window(&ctx.state)
-	mu.end(mu_ctx)
+	mu.end(ctx.mu_ctx)
 
-	rl.graphics_clear(get_color_from_mu_color(bg))
+	rl.graphics_clear(get_color_from_mu_color(ctx.bg))
 
-	return
+	return true
 }
 
-draw :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
+draw :: proc(ctx: ^State_Context) -> bool {
 	// micro-ui rendering
-	wmu.render(mu_ctx, gpu.render_pass) or_return
-	return
+	wmu.render(ctx.mu_ctx, ctx.gpu.render_pass) or_return
+	return true
 }
 
 main :: proc() {
-	state, state_err := new(App_Context)
-	if state_err != nil do return
-	defer free(state)
+	when ODIN_DEBUG {
+		context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
+		defer log.destroy_console_logger(context.logger)
+	}
+
+	state := builtin.new(State_Context)
+	assert(state != nil, "Failed to allocate application state")
+	defer builtin.free(state)
 
 	state.callbacks = {
 		init          = init,
@@ -85,7 +94,7 @@ main :: proc() {
 	settings.title = EXAMPLE_TITLE
 	settings.gpu.desired_maximum_frame_latency = 1 // XXX
 
-	if err := rl.init(state, settings); err != nil do return
+	if ok := rl.init(state, settings); !ok do return
 
 	rl.begin_run(state) // Start the main loop
 }

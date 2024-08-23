@@ -1,12 +1,9 @@
 package wgpu_microui
 
-// Core
-// import "core:fmt"
-
 // Vendor
 import mu "vendor:microui"
 
-// Package
+// Local packages
 import wgpu "./../../wrapper"
 import shaders "./../shaders"
 
@@ -18,33 +15,33 @@ ATLAS_HEIGHT_INVERSE: f32 : 1.0 / mu.DEFAULT_ATLAS_HEIGHT
 NUM_BUFFERS: u32 : 2 // Double buffering
 
 Vertex :: struct {
-	position:  [2]f32,
-	tex_coord: [2]f32,
-	color:     [4]f32,
+	position  : [2]f32,
+	tex_coord : [2]f32,
+	color     : [4]f32,
 }
 
 Renderer :: struct {
-	device:                  wgpu.Device,
-	queue:                   wgpu.Queue,
-	atlas_texture:           wgpu.Texture,
-	atlas_view:              wgpu.Texture_View,
-	atlas_sampler:           wgpu.Sampler,
-	bind_group:              wgpu.Bind_Group,
-	render_pipeline:         wgpu.Render_Pipeline,
-	vertex_buffer:           wgpu.Buffer,
-	index_buffer:            wgpu.Buffer,
-	vertices:                [dynamic]Vertex,
-	indices:                 [dynamic]u32,
-	use_command_encoder:     bool,
-	current_pass:            wgpu.Render_Pass,
-	viewport_rect:           mu.Rect,
-	current_clip_rect:       mu.Rect,
-	quad_count:              u32,
-	viewport_width_inverse:  f32,
-	viewport_height_inverse: f32,
-	vertex_buffer_offset:    u64,
-	index_buffer_offset:     u64,
-	frame_index:             u32,
+	device                  : wgpu.Device,
+	queue                   : wgpu.Queue,
+	atlas_texture           : wgpu.Texture,
+	atlas_view              : wgpu.Texture_View,
+	atlas_sampler           : wgpu.Sampler,
+	bind_group              : wgpu.Bind_Group,
+	render_pipeline         : wgpu.Render_Pipeline,
+	vertex_buffer           : wgpu.Buffer,
+	index_buffer            : wgpu.Buffer,
+	vertices                : [dynamic]Vertex,
+	indices                 : [dynamic]u32,
+	use_command_encoder     : bool,
+	current_pass            : wgpu.Render_Pass,
+	viewport_rect           : mu.Rect,
+	current_clip_rect       : mu.Rect,
+	quad_count              : u32,
+	viewport_width_inverse  : f32,
+	viewport_height_inverse : f32,
+	vertex_buffer_offset    : u64,
+	index_buffer_offset     : u64,
+	frame_index             : u32,
 }
 
 // Global renderer instance
@@ -58,9 +55,10 @@ init :: proc(
 	queue: wgpu.Queue,
 	surface_config: wgpu.Surface_Configuration,
 	allocator := context.allocator,
+	loc := #caller_location,
 ) -> (
 	mu_ctx: ^mu.Context,
-	err: wgpu.Error,
+	ok: bool,
 ) {
 	r.device = device
 	wgpu.device_reference(device)
@@ -80,7 +78,7 @@ init :: proc(
 			sample_count = 1,
 		},
 	) or_return
-	defer if err != .No_Error do wgpu.texture_release(r.atlas_texture)
+	defer if !ok do wgpu.texture_release(r.atlas_texture)
 
 	// The mu.default_atlas_alpha contains only alpha channel data for the Atlas image
 	// We need to convert this single-channel (alpha) data to full RGBA format.
@@ -103,10 +101,10 @@ init :: proc(
 		{bytes_per_row = bytes_per_row, rows_per_image = mu.DEFAULT_ATLAS_HEIGHT},
 		{mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT, 1},
 	) or_return
-	defer if err != .No_Error do wgpu.texture_destroy(r.atlas_texture)
+	defer if !ok do wgpu.texture_destroy(r.atlas_texture)
 
 	r.atlas_view = wgpu.texture_create_view(r.atlas_texture) or_return
-	defer if err != .No_Error do wgpu.texture_view_release(r.atlas_view)
+	defer if !ok do wgpu.texture_view_release(r.atlas_view)
 
 	sampler_descriptor := wgpu.DEFAULT_SAMPLER_DESCRIPTOR
 	// FIXME(Capati): Ideally, we would use LINEAR filtering for improved text rendering,
@@ -116,11 +114,11 @@ init :: proc(
 	sampler_descriptor.mag_filter = .Nearest
 
 	r.atlas_sampler = wgpu.device_create_sampler(device, sampler_descriptor) or_return
-	defer if err != .No_Error do wgpu.sampler_release(r.atlas_sampler)
+	defer if !ok do wgpu.sampler_release(r.atlas_sampler)
 
 	bind_group_layout := wgpu.device_create_bind_group_layout(
 		device,
-		{
+		wgpu.Bind_Group_Layout_Descriptor{
 			label = "microui bind group layout",
 			entries = {
 				{
@@ -146,18 +144,18 @@ init :: proc(
 		device,
 		{
 			label = "microui bind group",
-			layout = bind_group_layout.ptr,
+			layout = bind_group_layout,
 			entries = {
-				{binding = 0, resource = r.atlas_view.ptr},
-				{binding = 1, resource = r.atlas_sampler.ptr},
+				{binding = 0, resource = r.atlas_view},
+				{binding = 1, resource = r.atlas_sampler},
 			},
 		},
 	) or_return
-	defer if err != .No_Error do wgpu.bind_group_release(r.bind_group)
+	defer if !ok do wgpu.bind_group_release(r.bind_group)
 
 	pipeline_layout := wgpu.device_create_pipeline_layout(
 		device,
-		{label = "microui pipeline layout", bind_group_layouts = {bind_group_layout.ptr}},
+		{label = "microui pipeline layout", bind_group_layouts = {bind_group_layout}},
 	) or_return
 	defer wgpu.pipeline_layout_release(pipeline_layout)
 
@@ -173,9 +171,9 @@ init :: proc(
 		device,
 		wgpu.Render_Pipeline_Descriptor {
 			label = "microui pipeline",
-			layout = pipeline_layout.ptr,
+			layout = pipeline_layout,
 			vertex = {
-				module = microui_shader_module.ptr,
+				module = microui_shader_module,
 				entry_point = "vs_main",
 				buffers = {
 					{
@@ -198,7 +196,7 @@ init :: proc(
 				},
 			},
 			fragment = &wgpu.Fragment_State {
-				module = microui_shader_module.ptr,
+				module = microui_shader_module,
 				entry_point = "fs_main",
 				targets = {
 					{
@@ -218,7 +216,7 @@ init :: proc(
 			multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 		},
 	) or_return
-	defer if err != .No_Error do wgpu.render_pipeline_release(r.render_pipeline)
+	defer if !ok do wgpu.render_pipeline_release(r.render_pipeline)
 
 	// set_viewport_rect({100, 100, 400, 400})
 	set_viewport_rect({0, 0, i32(surface_config.width), i32(surface_config.height)})
@@ -246,12 +244,13 @@ init :: proc(
 	// Each quad needs 6 indices
 	reserve(&r.indices, INITIAL_VERTEX_CAPACITY * 6)
 
-	mu_ctx = new(mu.Context, allocator) or_return
+	mu_ctx = new(mu.Context, allocator)
+	assert(mu_ctx != nil, "Failed to allocate microui context", loc)
 	mu.init(mu_ctx)
 	mu_ctx.text_width = mu.default_atlas_text_width
 	mu_ctx.text_height = mu.default_atlas_text_height
 
-	return
+	return mu_ctx, true
 }
 
 /*
@@ -260,9 +259,9 @@ Renders the MicroUI context using a command encoder.
 render_with_command_encoder :: proc(
 	ctx: ^mu.Context,
 	encoder: wgpu.Command_Encoder,
-	color_view: ^wgpu.Texture_View,
+	color_view: wgpu.Texture_View,
 ) -> (
-	err: wgpu.Error,
+	ok: bool,
 ) {
 	pass := wgpu.command_encoder_begin_render_pass(
 	encoder,
@@ -270,7 +269,7 @@ render_with_command_encoder :: proc(
 		label             = "MicroUI Render Pass",
 		color_attachments = []wgpu.Render_Pass_Color_Attachment {
 			{
-				view     = color_view.ptr,
+				view     = color_view,
 				load_op  = .Load, // Load existing content
 				store_op = .Store,
 			},
@@ -286,7 +285,7 @@ render_with_command_encoder :: proc(
 /*
 Renders the MicroUI context using a render pass encoder.
 */
-render_with_render_pass :: proc(ctx: ^mu.Context, pass: wgpu.Render_Pass) -> (err: wgpu.Error) {
+render_with_render_pass :: proc(ctx: ^mu.Context, pass: wgpu.Render_Pass) -> bool {
 	return begin_rendering(ctx, pass)
 }
 
@@ -297,15 +296,17 @@ render :: proc {
 
 reset_state :: proc "contextless" () {
 	r.frame_index = (r.frame_index + 1) % NUM_BUFFERS
-	r.vertex_buffer_offset = r.vertex_buffer.size / u64(NUM_BUFFERS) * u64(r.frame_index)
-	r.index_buffer_offset = r.index_buffer.size / u64(NUM_BUFFERS) * u64(r.frame_index)
+	r.vertex_buffer_offset =
+		wgpu.buffer_get_size(r.vertex_buffer) / u64(NUM_BUFFERS) * u64(r.frame_index)
+	r.index_buffer_offset =
+		wgpu.buffer_get_size(r.index_buffer) / u64(NUM_BUFFERS) * u64(r.frame_index)
 	r.quad_count = 0
 	r.current_clip_rect = r.viewport_rect
 	clear(&r.vertices)
 	clear(&r.indices)
 }
 
-begin_rendering :: proc(ctx: ^mu.Context, pass: wgpu.Render_Pass) -> wgpu.Error {
+begin_rendering :: proc(ctx: ^mu.Context, pass: wgpu.Render_Pass) -> bool {
 	reset_state()
 	r.current_pass = pass
 	setup_render_pass(pass)
@@ -340,28 +341,28 @@ setup_render_pass :: proc "contextless" (pass: wgpu.Render_Pass) {
 		u32(r.viewport_rect.h),
 	)
 
-	wgpu.render_pass_set_pipeline(pass, r.render_pipeline.ptr)
-	wgpu.render_pass_set_bind_group(pass, 0, r.bind_group.ptr)
-	wgpu.render_pass_set_vertex_buffer(pass, 0, r.vertex_buffer.ptr)
-	wgpu.render_pass_set_index_buffer(pass, r.index_buffer.ptr, .Uint32)
+	wgpu.render_pass_set_pipeline(pass, r.render_pipeline)
+	wgpu.render_pass_set_bind_group(pass, 0, r.bind_group)
+	wgpu.render_pass_set_vertex_buffer(pass, 0, r.vertex_buffer)
+	wgpu.render_pass_set_index_buffer(pass, r.index_buffer, .Uint32)
 }
 
 /*
 Writes the accumulated vertex and index data to the GPU and issues the draw call.
 */
-prepare_and_draw :: proc "contextless" (pass: wgpu.Render_Pass) -> (err: wgpu.Error) {
+prepare_and_draw :: proc "contextless" (pass: wgpu.Render_Pass) -> (ok: bool) {
 	if r.quad_count == 0 do return
 
 	wgpu.queue_write_buffer(
 		r.queue,
-		r.vertex_buffer.ptr,
+		r.vertex_buffer,
 		r.vertex_buffer_offset,
 		wgpu.slice_to_bytes_contextless(r.vertices[:]),
 	) or_return
 
 	wgpu.queue_write_buffer(
 		r.queue,
-		r.index_buffer.ptr,
+		r.index_buffer,
 		r.index_buffer_offset,
 		wgpu.slice_to_bytes_contextless(r.indices[:]),
 	) or_return
@@ -369,12 +370,12 @@ prepare_and_draw :: proc "contextless" (pass: wgpu.Render_Pass) -> (err: wgpu.Er
 	wgpu.render_pass_set_vertex_buffer(
 		pass,
 		0,
-		r.vertex_buffer.ptr,
+		r.vertex_buffer,
 		{offset = r.vertex_buffer_offset},
 	)
 	wgpu.render_pass_set_index_buffer(
 		pass,
-		r.index_buffer.ptr,
+		r.index_buffer,
 		.Uint32,
 		{offset = r.index_buffer_offset},
 	)
@@ -385,7 +386,7 @@ prepare_and_draw :: proc "contextless" (pass: wgpu.Render_Pass) -> (err: wgpu.Er
 		wgpu.render_pass_end(pass) or_return
 	}
 
-	return
+	return true
 }
 
 /*
@@ -441,14 +442,14 @@ calculate_clipped_rects :: proc(
 	return dst, src, true
 }
 
-push_quad :: proc(dst, src: mu.Rect, color: mu.Color) -> wgpu.Error #no_bounds_check {
+push_quad :: proc(dst, src: mu.Rect, color: mu.Color) -> bool #no_bounds_check {
 	clipped_dst, clipped_src, should_render := calculate_clipped_rects(
 		dst,
 		src,
 		r.current_clip_rect,
 	)
 
-	if !should_render do return nil
+	if !should_render do return true
 
 	// Check if we need to flush
 	if r.quad_count == MAX_QUADS_PER_BATCH / NUM_BUFFERS {
@@ -502,7 +503,7 @@ push_quad :: proc(dst, src: mu.Rect, color: mu.Color) -> wgpu.Error #no_bounds_c
 
 	r.quad_count += 1
 
-	return nil
+	return true
 }
 
 draw_text :: proc(text: string, pos: mu.Vec2, color: mu.Color) {

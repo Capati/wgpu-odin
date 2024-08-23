@@ -1,19 +1,15 @@
 package application
 
-// STD Library
-import "base:runtime"
-
 Key_Action :: enum u8 {
 	Pressed,
 	Released,
 }
 
 Keyboard_State :: struct {
-	allocator:      runtime.Allocator,
-	current_state:  []u8,
-	previous_state: []u8,
-	num_keys:       int,
-	key_repeat:     bool,
+	current_state  : []u8,
+	previous_state : []u8,
+	num_keys       : int,
+	key_repeat     : bool,
 }
 
 // Gets the key corresponding to the given hardware scancode.

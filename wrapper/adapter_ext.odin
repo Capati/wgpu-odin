@@ -5,17 +5,27 @@ import "base:runtime"
 import "core:fmt"
 import "core:strings"
 
-// Local Packages
+// The raw bindings
 import wgpu "../bindings"
 
-// Get adapter information string (name, driver, type and backend).
-adapter_info_string :: proc(using self: Adapter, allocator := context.allocator) -> string {
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
+/* Create a string with adapter information (name, driver, type and backend). */
+adapter_info_string :: proc(
+	self: Adapter,
+	allocator := context.allocator,
+) -> (
+	str: string,
+	ok: bool,
+) #optional_ok {
+	sb: strings.Builder
+	err: runtime.Allocator_Error
 
-	sb := strings.builder_make(context.temp_allocator)
+	ta := context.temp_allocator
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == ta)
+	if sb, err = strings.builder_make(ta); err != nil do return
 	defer strings.builder_destroy(&sb)
 
-	strings.write_string(&sb, "  ")
+	info := adapter_get_info(self) or_return
+
 	strings.write_string(&sb, string(info.name))
 	strings.write_byte(&sb, '\n')
 
@@ -23,7 +33,7 @@ adapter_info_string :: proc(using self: Adapter, allocator := context.allocator)
 	if driver_description == nil || driver_description == "" {
 		driver_description = "Unknown"
 	}
-	strings.write_string(&sb, "    - Driver: ")
+	strings.write_string(&sb, "  - Driver: ")
 	strings.write_string(&sb, string(driver_description))
 	strings.write_byte(&sb, '\n')
 
@@ -38,7 +48,7 @@ adapter_info_string :: proc(using self: Adapter, allocator := context.allocator)
 	case wgpu.Adapter_Type.Unknown:
 		adapter_type = "Unknown"
 	}
-	strings.write_string(&sb, "    - Type: ")
+	strings.write_string(&sb, "  - Type: ")
 	strings.write_string(&sb, adapter_type)
 	strings.write_byte(&sb, '\n')
 
@@ -61,14 +71,16 @@ adapter_info_string :: proc(using self: Adapter, allocator := context.allocator)
 	case wgpu.Backend_Type.OpenGLES:
 		backend_type = "OpenGLES"
 	}
-	strings.write_string(&sb, "    - Backend: ")
+	strings.write_string(&sb, "  - Backend: ")
 	strings.write_string(&sb, backend_type)
 
-	return strings.clone(strings.to_string(sb), allocator)
+	if str, err =  strings.clone(strings.to_string(sb), allocator); err != nil do return
+
+	return str, true
 }
 
-// Print adapter information (name, driver, type and backend).
-adapter_print_info :: proc(using self: Adapter) {
+/* Print adapter information (name, driver, type and backend. */
+adapter_print_info :: proc(self: Adapter) {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 	fmt.printfln("%s", adapter_info_string(self, context.temp_allocator))
 }

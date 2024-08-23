@@ -28,7 +28,3 @@ when _PLATFORM_TYPE == STR_UNDEFINED_CONFIG {
 		#panic("PLATFORM_TYPE not available.")
 	}
 }
-
-// Platform_Interface :: struct {
-// 	init: proc(props: Platform_Properties) -> (err: Error),
-// }

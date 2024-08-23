@@ -1,13 +1,13 @@
 package application
 
-EVENT_PACKAGE :: #config(RL_EVENT_PACKAGE, true)
+EVENT_PACKAGE    :: #config(RL_EVENT_PACKAGE, true)
 GRAPHICS_PACKAGE :: #config(RL_GRAPHICS_PACKAGE, true)
 JOYSTICK_PACKAGE :: #config(RL_JOYSTICK_PACKAGE, true)
 KEYBOARD_PACKAGE :: #config(RL_KEYBOARD_PACKAGE, true)
-MOUSE_PACKAGE :: #config(RL_MOUSE_PACKAGE, true)
-SYSTEM_PACKAGE :: #config(RL_SYSTEM_PACKAGE, true)
-TIMER_PACKAGE :: #config(RL_TIMER_PACKAGE, true)
-WINDOW_PACKAGE :: #config(RL_WINDOW_PACKAGE, true)
+MOUSE_PACKAGE    :: #config(RL_MOUSE_PACKAGE, true)
+SYSTEM_PACKAGE   :: #config(RL_SYSTEM_PACKAGE, true)
+TIMER_PACKAGE    :: #config(RL_TIMER_PACKAGE, true)
+WINDOW_PACKAGE   :: #config(RL_WINDOW_PACKAGE, true)
 
 Packages :: enum u8 {
 	Audio,

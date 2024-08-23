@@ -1,24 +1,23 @@
 package tutorial2_surface_challenge
 
-// Core
-import "core:log"
+// STD Library
+import "base:builtin"
+@(require) import "core:log"
 
-// Package
+// Local packages
 import rl "./../../../../utils/renderlink"
-
-_ :: log
 
 State :: struct {
 	clear_color: rl.Color,
 }
 
-App_Context :: rl.Context(State)
+State_Context :: rl.Context(State)
 
 EXAMPLE_TITLE :: "Tutorial 2 - Surface Challenge"
 
-init :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
+init :: proc(ctx: ^State_Context) -> (ok: bool) {
 	rl.graphics_clear(rl.Color_Royal_Blue)
-	return
+	return true
 }
 
 calculate_color_from_position :: proc(x, y: f32, w, h: u32) -> (color: rl.Color) {
@@ -29,25 +28,30 @@ calculate_color_from_position :: proc(x, y: f32, w, h: u32) -> (color: rl.Color)
 	return
 }
 
-mouse_moved :: proc(event: rl.Mouse_Moved_Event, using ctx: ^App_Context) {
-	state.clear_color = calculate_color_from_position(
+mouse_moved :: proc(event: rl.Mouse_Moved_Event, ctx: ^State_Context) {
+	ctx.clear_color = calculate_color_from_position(
 		event.x,
 		event.y,
-		gpu.config.width,
-		gpu.config.height,
+		ctx.gpu.config.width,
+		ctx.gpu.config.height,
 	)
 
-	rl.graphics_clear(state.clear_color)
+	rl.graphics_clear(ctx.clear_color)
 }
 
-draw :: proc(using ctx: ^App_Context) -> (err: rl.Error) {
-	return
+draw :: proc(ctx: ^State_Context) -> bool {
+	return true
 }
 
 main :: proc() {
-	state, state_err := new(App_Context)
-	if state_err != nil do return
-	defer free(state)
+	when ODIN_DEBUG {
+		context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
+		defer log.destroy_console_logger(context.logger)
+	}
+
+	state := builtin.new(State_Context)
+	assert(state != nil, "Failed to allocate application state")
+	defer builtin.free(state)
 
 	state.callbacks = {
 		init        = init,
@@ -58,7 +62,7 @@ main :: proc() {
 	settings := rl.DEFAULT_SETTINGS
 	settings.window.title = EXAMPLE_TITLE
 
-	if err := rl.init(state, settings); err != nil do return
+	if ok := rl.init(state, settings); !ok do return
 
 	rl.begin_run(state) // Start the main loop
 }
