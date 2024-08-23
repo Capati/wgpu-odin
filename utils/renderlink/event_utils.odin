@@ -1,4 +1,4 @@
-package application
+package renderlink
 
 // Vendor
 import mu "vendor:microui"

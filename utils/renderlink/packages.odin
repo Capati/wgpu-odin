@@ -1,4 +1,4 @@
-package application
+package renderlink
 
 EVENT_PACKAGE    :: #config(RL_EVENT_PACKAGE, true)
 GRAPHICS_PACKAGE :: #config(RL_GRAPHICS_PACKAGE, true)

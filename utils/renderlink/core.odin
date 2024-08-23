@@ -1,4 +1,4 @@
-package application
+package renderlink
 
 STR_UNDEFINED_CONFIG :: "Undefined"
 STR_WASM_PLATFORM :: "Wasm"

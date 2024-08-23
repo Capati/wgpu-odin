@@ -1,5 +1,5 @@
 //+build darwin, linux
-package application
+package renderlink
 
 // STD Library
 import "base:runtime"

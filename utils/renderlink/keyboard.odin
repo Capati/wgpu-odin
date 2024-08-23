@@ -1,4 +1,4 @@
-package application
+package renderlink
 
 Key_Action :: enum u8 {
 	Pressed,

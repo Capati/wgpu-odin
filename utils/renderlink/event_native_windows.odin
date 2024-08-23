@@ -1,6 +1,6 @@
 //+private
 //+build windows
-package application
+package renderlink
 
 // STD Library
 import win "core:sys/windows"

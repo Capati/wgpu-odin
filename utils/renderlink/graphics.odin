@@ -1,4 +1,4 @@
-package application
+package renderlink
 
 // Local packages
 import wgpu "./../../wrapper"

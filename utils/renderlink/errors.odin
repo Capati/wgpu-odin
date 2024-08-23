@@ -1,4 +1,4 @@
-package application
+package renderlink
 
 // Core
 import "core:mem"

@@ -1,5 +1,5 @@
 //+build linux, darwin, windows
-package application
+package renderlink
 
 // Vendor
 import sdl "vendor:sdl2"
