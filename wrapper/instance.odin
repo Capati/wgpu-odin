@@ -256,20 +256,31 @@ request_adapter_callback :: proc "c" (
 instance_enumerate_adapters :: proc(
 	self: Instance,
 	backends: Instance_Backend_Flags,
+	allocator := context.allocator,
 	loc := #caller_location,
 ) -> (
 	adapters: []Adapter,
-) {
+	ok: bool,
+) #optional_ok {
 	options := Instance_Enumerate_Adapter_Options {
 		backends = backends,
 	}
 
 	count := wgpu.instance_enumerate_adapters(self, &options, nil)
-	if count == 0 do return
+	if count == 0 {
+		error_reset_and_update(.Unavailable, "No adapters found", loc)
+		return
+	}
+
+	alloc_err: runtime.Allocator_Error
+	if adapters, alloc_err = make([]Adapter, count, allocator); alloc_err != nil {
+		error_reset_and_update(alloc_err, "Failed to allocate adapters", loc)
+		return
+	}
 
 	wgpu.instance_enumerate_adapters(self, &options, raw_data(adapters))
 
-	return adapters
+	return adapters, true
 }
 
 /* Generates memory report. */
