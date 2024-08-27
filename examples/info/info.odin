@@ -17,12 +17,15 @@ run :: proc() -> (ok: bool) {
 		wgpu_version.build,
 	)
 
-	instance_descriptor := wgpu.Instance_Descriptor {
-		backends = wgpu.Instance_Backend_Primary,
-	}
-
-	instance := wgpu.create_instance(instance_descriptor) or_return
+	instance := wgpu.create_instance() or_return
 	defer wgpu.instance_release(instance)
+
+	adapters := wgpu.instance_enumerate_adapters(instance, wgpu.Instance_Backend_All)
+	defer delete(adapters)
+
+	for &a in adapters {
+		wgpu.adapter_print_info(a)
+	}
 
 	adapter := wgpu.instance_request_adapter(
 		instance,
@@ -30,7 +33,7 @@ run :: proc() -> (ok: bool) {
 	) or_return
 	defer wgpu.adapter_release(adapter)
 
-	fmt.print("Device information:\n\n")
+	fmt.println("\nSelected adapter:\n")
 	wgpu.adapter_print_info(adapter)
 
 	return true
