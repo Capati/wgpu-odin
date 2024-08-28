@@ -141,7 +141,7 @@ init :: proc(ctx: ^State_Context) -> (ok: bool) {
 	ctx.cube_texture = wgpu.queue_copy_image_to_texture(
 		ctx.gpu.device,
 		ctx.gpu.queue,
-		"./assets/rotating_cube_textured/odin_logo.png",
+		"./assets/rotating_cube_textured/Di-3d.png",
 	) or_return
 	defer if !ok do wgpu.texture_release(ctx.cube_texture)
 
