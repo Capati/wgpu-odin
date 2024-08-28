@@ -524,7 +524,7 @@ Texture_View_Dimension :: enum ENUM_SIZE {
 	Undefined,
 	D1,
 	D2,
-	_2DArray,
+	D2Array,
 	Cube,
 	CubeArray,
 	D3,
