@@ -16,7 +16,7 @@ You can use the bindings only where the procedures are called directly from the 
 
 ## Wrapper (🚧WIP)
 
-The wrapper version exposes an API similar to the [WebGPU spec](https://gpuweb.github.io/gpuweb/). Most of the inner procedures are boilerplate code that create an convenient way to work with idiomatic Odin and wgpu data.
+The wrapper version exposes an API similar to the [Rust API](https://docs.rs/wgpu/latest/wgpu/), this allows developers to easily translate Rust tutorials and examples into Odin code.
 
 ## Linking
 
