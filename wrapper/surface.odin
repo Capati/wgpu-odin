@@ -212,21 +212,6 @@ surface_get_current_texture :: proc "contextless" (
 	return surface_texture, true
 }
 
-/* Returns the best format for the provided surface and adapter. */
-surface_get_preferred_format :: proc "contextless" (
-	self: Surface,
-	adapter: Adapter,
-	loc := #caller_location,
-) -> (
-	format: Texture_Format,
-	ok: bool,
-) #optional_ok {
-	_error_reset_data(loc)
-	format = wgpu.surface_get_preferred_format(self, adapter)
-	if get_last_error() != nil do return
-	return format, true
-}
-
 /*
 Schedule this texture to be presented on the owning surface.
 

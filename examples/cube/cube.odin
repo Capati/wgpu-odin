@@ -89,7 +89,10 @@ init :: proc(ctx: ^State_Context) -> (ok: bool) {
 		multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 	}
 
-	ctx.render_pipeline = wgpu.device_create_render_pipeline(ctx.gpu.device, pipeline_descriptor) or_return
+	ctx.render_pipeline = wgpu.device_create_render_pipeline(
+		ctx.gpu.device,
+		pipeline_descriptor,
+	) or_return
 	defer if !ok do wgpu.render_pipeline_release(ctx.render_pipeline)
 
 	aspect := f32(ctx.gpu.config.width) / f32(ctx.gpu.config.height)

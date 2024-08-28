@@ -14,7 +14,7 @@ _log_callback :: proc "c" (level: wgpu.Log_Level, message: cstring, user_data: r
 
 run :: proc() -> (ok: bool) {
 	wgpu.set_log_callback(_log_callback, nil)
-	wgpu.set_log_level(.Warn)
+	wgpu.set_log_level(.Error)
 
 	numbers: []u32 = {1, 2, 3, 4}
 	numbers_size: u32 = size_of(numbers)
@@ -34,12 +34,13 @@ run :: proc() -> (ok: bool) {
 	defer wgpu.adapter_release(adapter)
 
 	adapter_info := wgpu.adapter_get_info(adapter) or_return
+	defer wgpu.adapter_info_free_members(adapter_info)
 
 	// Instantiates the feature specific connection to the GPU, defining some parameters,
 	// `features` being the available features.
 	device := wgpu.adapter_request_device(
 		adapter,
-		wgpu.Device_Descriptor{label = adapter_info.name},
+		wgpu.Device_Descriptor{label = adapter_info.description},
 	) or_return
 	defer wgpu.device_release(device)
 
@@ -70,11 +71,11 @@ run :: proc() -> (ok: bool) {
 	// shader).
 	//   The destination of a copy.
 	//   The source of a copy.
-	storage_buffer := wgpu.device_create_buffer(
+	storage_buffer := wgpu.device_create_buffer_with_data(
 		device,
 		{
 			label = "storage_buffer",
-			size  = cast(u64)numbers_size,
+			contents  = wgpu.to_bytes(numbers),
 			usage = {.Storage, .Copy_Src, .Copy_Dst},
 		},
 	) or_return
@@ -111,11 +112,7 @@ run :: proc() -> (ok: bool) {
 			entries = {
 				{
 					binding = 0,
-					resource = wgpu.Buffer_Binding {
-						buffer = storage_buffer,
-						offset = 0,
-						size = wgpu.buffer_get_size(storage_buffer),
-					},
+					resource = wgpu.buffer_as_entire_binding(storage_buffer),
 				},
 			},
 			label = "bind_group_layout",
@@ -135,12 +132,15 @@ run :: proc() -> (ok: bool) {
 		encoder,
 		wgpu.Compute_Pass_Descriptor{label = "compute_pass"},
 	) or_return
-	defer wgpu.compute_pass_release(compute_pass)
 
 	wgpu.compute_pass_set_pipeline(compute_pass, compute_pipeline)
 	wgpu.compute_pass_set_bind_group(compute_pass, 0, bind_group)
 	wgpu.compute_pass_dispatch_workgroups(compute_pass, numbers_length)
 	wgpu.compute_pass_end(compute_pass)
+
+	// Release the compute_pass before we submit or we get the error:
+	// CommandBuffer cannot be destroyed because is still in use
+	wgpu.compute_pass_release(compute_pass)
 
 	// Sets adds copy operation to command encoder.
 	// Will copy data from storage buffer on GPU to staging buffer on CPU.
@@ -150,14 +150,13 @@ run :: proc() -> (ok: bool) {
 		0,
 		staging_buffer,
 		0,
-		wgpu.buffer_get_size(staging_buffer),
+		u64(numbers_size),
 	) or_return
 
 	// Submits command encoder for processing
 	command_buffer := wgpu.command_encoder_finish(encoder) or_return
 	defer wgpu.command_buffer_release(command_buffer)
 
-	wgpu.queue_write_buffer(queue, storage_buffer, 0, wgpu.to_bytes(numbers))
 	wgpu.queue_submit(queue, command_buffer)
 
 	result: wgpu.Buffer_Map_Async_Status

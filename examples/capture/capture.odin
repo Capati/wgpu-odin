@@ -56,9 +56,10 @@ run :: proc() -> (ok: bool) {
 	defer wgpu.adapter_release(adapter)
 
 	adapter_info := wgpu.adapter_get_info(adapter) or_return
+	defer wgpu.adapter_info_free_members(adapter_info)
 
 	device_descriptor := wgpu.Device_Descriptor {
-		label = adapter_info.name,
+		label = adapter_info.description,
 	}
 
 	device := wgpu.adapter_request_device(adapter, device_descriptor) or_return

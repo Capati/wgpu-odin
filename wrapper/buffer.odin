@@ -264,7 +264,7 @@ buffer_get_usage :: proc "contextless" (self: Buffer) -> Buffer_Usage_Flags {
 buffer_map_async :: proc "contextless" (
 	self: Buffer,
 	mode: Map_Mode_Flags,
-	callback: Buffer_Map_Callback,
+	callback: Buffer_Map_Async_Callback,
 	user_data: rawptr = nil,
 	range: Buffer_Range = {},
 	loc := #caller_location,

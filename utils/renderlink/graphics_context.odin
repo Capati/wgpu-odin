@@ -129,12 +129,14 @@ gpu_init :: proc(
 	}
 
 	adapter_info := wgpu.adapter_get_info(gpu.adapter) or_return
+	defer wgpu.adapter_info_free_members(adapter_info)
 
 	device_descriptor := wgpu.Device_Descriptor {
-		label             = adapter_info.name,
+		label             = adapter_info.description,
 		required_limits   = settings.required_limits,
 		required_features = settings.required_features,
 	}
+
 
 	gpu.device = wgpu.adapter_request_device(gpu.adapter, device_descriptor) or_return
 	defer if !ok do wgpu.device_release(gpu.device)

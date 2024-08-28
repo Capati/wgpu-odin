@@ -69,15 +69,14 @@ Returns the dimension of a [block](https://gpuweb.github.io/gpuweb/#texel-block)
 Uncompressed formats have a block dimension of `(1, 1)`.
 */
 texture_format_block_dimensions :: proc "contextless" (self: Texture_Format) -> (w, h: u32) {
-	// Commented formats are unimplemented in webgpu.h
 	#partial switch self {
-	case .R8_Unorm, .R8_Snorm, .R8_Uint, .R8_Sint, .R16_Uint, .R16_Sint, /*.R16_Unorm,*/
-	     /*.R16_Snorm,*/ .R16_Float, .Rg8_Unorm, .Rg8_Snorm, .Rg8_Uint, .Rg8_Sint, .R32_Uint,
-	     .R32_Sint, .R32_Float, .Rg16_Uint, .Rg16_Sint, /*.Rg16_Unorm,*/ /*.Rg16_Snorm,*/
+	case .R8_Unorm, .R8_Snorm, .R8_Uint, .R8_Sint, .R16_Uint, .R16_Sint, .R16_Unorm,
+	     .R16_Snorm, .R16_Float, .Rg8_Unorm, .Rg8_Snorm, .Rg8_Uint, .Rg8_Sint, .R32_Uint,
+	     .R32_Sint, .R32_Float, .Rg16_Uint, .Rg16_Sint, .Rg16_Unorm, .Rg16_Snorm,
 		 .Rg16_Float, .Rgba8_Unorm, .Rgba8_Unorm_Srgb, .Rgba8_Snorm, .Rgba8_Uint, .Rgba8_Sint,
 	     .Bgra8_Unorm, .Bgra8_Unorm_Srgb, .Rgb9_E5_Ufloat, .Rgb10_A2_Uint, .Rgb10_A2_Unorm,
 		 .Rg11_B10_Ufloat, .Rg32_Uint, .Rg32_Sint, .Rg32_Float, .Rgba16_Uint, .Rgba16_Sint,
-	     /*.Rgba16_Unorm,*/ /*.Rgba16_Snorm,*/ .Rgba16_Float, .Rgba32_Uint, .Rgba32_Sint,
+	     .Rgba16_Unorm, .Rgba16_Snorm, .Rgba16_Float, .Rgba32_Uint, .Rgba32_Sint,
 		 .Rgba32_Float, .Stencil8, .Depth16_Unorm, .Depth24_Plus, .Depth24_Plus_Stencil8,
 	     .Depth32_Float, .Depth32_Float_Stencil8:
 		return 1, 1
@@ -140,13 +139,13 @@ texture_format_required_features :: proc "contextless" (self: Texture_Format) ->
 		 .Eacrg11_Snorm:
 		return {.Texture_Compression_Etc2}
 
-	// case .R16_Unorm,
-	//      .R16_Snorm,
-	//      .Rg16_Unorm,
-	//      .Rg16_Snorm,
-	//      .Rgba16_Unorm,
-	//      .Rgba16_Snorm:
-	// 	return {}
+	case .R16_Unorm,
+	     .R16_Snorm,
+	     .Rg16_Unorm,
+	     .Rg16_Snorm,
+	     .Rgba16_Unorm,
+	     .Rgba16_Snorm:
+		return {.Texture_Format16bit_Norm}
 
 	case .Astc4x4_Unorm, .Astc4x4_Unorm_Srgb, .Astc5x4_Unorm, .Astc5x4_Unorm_Srgb, .Astc5x5_Unorm,
 		 .Astc5x5_Unorm_Srgb, .Astc6x5_Unorm, .Astc6x5_Unorm_Srgb, .Astc6x6_Unorm,
@@ -208,7 +207,7 @@ texture_format_sample_type :: proc "contextless" (
 	device_features: Device_Features = {},
 ) -> Texture_Sample_Type {
 	float_filterable := Texture_Sample_Type.Float
-	// unfilterable_float := Texture_Sample_Type.Unfilterable_Float
+	unfilterable_float := Texture_Sample_Type.Unfilterable_Float
 	float32_sample_type := Texture_Sample_Type.Unfilterable_Float
 	if .Float32_Filterable in device_features {
 		float32_sample_type = .Float
@@ -248,11 +247,11 @@ texture_format_sample_type :: proc "contextless" (
 		}
 		return .Undefined
 
-	// case .Nv12:
-	// 	return unfilterable_float
+	case .NV12:
+		return unfilterable_float
 
-	// case .R16_Unorm, .R16_Snorm, .Rg16_Unorm, .Rg16_Snorm, .Rgba16_Unorm, .Rgba16_Snorm:
-	// 	return float_filterable
+	case .R16_Unorm, .R16_Snorm, .Rg16_Unorm, .Rg16_Snorm, .Rgba16_Unorm, .Rgba16_Snorm:
+		return float_filterable
 
 	case .Rgb9_E5_Ufloat, .Bc1_Rgba_Unorm, .Bc1_Rgba_Unorm_Srgb, .Bc2_Rgba_Unorm,
 		 .Bc2_Rgba_Unorm_Srgb, .Bc3_Rgba_Unorm, .Bc3_Rgba_Unorm_Srgb, .Bc4_R_Unorm,
@@ -294,7 +293,7 @@ texture_format_guaranteed_format_features :: proc "contextless" (
 	basic: Texture_Usage_Flags = {.Copy_Src, .Copy_Dst, .Texture_Binding}
 	attachment: Texture_Usage_Flags = basic + {.Render_Attachment}
 	storage: Texture_Usage_Flags = basic + {.Storage_Binding}
-	// binding: Texture_Usage_Flags = {.Texture_Binding}
+	binding: Texture_Usage_Flags = {.Texture_Binding}
 	all_flags := Texture_Usage_Flags_All
 	rg11b10f := attachment if .Rg11_B10_Ufloat_Renderable in device_features else basic
 	bgra8unorm := attachment + storage if .Bgra8_Unorm_Storage in device_features else attachment
@@ -345,14 +344,13 @@ texture_format_guaranteed_format_features :: proc "contextless" (
 	case .Depth24_Plus_Stencil8: flags = msaa; allowed_usages = attachment
 	case .Depth32_Float: flags = msaa; allowed_usages = attachment
 	case .Depth32_Float_Stencil8: flags = msaa; allowed_usages = attachment
-	// case .Nv12: flags = noaa; allowed_usages = binding
-	// case .TextureFormat_NV12: flags = noaa; allowed_usages = binding
-	// case .R16_Unorm: flags = msaa; allowed_usages = storage
-	// case .R16_Snorm: flags = msaa; allowed_usages = storage
-	// case .Rg16_Unorm: flags = msaa; allowed_usages = storage
-	// case .Rg16_Snorm: flags = msaa; allowed_usages = storage
-	// case .Rgba16_Unorm: flags = msaa; allowed_usages = storage
-	// case .Rgba16_Snorm: flags = msaa; allowed_usages = storage
+	case .NV12: flags = noaa; allowed_usages = binding
+	case .R16_Unorm: flags = msaa; allowed_usages = storage
+	case .R16_Snorm: flags = msaa; allowed_usages = storage
+	case .Rg16_Unorm: flags = msaa; allowed_usages = storage
+	case .Rg16_Snorm: flags = msaa; allowed_usages = storage
+	case .Rgba16_Unorm: flags = msaa; allowed_usages = storage
+	case .Rgba16_Snorm: flags = msaa; allowed_usages = storage
 	case .Rgb9_E5_Ufloat: flags = noaa; allowed_usages = basic
 	case .Bc1_Rgba_Unorm: flags = noaa; allowed_usages = basic
 	case .Bc1_Rgba_Unorm_Srgb: flags = noaa; allowed_usages = basic
@@ -583,16 +581,16 @@ texture_format_components_with_aspect :: proc "contextless" (
 	aspect: Texture_Aspect,
 ) -> u8 {
 	#partial switch self {
-	case .R8_Unorm, .R8_Snorm, .R8_Uint, .R8_Sint, /*.R16_Unorm,*/ /*.R16_Snorm,*/
+	case .R8_Unorm, .R8_Snorm, .R8_Uint, .R8_Sint, .R16_Unorm, .R16_Snorm,
 	     .R16_Uint, .R16_Sint, .R16_Float, .R32_Uint, .R32_Sint, .R32_Float:
 		return 1
 
-	case .Rg8_Unorm, .Rg8_Snorm, .Rg8_Uint, .Rg8_Sint, /*.Rg16_Unorm,*/ /*.Rg16_Snorm,*/
+	case .Rg8_Unorm, .Rg8_Snorm, .Rg8_Uint, .Rg8_Sint, .Rg16_Unorm, .Rg16_Snorm,
 	     .Rg16_Uint, .Rg16_Sint, .Rg16_Float, .Rg32_Uint, .Rg32_Sint, .Rg32_Float:
 		return 2
 
 	case .Rgba8_Unorm, .Rgba8_Unorm_Srgb, .Rgba8_Snorm, .Rgba8_Uint, .Rgba8_Sint, .Bgra8_Unorm,
-		 .Bgra8_Unorm_Srgb, /*.Rgba16_Unorm,*/ /*.Rgba16_Snorm,*/ .Rgba16_Uint, .Rgba16_Sint,
+		 .Bgra8_Unorm_Srgb, .Rgba16_Unorm, .Rgba16_Snorm, .Rgba16_Uint, .Rgba16_Sint,
 	     .Rgba16_Float, .Rgba32_Uint, .Rgba32_Sint, .Rgba32_Float, .Rgb10_A2_Uint, .Rgb10_A2_Unorm:
 		return 4
 
