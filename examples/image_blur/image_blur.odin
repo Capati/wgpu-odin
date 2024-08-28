@@ -347,7 +347,7 @@ update :: proc(dt: f64, ctx: ^State_Context) -> bool {
 	return true
 }
 
-draw :: proc(ctx: ^State_Context) -> bool {
+compute :: proc(ctx: ^State_Context) -> bool {
 	compute_pass := wgpu.command_encoder_begin_compute_pass(ctx.gpu.encoder) or_return
 
 	wgpu.compute_pass_set_pipeline(compute_pass, ctx.blur_pipeline)
@@ -386,7 +386,12 @@ draw :: proc(ctx: ^State_Context) -> bool {
 	}
 
 	wgpu.compute_pass_end(compute_pass) or_return
+	wgpu.compute_pass_release(compute_pass)
 
+	return true
+}
+
+draw :: proc(ctx: ^State_Context) -> bool {
 	wgpu.render_pass_set_pipeline(ctx.gpu.render_pass, ctx.fullscreen_quad_pipeline)
 	wgpu.render_pass_set_bind_group(ctx.gpu.render_pass, 0, ctx.show_result_bind_group)
 	wgpu.render_pass_draw(ctx.gpu.render_pass, {0, 6})
@@ -412,6 +417,7 @@ main :: proc() {
 		quit          = quit,
 		handle_events = handle_events,
 		update        = update,
+		compute       = compute,
 		draw          = draw,
 	}
 

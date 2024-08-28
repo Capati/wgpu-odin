@@ -58,6 +58,8 @@ Callback_List :: struct($T: typeid) where intr.type_is_struct(T) {
 	quit:                    proc(ctx: ^Context(T)),
 	// Callback procedure used to update the state of the game every frame.
 	update:                  proc(dt: f64, ctx: ^Context(T)) -> bool,
+	// Callback procedure used for compute operations every frame.
+	compute:                    proc(ctx: ^Context(T)) -> bool,
 	// Callback procedure used to draw on the screen every frame.
 	draw:                    proc(ctx: ^Context(T)) -> bool,
 
