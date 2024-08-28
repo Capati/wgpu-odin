@@ -12,7 +12,7 @@ See [examples here](./examples).
 
 ## Bindings only
 
-You can use the bindings only where the procedures are called directly from the `foreign` block.
+You can use the bindings only where the procedures are called directly from the `foreign` block. There is also the official bindings in case you want a "raw" version with some helper procedures.
 
 ## Wrapper (🚧WIP)
 
