@@ -80,3 +80,29 @@ vertex_attr_array :: proc(
 
 	return
 }
+
+/* Release a resource. */
+release :: proc {
+	adapter_release,
+	bind_group_release,
+	bind_group_layout_release,
+	buffer_release,
+	command_buffer_release,
+	command_encoder_release,
+	compute_pass_release,
+	compute_pipeline_release,
+	device_release,
+	instance_release,
+	pipeline_layout_release,
+	query_set_release,
+	queue_release,
+	render_bundle_release,
+	render_bundle_encoder_release,
+	render_pass_release,
+	render_pipeline_release,
+	sampler_release,
+	shader_module_release,
+	surface_release,
+	texture_release,
+	texture_view_release,
+}
