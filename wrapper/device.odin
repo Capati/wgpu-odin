@@ -1027,7 +1027,11 @@ List all features that may be used with this device.
 
 Functions may panic if you use unsupported features.
 */
-device_get_features :: proc "contextless" (self: Device) -> (features: Device_Features) {
+device_get_features :: proc "contextless" (
+	self: Device,
+) -> (
+	features: Device_Features,
+) #no_bounds_check {
 	count := wgpu.device_enumerate_features(self, nil)
 	if count == 0 do return
 
@@ -1035,8 +1039,7 @@ device_get_features :: proc "contextless" (self: Device) -> (features: Device_Fe
 
 	wgpu.device_enumerate_features(self, raw_data(raw_features[:count]))
 
-	features_slice := transmute([]Raw_Feature_Name)(raw_features[:count])
-	features = cast(Device_Features)features_slice_to_flags(features_slice)
+	features = cast(Device_Features)features_slice_to_flags(raw_features[:count])
 
 	return
 }
@@ -1104,18 +1107,6 @@ device_has_feature_name :: proc "contextless" (self: Device, feature: Feature_Na
 device_pop_error_scope :: wgpu.device_pop_error_scope
 
 device_push_error_scope :: wgpu.device_push_error_scope
-
-device_set_uncaptured_error_callback :: proc "contextless" (
-	self: Device,
-	callback: Error_Callback,
-	user_data: rawptr,
-) {
-	when ENABLE_ERROR_HANDLING {
-		set_uncaptured_error_callback(callback, user_data)
-	} else {
-		wgpu.device_set_uncaptured_error_callback(self, callback, user_data)
-	}
-}
 
 /* Set debug label. */
 device_set_label :: proc "contextless" (self: Device, label: cstring) {

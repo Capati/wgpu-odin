@@ -96,7 +96,7 @@ Instance_Backend_Flags :: wgpu.Instance_Backend_Flags
 Instance_Flags :: wgpu.Instance_Flags
 Instance_Backend_Primary :: wgpu.Instance_Backend_Primary
 Instance_Backend_Secondary :: wgpu.Instance_Backend_Secondary
-// Instance_Backend_None :: wgpu.Instance_Backend_None
+Instance_Backend_All :: wgpu.Instance_Backend_All
 Dx12_Compiler :: wgpu.Dx12_Compiler
 Gles3_Minor_Version :: wgpu.Gles3_Minor_Version
 // Pipeline_Statistic_Name :: wgpu.Pipeline_Statistic_Name
@@ -136,7 +136,6 @@ Create_Pipeline_Async_Status :: wgpu.Create_Pipeline_Async_Status
 Device_Lost_Reason :: wgpu.Device_Lost_Reason
 Error_Filter :: wgpu.Error_Filter
 Error_Type :: wgpu.Error_Type
-// Feature_Name :: wgpu.Feature_Name
 Filter_Mode :: wgpu.Filter_Mode
 
 /*
@@ -185,20 +184,20 @@ Texture_Usage_Flags :: wgpu.Texture_Usage_Flags
 Texture_Usage_Flags_None :: wgpu.Texture_Usage_Flags_None
 Texture_Usage_Flags_All :: wgpu.Texture_Usage_Flags_All
 
-Buffer_Map_Callback :: wgpu.Buffer_Map_Callback
-Compilation_Info_Callback :: wgpu.Compilation_Info_Callback
-Create_Compute_Pipeline_Async_Callback :: wgpu.Create_Compute_Pipeline_Async_Callback
-Create_Render_Pipeline_Async_Callback :: wgpu.Create_Render_Pipeline_Async_Callback
+Buffer_Map_Async_Callback :: wgpu.Buffer_Map_Async_Callback
+Shader_Module_Get_Compilation_Info_Callback :: wgpu.Shader_Module_Get_Compilation_Info_Callback
+Device_Create_Compute_Pipeline_Async_Callback :: wgpu.Device_Create_Compute_Pipeline_Async_Callback
+Device_Create_Render_Pipeline_Async_Callback :: wgpu.Device_Create_Render_Pipeline_Async_Callback
 Device_Lost_Callback :: wgpu.Device_Lost_Callback
 Error_Callback :: wgpu.Error_Callback
 Proc :: wgpu.Proc
-Queue_Work_Done_Callback :: wgpu.Queue_Work_Done_Callback
-Request_Adapter_Callback :: wgpu.Request_Adapter_Callback
-Request_Device_Callback :: wgpu.Request_Device_Callback
+Queue_On_Submitted_Work_Done_Callback :: wgpu.Queue_On_Submitted_Work_Done_Callback
+Instance_Request_Adapter_Callback :: wgpu.Instance_Request_Adapter_Callback
+Adapter_Request_Device_Callback :: wgpu.Adapter_Request_Device_Callback
 
 Chained_Struct :: wgpu.Chained_Struct
 Chained_Struct_Out :: wgpu.Chained_Struct_Out
-Adapter_Info :: wgpu.Adapter_Properties
+Adapter_Info :: wgpu.Adapter_Info
 // Bind_Group_Entry :: wgpu.Bind_Group_Entry
 Blend_Component :: wgpu.Blend_Component
 Buffer_Binding_Layout :: wgpu.Buffer_Binding_Layout

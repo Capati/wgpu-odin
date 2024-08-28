@@ -25,16 +25,9 @@ adapter_info_string :: proc(
 	defer strings.builder_destroy(&sb)
 
 	info := adapter_get_info(self) or_return
+	defer wgpu.adapter_info_free_members(info)
 
-	strings.write_string(&sb, string(info.name))
-	strings.write_byte(&sb, '\n')
-
-	driver_description: cstring = info.driver_description
-	if driver_description == nil || driver_description == "" {
-		driver_description = "Unknown"
-	}
-	strings.write_string(&sb, "  - Driver: ")
-	strings.write_string(&sb, string(driver_description))
+	strings.write_string(&sb, string(info.description))
 	strings.write_byte(&sb, '\n')
 
 	adapter_type: string
@@ -48,7 +41,7 @@ adapter_info_string :: proc(
 	case wgpu.Adapter_Type.Unknown:
 		adapter_type = "Unknown"
 	}
-	strings.write_string(&sb, "  - Type: ")
+	strings.write_string(&sb, " - Type: ")
 	strings.write_string(&sb, adapter_type)
 	strings.write_byte(&sb, '\n')
 
@@ -71,7 +64,7 @@ adapter_info_string :: proc(
 	case wgpu.Backend_Type.OpenGLES:
 		backend_type = "OpenGLES"
 	}
-	strings.write_string(&sb, "  - Backend: ")
+	strings.write_string(&sb, " - Backend: ")
 	strings.write_string(&sb, backend_type)
 
 	if str, err =  strings.clone(strings.to_string(sb), allocator); err != nil do return

@@ -24,6 +24,19 @@ Native_Feature :: enum ENUM_SIZE {
 	Pipeline_Statistics_Query                                     = 0x00030008,
 	Storage_Resource_Binding_Array                                = 0x00030009,
 	Partially_Bound_Binding_Array                                 = 0x0003000A,
+	Texture_Format16bit_Norm                                      = 0x0003000B,
+	Texture_Compression_Astc_Hdr                                  = 0x0003000C,
+	Mappable_Primary_Buffers                                      = 0x0003000E,
+	Buffer_Binding_Array                                          = 0x0003000F,
+	Uniform_Buffer_And_Storage_Texture_Array_Non_Uniform_Indexing = 0x00030010,
+	Vertex_Attribute64bit                                         = 0x00030019,
+	Texture_Format_NV12                                           = 0x0003001A,
+	Ray_Tracing_Acceleration_Structure                            = 0x0003001B,
+	Ray_Query                                                     = 0x0003001C,
+	Shader_F64                                                    = 0x0003001D,
+	Shader_I16                                                    = 0x0003001E,
+	Shader_Primitive_Index                                        = 0x0003001F,
+	Shader_Early_Depth_Test                                       = 0x00030020,
 }
 
 Log_Level :: enum ENUM_SIZE {
@@ -44,7 +57,14 @@ Instance_Backend :: enum ENUM_SIZE {
 	Browser_WebGPU,
 }
 Instance_Backend_Flags :: distinct bit_set[Instance_Backend;FLAGS]
-Instance_Backend_All :: Instance_Backend_Flags{}
+Instance_Backend_All :: Instance_Backend_Flags{
+	.Vulkan,
+	.GL,
+	.Metal,
+	.DX12,
+	.DX11,
+	.Browser_WebGPU,
+}
 Instance_Backend_Primary :: Instance_Backend_Flags{
 	.Vulkan,
 	.Metal,
@@ -216,6 +236,18 @@ Surface_Configuration_Extras :: struct {
 }
 
 Log_Callback :: #type proc "c" (level: Log_Level, message: cstring, user_data: rawptr)
+
+Native_Texture_Format :: enum ENUM_SIZE {
+	// From Features::TEXTURE_FORMAT_16BIT_NORM
+	R16_Unorm    = 0x00030001,
+	R16_Snorm    = 0x00030002,
+	Rg16_Unorm   = 0x00030003,
+	Rg16_Snorm   = 0x00030004,
+	Rgba16_Unorm = 0x00030005,
+	Rgba16_Snorm = 0x00030006,
+	// From Features::TEXTURE_FORMAT_NV12
+	NV12         = 0x00030007,
+}
 
 @(default_calling_convention = "c")
 foreign _ {

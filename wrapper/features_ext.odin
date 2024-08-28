@@ -1,37 +1,15 @@
 package wgpu
 
-/* Maximum number of supported features by the webgpu/wgpu */
-MAX_FEATURES :: 22
+// The raw bindings
+import wgpu "../bindings"
 
-/* Webgpu and native features. */
-Raw_Feature_Name :: enum ENUM_SIZE {
-	Undefined                                                     = 0x00000000,
-	Depth_Clip_Control                                            = 0x00000001,
-	Depth32_Float_Stencil8                                        = 0x00000002,
-	Timestamp_Query                                               = 0x00000003,
-	Texture_Compression_Bc                                        = 0x00000004,
-	Texture_Compression_Etc2                                      = 0x00000005,
-	Texture_Compression_Astc                                      = 0x00000006,
-	Indirect_First_Instance                                       = 0x00000007,
-	Shader_F16                                                    = 0x00000008,
-	Rg11_B10_Ufloat_Renderable                                    = 0x00000009,
-	Bgra8_Unorm_Storage                                           = 0x0000000A,
-	Float32_Filterable                                            = 0x0000000B,
+/* Maximum number of supported features by the WebGPU/native */
+MAX_FEATURES :: 50
 
-	// Native features
-	Push_Constants                                                = 0x00030001,
-	Texture_Adapter_Specific_Format_Features                      = 0x00030002,
-	Multi_Draw_Indirect                                           = 0x00030003,
-	Multi_Draw_Indirect_Count                                     = 0x00030004,
-	Vertex_Writable_Storage                                       = 0x00030005,
-	Texture_Binding_Array                                         = 0x00030006,
-	Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing = 0x00030007,
-	Pipeline_Statistics_Query                                     = 0x00030008,
-	Storage_Resource_Binding_Array                                = 0x00030009,
-	Partially_Bound_Binding_Array                                 = 0x0003000A,
-}
+Raw_Feature_Name :: wgpu.Feature_Name
 
 Feature_Name :: enum FLAGS {
+	// WebGPU
 	Undefined,
 	Depth_Clip_Control,
 	Depth32_Float_Stencil8,
@@ -45,7 +23,7 @@ Feature_Name :: enum FLAGS {
 	Bgra8_Unorm_Storage,
 	Float32_Filterable,
 
-	// Native features
+	// Native
 	Push_Constants,
 	Texture_Adapter_Specific_Format_Features,
 	Multi_Draw_Indirect,
@@ -56,6 +34,19 @@ Feature_Name :: enum FLAGS {
 	Pipeline_Statistics_Query,
 	Storage_Resource_Binding_Array,
 	Partially_Bound_Binding_Array,
+	Texture_Format16bit_Norm,
+	Texture_Compression_Astc_Hdr,
+	Mappable_Primary_Buffers,
+	Buffer_Binding_Array,
+	Uniform_Buffer_And_Storage_Texture_Array_Non_Uniform_Indexing,
+	Vertex_Attribute64bit,
+	Texture_Format_NV12,
+	Ray_Tracing_Acceleration_Structure,
+	Ray_Query,
+	Shader_F64,
+	Shader_I16,
+	Shader_Primitive_Index,
+	Shader_Early_Depth_Test,
 }
 
 /*
@@ -71,7 +62,7 @@ will panic.
 Corresponds to [WebGPU `GPUFeatureName`](
 https://gpuweb.github.io/gpuweb/#enumdef-gpufeaturename).
 */
-Features :: bit_set[Feature_Name; FLAGS]
+Features :: bit_set[Feature_Name; u64]
 
 /*
 Get the flags of all features which are part of the upstream WebGPU standard.
@@ -100,6 +91,60 @@ features_all_webgpu_flags :: proc "contextless" (features: Features) -> (ret: Fe
 features_all_native_flags :: proc "contextless" (features: Features) -> (ret: Features) {
 	for f in features {
 		#partial switch f {
+			case .Push_Constants: ret += {.Push_Constants}
+			case .Texture_Adapter_Specific_Format_Features:
+				ret += {.Texture_Adapter_Specific_Format_Features}
+			case .Multi_Draw_Indirect: ret += {.Multi_Draw_Indirect}
+			case .Multi_Draw_Indirect_Count: ret += {.Multi_Draw_Indirect_Count}
+			case .Vertex_Writable_Storage: ret += {.Vertex_Writable_Storage}
+			case .Texture_Binding_Array: ret += {.Texture_Binding_Array}
+			case .Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing:
+				ret += {.Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing}
+			case .Pipeline_Statistics_Query: ret += {.Pipeline_Statistics_Query}
+			case .Storage_Resource_Binding_Array: ret += {.Storage_Resource_Binding_Array}
+			case .Partially_Bound_Binding_Array: ret += {.Partially_Bound_Binding_Array}
+			case .Texture_Format16bit_Norm: ret += {.Texture_Format16bit_Norm}
+			case .Texture_Compression_Astc_Hdr: ret += {.Texture_Compression_Astc_Hdr}
+			case .Mappable_Primary_Buffers: ret += {.Mappable_Primary_Buffers}
+			case .Buffer_Binding_Array: ret += {.Buffer_Binding_Array}
+			case .Uniform_Buffer_And_Storage_Texture_Array_Non_Uniform_Indexing:
+				ret += {.Uniform_Buffer_And_Storage_Texture_Array_Non_Uniform_Indexing}
+			case .Vertex_Attribute64bit: ret += {.Vertex_Attribute64bit}
+			case .Texture_Format_NV12: ret += {.Texture_Format_NV12}
+			case .Ray_Tracing_Acceleration_Structure:
+				ret += {.Ray_Tracing_Acceleration_Structure}
+			case .Ray_Query: ret += {.Ray_Query}
+			case .Shader_F64: ret += {.Shader_F64}
+			case .Shader_I16: ret += {.Shader_I16}
+			case .Shader_Primitive_Index: ret += {.Shader_Primitive_Index}
+			case .Shader_Early_Depth_Test: ret += {.Shader_Early_Depth_Test}
+		}
+	}
+	return
+}
+
+features_slice_to_flags :: proc "contextless" (
+	features_slice: []Raw_Feature_Name,
+) -> (
+	ret: Features,
+) {
+	for &f in features_slice {
+		switch f {
+		// webgpu features
+		case .Undefined: ret += {.Undefined}
+		case .Depth_Clip_Control: ret += {.Depth_Clip_Control}
+		case .Depth32_Float_Stencil8: ret += {.Depth32_Float_Stencil8}
+		case .Timestamp_Query: ret += {.Timestamp_Query}
+		case .Texture_Compression_Bc: ret += {.Texture_Compression_Bc}
+		case .Texture_Compression_Etc2: ret += {.Texture_Compression_Etc2}
+		case .Texture_Compression_Astc: ret += {.Texture_Compression_Astc}
+		case .Indirect_First_Instance: ret += {.Indirect_First_Instance}
+		case .Shader_F16: ret += {.Shader_F16}
+		case .Rg11_B10_Ufloat_Renderable: ret += {.Rg11_B10_Ufloat_Renderable}
+		case .Bgra8_Unorm_Storage: ret += {.Bgra8_Unorm_Storage}
+		case .Float32_Filterable: ret += {.Float32_Filterable}
+
+		// Native features
 		case .Push_Constants: ret += {.Push_Constants}
 		case .Texture_Adapter_Specific_Format_Features:
 			ret += {.Texture_Adapter_Specific_Format_Features}
@@ -112,45 +157,21 @@ features_all_native_flags :: proc "contextless" (features: Features) -> (ret: Fe
 		case .Pipeline_Statistics_Query: ret += {.Pipeline_Statistics_Query}
 		case .Storage_Resource_Binding_Array: ret += {.Storage_Resource_Binding_Array}
 		case .Partially_Bound_Binding_Array: ret += {.Partially_Bound_Binding_Array}
-		}
-	}
-	return
-}
-
-features_slice_to_flags :: proc "contextless" (
-	features_slice: []Raw_Feature_Name,
-) -> (
-	features: Features,
-) {
-	for &f in features_slice {
-		switch f {
-		// webgpu features
-		case .Undefined: features += {.Undefined}
-		case .Depth_Clip_Control: features += {.Depth_Clip_Control}
-		case .Depth32_Float_Stencil8: features += {.Depth32_Float_Stencil8}
-		case .Timestamp_Query: features += {.Timestamp_Query}
-		case .Texture_Compression_Bc: features += {.Texture_Compression_Bc}
-		case .Texture_Compression_Etc2: features += {.Texture_Compression_Etc2}
-		case .Texture_Compression_Astc: features += {.Texture_Compression_Astc}
-		case .Indirect_First_Instance: features += {.Indirect_First_Instance}
-		case .Shader_F16: features += {.Shader_F16}
-		case .Rg11_B10_Ufloat_Renderable: features += {.Rg11_B10_Ufloat_Renderable}
-		case .Bgra8_Unorm_Storage: features += {.Bgra8_Unorm_Storage}
-		case .Float32_Filterable: features += {.Float32_Filterable}
-
-		// Native features
-		case .Push_Constants: features += {.Push_Constants}
-		case .Texture_Adapter_Specific_Format_Features:
-			features += {.Texture_Adapter_Specific_Format_Features}
-		case .Multi_Draw_Indirect: features += {.Multi_Draw_Indirect}
-		case .Multi_Draw_Indirect_Count: features += {.Multi_Draw_Indirect_Count}
-		case .Vertex_Writable_Storage: features += {.Vertex_Writable_Storage}
-		case .Texture_Binding_Array: features += {.Texture_Binding_Array}
-		case .Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing:
-			features += {.Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing}
-		case .Pipeline_Statistics_Query: features += {.Pipeline_Statistics_Query}
-		case .Storage_Resource_Binding_Array: features += {.Storage_Resource_Binding_Array}
-		case .Partially_Bound_Binding_Array: features += {.Partially_Bound_Binding_Array}
+		case .Texture_Format16bit_Norm: ret += {.Texture_Format16bit_Norm}
+		case .Texture_Compression_Astc_Hdr: ret += {.Texture_Compression_Astc_Hdr}
+		case .Mappable_Primary_Buffers: ret += {.Mappable_Primary_Buffers}
+		case .Buffer_Binding_Array: ret += {.Buffer_Binding_Array}
+		case .Uniform_Buffer_And_Storage_Texture_Array_Non_Uniform_Indexing:
+			ret += {.Uniform_Buffer_And_Storage_Texture_Array_Non_Uniform_Indexing}
+		case .Vertex_Attribute64bit: ret += {.Vertex_Attribute64bit}
+		case .Texture_Format_NV12: ret += {.Texture_Format_NV12}
+		case .Ray_Tracing_Acceleration_Structure:
+			ret += {.Ray_Tracing_Acceleration_Structure}
+		case .Ray_Query: ret += {.Ray_Query}
+		case .Shader_F64: ret += {.Shader_F64}
+		case .Shader_I16: ret += {.Shader_I16}
+		case .Shader_Primitive_Index: ret += {.Shader_Primitive_Index}
+		case .Shader_Early_Depth_Test: ret += {.Shader_Early_Depth_Test}
 		}
 	}
 	return
@@ -177,28 +198,33 @@ features_flag_to_raw_feature_name :: proc "contextless" (
 	case .Float32_Filterable: return .Float32_Filterable
 
 	// Native features
-	case .Push_Constants:
-		return .Push_Constants
+	case .Push_Constants: return .Push_Constants
 	case .Texture_Adapter_Specific_Format_Features:
 		return .Texture_Adapter_Specific_Format_Features
-	case .Multi_Draw_Indirect:
-		return .Multi_Draw_Indirect
-	case .Multi_Draw_Indirect_Count:
-		return .Multi_Draw_Indirect_Count
-	case .Vertex_Writable_Storage:
-		return .Vertex_Writable_Storage
-	case .Texture_Binding_Array:
-		return .Texture_Binding_Array
+	case .Multi_Draw_Indirect: return .Multi_Draw_Indirect
+	case .Multi_Draw_Indirect_Count: return .Multi_Draw_Indirect_Count
+	case .Vertex_Writable_Storage: return .Vertex_Writable_Storage
+	case .Texture_Binding_Array: return .Texture_Binding_Array
 	case .Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing:
-		return(
-			.Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing \
-		)
-	case .Pipeline_Statistics_Query:
-		return .Pipeline_Statistics_Query
-	case .Storage_Resource_Binding_Array:
-		return .Storage_Resource_Binding_Array
-	case .Partially_Bound_Binding_Array:
-		return .Partially_Bound_Binding_Array
+		return .Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing
+	case .Pipeline_Statistics_Query: return .Pipeline_Statistics_Query
+	case .Storage_Resource_Binding_Array: return .Storage_Resource_Binding_Array
+	case .Partially_Bound_Binding_Array: return .Partially_Bound_Binding_Array
+	case .Texture_Format16bit_Norm: return .Texture_Format16bit_Norm
+	case .Texture_Compression_Astc_Hdr: return .Texture_Compression_Astc_Hdr
+	case .Mappable_Primary_Buffers: return .Mappable_Primary_Buffers
+	case .Buffer_Binding_Array: return .Buffer_Binding_Array
+	case .Uniform_Buffer_And_Storage_Texture_Array_Non_Uniform_Indexing:
+		return .Uniform_Buffer_And_Storage_Texture_Array_Non_Uniform_Indexing
+	case .Vertex_Attribute64bit: return .Vertex_Attribute64bit
+	case .Texture_Format_NV12: return .Texture_Format_NV12
+	case .Ray_Tracing_Acceleration_Structure:
+		return .Ray_Tracing_Acceleration_Structure
+	case .Ray_Query: return .Ray_Query
+	case .Shader_F64: return .Shader_F64
+	case .Shader_I16: return .Shader_I16
+	case .Shader_Primitive_Index: return .Shader_Primitive_Index
+	case .Shader_Early_Depth_Test: return .Shader_Early_Depth_Test
 	}
 
 	return .Undefined

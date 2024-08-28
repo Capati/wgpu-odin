@@ -82,9 +82,10 @@ init :: proc() -> (state: ^State, ok: bool) {
 	defer wgpu.adapter_release(adapter)
 
 	adapter_info := wgpu.adapter_get_info(adapter)
+	defer wgpu.adapter_info_free_members(adapter_info)
 
 	device_descriptor := wgpu.Device_Descriptor {
-		label           = adapter_info.name,
+		label           = adapter_info.description,
 		required_limits = wgpu.DEFAULT_LIMITS,
 	}
 
@@ -102,7 +103,7 @@ init :: proc() -> (state: ^State, ok: bool) {
 
 	state.config = {
 		usage        = {.Render_Attachment},
-		format       = wgpu.surface_get_preferred_format(state.surface, adapter) or_return,
+		format       = caps.formats[0],
 		width        = cast(u32)width,
 		height       = cast(u32)height,
 		present_mode = .Fifo,

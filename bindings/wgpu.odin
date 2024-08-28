@@ -230,9 +230,8 @@ Cull_Mode :: enum ENUM_SIZE {
 }
 
 Device_Lost_Reason :: enum ENUM_SIZE {
-	Undefined,
-	Unknown,
-	Destroyed,
+	Unknown   = 0x00000001,
+	Destroyed = 0x00000002,
 }
 
 Error_Filter :: enum ENUM_SIZE {
@@ -251,6 +250,7 @@ Error_Type :: enum ENUM_SIZE {
 }
 
 Feature_Name :: enum ENUM_SIZE {
+	// WebGPU
 	Undefined                  = 0x00000000,
 	Depth_Clip_Control         = 0x00000001,
 	Depth32_Float_Stencil8     = 0x00000002,
@@ -263,6 +263,31 @@ Feature_Name :: enum ENUM_SIZE {
 	Rg11_B10_Ufloat_Renderable = 0x00000009,
 	Bgra8_Unorm_Storage        = 0x0000000A,
 	Float32_Filterable         = 0x0000000B,
+
+	// Native
+	Push_Constants                                                = 0x00030001,
+	Texture_Adapter_Specific_Format_Features                      = 0x00030002,
+	Multi_Draw_Indirect                                           = 0x00030003,
+	Multi_Draw_Indirect_Count                                     = 0x00030004,
+	Vertex_Writable_Storage                                       = 0x00030005,
+	Texture_Binding_Array                                         = 0x00030006,
+	Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing = 0x00030007,
+	Pipeline_Statistics_Query                                     = 0x00030008,
+	Storage_Resource_Binding_Array                                = 0x00030009,
+	Partially_Bound_Binding_Array                                 = 0x0003000A,
+	Texture_Format16bit_Norm                                      = 0x0003000B,
+	Texture_Compression_Astc_Hdr                                  = 0x0003000C,
+	Mappable_Primary_Buffers                                      = 0x0003000E,
+	Buffer_Binding_Array                                          = 0x0003000F,
+	Uniform_Buffer_And_Storage_Texture_Array_Non_Uniform_Indexing = 0x00030010,
+	Vertex_Attribute64bit                                         = 0x00030019,
+	Texture_Format_NV12                                           = 0x0003001A,
+	Ray_Tracing_Acceleration_Structure                            = 0x0003001B,
+	Ray_Query                                                     = 0x0003001C,
+	Shader_F64                                                    = 0x0003001D,
+	Shader_I16                                                    = 0x0003001E,
+	Shader_Primitive_Index                                        = 0x0003001F,
+	Shader_Early_Depth_Test                                       = 0x00030020,
 }
 
 Filter_Mode :: enum ENUM_SIZE {
@@ -414,6 +439,7 @@ Texture_Dimension :: enum ENUM_SIZE {
 
 Texture_Format :: enum ENUM_SIZE {
 	Undefined               = 0x00000000,
+	// WebGPU
 	R8_Unorm                = 0x00000001,
 	R8_Snorm                = 0x00000002,
 	R8_Uint                 = 0x00000003,
@@ -509,6 +535,17 @@ Texture_Format :: enum ENUM_SIZE {
 	Astc12x10_Unorm_Srgb    = 0x0000005D,
 	Astc12x12_Unorm         = 0x0000005E,
 	Astc12x12_Unorm_Srgb    = 0x0000005F,
+
+	// Native
+	// From Features::TEXTURE_FORMAT_16BIT_NORM
+	R16_Unorm               = 0x00030001,
+	R16_Snorm               = 0x00030002,
+	Rg16_Unorm              = 0x00030003,
+	Rg16_Snorm              = 0x00030004,
+	Rgba16_Unorm            = 0x00030005,
+	Rgba16_Snorm            = 0x00030006,
+	// From Features::TEXTURE_FORMAT_NV12
+	NV12                    = 0x00030007,
 }
 
 Texture_Sample_Type :: enum ENUM_SIZE {
@@ -570,6 +607,14 @@ Vertex_Step_Mode :: enum ENUM_SIZE {
 	Vertex_Buffer_Not_Used,
 }
 
+WGSL_Feature_Name :: enum ENUM_SIZE {
+	Undefined                               = 0x00000000,
+	Readonly_And_Readwrite_Storage_Textures = 0x00000001,
+	Packed4x8_Integer_Dot_Product           = 0x00000002,
+	Unrestricted_Pointer_Parameters         = 0x00000003,
+	Pointer_Composite_Access                = 0x00000004,
+}
+
 Buffer_Usage :: enum ENUM_SIZE {
 	Map_Read,
 	Map_Write,
@@ -626,6 +671,57 @@ Texture_Usage_Flags_All :: Texture_Usage_Flags {
 	.Render_Attachment,
 }
 
+Proc :: #type proc "c" ()
+
+Device_Lost_Callback :: #type proc "c" (
+	reason: Device_Lost_Reason,
+	message: cstring,
+	user_data: rawptr,
+)
+
+Error_Callback :: #type proc "c" (type: Error_Type, message: cstring, user_data: rawptr)
+
+Adapter_Request_Device_Callback :: #type proc "c" (
+	status: Request_Device_Status,
+	device: Device,
+	message: cstring,
+	user_data: rawptr,
+)
+
+Buffer_Map_Async_Callback :: #type proc "c" (status: Buffer_Map_Async_Status, user_data: rawptr)
+
+Device_Create_Compute_Pipeline_Async_Callback :: #type proc "c" (
+	status: Create_Pipeline_Async_Status,
+	pipeline: Compute_Pipeline,
+	message: cstring,
+	user_data: rawptr,
+)
+
+Device_Create_Render_Pipeline_Async_Callback :: #type proc "c" (
+	status: Create_Pipeline_Async_Status,
+	pipeline: Render_Pipeline,
+	message: cstring,
+	user_data: rawptr,
+)
+
+Instance_Request_Adapter_Callback :: #type proc "c" (
+	status: Request_Adapter_Status,
+	adapter: Adapter,
+	message: cstring,
+	user_data: rawptr,
+)
+
+Queue_On_Submitted_Work_Done_Callback :: #type proc "c" (
+	status: Queue_Work_Done_Status,
+	user_data: rawptr,
+)
+
+Shader_Module_Get_Compilation_Info_Callback :: #type proc "c" (
+	status: Compilation_Info_Request_Status,
+	compilation_info: ^Compilation_Info,
+	user_data: rawptr,
+)
+
 Chained_Struct :: struct {
 	next:  ^Chained_Struct,
 	stype: SType,
@@ -636,16 +732,16 @@ Chained_Struct_Out :: struct {
 	stype: SType,
 }
 
-Adapter_Properties :: struct {
-	next_in_chain:      ^Chained_Struct_Out,
-	vendor_id:          u32,
-	vendor_name:        cstring,
-	architecture:       cstring,
-	device_id:          u32,
-	name:               cstring,
-	driver_description: cstring,
-	adapter_type:       Adapter_Type,
-	backend_type:       Backend_Type,
+Adapter_Info :: struct {
+	next_in_chain : ^Chained_Struct_Out `fmt:"-"`,
+	vendor        : cstring,
+	architecture  : cstring,
+	device        : cstring,
+	description   : cstring,
+	backend_type  : Backend_Type,
+	adapter_type  : Adapter_Type,
+	vendor_id     : u32,
+	device_id     : u32,
 }
 
 Bind_Group_Entry :: struct {
@@ -905,13 +1001,14 @@ Storage_Texture_Binding_Layout :: struct {
 }
 
 Surface_Capabilities :: struct {
-	next_in_chain:      ^Chained_Struct_Out,
-	format_count:       uint,
-	formats:            [^]Texture_Format `fmt:"v,format_count"`,
-	present_mode_count: uint,
-	present_modes:      [^]Present_Mode `fmt:"v,present_mode_count"`,
-	alpha_mode_count:   uint,
-	alpha_modes:        [^]Composite_Alpha_Mode `fmt:"v,alpha_mode_count"`,
+	next_in_chain      : ^Chained_Struct_Out,
+	usages             : Texture_Usage_Flags,
+	format_count       : uint,
+	formats            : [^]Texture_Format `fmt:"v,format_count"`,
+	present_mode_count : uint,
+	present_modes      : [^]Present_Mode `fmt:"v,present_mode_count"`,
+	alpha_mode_count   : uint,
+	alpha_modes        : [^]Composite_Alpha_Mode `fmt:"v,alpha_mode_count"`,
 }
 
 Surface_Configuration :: struct {
@@ -1003,6 +1100,12 @@ Texture_View_Descriptor :: struct {
 	aspect:            Texture_Aspect,
 }
 
+Uncaptured_Error_Callback_Info :: struct {
+	next_in_chain : ^Chained_Struct,
+	callback      : Error_Callback,
+	userdata      : rawptr,
+}
+
 Vertex_Attribute :: struct {
 	format:          Vertex_Format,
 	offset:          u64,
@@ -1081,12 +1184,13 @@ Programmable_Stage_Descriptor :: struct {
 }
 
 Render_Pass_Color_Attachment :: struct {
-	next_in_chain:  ^Chained_Struct,
-	view:           Texture_View,
-	resolve_target: Texture_View,
-	load_op:        Load_Op,
-	store_op:       Store_Op,
-	clear_value:    Color,
+	next_in_chain  : ^Chained_Struct,
+	view           : Texture_View,
+	depth_slice    : u32,
+	resolve_target : Texture_View,
+	load_op        : Load_Op,
+	store_op       : Store_Op,
+	clear_value    : Color,
 }
 
 Required_Limits :: struct {
@@ -1148,14 +1252,15 @@ Compute_Pipeline_Descriptor :: struct {
 }
 
 Device_Descriptor :: struct {
-	next_in_chain:          ^Chained_Struct,
-	label:                  cstring,
-	required_feature_count: uint,
-	required_features:      [^]Feature_Name `fmt:"v,required_feature_count"`,
-	required_limits:        ^Required_Limits,
-	default_queue:          Queue_Descriptor,
-	device_lost_callback:   Device_Lost_Callback,
-	device_lost_userdata:   rawptr,
+	next_in_chain                  : ^Chained_Struct,
+	label                          : cstring,
+	required_feature_count         : uint,
+	required_features              : [^]Feature_Name `fmt:"v,required_feature_count"`,
+	required_limits                : ^Required_Limits,
+	default_queue                  : Queue_Descriptor,
+	device_lost_callback           : Device_Lost_Callback,
+	device_lost_userdata           : rawptr,
+	uncaptured_error_callback_info : Uncaptured_Error_Callback_Info,
 }
 
 Render_Pass_Descriptor :: struct {
@@ -1199,54 +1304,6 @@ Render_Pipeline_Descriptor :: struct {
 	fragment:      ^Fragment_State,
 }
 
-Buffer_Map_Callback :: #type proc "c" (status: Buffer_Map_Async_Status, user_data: rawptr)
-
-Compilation_Info_Callback :: #type proc "c" (
-	status: Compilation_Info_Request_Status,
-	compilation_info: ^Compilation_Info,
-	user_data: rawptr,
-)
-
-Create_Compute_Pipeline_Async_Callback :: #type proc "c" (
-	status: Create_Pipeline_Async_Status,
-	pipeline: Compute_Pipeline,
-	message: cstring,
-	user_data: rawptr,
-)
-
-Create_Render_Pipeline_Async_Callback :: #type proc "c" (
-	status: Create_Pipeline_Async_Status,
-	pipeline: Render_Pipeline,
-	message: cstring,
-	user_data: rawptr,
-)
-
-Device_Lost_Callback :: #type proc "c" (
-	reason: Device_Lost_Reason,
-	message: cstring,
-	user_data: rawptr,
-)
-
-Error_Callback :: #type proc "c" (type: Error_Type, message: cstring, user_data: rawptr)
-
-Proc :: #type proc "c" ()
-
-Queue_Work_Done_Callback :: #type proc "c" (status: Queue_Work_Done_Status, user_data: rawptr)
-
-Request_Adapter_Callback :: #type proc "c" (
-	status: Request_Adapter_Status,
-	adapter: Adapter,
-	message: cstring,
-	user_data: rawptr,
-)
-
-Request_Device_Callback :: #type proc "c" (
-	status: Request_Device_Status,
-	device: Device,
-	message: cstring,
-	user_data: rawptr,
-)
-
 @(default_calling_convention = "c")
 foreign wgpu_native {
 	@(link_name = "wgpuCreateInstance")
@@ -1255,16 +1312,16 @@ foreign wgpu_native {
 	@(link_name = "wgpuGetProcAddress")
 	get_proc_address :: proc(device: Device, proc_name: cstring) -> Proc ---
 
-	// Methods of Adapter
+	/* Methods of Adapter */
 
 	@(link_name = "wgpuAdapterEnumerateFeatures")
 	adapter_enumerate_features :: proc(adapter: Adapter, features: [^]Feature_Name) -> uint ---
 
+	@(link_name = "wgpuAdapterGetInfo")
+	adapter_get_info :: proc(adapter: Adapter, info: ^Adapter_Info) ---
+
 	@(link_name = "wgpuAdapterGetLimits")
 	adapter_get_limits :: proc(adapter: Adapter, limits: ^Supported_Limits) -> b32 ---
-
-	@(link_name = "wgpuAdapterGetProperties")
-	adapter_get_properties :: proc(adapter: Adapter, properties: ^Adapter_Properties) ---
 
 	@(link_name = "wgpuAdapterHasFeature")
 	adapter_has_feature :: proc(adapter: Adapter, feature: Feature_Name) -> b32 ---
@@ -1273,7 +1330,7 @@ foreign wgpu_native {
 	adapter_request_device :: proc(
 		adapter: Adapter,
 		descriptor: ^Device_Descriptor,
-		callback: Request_Device_Callback,
+		callback: Adapter_Request_Device_Callback,
 		user_data: rawptr,
 	) ---
 
@@ -1283,7 +1340,12 @@ foreign wgpu_native {
 	@(link_name = "wgpuAdapterRelease")
 	adapter_release :: proc(adapter: Adapter) ---
 
-	// Methods of Bind_Group
+	/* Methods of Adapter_Info */
+
+	@(link_name = "wgpuAdapterInfoFreeMembers")
+	adapter_info_free_members :: proc(adapter_info: Adapter_Info) ---
+
+	/* Methods of Bind_Group */
 
 	@(link_name = "wgpuBindGroupSetLabel")
 	bind_group_set_label :: proc(bind_group: Bind_Group, label: cstring) ---
@@ -1294,7 +1356,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuBindGroupRelease")
 	bind_group_release :: proc(bind_group: Bind_Group) ---
 
-	// Methods of Bind_Group_Layout
+	/* Methods of Bind_Group_Layout */
 
 	@(link_name = "wgpuBindGroupLayoutSetLabel")
 	bind_group_layout_set_label :: proc(bind_group_layout: Bind_Group_Layout, label: cstring) ---
@@ -1305,7 +1367,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuBindGroupLayoutRelease")
 	bind_group_layout_release :: proc(bind_group_layout: Bind_Group_Layout) ---
 
-	// Methods of Buffer
+	/* Methods of Buffer */
 
 	@(link_name = "wgpuBufferDestroy")
 	buffer_destroy :: proc(buffer: Buffer) ---
@@ -1331,7 +1393,7 @@ foreign wgpu_native {
 		mode: Map_Mode_Flags,
 		offset,
 		size: uint,
-		callback: Buffer_Map_Callback,
+		callback: Buffer_Map_Async_Callback,
 		user_data: rawptr,
 	) ---
 
@@ -1347,7 +1409,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuBufferRelease")
 	buffer_release :: proc(buffer: Buffer) ---
 
-	// Methods of Command_Buffer
+	/* Methods of Command_Buffer */
 
 	@(link_name = "wgpuCommandBufferSetLabel")
 	command_buffer_set_label :: proc(command_buffer: Command_Buffer, label: cstring) ---
@@ -1358,7 +1420,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuCommandBufferRelease")
 	command_buffer_release :: proc(command_buffer: Command_Buffer) ---
 
-	// Methods of Command_Encoder
+	/* Methods of Command_Encoder */
 
 	@(link_name = "wgpuCommandEncoderBeginComputePass")
 	command_encoder_begin_compute_pass :: proc(
@@ -1459,7 +1521,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuCommandEncoderRelease")
 	command_encoder_release :: proc(command_encoder: Command_Encoder) ---
 
-	// Methods of Compute_Pass_Encoder
+	/* Methods of Compute_Pass_Encoder */
 
 	@(link_name = "wgpuComputePassEncoderDispatchWorkgroups")
 	compute_pass_encoder_dispatch_workgroups :: proc(
@@ -1519,7 +1581,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuComputePassEncoderRelease")
 	compute_pass_encoder_release :: proc(compute_pass_encoder: Compute_Pass_Encoder) ---
 
-	// Methods of Compute_Pipeline
+	/* Methods of Compute_Pipeline */
 
 	@(link_name = "wgpuComputePipelineGetBindGroupLayout")
 	compute_pipeline_get_bind_group_layout :: proc(
@@ -1536,7 +1598,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuComputePipelineRelease")
 	compute_pipeline_release :: proc(compute_pipeline: Compute_Pipeline) ---
 
-	// Methods of Device
+	/* Methods of Device */
 
 	@(link_name = "wgpuDeviceCreateBindGroup")
 	device_create_bind_group :: proc(
@@ -1569,7 +1631,7 @@ foreign wgpu_native {
 	device_create_compute_pipeline_async :: proc(
 		device: Device,
 		descriptor: ^Compute_Pipeline_Descriptor,
-		callback: Create_Compute_Pipeline_Async_Callback,
+		callback: Device_Create_Compute_Pipeline_Async_Callback,
 		user_data: rawptr,
 	) ---
 
@@ -1598,7 +1660,7 @@ foreign wgpu_native {
 	device_create_render_pipeline_async :: proc(
 		device: Device,
 		descriptor: ^Render_Pipeline_Descriptor,
-		callback: Create_Render_Pipeline_Async_Callback,
+		callback: Device_Create_Render_Pipeline_Async_Callback,
 		user_data: rawptr,
 	) ---
 
@@ -1649,26 +1711,25 @@ foreign wgpu_native {
 	@(link_name = "wgpuDeviceSetLabel")
 	device_set_label :: proc(device: Device, label: cstring) ---
 
-	@(link_name = "wgpuDeviceSetUncapturedErrorCallback")
-	device_set_uncaptured_error_callback :: proc(
-		device: Device,
-		callback: Error_Callback,
-		user_data: rawptr,
-	) ---
-
 	@(link_name = "wgpuDeviceReference")
 	device_reference :: proc(device: Device) ---
 
 	@(link_name = "wgpuDeviceRelease")
 	device_release :: proc(device: Device) ---
 
-	// Methods of Instance
+	/* Methods of Instance */
 
 	@(link_name = "wgpuInstanceCreateSurface")
 	instance_create_surface :: proc(
 		instance: Instance,
 		descriptor: ^Surface_Descriptor,
 	) -> Surface ---
+
+	@(link_name = "wgpuInstanceHasWGSLLanguageFeature")
+	instance_has_wgsl_language_feature :: proc(
+		instance: Instance,
+		feature: WGSL_Feature_Name,
+	) -> b32 ---
 
 	@(link_name = "wgpuInstanceProcessEvents")
 	instance_process_events :: proc(instance: Instance) ---
@@ -1677,7 +1738,7 @@ foreign wgpu_native {
 	instance_request_adapter :: proc(
 		instance: Instance,
 		options: ^Request_Adapter_Options,
-		callback: Request_Adapter_Callback,
+		callback: Instance_Request_Adapter_Callback,
 		user_data: rawptr,
 	) ---
 
@@ -1687,7 +1748,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuInstanceRelease")
 	instance_release :: proc(instance: Instance) ---
 
-	// Methods of Pipeline_Layout
+	/* Methods of Pipeline_Layout */
 
 	@(link_name = "wgpuPipelineLayoutSetLabel")
 	pipeline_layout_set_label :: proc(pipeline_layout: Pipeline_Layout, label: cstring) ---
@@ -1698,7 +1759,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuPipelineLayoutRelease")
 	pipeline_layout_release :: proc(pipeline_layout: Pipeline_Layout) ---
 
-	// Methods of Query_Set
+	/* Methods of Query_Set */
 
 	@(link_name = "wgpuQuerySetDestroy")
 	query_set_destroy :: proc(query_set: Query_Set) ---
@@ -1718,12 +1779,12 @@ foreign wgpu_native {
 	@(link_name = "wgpuQuerySetRelease")
 	query_set_release :: proc(query_set: Query_Set) ---
 
-	// Methods of Queue
+	/* Methods of Queue */
 
 	@(link_name = "wgpuQueueOnSubmittedWorkDone")
 	queue_on_submitted_work_done :: proc(
 		queue: Queue,
-		callback: Queue_Work_Done_Callback,
+		callback: Queue_On_Submitted_Work_Done_Callback,
 		user_data: rawptr,
 	) ---
 
@@ -1758,7 +1819,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuQueueRelease")
 	queue_release :: proc(queue: Queue) ---
 
-	// Methods of Render_Bundle
+	/* Methods of Render_Bundle */
 
 	@(link_name = "wgpuRenderBundleSetLabel")
 	render_bundle_set_label :: proc(render_bundle: Render_Bundle, label: cstring) ---
@@ -1769,7 +1830,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuRenderBundleRelease")
 	render_bundle_release :: proc(render_bundle: Render_Bundle) ---
 
-	// Methods of Render_Bundle_Encoder
+	/* Methods of Render_Bundle_Encoder */
 
 	@(link_name = "wgpuRenderBundleEncoderDraw")
 	render_bundle_encoder_draw :: proc(
@@ -1863,7 +1924,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuRenderBundleEncoderRelease")
 	render_bundle_encoder_release :: proc(render_bundle_encoder: Render_Bundle_Encoder) ---
 
-	// Methods of Render_Pass_Encoder
+	/* Methods of Render_Pass_Encoder */
 
 	@(link_name = "wgpuRenderPassEncoderBeginOcclusionQuery")
 	render_pass_encoder_begin_occlusion_query :: proc(
@@ -1994,7 +2055,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuRenderPassEncoderRelease")
 	render_pass_encoder_release :: proc(render_pass_encoder: Render_Pass_Encoder) ---
 
-	// Methods of Render_Pipeline
+	/* Methods of Render_Pipeline */
 
 	@(link_name = "wgpuRenderPipelineGetBindGroupLayout")
 	render_pipeline_get_bind_group_layout :: proc(
@@ -2011,7 +2072,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuRenderPipelineRelease")
 	render_pipeline_release :: proc(render_pipeline: Render_Pipeline) ---
 
-	// Methods of Sampler
+	/* Methods of Sampler */
 
 	@(link_name = "wgpuSamplerSetLabel")
 	sampler_set_label :: proc(sampler: Sampler, label: cstring) ---
@@ -2022,12 +2083,12 @@ foreign wgpu_native {
 	@(link_name = "wgpuSamplerRelease")
 	sampler_release :: proc(sampler: Sampler) ---
 
-	// Methods of Shader_Module
+	/* Methods of Shader_Module */
 
 	@(link_name = "wgpuShaderModuleGetCompilationInfo")
 	shader_module_get_compilation_info :: proc(
 		shader_module: Shader_Module,
-		callback: Compilation_Info_Callback,
+		callback: Shader_Module_Get_Compilation_Info_Callback,
 		user_data: rawptr,
 	) ---
 
@@ -2040,7 +2101,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuShaderModuleRelease")
 	shader_module_release :: proc(shader_module: Shader_Module) ---
 
-	// Methods of Surface
+	/* Methods of Surface */
 
 	@(link_name = "wgpuSurfaceConfigure")
 	surface_configure :: proc(surface: Surface, config: ^Surface_Configuration) ---
@@ -2055,11 +2116,11 @@ foreign wgpu_native {
 	@(link_name = "wgpuSurfaceGetCurrentTexture")
 	surface_get_current_texture :: proc(surface: Surface, surface_texture: ^Surface_Texture) ---
 
-	@(link_name = "wgpuSurfaceGetPreferredFormat")
-	surface_get_preferred_format :: proc(surface: Surface, adapter: Adapter) -> Texture_Format ---
-
 	@(link_name = "wgpuSurfacePresent")
 	surface_present :: proc(surface: Surface) ---
+
+	@(link_name = "wgpuSurfaceSetLabel")
+	surface_set_label :: proc(surface: Surface, label: cstring) ---
 
 	@(link_name = "wgpuSurfaceUnconfigure")
 	surface_unconfigure :: proc(surface: Surface) ---
@@ -2070,12 +2131,12 @@ foreign wgpu_native {
 	@(link_name = "wgpuSurfaceRelease")
 	surface_release :: proc(surface: Surface) ---
 
-	// Methods of Surface_Capabilities
+	/* Methods of Surface_Capabilities */
 
 	@(link_name = "wgpuSurfaceCapabilitiesFreeMembers")
 	surface_capabilities_free_members :: proc(capabilities: Surface_Capabilities) ---
 
-	// Methods of Texture
+	/* Methods of Texture */
 
 	@(link_name = "wgpuTextureCreateView")
 	texture_create_view :: proc(
@@ -2119,7 +2180,7 @@ foreign wgpu_native {
 	@(link_name = "wgpuTextureRelease")
 	texture_release :: proc(texture: Texture) ---
 
-	// Methods of Texture_View
+	/* Methods of Texture_View */
 
 	@(link_name = "wgpuTextureViewSetLabel")
 	texture_view_set_label :: proc(texture_view: Texture_View, label: cstring) ---

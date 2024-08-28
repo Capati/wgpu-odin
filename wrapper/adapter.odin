@@ -26,7 +26,11 @@ Adapter_Features :: distinct Features
 List all features that are supported with this adapter. Features must be explicitly requested in
 `adapter_request_device` in order to use them.
 */
-adapter_get_features :: proc "contextless" (self: Adapter) -> (features: Adapter_Features) {
+adapter_get_features :: proc "contextless" (
+	self: Adapter,
+) -> (
+	features: Adapter_Features,
+) #no_bounds_check {
 	count := wgpu.adapter_enumerate_features(self, nil)
 	if count == 0 do return
 
@@ -34,8 +38,7 @@ adapter_get_features :: proc "contextless" (self: Adapter) -> (features: Adapter
 
 	wgpu.adapter_enumerate_features(self, raw_data(raw_features[:count]))
 
-	features_slice := transmute([]Raw_Feature_Name)(raw_features[:count])
-	features = cast(Adapter_Features)features_slice_to_flags(features_slice)
+	features = cast(Adapter_Features)features_slice_to_flags(raw_features[:count])
 
 	return
 }
@@ -86,7 +89,7 @@ adapter_get_info :: proc "contextless" (
 	info: Adapter_Info,
 	ok: bool,
 ) #optional_ok {
-	wgpu.adapter_get_properties(self, &info)
+	wgpu.adapter_get_info(self, &info)
 
 	if info == {} {
 		error_reset_and_update(Error_Type.Unknown, "Failed to fill adapter information", loc)
@@ -192,7 +195,7 @@ adapter_request_device :: proc(
 					fmt.aprintf(
 						"Required feature [%v] not supported by device [%s] using [%s].",
 						f,
-						adapter_info.name,
+						adapter_info.description,
 						adapter_info.backend_type,
 						allocator = ta,
 					),
@@ -336,8 +339,23 @@ adapter_request_device_raw :: proc(
 	device: Device,
 	ok: bool,
 ) {
-	res: Device_Response
+	has_error_callback: bool
+	if desc.uncaptured_error_callback_info.callback != nil {
+		set_uncaptured_error_callback(
+			desc.uncaptured_error_callback_info.callback,
+			desc.uncaptured_error_callback_info.userdata,
+		)
+		has_error_callback = true
+	}
 
+	if ENABLE_ERROR_HANDLING || has_error_callback {
+		desc.uncaptured_error_callback_info = {
+			/* Errors will propagate from this callback */
+			callback = uncaptured_error_data_callback,
+		}
+	}
+
+	res: Device_Response
 	wgpu.adapter_request_device(self, desc, adapter_request_device_callback, &res)
 
 	if res.status != .Success {
@@ -350,17 +368,11 @@ adapter_request_device_raw :: proc(
 
 	device = res.device
 
-	when ENABLE_ERROR_HANDLING {
-		// Errors will propagate from this callback
-		wgpu.device_set_uncaptured_error_callback(
-			device,
-			uncaptured_error_data_callback,
-			nil,
-		)
-	}
-
 	return device, true
 }
+
+/* Free the adapter info resources. */
+adapter_info_free_members :: wgpu.adapter_info_free_members
 
 /*  Increase the reference count. */
 adapter_reference :: wgpu.adapter_reference

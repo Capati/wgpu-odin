@@ -30,7 +30,7 @@ keeping callbacks short and used to set flags, send messages, etc.
 */
 queue_on_submitted_work_done :: proc "contextless" (
 	self: Queue,
-	callback: Queue_Work_Done_Callback,
+	callback: Queue_On_Submitted_Work_Done_Callback,
 	data: rawptr = nil,
 	loc := #caller_location,
 ) -> (
