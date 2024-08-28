@@ -293,10 +293,17 @@ _graphics_resize_surface :: proc "contextless" (size: Window_Size) -> (ok: bool)
 	return true
 }
 
-_graphics_start :: proc "contextless" () -> (ok: bool) {
+_graphics_before_start :: proc "contextless" () -> (ok: bool) {
 	_graphics_get_current_texture_frame() or_return
 
-	g_app.renderer.gpu.encoder = wgpu.device_create_command_encoder(g_app.renderer.gpu.device) or_return
+	g_app.renderer.gpu.encoder = wgpu.device_create_command_encoder(
+		g_app.renderer.gpu.device,
+	) or_return
+
+	return true
+}
+
+_graphics_start :: proc "contextless" () -> (ok: bool) {
 	g_app.renderer.gpu.render_pass = wgpu.command_encoder_begin_render_pass(
 		g_app.renderer.gpu.encoder,
 		g_app.renderer.render_pass_desc,

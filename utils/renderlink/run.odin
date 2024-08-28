@@ -26,7 +26,7 @@ begin_run :: proc(state: ^$T) -> (ok: bool) where intr.type_is_specialization_of
 
 	log.info("Entering main loop...")
 
-	main_loop: for true {
+	main_loop: for {
 		when EVENT_PACKAGE {
 			event_process(state)
 			if !g_app.running {
@@ -54,13 +54,26 @@ begin_run :: proc(state: ^$T) -> (ok: bool) where intr.type_is_specialization_of
 		}
 
 		when GRAPHICS_PACKAGE {
-			if ok = _graphics_start(); !ok {
-				log.error("Error occurred during frame start")
+			if ok = _graphics_before_start(); !ok {
+				log.error("Error occurred before frame start")
 				break main_loop
 			}
 
 			// Skip frame when surface texture is outdated or lost
 			if g_app.renderer.skip_frame do continue
+
+			// Perform compute operations before begin a render pass
+			if state.callbacks.compute != nil {
+				if ok = state.callbacks.compute(state); !ok {
+					log.error("Error occurred during 'compute' procedure")
+					break main_loop
+				}
+			}
+
+			if ok = _graphics_start(); !ok {
+				log.error("Error occurred during frame start")
+				break main_loop
+			}
 
 			if state.callbacks.draw != nil {
 				if ok = state.callbacks.draw(state); !ok {
