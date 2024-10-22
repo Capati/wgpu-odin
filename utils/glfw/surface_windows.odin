@@ -1,4 +1,4 @@
-//+build windows
+#+build windows
 package wgpu_utils_glfw
 
 // STD Library

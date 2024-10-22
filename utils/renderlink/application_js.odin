@@ -1,5 +1,5 @@
-//+private
-//+build js
+#+private
+#+build js
 package renderlink
 
 // STD Library
