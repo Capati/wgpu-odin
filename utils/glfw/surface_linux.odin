@@ -1,4 +1,4 @@
-//+build linux
+#+build linux
 package wgpu_utils_glfw
 
 // Vendor

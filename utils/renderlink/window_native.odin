@@ -1,5 +1,5 @@
-//+private
-//+build linux, darwin, windows
+#+private
+#+build linux, darwin, windows
 package renderlink
 
 // STD Library
