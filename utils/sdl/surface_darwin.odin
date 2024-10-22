@@ -1,4 +1,4 @@
-//+build darwin
+#+build darwin
 package wgpu_utils_sdl
 
 // Vendor
