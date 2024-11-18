@@ -41,9 +41,9 @@ when #config(WGPU_CHECK_TO_BYTES, true) {
 		     .Type_Id,
 		     .Any,
 		     .Soa_Pointer,
-		     .Simd_Vector,
-		     .Relative_Pointer,
-		     .Relative_Multi_Pointer:
+		     .Simd_Vector:
+		    //  .Relative_Pointer,
+		    //  .Relative_Multi_Pointer:
 			return false
 		}
 
