@@ -9,30 +9,31 @@ import "core:reflect"
 import wgpu "./../../wrapper"
 
 Graphics_Context :: struct {
-	settings    : Graphics_Context_Settings,
-	instance    : wgpu.Instance,
-	surface     : wgpu.Surface,
-	adapter     : wgpu.Adapter,
-	device      : wgpu.Device,
-	queue       : wgpu.Queue,
-	features    : wgpu.Device_Features,
-	limits      : wgpu.Limits,
-	config      : wgpu.Surface_Configuration,
-	is_srgb     : bool,
-	render_pass : wgpu.Render_Pass,
-	encoder     : wgpu.Command_Encoder,
+	settings:    Graphics_Context_Settings,
+	instance:    wgpu.Instance,
+	surface:     wgpu.Surface,
+	adapter:     wgpu.Adapter,
+	device:      wgpu.Device,
+	queue:       wgpu.Queue,
+	features:    wgpu.Device_Features,
+	limits:      wgpu.Limits,
+	config:      wgpu.Surface_Configuration,
+	is_srgb:     bool,
+	render_pass: wgpu.Render_Pass,
+	encoder:     wgpu.Command_Encoder,
 }
 
 Graphics_Context_Settings :: struct {
-	power_preference              : wgpu.Power_Preference,
-	force_fallback_adapter        : bool,
-	optional_features             : wgpu.Features,
-	required_features             : wgpu.Features,
-	required_limits               : wgpu.Limits,
-	dx12_shader_compiler          : wgpu.Dx12_Compiler,
-	present_mode                  : wgpu.Present_Mode,
-	remove_srgb_from_surface      : bool,
-	desired_maximum_frame_latency : u32,
+	power_preference:              wgpu.Power_Preference,
+	force_fallback_adapter:        bool,
+	optional_features:             wgpu.Features,
+	required_features:             wgpu.Features,
+	required_limits:               wgpu.Limits,
+	dx12_shader_compiler:          wgpu.Dx12_Compiler,
+	desired_present_mode:          wgpu.Present_Mode,
+	present_mode:                  wgpu.Present_Mode,
+	remove_srgb_from_surface:      bool,
+	desired_maximum_frame_latency: u32,
 }
 
 DEFAULT_DESIRED_MAXIMUM_FRAME_LATENCY: u32 : 2
@@ -40,6 +41,7 @@ DEFAULT_DESIRED_MAXIMUM_FRAME_LATENCY: u32 : 2
 DEFAULT_GRAPHICS_CONTEXT_SETTINGS :: Graphics_Context_Settings {
 	power_preference              = .High_Performance,
 	required_limits               = wgpu.DOWNLEVEL_LIMITS,
+	desired_present_mode          = .Mailbox,
 	present_mode                  = .Fifo,
 	desired_maximum_frame_latency = DEFAULT_DESIRED_MAXIMUM_FRAME_LATENCY,
 }
@@ -61,7 +63,7 @@ gpu_init :: proc(
 	}
 
 	when wgpu.LOG_ENABLED {
-		instance_desc.flags = { .Validation }
+		instance_desc.flags = {.Validation}
 		wgpu.set_log_level(.Error)
 		wgpu.set_log_callback(gpu_log_callback, nil)
 	}
@@ -137,7 +139,6 @@ gpu_init :: proc(
 		required_features = settings.required_features,
 	}
 
-
 	gpu.device = wgpu.adapter_request_device(gpu.adapter, device_descriptor) or_return
 	defer if !ok do wgpu.device_release(gpu.device)
 
@@ -167,6 +168,16 @@ gpu_init :: proc(
 		log.infof("Desired maximum frame latency: [%d]", settings.desired_maximum_frame_latency)
 	}
 
+	present_mode := settings.present_mode
+
+	// Try to set the desired present mode
+	for p in caps.present_modes {
+		if settings.desired_present_mode == p {
+			present_mode = p
+			break
+		}
+	}
+
 	size := _window_get_size()
 
 	gpu.config = wgpu.Surface_Configuration {
@@ -174,7 +185,7 @@ gpu_init :: proc(
 		format                        = preferred_format,
 		width                         = u32(size.width),
 		height                        = u32(size.height),
-		present_mode                  = settings.present_mode,
+		present_mode                  = present_mode,
 		alpha_mode                    = caps.alpha_modes[0],
 		desired_maximum_frame_latency = settings.desired_maximum_frame_latency,
 	}

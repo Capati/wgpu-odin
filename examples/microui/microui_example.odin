@@ -92,7 +92,6 @@ main :: proc() {
 
 	settings := rl.DEFAULT_SETTINGS
 	settings.title = EXAMPLE_TITLE
-	settings.gpu.desired_maximum_frame_latency = 1 // XXX
 
 	if ok := rl.init(state, settings); !ok do return
 
