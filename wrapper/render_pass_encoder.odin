@@ -63,7 +63,7 @@ render_pass_draw_indexed :: proc "contextless" (
 	wgpu.render_pass_encoder_draw_indexed(
 		self,
 		indices.end - indices.start,
-		instances.end - indices.start,
+		instances.end - instances.start,
 		indices.start,
 		base_vertex,
 		instances.start,
