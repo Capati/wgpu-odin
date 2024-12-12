@@ -4,7 +4,21 @@ when ODIN_OS == .Windows {
 	when WGPU_SHARED {
 		foreign import wgpu_native {LIB}
 	} else {
-		foreign import wgpu_native {LIB}
+		foreign import wgpu_native {
+			LIB,
+			"system:gdi32.lib",
+			"system:dxgi.lib",
+			"system:d3dcompiler.lib",
+			"system:opengl32.lib",
+			"system:user32.lib",
+			"system:dwmapi.lib",
+			"system:bcrypt.lib",
+			"system:ws2_32.lib",
+			"system:userenv.lib",
+			"system:dbghelp.lib",
+			"system:advapi32.lib",
+			"system:ntdll.lib",
+		}
 	}
 } else when ODIN_OS == .Darwin || ODIN_OS == .Linux {
 	when WGPU_USE_SYSTEM_LIBRARIES {
