@@ -1,5 +1,35 @@
 package wgpu_bindings
 
+when ODIN_OS == .Windows {
+	when WGPU_SHARED {
+		foreign import wgpu_native {LIB}
+	} else {
+		foreign import wgpu_native {
+			LIB,
+			"system:gdi32.lib",
+			"system:dxgi.lib",
+			"system:d3dcompiler.lib",
+			"system:opengl32.lib",
+			"system:user32.lib",
+			"system:dwmapi.lib",
+			"system:bcrypt.lib",
+			"system:ws2_32.lib",
+			"system:userenv.lib",
+			"system:dbghelp.lib",
+			"system:advapi32.lib",
+			"system:ntdll.lib",
+		}
+	}
+} else when ODIN_OS == .Darwin || ODIN_OS == .Linux {
+	when WGPU_USE_SYSTEM_LIBRARIES {
+		foreign import wgpu_native "system:wgpu_native"
+	} else {
+		foreign import wgpu_native {LIB}
+	}
+} else {
+	foreign import wgpu_native "system:wgpu_native"
+}
+
 Native_SType :: enum ENUM_SIZE {
 	Device_Extras                  = 0x00030001,
 	Required_Limits_Extras         = 0x00030002,
@@ -250,7 +280,7 @@ Native_Texture_Format :: enum ENUM_SIZE {
 }
 
 @(default_calling_convention = "c")
-foreign _ {
+foreign wgpu_native {
 	@(link_name = "wgpuGenerateReport")
 	generate_report :: proc(instance: Instance, report: ^Global_Report) ---
 
