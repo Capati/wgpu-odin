@@ -1,0 +1,3 @@
+[submodule "examples/build/assets"]
+	path = examples/build/assets
+	url = https://github.com/Capati/wgpu-odin-assets.git

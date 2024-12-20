@@ -1,36 +1,34 @@
 # Build
-
-/examples/build/*
-!/examples/build/assets/
 *.lib
 *.dll
 *.pdb
 *.a
 *.dylib
+*.exe
+*.so
+*.obj
+*.o
+*.exp
+*.ilk
+*.res
+*.manifest
 
-# Assets
-
-examples/build/assets/cubemap/*
-!examples/build/assets/cubemap/.gitkeep
-
-# Bin
-
-# *.o
-
-# Sublime Text
-
-*.sublime-workspace
-
-# vs code
-
+# IDE/Editor
 /.vscode
+*.sublime-workspace
+*.code-workspace
+.idea/
+*.swp
+*.swo
 
-# logs
+# Logs and temp
 /tmp
+*.log
 
-# Mac
-
+# OS
 **/.DS_Store
+Thumbs.db
+desktop.ini
 
-# Ols
+# Project specific
 ols.json
