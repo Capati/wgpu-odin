@@ -1,10 +1,13 @@
 {
 	"$schema": "https://raw.githubusercontent.com/DanielGavin/ols/master/misc/ols.schema.json",
-	"collections": [],
-	"enable_semantic_tokens": false,
+	"enable_format": true,
+	"collections": [{ "name": "root", "path": "./" }],
+	"enable_semantic_tokens": true,
 	"enable_document_symbols": true,
 	"enable_hover": true,
 	"enable_snippets": true,
 	"enable_checker_only_saved": true,
-	"checker_args": "-vet -strict-style"
+	"enable_inlay_hints": false,
+	"enable_fake_methods": true,
+	"checker_args": "-vet -debug -vet-cast -vet-style -vet-using-param -vet-tabs -strict-style -disallow-do"
 }
