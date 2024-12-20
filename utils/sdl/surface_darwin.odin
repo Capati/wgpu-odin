@@ -7,12 +7,12 @@ import CA "vendor:darwin/QuartzCore"
 import sdl "vendor:sdl2"
 
 // Local packages
-import wgpu "../../wrapper"
+import wgpu "./../../"
 
 get_surface_descriptor :: proc(
 	window: ^sdl.Window,
 ) -> (
-	descriptor: wgpu.Surface_Descriptor,
+	descriptor: wgpu.SurfaceDescriptor,
 	ok: bool,
 ) {
 	wm_info := get_sys_info(window) or_return
@@ -25,7 +25,7 @@ get_surface_descriptor :: proc(
 	native_window->contentView()->setLayer(metal_layer)
 
 	// Setup surface information
-	descriptor.target = wgpu.Surface_Descriptor_From_Metal_Layer {
+	descriptor.target = wgpu.SurfaceSourceMetalLayer {
 		layer = metal_layer,
 	}
 

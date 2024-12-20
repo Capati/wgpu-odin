@@ -1,15 +1,16 @@
 package wgpu_shader_utils
 
-// STD Library
+// Packages
 import "core:mem"
 import "core:strings"
 
 // Local packages
-import wgpu "./../../wrapper"
+import wgpu "./../../"
 
 LINEAR_TO_SRGB_WGSL: string : #load("linear_to_srgb.wgsl", string)
 SRGB_TO_LINEAR_WGSL: string : #load("srgb_to_linear.wgsl", string)
 
+// odinfmt: disable
 SRGB_TO_LINEAR_COLOR_CONVERSION: string : SRGB_TO_LINEAR_WGSL + `
 fn apply_color_conversion(color: vec3<f32>) -> vec3<f32> {
 	return srgb_to_linear(color);
@@ -27,6 +28,7 @@ fn apply_color_conversion(color: vec3<f32>) -> vec3<f32> {
     return color;
 }
 `
+// odinfmt: enable
 
 apply_color_conversion :: proc(
 	source: string,

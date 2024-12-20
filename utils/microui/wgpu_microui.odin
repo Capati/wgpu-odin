@@ -1,11 +1,10 @@
 package wgpu_microui
 
-// Vendor
+// Packages
 import mu "vendor:microui"
 
 // Local packages
-import wgpu "./../../wrapper"
-import shaders "./../shaders"
+import "./../../wgpu"
 
 // Constants for buffer sizes and atlas dimensions
 MAX_QUADS_PER_BATCH: u32 : 16384
@@ -15,33 +14,32 @@ ATLAS_HEIGHT_INVERSE: f32 : 1.0 / mu.DEFAULT_ATLAS_HEIGHT
 NUM_BUFFERS: u32 : 2 // Double buffering
 
 Vertex :: struct {
-	position  : [2]f32,
-	tex_coord : [2]f32,
-	color     : [4]f32,
+	position:  [2]f32,
+	tex_coord: [2]f32,
+	color:     [4]f32,
 }
 
 Renderer :: struct {
-	device                  : wgpu.Device,
-	queue                   : wgpu.Queue,
-	atlas_texture           : wgpu.Texture,
-	atlas_view              : wgpu.Texture_View,
-	atlas_sampler           : wgpu.Sampler,
-	bind_group              : wgpu.Bind_Group,
-	render_pipeline         : wgpu.Render_Pipeline,
-	vertex_buffer           : wgpu.Buffer,
-	index_buffer            : wgpu.Buffer,
-	vertices                : [dynamic]Vertex,
-	indices                 : [dynamic]u32,
-	use_command_encoder     : bool,
-	current_pass            : wgpu.Render_Pass,
-	viewport_rect           : mu.Rect,
-	current_clip_rect       : mu.Rect,
-	quad_count              : u32,
-	viewport_width_inverse  : f32,
-	viewport_height_inverse : f32,
-	vertex_buffer_offset    : u64,
-	index_buffer_offset     : u64,
-	frame_index             : u32,
+	device:                  wgpu.Device,
+	queue:                   wgpu.Queue,
+	atlas_texture:           wgpu.Texture,
+	atlas_view:              wgpu.TextureView,
+	atlas_sampler:           wgpu.Sampler,
+	bind_group:              wgpu.BindGroup,
+	render_pipeline:         wgpu.RenderPipeline,
+	vertex_buffer:           wgpu.Buffer,
+	index_buffer:            wgpu.Buffer,
+	vertices:                [dynamic]Vertex,
+	indices:                 [dynamic]u32,
+	current_pass:            wgpu.RenderPass,
+	viewport_rect:           mu.Rect,
+	current_clip_rect:       mu.Rect,
+	quad_count:              u32,
+	viewport_width_inverse:  f32,
+	viewport_height_inverse: f32,
+	vertex_buffer_offset:    u64,
+	index_buffer_offset:     u64,
+	frame_index:             u32,
 }
 
 // Global renderer instance
@@ -53,32 +51,32 @@ Initializes the WebGPU renderer for MicroUI.
 init :: proc(
 	device: wgpu.Device,
 	queue: wgpu.Queue,
-	surface_config: wgpu.Surface_Configuration,
-	allocator := context.allocator,
+	surface_config: wgpu.SurfaceConfiguration,
 	loc := #caller_location,
 ) -> (
-	mu_ctx: ^mu.Context,
 	ok: bool,
 ) {
 	r.device = device
-	wgpu.device_reference(device)
+	wgpu.device_add_ref(device)
 
 	r.queue = queue
-	wgpu.queue_reference(queue)
+	wgpu.queue_add_ref(queue)
 
 	r.atlas_texture = wgpu.device_create_texture(
 		device,
 		{
-			label = "microui atlas",
-			usage = {.Texture_Binding, .Copy_Dst},
+			label = "MicroUI Atlas",
+			usage = {.TextureBinding, .CopyDst},
 			dimension = .D2,
 			size = {mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT, 1},
-			format = .Rgba8_Unorm,
+			format = wgpu.texture_format_remove_srgb_suffix(surface_config.format),
 			mip_level_count = 1,
 			sample_count = 1,
 		},
 	) or_return
-	defer if !ok do wgpu.texture_release(r.atlas_texture)
+	defer if !ok {
+		wgpu.release(r.atlas_texture)
+	}
 
 	// The mu.default_atlas_alpha contains only alpha channel data for the Atlas image
 	// We need to convert this single-channel (alpha) data to full RGBA format.
@@ -101,10 +99,14 @@ init :: proc(
 		{bytes_per_row = bytes_per_row, rows_per_image = mu.DEFAULT_ATLAS_HEIGHT},
 		{mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT, 1},
 	) or_return
-	defer if !ok do wgpu.texture_destroy(r.atlas_texture)
+	defer if !ok {
+		wgpu.texture_destroy(r.atlas_texture)
+	}
 
 	r.atlas_view = wgpu.texture_create_view(r.atlas_texture) or_return
-	defer if !ok do wgpu.texture_view_release(r.atlas_view)
+	defer if !ok {
+		wgpu.release(r.atlas_view)
+	}
 
 	sampler_descriptor := wgpu.DEFAULT_SAMPLER_DESCRIPTOR
 	// FIXME(Capati): Ideally, we would use LINEAR filtering for improved text rendering,
@@ -114,17 +116,19 @@ init :: proc(
 	sampler_descriptor.mag_filter = .Nearest
 
 	r.atlas_sampler = wgpu.device_create_sampler(device, sampler_descriptor) or_return
-	defer if !ok do wgpu.sampler_release(r.atlas_sampler)
+	defer if !ok {
+		wgpu.release(r.atlas_sampler)
+	}
 
 	bind_group_layout := wgpu.device_create_bind_group_layout(
 		device,
-		wgpu.Bind_Group_Layout_Descriptor{
-			label = "microui bind group layout",
+		wgpu.BindGroupLayoutDescriptor {
+			label = "MicroUI Bind Group Layout",
 			entries = {
 				{
 					binding = 0,
 					visibility = {.Fragment},
-					type = wgpu.Texture_Binding_Layout {
+					type = wgpu.TextureBindingLayout {
 						multisampled = false,
 						view_dimension = .D2,
 						sample_type = .Float,
@@ -133,17 +137,17 @@ init :: proc(
 				{
 					binding = 1,
 					visibility = {.Fragment},
-					type = wgpu.Sampler_Binding_Layout{type = .Filtering},
+					type = wgpu.SamplerBindingLayout{type = .Filtering},
 				},
 			},
 		},
 	) or_return
-	defer wgpu.bind_group_layout_release(bind_group_layout)
+	defer wgpu.release(bind_group_layout)
 
 	r.bind_group = wgpu.device_create_bind_group(
 		device,
 		{
-			label = "microui bind group",
+			label = "MicroUI Bind Group",
 			layout = bind_group_layout,
 			entries = {
 				{binding = 0, resource = r.atlas_view},
@@ -151,26 +155,27 @@ init :: proc(
 			},
 		},
 	) or_return
-	defer if !ok do wgpu.bind_group_release(r.bind_group)
+	defer if !ok {
+		wgpu.release(r.bind_group)
+	}
 
 	pipeline_layout := wgpu.device_create_pipeline_layout(
 		device,
-		{label = "microui pipeline layout", bind_group_layouts = {bind_group_layout}},
+		{label = "MicroUI Pipeline Layout", bind_group_layouts = {bind_group_layout}},
 	) or_return
-	defer wgpu.pipeline_layout_release(pipeline_layout)
+	defer wgpu.release(pipeline_layout)
 
-	SHADER_SRC: string : #load("./microui.wgsl", string)
-	COMBINED_SHADER_SRC :: shaders.SRGB_TO_LINEAR_WGSL + SHADER_SRC
+	SHADER_SRC :: #load("./microui.wgsl", string)
 	microui_shader_module := wgpu.device_create_shader_module(
 		device,
-		{label = "microui shader", source = COMBINED_SHADER_SRC},
+		{label = "MicroUI Shader", source = SHADER_SRC},
 	) or_return
-	defer wgpu.shader_module_release(microui_shader_module)
+	defer wgpu.release(microui_shader_module)
 
 	r.render_pipeline = wgpu.device_create_render_pipeline(
 		device,
-		wgpu.Render_Pipeline_Descriptor {
-			label = "microui pipeline",
+		wgpu.RenderPipelineDescriptor {
+			label = "MicroUI Pipeline",
 			layout = pipeline_layout,
 			vertex = {
 				module = microui_shader_module,
@@ -195,19 +200,19 @@ init :: proc(
 					},
 				},
 			},
-			fragment = &wgpu.Fragment_State {
+			fragment = &wgpu.FragmentState {
 				module = microui_shader_module,
 				entry_point = "fs_main",
 				targets = {
 					{
 						format = surface_config.format,
-						blend = &wgpu.Blend_State_Normal,
-						write_mask = wgpu.Color_Write_Mask_All,
+						blend = &wgpu.BLEND_STATE_NORMAL,
+						write_mask = wgpu.COLOR_WRITE_MASK_ALL,
 					},
 				},
 			},
 			primitive = {
-				topology = .Triangle_List,
+				topology = .TriangleList,
 				strip_index_format = .Undefined,
 				front_face = .CCW,
 				cull_mode = .None,
@@ -216,16 +221,17 @@ init :: proc(
 			multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 		},
 	) or_return
-	defer if !ok do wgpu.render_pipeline_release(r.render_pipeline)
+	defer if !ok {
+		wgpu.release(r.render_pipeline)
+	}
 
-	// set_viewport_rect({100, 100, 400, 400})
 	set_viewport_rect({0, 0, i32(surface_config.width), i32(surface_config.height)})
 
 	r.vertex_buffer = wgpu.device_create_buffer(
 		device,
 		{
-			label = "Vertex Buffer",
-			usage = {.Vertex, .Copy_Dst},
+			label = "MicroUI Vertex Buffer",
+			usage = {.Vertex, .CopyDst},
 			size = u64(INITIAL_VERTEX_CAPACITY) * u64(size_of(Vertex)) * u64(NUM_BUFFERS),
 		},
 	) or_return
@@ -233,8 +239,8 @@ init :: proc(
 	r.index_buffer = wgpu.device_create_buffer(
 		device,
 		{
-			label = "Index Buffer",
-			usage = {.Index, .Copy_Dst},
+			label = "MicroUI Index Buffer",
+			usage = {.Index, .CopyDst},
 			size = u64(INITIAL_VERTEX_CAPACITY) * 6 * u64(NUM_BUFFERS),
 		},
 	) or_return
@@ -244,72 +250,36 @@ init :: proc(
 	// Each quad needs 6 indices
 	reserve(&r.indices, INITIAL_VERTEX_CAPACITY * 6)
 
-	mu_ctx = new(mu.Context, allocator)
-	assert(mu_ctx != nil, "Failed to allocate microui context", loc)
-	mu.init(mu_ctx)
-	mu_ctx.text_width = mu.default_atlas_text_width
-	mu_ctx.text_height = mu.default_atlas_text_height
-
-	return mu_ctx, true
+	return true
 }
 
 /*
-Renders the MicroUI context using a command encoder.
+Renders the MicroUI context.
 */
-render_with_command_encoder :: proc(
+render :: proc(
 	ctx: ^mu.Context,
-	encoder: wgpu.Command_Encoder,
-	color_view: wgpu.Texture_View,
+	encoder: wgpu.CommandEncoder,
+	color_view: wgpu.TextureView,
 ) -> (
 	ok: bool,
 ) {
-	pass := wgpu.command_encoder_begin_render_pass(
+	r.current_pass = wgpu.command_encoder_begin_render_pass(
 	encoder,
-	wgpu.Render_Pass_Descriptor {
+	wgpu.RenderPassDescriptor {
 		label             = "MicroUI Render Pass",
-		color_attachments = []wgpu.Render_Pass_Color_Attachment {
+		color_attachments = []wgpu.RenderPassColorAttachment {
 			{
-				view     = color_view,
-				load_op  = .Load, // Load existing content
-				store_op = .Store,
+				view        = color_view,
+				depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
+				load_op     = .Load, // Load existing content
+				store_op    = .Store,
 			},
 		},
 	},
 	)
 
-	r.use_command_encoder = true
-
-	return begin_rendering(ctx, pass)
-}
-
-/*
-Renders the MicroUI context using a render pass encoder.
-*/
-render_with_render_pass :: proc(ctx: ^mu.Context, pass: wgpu.Render_Pass) -> bool {
-	return begin_rendering(ctx, pass)
-}
-
-render :: proc {
-	render_with_command_encoder,
-	render_with_render_pass,
-}
-
-reset_state :: proc "contextless" () {
-	r.frame_index = (r.frame_index + 1) % NUM_BUFFERS
-	r.vertex_buffer_offset =
-		wgpu.buffer_get_size(r.vertex_buffer) / u64(NUM_BUFFERS) * u64(r.frame_index)
-	r.index_buffer_offset =
-		wgpu.buffer_get_size(r.index_buffer) / u64(NUM_BUFFERS) * u64(r.frame_index)
-	r.quad_count = 0
-	r.current_clip_rect = r.viewport_rect
-	clear(&r.vertices)
-	clear(&r.indices)
-}
-
-begin_rendering :: proc(ctx: ^mu.Context, pass: wgpu.Render_Pass) -> bool {
 	reset_state()
-	r.current_pass = pass
-	setup_render_pass(pass)
+	setup_render_pass()
 
 	cmd: ^mu.Command
 	for variant in mu.next_command_iterator(ctx, &cmd) {
@@ -327,31 +297,51 @@ begin_rendering :: proc(ctx: ^mu.Context, pass: wgpu.Render_Pass) -> bool {
 		}
 	}
 
-	return prepare_and_draw(pass)
+	return prepare_and_draw()
 }
 
-setup_render_pass :: proc "contextless" (pass: wgpu.Render_Pass) {
-	wgpu.render_pass_set_viewport(pass, 0, 0, f32(r.viewport_rect.w), f32(r.viewport_rect.h), 0, 1)
+reset_state :: proc "contextless" () {
+	r.frame_index = (r.frame_index + 1) % NUM_BUFFERS
+	r.vertex_buffer_offset =
+		wgpu.buffer_get_size(r.vertex_buffer) / u64(NUM_BUFFERS) * u64(r.frame_index)
+	r.index_buffer_offset =
+		wgpu.buffer_get_size(r.index_buffer) / u64(NUM_BUFFERS) * u64(r.frame_index)
+	r.quad_count = 0
+	r.current_clip_rect = r.viewport_rect
+	clear(&r.vertices)
+	clear(&r.indices)
+}
+
+setup_render_pass :: proc "contextless" () {
+	wgpu.render_pass_set_viewport(
+		r.current_pass,
+		0,
+		0,
+		f32(r.viewport_rect.w),
+		f32(r.viewport_rect.h),
+		0,
+		1,
+	)
 
 	wgpu.render_pass_set_scissor_rect(
-		pass,
+		r.current_pass,
 		u32(r.viewport_rect.x),
 		u32(r.viewport_rect.y),
 		u32(r.viewport_rect.w),
 		u32(r.viewport_rect.h),
 	)
 
-	wgpu.render_pass_set_pipeline(pass, r.render_pipeline)
-	wgpu.render_pass_set_bind_group(pass, 0, r.bind_group)
-	wgpu.render_pass_set_vertex_buffer(pass, 0, r.vertex_buffer)
-	wgpu.render_pass_set_index_buffer(pass, r.index_buffer, .Uint32)
+	wgpu.render_pass_set_pipeline(r.current_pass, r.render_pipeline)
+	wgpu.render_pass_set_bind_group(r.current_pass, 0, r.bind_group)
 }
 
 /*
 Writes the accumulated vertex and index data to the GPU and issues the draw call.
 */
-prepare_and_draw :: proc "contextless" (pass: wgpu.Render_Pass) -> (ok: bool) {
-	if r.quad_count == 0 do return
+prepare_and_draw :: proc "contextless" () -> (ok: bool) {
+	if r.quad_count == 0 {
+		return true
+	}
 
 	wgpu.queue_write_buffer(
 		r.queue,
@@ -368,23 +358,19 @@ prepare_and_draw :: proc "contextless" (pass: wgpu.Render_Pass) -> (ok: bool) {
 	) or_return
 
 	wgpu.render_pass_set_vertex_buffer(
-		pass,
+		r.current_pass,
 		0,
-		r.vertex_buffer,
-		{offset = r.vertex_buffer_offset},
+		{buffer = r.vertex_buffer, offset = r.vertex_buffer_offset},
 	)
 	wgpu.render_pass_set_index_buffer(
-		pass,
-		r.index_buffer,
+		r.current_pass,
+		{buffer = r.index_buffer, offset = r.index_buffer_offset},
 		.Uint32,
-		{offset = r.index_buffer_offset},
 	)
 
-	wgpu.render_pass_draw_indexed(pass, {0, u32(r.quad_count * 6)})
+	wgpu.render_pass_draw_indexed(r.current_pass, {0, u32(r.quad_count * 6)})
 
-	if r.use_command_encoder {
-		wgpu.render_pass_end(pass) or_return
-	}
+	wgpu.render_pass_end(r.current_pass) or_return
 
 	return true
 }
@@ -449,11 +435,13 @@ push_quad :: proc(dst, src: mu.Rect, color: mu.Color) -> bool #no_bounds_check {
 		r.current_clip_rect,
 	)
 
-	if !should_render do return true
+	if !should_render {
+		return true
+	}
 
 	// Check if we need to flush
 	if r.quad_count == MAX_QUADS_PER_BATCH / NUM_BUFFERS {
-		prepare_and_draw(r.current_pass) or_return
+		prepare_and_draw() or_return
 		reset_state()
 	}
 
@@ -508,7 +496,10 @@ push_quad :: proc(dst, src: mu.Rect, color: mu.Color) -> bool #no_bounds_check {
 
 draw_text :: proc(text: string, pos: mu.Vec2, color: mu.Color) {
 	dst := mu.Rect{pos.x, pos.y, 0, 0}
-	for ch in text do if ch & 0xc0 != 0x80 {
+	for ch in text {
+		if ch & 0xc0 == 0x80 {
+			break
+		}
 		r := min(int(ch), 127)
 		src := mu.default_atlas[mu.DEFAULT_ATLAS_FONT + r]
 		dst.w = src.w
@@ -579,19 +570,17 @@ calculate_viewport_inverses :: proc "contextless" (width, height: i32) {
 }
 
 destroy :: proc() {
-	wgpu.buffer_destroy(r.vertex_buffer)
-	wgpu.buffer_release(r.vertex_buffer)
-	wgpu.buffer_destroy(r.index_buffer)
-	wgpu.buffer_release(r.index_buffer)
-	wgpu.render_pipeline_release(r.render_pipeline)
-	wgpu.bind_group_release(r.bind_group)
-	wgpu.sampler_release(r.atlas_sampler)
-	wgpu.texture_view_release(r.atlas_view)
-	wgpu.texture_destroy(r.atlas_texture)
-	wgpu.texture_release(r.atlas_texture)
+	wgpu.release(r.vertex_buffer)
+	wgpu.release(r.index_buffer)
+	wgpu.release(r.render_pipeline)
+	wgpu.release(r.bind_group)
+	wgpu.release(r.atlas_sampler)
+	wgpu.release(r.atlas_view)
+	wgpu.release(r.atlas_texture)
+	wgpu.release(r.atlas_texture)
 
-	wgpu.queue_release(r.queue)
-	wgpu.device_release(r.device)
+	wgpu.release(r.queue)
+	wgpu.release(r.device)
 
 	delete(r.vertices)
 	delete(r.indices)

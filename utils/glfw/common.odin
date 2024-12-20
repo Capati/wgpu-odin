@@ -1,10 +1,10 @@
 package wgpu_utils_glfw
 
-// Vendor
+// Packages
 import "vendor:glfw"
 
 // Local packages
-import wgpu "../../wrapper"
+import "./../../wgpu"
 
 create_surface :: proc(
 	window: glfw.WindowHandle,
