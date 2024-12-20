@@ -1,6 +1,6 @@
 package tutorial1_window_glfw
 
-// STD Library
+// Packages
 import "core:fmt"
 
 // Vendor

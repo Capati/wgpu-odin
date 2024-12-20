@@ -19,5 +19,5 @@ fn vs_main(
 
 @fragment
 fn fs_main(fragData: VertexOut) -> @location(0) vec4f {
-	return vec4(apply_color_conversion(fragData.color.rgb), fragData.color.a);
+	return fragData.color;
 }

@@ -1,6 +1,6 @@
 package tutorial2_surface
 
-// STD Library
+// Packages
 import "base:runtime"
 import "core:fmt"
 
@@ -8,31 +8,33 @@ import "core:fmt"
 import sdl "vendor:sdl2"
 
 // Local packages
-import wgpu_sdl "../../../../utils/sdl"
-import wgpu "../../../../wrapper"
+import wgpu "./../../../../"
+import wgpu_sdl "./../../../../utils/sdl"
 
 State :: struct {
-	window    : ^sdl.Window,
-	minimized : bool,
-	surface   : wgpu.Surface,
-	device    : wgpu.Device,
-	queue     : wgpu.Queue,
-	config    : wgpu.Surface_Configuration,
+	window:    ^sdl.Window,
+	minimized: bool,
+	surface:   wgpu.Surface,
+	device:    wgpu.Device,
+	queue:     wgpu.Queue,
+	config:    wgpu.SurfaceConfiguration,
 }
 
 Physical_Size :: struct {
-	width  : u32,
-	height : u32,
+	width:  u32,
+	height: u32,
 }
 
-_log_callback :: proc "c" (level: wgpu.Log_Level, message: cstring, user_data: rawptr) {
+_log_callback :: proc "c" (level: wgpu.LogLevel, message: wgpu.StringView, userdata: rawptr) {
 	context = runtime.default_context()
-	fmt.eprintf("[wgpu] [%v] %s\n\n", level, message)
+	fmt.eprintf("[wgpu] [%v] %s\n\n", level, wgpu.string_view_get_string(message))
 }
 
 init :: proc() -> (state: ^State, ok: bool) {
 	state = new(State)
-	defer if !ok do free(state)
+	defer if !ok {
+		free(state)
+	}
 
 	sdl_flags := sdl.InitFlags{.VIDEO, .JOYSTICK, .GAMECONTROLLER, .EVENTS}
 
@@ -40,7 +42,9 @@ init :: proc() -> (state: ^State, ok: bool) {
 		fmt.eprintf("ERROR: Failed to initialize SDL: [%s]\n", sdl.GetError())
 		return
 	}
-	defer if !ok do sdl.Quit()
+	defer if !ok {
+		sdl.Quit()
+	}
 
 	window_flags: sdl.WindowFlags = {.SHOWN, .ALLOW_HIGHDPI, .RESIZABLE}
 
@@ -56,44 +60,52 @@ init :: proc() -> (state: ^State, ok: bool) {
 		fmt.eprintf("ERROR: Failed to create the SDL Window: [%s]\n", sdl.GetError())
 		return
 	}
-	defer if !ok do sdl.DestroyWindow(state.window)
+	defer if !ok {
+		sdl.DestroyWindow(state.window)
+	}
 
 	wgpu.set_log_callback(_log_callback, nil)
 	wgpu.set_log_level(.Warn)
 
-	instance_descriptor := wgpu.Instance_Descriptor {
-		backends             = wgpu.Instance_Backend_Primary,
+	instance_descriptor := wgpu.InstanceDescriptor {
+		backends = wgpu.INSTANCE_BACKEND_PRIMARY,
 	}
 
 	instance := wgpu.create_instance(instance_descriptor) or_return
-	defer wgpu.instance_release(instance)
+	defer wgpu.release(instance)
 
 	surface_descriptor := wgpu_sdl.get_surface_descriptor(state.window) or_return
 	state.surface = wgpu.instance_create_surface(instance, surface_descriptor) or_return
-	defer if !ok do wgpu.surface_release(state.surface)
+	defer if !ok {
+		wgpu.release(state.surface)
+	}
 
-	adapter_options := wgpu.Request_Adapter_Options {
-		power_preference       = .High_Performance,
+	adapter_options := wgpu.RequestAdapterOptions {
+		power_preference       = .HighPerformance,
 		compatible_surface     = state.surface,
 		force_fallback_adapter = false,
 	}
 
 	adapter := wgpu.instance_request_adapter(instance, adapter_options) or_return
-	defer wgpu.adapter_release(adapter)
+	defer wgpu.release(adapter)
 
 	adapter_info := wgpu.adapter_get_info(adapter)
 	defer wgpu.adapter_info_free_members(adapter_info)
 
-	device_descriptor := wgpu.Device_Descriptor {
+	device_descriptor := wgpu.DeviceDescriptor {
 		label           = adapter_info.description,
 		required_limits = wgpu.DEFAULT_LIMITS,
 	}
 
 	state.device = wgpu.adapter_request_device(adapter, device_descriptor) or_return
-	defer if !ok do wgpu.device_release(state.device)
+	defer if !ok {
+		wgpu.release(state.device)
+	}
 
 	state.queue = wgpu.device_get_queue(state.device)
-	defer if !ok do wgpu.queue_release(state.queue)
+	defer if !ok {
+		wgpu.release(state.queue)
+	}
 
 	caps := wgpu.surface_get_capabilities(state.surface, adapter) or_return
 	defer wgpu.surface_capabilities_free_members(caps)
@@ -102,7 +114,8 @@ init :: proc() -> (state: ^State, ok: bool) {
 	sdl.GetWindowSize(state.window, &width, &height)
 
 	state.config = {
-		usage        = {.Render_Attachment},
+		device       = state.device,
+		usage        = {.RenderAttachment},
 		format       = caps.formats[0],
 		width        = cast(u32)width,
 		height       = cast(u32)height,
@@ -110,16 +123,16 @@ init :: proc() -> (state: ^State, ok: bool) {
 		alpha_mode   = caps.alpha_modes[0],
 	}
 
-	wgpu.surface_configure(state.surface, state.device, state.config) or_return
+	wgpu.surface_configure(state.surface, state.config) or_return
 
 	return state, true
 }
 
-deinit :: proc(using state: ^State) {
-	wgpu.queue_release(queue)
-	wgpu.device_release(device)
-	wgpu.surface_release(surface)
-	sdl.DestroyWindow(window)
+deinit :: proc(state: ^State) {
+	wgpu.release(state.queue)
+	wgpu.release(state.device)
+	wgpu.release(state.surface)
+	sdl.DestroyWindow(state.window)
 	sdl.Quit()
 	free(state)
 }
@@ -133,29 +146,29 @@ resize_surface :: proc(state: ^State, size: Physical_Size) -> bool {
 	state.config.height = size.height
 
 	wgpu.surface_unconfigure(state.surface)
-	wgpu.surface_configure(state.surface, state.device, state.config) or_return
+	wgpu.surface_configure(state.surface, state.config) or_return
 
 	return true
 }
 
-render :: proc(using state: ^State) -> (ok: bool) {
+render :: proc(state: ^State) -> (ok: bool) {
 	frame := wgpu.surface_get_current_texture(state.surface) or_return
-	defer wgpu.texture_release(frame.texture)
+	defer wgpu.release(frame.texture)
 
 	view := wgpu.texture_create_view(frame.texture) or_return
-	defer wgpu.texture_view_release(view)
+	defer wgpu.release(view)
 
 	encoder := wgpu.device_create_command_encoder(
 		state.device,
-		wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
+		wgpu.CommandEncoderDescriptor{label = "Command Encoder"},
 	) or_return
-	defer wgpu.command_encoder_release(encoder)
+	defer wgpu.release(encoder)
 
 	render_pass := wgpu.command_encoder_begin_render_pass(
 		encoder,
 		{
 			label = "Render Pass",
-			color_attachments = []wgpu.Render_Pass_Color_Attachment {
+			color_attachments = []wgpu.RenderPassColorAttachment {
 				{
 					view = view,
 					resolve_target = nil,
@@ -167,21 +180,23 @@ render :: proc(using state: ^State) -> (ok: bool) {
 			depth_stencil_attachment = nil,
 		},
 	)
-	defer wgpu.render_pass_release(render_pass)
+	defer wgpu.release(render_pass)
 	wgpu.render_pass_end(render_pass) or_return
 
 	command_buffer := wgpu.command_encoder_finish(encoder) or_return
-	defer wgpu.command_buffer_release(command_buffer)
+	defer wgpu.release(command_buffer)
 
-	wgpu.queue_submit(queue, command_buffer)
-	wgpu.surface_present(surface)
+	wgpu.queue_submit(state.queue, command_buffer)
+	wgpu.surface_present(state.surface)
 
 	return true
 }
 
 main :: proc() {
 	state, state_ok := init()
-	if !state_ok do return
+	if !state_ok {
+		return
+	}
 	defer deinit(state)
 
 	main_loop: for {
@@ -196,11 +211,10 @@ main :: proc() {
 				#partial switch (e.window.event) {
 				case .SIZE_CHANGED:
 				case .RESIZED:
-					ok := resize_surface(
-						state,
-						{cast(u32)e.window.data1, cast(u32)e.window.data2},
-					)
-					if !ok do break main_loop
+					ok := resize_surface(state, {cast(u32)e.window.data1, cast(u32)e.window.data2})
+					if !ok {
+						break main_loop
+					}
 
 				case .MINIMIZED:
 					state.minimized = true
@@ -212,7 +226,9 @@ main :: proc() {
 		}
 
 		if !state.minimized {
-			if ok := render(state); !ok do break main_loop
+			if ok := render(state); !ok {
+				break main_loop
+			}
 		}
 	}
 

@@ -1,26 +1,44 @@
 package tutorial2_surface_challenge
 
-// STD Library
-import "base:builtin"
-@(require) import "core:log"
+// Packages
+import "core:log"
 
 // Local packages
-import rl "./../../../../utils/renderlink"
+import wgpu "./../../../../"
+import app "./../../../../utils/application"
 
-State :: struct {
-	clear_color: rl.Color,
+Example :: struct {
+	clear_value: app.Color,
+	render_pass: struct {
+		color_attachments: [1]wgpu.RenderPassColorAttachment,
+		descriptor:        wgpu.RenderPassDescriptor,
+	},
 }
 
-State_Context :: rl.Context(State)
+Context :: app.Context(Example)
 
 EXAMPLE_TITLE :: "Tutorial 2 - Surface Challenge"
 
-init :: proc(ctx: ^State_Context) -> (ok: bool) {
-	rl.graphics_clear(rl.Color_Royal_Blue)
+init :: proc(ctx: ^Context) -> (ok: bool) {
+	ctx.clear_value = app.ColorRoyalBlue
+
+	ctx.render_pass.color_attachments[0] = {
+		view        = nil, /* Assigned later */
+		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
+		load_op     = .Clear,
+		store_op    = .Store,
+		clear_value = ctx.clear_value,
+	}
+
+	ctx.render_pass.descriptor = {
+		label             = "Render pass descriptor",
+		color_attachments = ctx.render_pass.color_attachments[:],
+	}
+
 	return true
 }
 
-calculate_color_from_position :: proc(x, y: f32, w, h: u32) -> (color: rl.Color) {
+calculate_color_from_position :: proc(x, y: f32, w, h: u32) -> (color: app.Color) {
 	color.r = cast(f64)x / cast(f64)w
 	color.g = cast(f64)y / cast(f64)h
 	color.b = 1.0
@@ -28,18 +46,31 @@ calculate_color_from_position :: proc(x, y: f32, w, h: u32) -> (color: rl.Color)
 	return
 }
 
-mouse_moved :: proc(event: rl.Mouse_Moved_Event, ctx: ^State_Context) {
-	ctx.clear_color = calculate_color_from_position(
+mouse_position :: proc(ctx: ^Context, event: app.MouseMovedEvent) {
+	ctx.clear_value = calculate_color_from_position(
 		event.x,
 		event.y,
 		ctx.gpu.config.width,
 		ctx.gpu.config.height,
 	)
-
-	rl.graphics_clear(ctx.clear_color)
 }
 
-draw :: proc(ctx: ^State_Context) -> bool {
+draw :: proc(ctx: ^Context) -> bool {
+	ctx.cmd = wgpu.device_create_command_encoder(ctx.gpu.device) or_return
+	defer wgpu.release(ctx.cmd)
+
+	ctx.render_pass.color_attachments[0].view = ctx.frame.view
+	ctx.render_pass.color_attachments[0].clear_value = ctx.clear_value
+	render_pass := wgpu.command_encoder_begin_render_pass(ctx.cmd, ctx.render_pass.descriptor)
+	defer wgpu.release(render_pass)
+	wgpu.render_pass_end(render_pass) or_return
+
+	cmdbuf := wgpu.command_encoder_finish(ctx.cmd) or_return
+	defer wgpu.release(cmdbuf)
+
+	wgpu.queue_submit(ctx.gpu.queue, cmdbuf)
+	wgpu.surface_present(ctx.gpu.surface) or_return
+
 	return true
 }
 
@@ -49,20 +80,21 @@ main :: proc() {
 		defer log.destroy_console_logger(context.logger)
 	}
 
-	state := builtin.new(State_Context)
-	assert(state != nil, "Failed to allocate application state")
-	defer builtin.free(state)
+	settings := app.DEFAULT_SETTINGS
+	settings.title = EXAMPLE_TITLE
 
-	state.callbacks = {
-		init        = init,
-		mouse_moved = mouse_moved,
-		draw        = draw,
+	example, ok := app.create(Context, settings)
+	if !ok {
+		log.fatalf("Failed to create example [%s]", EXAMPLE_TITLE)
+		return
+	}
+	defer app.destroy(example)
+
+	example.callbacks = {
+		init           = init,
+		mouse_position = mouse_position,
+		draw           = draw,
 	}
 
-	settings := rl.DEFAULT_SETTINGS
-	settings.window.title = EXAMPLE_TITLE
-
-	if ok := rl.init(state, settings); !ok do return
-
-	rl.begin_run(state) // Start the main loop
+	app.run(example) // Start the main loop
 }

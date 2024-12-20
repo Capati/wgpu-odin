@@ -1,53 +1,47 @@
 package tutorial4_buffer
 
-// STD Library
-import "base:runtime"
-import "base:builtin"
-@(require) import "core:log"
+// Packages
+import "core:log"
 
 // Local Packages
-import "../../../../utils/shaders"
-import wgpu "../../../../wrapper"
-import rl "./../../../../utils/renderlink"
+import wgpu "./../../../../"
+import app "./../../../../utils/application"
 
 Vertex :: struct {
-	position : [3]f32,
-	color    : [3]f32,
+	position: [3]f32,
+	color:    [3]f32,
 }
 
-State :: struct {
-	render_pipeline : wgpu.Render_Pipeline,
-	vertex_buffer   : wgpu.Buffer,
-	index_buffer    : wgpu.Buffer,
-	num_indices     : u32,
+Example :: struct {
+	render_pipeline: wgpu.RenderPipeline,
+	vertex_buffer:   wgpu.Buffer,
+	index_buffer:    wgpu.Buffer,
+	num_indices:     u32,
+	render_pass:     struct {
+		color_attachments: [1]wgpu.RenderPassColorAttachment,
+		descriptor:        wgpu.RenderPassDescriptor,
+	},
 }
 
-State_Context :: rl.Context(State)
+Context :: app.Context(Example)
 
 EXAMPLE_TITLE :: "Tutorial 4 - Buffers"
 
-init :: proc(ctx: ^State_Context) -> (ok: bool) {
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-
-	SHADER_WGSL: string : #load("./shader.wgsl", string)
-	shader_source := shaders.apply_color_conversion(
-		SHADER_WGSL,
-		ctx.gpu.is_srgb,
-		context.temp_allocator,
-	) or_return
+init :: proc(ctx: ^Context) -> (ok: bool) {
+	SHADER_WGSL :: #load("./shader.wgsl")
 	shader_module := wgpu.device_create_shader_module(
 		ctx.gpu.device,
-		{source = shader_source},
+		{source = string(SHADER_WGSL)},
 	) or_return
-	defer wgpu.shader_module_release(shader_module)
+	defer wgpu.release(shader_module)
 
 	render_pipeline_layout := wgpu.device_create_pipeline_layout(
 		ctx.gpu.device,
 		{label = EXAMPLE_TITLE + " Render Pipeline Layout"},
 	) or_return
-	defer wgpu.pipeline_layout_release(render_pipeline_layout)
+	defer wgpu.release(render_pipeline_layout)
 
-	vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
+	vertex_buffer_layout := wgpu.VertexBufferLayout {
 		array_stride = size_of(Vertex),
 		step_mode    = .Vertex,
 		attributes   = {
@@ -56,7 +50,7 @@ init :: proc(ctx: ^State_Context) -> (ok: bool) {
 		},
 	}
 
-	render_pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
+	render_pipeline_descriptor := wgpu.RenderPipelineDescriptor {
 		label = EXAMPLE_TITLE + "  Render Pipeline",
 		layout = render_pipeline_layout,
 		vertex = {
@@ -70,12 +64,12 @@ init :: proc(ctx: ^State_Context) -> (ok: bool) {
 			targets = {
 				{
 					format = ctx.gpu.config.format,
-					blend = &wgpu.Blend_State_Replace,
-					write_mask = wgpu.Color_Write_Mask_All,
+					blend = &wgpu.BLEND_STATE_REPLACE,
+					write_mask = wgpu.COLOR_WRITE_MASK_ALL,
 				},
 			},
 		},
-		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
+		primitive = {topology = .TriangleList, front_face = .CCW, cull_mode = .Back},
 		depth_stencil = nil,
 		multisample = {count = 1, mask = ~u32(0), alpha_to_coverage_enabled = false},
 	}
@@ -84,7 +78,9 @@ init :: proc(ctx: ^State_Context) -> (ok: bool) {
 		ctx.gpu.device,
 		render_pipeline_descriptor,
 	) or_return
-	defer if !ok do wgpu.render_pipeline_release(ctx.render_pipeline)
+	defer if !ok {
+		wgpu.release(ctx.render_pipeline)
+	}
 
 	// vertices := []Vertex{
 	//     {position = {0.0, 0.5, 0.0}, color = {1.0, 0.0, 0.0}},
@@ -107,39 +103,68 @@ init :: proc(ctx: ^State_Context) -> (ok: bool) {
 
 	ctx.vertex_buffer = wgpu.device_create_buffer_with_data(
 		ctx.gpu.device,
-		wgpu.Buffer_Data_Descriptor {
+		wgpu.BufferDataDescriptor {
 			label = EXAMPLE_TITLE + " Vertex Buffer",
 			contents = wgpu.to_bytes(vertices),
 			usage = {.Vertex},
 		},
 	) or_return
-	defer if !ok do wgpu.buffer_release(ctx.vertex_buffer)
+	defer if !ok {
+		wgpu.release(ctx.vertex_buffer)
+	}
 
 	ctx.index_buffer = wgpu.device_create_buffer_with_data(
 		ctx.gpu.device,
-		wgpu.Buffer_Data_Descriptor {
+		wgpu.BufferDataDescriptor {
 			label = EXAMPLE_TITLE + " Index Buffer",
 			contents = wgpu.to_bytes(indices),
 			usage = {.Index},
 		},
 	) or_return
 
-	rl.graphics_clear(rl.Color{0.1, 0.2, 0.3, 1.0})
+	ctx.render_pass.color_attachments[0] = {
+		view        = nil, /* Assigned later */
+		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
+		load_op     = .Clear,
+		store_op    = .Store,
+		clear_value = {0.1, 0.2, 0.3, 1.0},
+	}
+
+	ctx.render_pass.descriptor = {
+		label             = "Render pass descriptor",
+		color_attachments = ctx.render_pass.color_attachments[:],
+	}
 
 	return true
 }
 
-quit :: proc(ctx: ^State_Context) {
-	wgpu.buffer_release(ctx.index_buffer)
-	wgpu.buffer_release(ctx.vertex_buffer)
-	wgpu.render_pipeline_release(ctx.render_pipeline)
+quit :: proc(ctx: ^Context) {
+	wgpu.release(ctx.index_buffer)
+	wgpu.release(ctx.vertex_buffer)
+	wgpu.release(ctx.render_pipeline)
 }
 
-draw :: proc(ctx: ^State_Context) -> bool {
-	wgpu.render_pass_set_pipeline(ctx.gpu.render_pass, ctx.render_pipeline)
-	wgpu.render_pass_set_vertex_buffer(ctx.gpu.render_pass, 0, ctx.vertex_buffer)
-	wgpu.render_pass_set_index_buffer(ctx.gpu.render_pass, ctx.index_buffer, .Uint16)
-	wgpu.render_pass_draw_indexed(ctx.gpu.render_pass, {0, ctx.num_indices})
+draw :: proc(ctx: ^Context) -> bool {
+	ctx.cmd = wgpu.device_create_command_encoder(ctx.gpu.device) or_return
+	defer wgpu.release(ctx.cmd)
+
+	ctx.render_pass.color_attachments[0].view = ctx.frame.view
+	render_pass := wgpu.command_encoder_begin_render_pass(ctx.cmd, ctx.render_pass.descriptor)
+	defer wgpu.release(render_pass)
+
+	wgpu.render_pass_set_pipeline(render_pass, ctx.render_pipeline)
+	wgpu.render_pass_set_vertex_buffer(render_pass, 0, {buffer = ctx.vertex_buffer})
+	wgpu.render_pass_set_index_buffer(render_pass, {buffer = ctx.index_buffer}, .Uint16)
+	wgpu.render_pass_draw_indexed(render_pass, {0, ctx.num_indices})
+
+	wgpu.render_pass_end(render_pass) or_return
+
+	cmdbuf := wgpu.command_encoder_finish(ctx.cmd) or_return
+	defer wgpu.release(cmdbuf)
+
+	wgpu.queue_submit(ctx.gpu.queue, cmdbuf)
+	wgpu.surface_present(ctx.gpu.surface) or_return
+
 	return true
 }
 
@@ -149,20 +174,21 @@ main :: proc() {
 		defer log.destroy_console_logger(context.logger)
 	}
 
-	state := builtin.new(State_Context)
-	assert(state != nil, "Failed to allocate application state")
-	defer builtin.free(state)
+	settings := app.DEFAULT_SETTINGS
+	settings.title = EXAMPLE_TITLE
 
-	state.callbacks = {
+	example, ok := app.create(Context, settings)
+	if !ok {
+		log.fatalf("Failed to create example [%s]", EXAMPLE_TITLE)
+		return
+	}
+	defer app.destroy(example)
+
+	example.callbacks = {
 		init = init,
 		quit = quit,
 		draw = draw,
 	}
 
-	settings := rl.DEFAULT_SETTINGS
-	settings.window.title = EXAMPLE_TITLE
-
-	if ok := rl.init(state, settings); !ok do return
-
-	rl.begin_run(state) // Start the main loop
+	app.run(example) // Start the main loop
 }

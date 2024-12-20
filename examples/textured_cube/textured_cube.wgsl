@@ -30,7 +30,5 @@ fn fs_main(
   @location(0) fragUV: vec2f,
   @location(1) fragPosition: vec4f
 ) -> @location(0) vec4f {
-	let srgb_color = textureSample(myTexture, mySampler, fragUV) * fragPosition;
-	let final_color = apply_color_conversion(srgb_color.rgb);
-	return vec4(final_color, srgb_color.a);
+	return textureSample(myTexture, mySampler, fragUV) * fragPosition;
 }

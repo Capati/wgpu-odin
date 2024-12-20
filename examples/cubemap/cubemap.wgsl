@@ -39,7 +39,5 @@ fn fs_main(
     // (z toward viewer), so we have to flip it.
     cubemapVec.z = -cubemapVec.z;
 
-    let srgb_color = textureSample(myTexture, mySampler, cubemapVec);
-	let linear_color = srgb_to_linear(srgb_color.rgb);
-    return vec4(linear_color, srgb_color.a);
+    return textureSample(myTexture, mySampler, cubemapVec);
 }

@@ -29,7 +29,5 @@ var s_diffuse: sampler;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-	let srgb_color = textureSample(t_diffuse, s_diffuse, in.tex_coords);
-	let linear_color = srgb_to_linear(srgb_color.rgb);
-    return vec4(linear_color, srgb_color.a);
+	return textureSample(t_diffuse, s_diffuse, in.tex_coords);
 }

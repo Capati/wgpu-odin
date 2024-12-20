@@ -1,15 +1,18 @@
 package compute
 
-// STD Library
+// Packages
 import "base:runtime"
 import "core:fmt"
 
 // Local packages
-import wgpu "../../wrapper"
+import wgpu "./../../"
 
-_log_callback :: proc "c" (level: wgpu.Log_Level, message: cstring, user_data: rawptr) {
-	context = runtime.default_context()
-	fmt.eprintf("[wgpu] [%v] %s\n\n", level, message)
+_log_callback :: proc "c" (level: wgpu.LogLevel, message: wgpu.StringView, user_data: rawptr) {
+	if message.length > 0 {
+		context = runtime.default_context()
+		temp := string(message.data)[:message.length]
+		fmt.eprintf("[wgpu] [%v] %s\n\n", level, temp)
+	}
 }
 
 run :: proc() -> (ok: bool) {
@@ -22,14 +25,14 @@ run :: proc() -> (ok: bool) {
 
 	// Instantiates instance of WebGPU
 	instance := wgpu.create_instance(
-		wgpu.Instance_Descriptor{backends = wgpu.Instance_Backend_Primary},
+		wgpu.InstanceDescriptor{backends = wgpu.INSTANCE_BACKEND_PRIMARY},
 	) or_return
 	defer wgpu.instance_release(instance)
 
 	// Instantiates the general connection to the GPU
 	adapter := wgpu.instance_request_adapter(
 		instance,
-		{compatible_surface = nil, power_preference = .High_Performance},
+		wgpu.RequestAdapterOptions{power_preference = .HighPerformance},
 	) or_return
 	defer wgpu.adapter_release(adapter)
 
@@ -40,7 +43,7 @@ run :: proc() -> (ok: bool) {
 	// `features` being the available features.
 	device := wgpu.adapter_request_device(
 		adapter,
-		wgpu.Device_Descriptor{label = adapter_info.description},
+		wgpu.DeviceDescriptor{label = adapter_info.description},
 	) or_return
 	defer wgpu.device_release(device)
 
@@ -51,17 +54,17 @@ run :: proc() -> (ok: bool) {
 	shader_source := #load("./compute.wgsl")
 	shader_module := wgpu.device_create_shader_module(
 		device,
-		{label = "Compute module", source = cstring(raw_data(shader_source))},
+		{label = "Compute module", source = string(shader_source)},
 	) or_return
 	defer wgpu.shader_module_release(shader_module)
 
 	// Instantiates buffer without data.
 	// `usage` of buffer specifies how it can be used:
 	//   `Map_Read` allows it to be read (outside the shader).
-	//   `Copy_Dst` allows it to be the destination of the copy.
+	//   `CopyDst` allows it to be the destination of the copy.
 	staging_buffer := wgpu.device_create_buffer(
 		device,
-		{label = "staging_buffer", size = cast(u64)numbers_size, usage = {.Map_Read, .Copy_Dst}},
+		{label = "staging_buffer", size = cast(u64)numbers_size, usage = {.MapRead, .CopyDst}},
 	) or_return
 	defer wgpu.buffer_release(staging_buffer)
 
@@ -75,8 +78,8 @@ run :: proc() -> (ok: bool) {
 		device,
 		{
 			label = "storage_buffer",
-			contents  = wgpu.to_bytes(numbers),
-			usage = {.Storage, .Copy_Src, .Copy_Dst},
+			contents = wgpu.to_bytes(numbers),
+			usage = {.Storage, .CopySrc, .CopyDst},
 		},
 	) or_return
 	defer wgpu.buffer_release(storage_buffer)
@@ -91,9 +94,9 @@ run :: proc() -> (ok: bool) {
 	// Instantiates the pipeline.
 	compute_pipeline := wgpu.device_create_compute_pipeline(
 		device,
-		wgpu.Compute_Pipeline_Descriptor {
-			label       = "compute_pipeline",
-			module      = shader_module,
+		wgpu.ComputePipelineDescriptor {
+			label = "compute_pipeline",
+			module = shader_module,
 			entry_point = "main",
 		},
 	) or_return
@@ -109,12 +112,7 @@ run :: proc() -> (ok: bool) {
 		device,
 		{
 			layout = bind_group_layout,
-			entries = {
-				{
-					binding = 0,
-					resource = wgpu.buffer_as_entire_binding(storage_buffer),
-				},
-			},
+			entries = {{binding = 0, resource = wgpu.buffer_as_entire_binding(storage_buffer)}},
 			label = "bind_group_layout",
 		},
 	) or_return
@@ -124,13 +122,13 @@ run :: proc() -> (ok: bool) {
 	// It is to WebGPU what a command buffer is to Vulkan.
 	encoder := wgpu.device_create_command_encoder(
 		device,
-		wgpu.Command_Encoder_Descriptor{label = "command_encoder"},
+		wgpu.CommandEncoderDescriptor{label = "command_encoder"},
 	) or_return
 	defer wgpu.command_encoder_release(encoder)
 
 	compute_pass := wgpu.command_encoder_begin_compute_pass(
 		encoder,
-		wgpu.Compute_Pass_Descriptor{label = "compute_pass"},
+		wgpu.ComputePassDescriptor{label = "compute_pass"},
 	) or_return
 
 	wgpu.compute_pass_set_pipeline(compute_pass, compute_pipeline)
@@ -159,24 +157,29 @@ run :: proc() -> (ok: bool) {
 
 	wgpu.queue_submit(queue, command_buffer)
 
-	result: wgpu.Buffer_Map_Async_Status
+	result: wgpu.MapAsyncStatus
 
-	handle_buffer_map := proc "c" (status: wgpu.Buffer_Map_Async_Status, user_data: rawptr) {
-		result := cast(^wgpu.Buffer_Map_Async_Status)user_data
+	handle_buffer_map := proc "c" (
+		status: wgpu.MapAsyncStatus,
+		message: wgpu.StringView,
+		userdata1: rawptr,
+		userdata2: rawptr,
+	) {
+		result := cast(^wgpu.MapAsyncStatus)userdata1
 		result^ = status
 	}
 	wgpu.buffer_map_async(
 		staging_buffer,
 		{.Read},
-		handle_buffer_map,
-		&result,
 		{offset = 0, size = wgpu.buffer_get_size(staging_buffer)},
+		{callback = handle_buffer_map, userdata1 = &result},
 	)
 
 	wgpu.device_poll(device) or_return
 
 	if result == .Success {
-		data := wgpu.buffer_get_mapped_range(staging_buffer, type_of(numbers)) or_return
+		data_view := wgpu.buffer_get_mapped_range(staging_buffer, type_of(numbers)) or_return
+		data := data_view.data
 		fmt.printf("Steps: [%d, %d, %d, %d]\n", data[0], data[1], data[2], data[3])
 	} else {
 		fmt.eprintf("ERROR: Failed to map async result buffer: %v\n", result)

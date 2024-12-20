@@ -1,81 +1,81 @@
 package tutorial6_uniforms
 
-// STD Library
-import "base:builtin"
-import "base:runtime"
+// Packages
+import "core:log"
 import la "core:math/linalg"
-@(require) import "core:log"
 
 // Local Packages
-import "../../../../utils/shaders"
-import wgpu "../../../../wrapper"
-import "../tutorial5_textures/texture"
-import rl "./../../../../utils/renderlink"
+import wgpu "./../../../../"
+import app "./../../../../utils/application"
 
 Vertex :: struct {
-	position   : [3]f32,
-	tex_coords : [2]f32,
+	position:   [3]f32,
+	tex_coords: [2]f32,
 }
 
 Camera :: struct {
-	eye     : la.Vector3f32,
-	target  : la.Vector3f32,
-	up      : la.Vector3f32,
-	aspect  : f32,
-	fovYRad : f32,
-	znear   : f32,
-	zfar    : f32,
+	eye:     la.Vector3f32,
+	target:  la.Vector3f32,
+	up:      la.Vector3f32,
+	aspect:  f32,
+	fovYRad: f32,
+	znear:   f32,
+	zfar:    f32,
 }
 
-Camera_Uniform :: struct {
+CameraUniform :: struct {
 	view_proj: la.Matrix4f32,
 }
 
-Camera_Controller :: struct {
-	speed               : f32,
-	is_up_pressed       : bool,
-	is_down_pressed     : bool,
-	is_forward_pressed  : bool,
-	is_backward_pressed : bool,
-	is_left_pressed     : bool,
-	is_right_pressed    : bool,
+CameraController :: struct {
+	speed:               f32,
+	is_up_pressed:       bool,
+	is_down_pressed:     bool,
+	is_forward_pressed:  bool,
+	is_backward_pressed: bool,
+	is_left_pressed:     bool,
+	is_right_pressed:    bool,
 }
 
-State :: struct {
-	diffuse_bind_group : wgpu.Bind_Group,
-	camera             : Camera,
-	camera_controller  : Camera_Controller,
-	camera_uniform     : Camera_Uniform,
-	camera_buffer      : wgpu.Buffer,
-	camera_bind_group  : wgpu.Bind_Group,
-	render_pipeline    : wgpu.Render_Pipeline,
-	num_indices        : u32,
-	vertex_buffer      : wgpu.Buffer,
-	index_buffer       : wgpu.Buffer,
+Example :: struct {
+	diffuse_bind_group: wgpu.BindGroup,
+	camera:             Camera,
+	camera_controller:  CameraController,
+	camera_uniform:     CameraUniform,
+	camera_buffer:      wgpu.Buffer,
+	camera_bind_group:  wgpu.BindGroup,
+	render_pipeline:    wgpu.RenderPipeline,
+	num_indices:        u32,
+	vertex_buffer:      wgpu.Buffer,
+	index_buffer:       wgpu.Buffer,
+	render_pass:        struct {
+		color_attachments: [1]wgpu.RenderPassColorAttachment,
+		descriptor:        wgpu.RenderPassDescriptor,
+	},
 }
 
-State_Context :: rl.Context(State)
+Context :: app.Context(Example)
 
 EXAMPLE_TITLE :: "Tutorial 6 - Uniforms"
 
-init :: proc(ctx: ^State_Context) -> (ok: bool) {
+init :: proc(ctx: ^Context) -> (ok: bool) {
 	// Load our tree image to texture
-	diffuse_texture := texture.texture_from_image(
+	diffuse_texture := app.create_texture_from_file(
 		ctx.gpu.device,
 		ctx.gpu.queue,
-		"assets/learn_wgpu/tutorial5/happy-tree.png",
+		"assets/textures/happy-tree.png",
 	) or_return
-	defer texture.texture_destroy(diffuse_texture)
+	defer app.release(diffuse_texture)
 
 	texture_bind_group_layout := wgpu.device_create_bind_group_layout(
 		ctx.gpu.device,
-		wgpu.Bind_Group_Layout_Descriptor{
+		wgpu.BindGroupLayoutDescriptor {
 			label = "TextureBindGroupLayout",
 			entries = {
 				{
 					binding = 0,
 					visibility = {.Fragment},
-					type = wgpu.Texture_Binding_Layout {
+					type = wgpu.TextureBindingLayout {
 						multisampled = false,
 						view_dimension = .D2,
 						sample_type = .Float,
@@ -84,16 +84,16 @@ init :: proc(ctx: ^State_Context) -> (ok: bool) {
 				{
 					binding = 1,
 					visibility = {.Fragment},
-					type = wgpu.Sampler_Binding_Layout{type = .Filtering},
+					type = wgpu.SamplerBindingLayout{type = .Filtering},
 				},
 			},
 		},
 	) or_return
-	defer wgpu.bind_group_layout_release(texture_bind_group_layout)
+	defer wgpu.release(texture_bind_group_layout)
 
 	ctx.diffuse_bind_group = wgpu.device_create_bind_group(
 		ctx.gpu.device,
-		wgpu.Bind_Group_Descriptor {
+		wgpu.BindGroupDescriptor {
 			label = "diffuse_bind_group",
 			layout = texture_bind_group_layout,
 			entries = {
@@ -102,7 +102,9 @@ init :: proc(ctx: ^State_Context) -> (ok: bool) {
 			},
 		},
 	) or_return
-	defer if !ok do wgpu.bind_group_release(ctx.diffuse_bind_group)
+	defer if !ok {
+		wgpu.release(ctx.diffuse_bind_group)
+	}
 
 	ctx.camera = {
 		{0.0, 1.0, 2.0},
@@ -115,45 +117,47 @@ init :: proc(ctx: ^State_Context) -> (ok: bool) {
 		100.0,
 	}
 
-	ctx.camera_controller = new_camera_controller(0.2)
+	ctx.camera_controller = new_camera_controller(10)
 
 	ctx.camera_uniform = new_camera_uniform()
 	update_view_proj(&ctx.camera_uniform, &ctx.camera)
 
 	ctx.camera_buffer = wgpu.device_create_buffer_with_data(
 		ctx.gpu.device,
-		wgpu.Buffer_Data_Descriptor {
+		wgpu.BufferDataDescriptor {
 			label = "Camera Buffer",
 			contents = wgpu.to_bytes(ctx.camera_uniform.view_proj),
-			usage = {.Uniform, .Copy_Dst},
+			usage = {.Uniform, .CopyDst},
 		},
 	) or_return
-	defer if !ok do wgpu.buffer_release(ctx.camera_buffer)
+	defer if !ok {
+		wgpu.release(ctx.camera_buffer)
+	}
 
 	camera_bind_group_layout := wgpu.device_create_bind_group_layout(
 		ctx.gpu.device,
-		wgpu.Bind_Group_Layout_Descriptor{
+		wgpu.BindGroupLayoutDescriptor {
 			label = "camera_bind_group_layout",
 			entries = {
 				{
 					binding = 0,
 					visibility = {.Vertex},
-					type = wgpu.Buffer_Binding_Layout{type = .Uniform, has_dynamic_offset = false},
+					type = wgpu.BufferBindingLayout{type = .Uniform, has_dynamic_offset = false},
 				},
 			},
 		},
 	) or_return
-	defer wgpu.bind_group_layout_release(camera_bind_group_layout)
+	defer wgpu.release(camera_bind_group_layout)
 
 	ctx.camera_bind_group = wgpu.device_create_bind_group(
 		ctx.gpu.device,
-		wgpu.Bind_Group_Descriptor {
+		wgpu.BindGroupDescriptor {
 			label = "camera_bind_group",
 			layout = camera_bind_group_layout,
 			entries = {
 				{
 					binding = 0,
-					resource = wgpu.Buffer_Binding {
+					resource = wgpu.BufferBinding {
 						buffer = ctx.camera_buffer,
 						size = wgpu.WHOLE_SIZE,
 					},
@@ -161,7 +165,9 @@ init :: proc(ctx: ^State_Context) -> (ok: bool) {
 			},
 		},
 	) or_return
-	defer if !ok do wgpu.bind_group_release(ctx.camera_bind_group)
+	defer if !ok {
+		wgpu.release(ctx.camera_bind_group)
+	}
 
 	render_pipeline_layout := wgpu.device_create_pipeline_layout(
 		ctx.gpu.device,
@@ -170,9 +176,9 @@ init :: proc(ctx: ^State_Context) -> (ok: bool) {
 			bind_group_layouts = {texture_bind_group_layout, camera_bind_group_layout},
 		},
 	) or_return
-	defer wgpu.pipeline_layout_release(render_pipeline_layout)
+	defer wgpu.release(render_pipeline_layout)
 
-	vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
+	vertex_buffer_layout := wgpu.VertexBufferLayout {
 		array_stride = size_of(Vertex),
 		step_mode    = .Vertex,
 		attributes   = {
@@ -185,21 +191,14 @@ init :: proc(ctx: ^State_Context) -> (ok: bool) {
 		},
 	}
 
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-
-	CUBE_WGSL: string : #load("./shader.wgsl", string)
-	shader_source := shaders.apply_color_conversion(
-		CUBE_WGSL,
-		ctx.gpu.is_srgb,
-		context.temp_allocator,
-	) or_return
+	CUBE_WGSL :: #load("./shader.wgsl")
 	shader_module := wgpu.device_create_shader_module(
 		ctx.gpu.device,
-		{source = shader_source},
+		{source = string(CUBE_WGSL)},
 	) or_return
-	defer wgpu.shader_module_release(shader_module)
+	defer wgpu.release(shader_module)
 
-	render_pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
+	render_pipeline_descriptor := wgpu.RenderPipelineDescriptor {
 		label = "Render Pipeline",
 		layout = render_pipeline_layout,
 		vertex = {
@@ -213,12 +212,12 @@ init :: proc(ctx: ^State_Context) -> (ok: bool) {
 			targets = {
 				{
 					format = ctx.gpu.config.format,
-					blend = &wgpu.Blend_State_Replace,
-					write_mask = wgpu.Color_Write_Mask_All,
+					blend = &wgpu.BLEND_STATE_REPLACE,
+					write_mask = wgpu.COLOR_WRITE_MASK_ALL,
 				},
 			},
 		},
-		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
+		primitive = {topology = .TriangleList, front_face = .CCW, cull_mode = .Back},
 		depth_stencil = nil,
 		multisample = {count = 1, mask = ~u32(0), alpha_to_coverage_enabled = false},
 	}
@@ -227,7 +226,9 @@ init :: proc(ctx: ^State_Context) -> (ok: bool) {
 		ctx.gpu.device,
 		render_pipeline_descriptor,
 	) or_return
-	defer if !ok do wgpu.render_pipeline_release(ctx.render_pipeline)
+	defer if !ok {
+		wgpu.release(ctx.render_pipeline)
+	}
 
 	vertices := []Vertex {
 		{position = {-0.0868241, 0.49240386, 0.0}, tex_coords = {0.4131759, 0.00759614}}, // A
@@ -243,39 +244,52 @@ init :: proc(ctx: ^State_Context) -> (ok: bool) {
 
 	ctx.vertex_buffer = wgpu.device_create_buffer_with_data(
 		ctx.gpu.device,
-		wgpu.Buffer_Data_Descriptor {
+		wgpu.BufferDataDescriptor {
 			label = "Vertex Buffer",
 			contents = wgpu.to_bytes(vertices),
 			usage = {.Vertex},
 		},
 	) or_return
-	defer if !ok do wgpu.buffer_release(ctx.vertex_buffer)
+	defer if !ok {
+		wgpu.release(ctx.vertex_buffer)
+	}
 
 	ctx.index_buffer = wgpu.device_create_buffer_with_data(
 		ctx.gpu.device,
-		wgpu.Buffer_Data_Descriptor {
+		wgpu.BufferDataDescriptor {
 			label = "Index Buffer",
 			contents = wgpu.to_bytes(indices),
 			usage = {.Index},
 		},
 	) or_return
 
-	rl.graphics_clear(rl.Color{0.1, 0.2, 0.3, 1.0})
+	ctx.render_pass.color_attachments[0] = {
+		view        = nil, /* Assigned later */
+		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
+		load_op     = .Clear,
+		store_op    = .Store,
+		clear_value = {0.1, 0.2, 0.3, 1.0},
+	}
+
+	ctx.render_pass.descriptor = {
+		label             = "Render pass descriptor",
+		color_attachments = ctx.render_pass.color_attachments[:],
+	}
 
 	return true
 }
 
-quit :: proc(ctx: ^State_Context) {
-	wgpu.buffer_release(ctx.index_buffer)
-	wgpu.buffer_release(ctx.vertex_buffer)
-	wgpu.render_pipeline_release(ctx.render_pipeline)
-	wgpu.bind_group_release(ctx.camera_bind_group)
-	wgpu.bind_group_release(ctx.diffuse_bind_group)
-	wgpu.buffer_release(ctx.camera_buffer)
+quit :: proc(ctx: ^Context) {
+	wgpu.release(ctx.index_buffer)
+	wgpu.release(ctx.vertex_buffer)
+	wgpu.release(ctx.render_pipeline)
+	wgpu.release(ctx.camera_bind_group)
+	wgpu.release(ctx.diffuse_bind_group)
+	wgpu.release(ctx.camera_buffer)
 }
 
-resize :: proc(event: rl.Resize_Event, ctx: ^State_Context) -> bool{
-	ctx.camera.aspect = cast(f32)event.width / cast(f32)event.height
+resize :: proc(ctx: ^Context, size: app.ResizeEvent) -> bool {
+	ctx.camera.aspect = cast(f32)size.w / cast(f32)size.h
 	update_view_proj(&ctx.camera_uniform, &ctx.camera)
 	wgpu.queue_write_buffer(
 		ctx.gpu.queue,
@@ -287,8 +301,8 @@ resize :: proc(event: rl.Resize_Event, ctx: ^State_Context) -> bool{
 	return true
 }
 
-update :: proc(dt: f64, ctx: ^State_Context) -> bool{
-	update_camera_controller(&ctx.camera_controller, &ctx.camera)
+update :: proc(ctx: ^Context, dt: f64) -> bool {
+	update_camera_controller(&ctx.camera_controller, &ctx.camera, dt)
 	update_view_proj(&ctx.camera_uniform, &ctx.camera)
 
 	wgpu.queue_write_buffer(
@@ -301,26 +315,41 @@ update :: proc(dt: f64, ctx: ^State_Context) -> bool{
 	return true
 }
 
-draw :: proc(ctx: ^State_Context) -> bool{
-	wgpu.render_pass_set_pipeline(ctx.gpu.render_pass, ctx.render_pipeline)
-	wgpu.render_pass_set_bind_group(ctx.gpu.render_pass, 0, ctx.diffuse_bind_group)
-	wgpu.render_pass_set_bind_group(ctx.gpu.render_pass, 1, ctx.camera_bind_group)
-	wgpu.render_pass_set_vertex_buffer(ctx.gpu.render_pass, 0, ctx.vertex_buffer)
-	wgpu.render_pass_set_index_buffer(ctx.gpu.render_pass, ctx.index_buffer, .Uint16)
-	wgpu.render_pass_draw_indexed(ctx.gpu.render_pass, {0, ctx.num_indices})
+draw :: proc(ctx: ^Context) -> bool {
+	ctx.cmd = wgpu.device_create_command_encoder(ctx.gpu.device) or_return
+	defer wgpu.release(ctx.cmd)
+
+	ctx.render_pass.color_attachments[0].view = ctx.frame.view
+	render_pass := wgpu.command_encoder_begin_render_pass(ctx.cmd, ctx.render_pass.descriptor)
+	defer wgpu.release(render_pass)
+
+	wgpu.render_pass_set_pipeline(render_pass, ctx.render_pipeline)
+	wgpu.render_pass_set_bind_group(render_pass, 0, ctx.diffuse_bind_group)
+	wgpu.render_pass_set_bind_group(render_pass, 1, ctx.camera_bind_group)
+	wgpu.render_pass_set_vertex_buffer(render_pass, 0, {buffer = ctx.vertex_buffer})
+	wgpu.render_pass_set_index_buffer(render_pass, {buffer = ctx.index_buffer}, .Uint16)
+	wgpu.render_pass_draw_indexed(render_pass, {0, ctx.num_indices})
+
+	wgpu.render_pass_end(render_pass) or_return
+
+	cmdbuf := wgpu.command_encoder_finish(ctx.cmd) or_return
+	defer wgpu.release(cmdbuf)
+
+	wgpu.queue_submit(ctx.gpu.queue, cmdbuf)
+	wgpu.surface_present(ctx.gpu.surface) or_return
 
 	return true
 }
 
-handle_events :: proc(event: rl.Event, ctx: ^State_Context) {
+handle_event :: proc(ctx: ^Context, event: app.Event) {
 	#partial switch ev in event {
-	case rl.Key_Event:
+	case app.KeyEvent:
 		controller := &ctx.camera_controller
 		pressed := ev.action == .Pressed
 		#partial switch ev.key {
 		case .Space:
 			controller.is_up_pressed = true if pressed else false
-		case .Left_Shift:
+		case .LeftShift:
 			controller.is_down_pressed = true if pressed else false
 		case .W:
 			controller.is_forward_pressed = true if pressed else false
@@ -342,24 +371,26 @@ main :: proc() {
 		defer log.destroy_console_logger(context.logger)
 	}
 
-	state := builtin.new(State_Context)
-	assert(state != nil, "Failed to allocate application state")
-	defer builtin.free(state)
+	settings := app.DEFAULT_SETTINGS
+	settings.title = EXAMPLE_TITLE
 
-	state.callbacks = {
-		init          = init,
-		quit          = quit,
-		handle_events = handle_events,
-		update        = update,
-		draw          = draw,
+	example, ok := app.create(Context, settings)
+	if !ok {
+		log.fatalf("Failed to create example [%s]", EXAMPLE_TITLE)
+		return
+	}
+	defer app.destroy(example)
+
+	example.callbacks = {
+		init         = init,
+		quit         = quit,
+		resize       = resize,
+		handle_event = handle_event,
+		update       = update,
+		draw         = draw,
 	}
 
-	settings := rl.DEFAULT_SETTINGS
-	settings.window.title = EXAMPLE_TITLE
-
-	if ok := rl.init(state, settings); !ok do return
-
-	rl.begin_run(state) // Start the main loop
+	app.run(example) // Start the main loop
 }
 
 build_view_projection_matrix :: proc(camera: ^Camera) -> la.Matrix4f32 {
@@ -371,33 +402,36 @@ build_view_projection_matrix :: proc(camera: ^Camera) -> la.Matrix4f32 {
 	)
 	view := la.matrix4_look_at_f32(eye = camera.eye, centre = camera.target, up = camera.up)
 	// return la.mul(projection, view)
-	return rl.OPEN_GL_TO_WGPU_MATRIX * projection * view
+	return app.OPEN_GL_TO_WGPU_MATRIX * projection * view
 }
 
-new_camera_uniform :: proc() -> Camera_Uniform {
+new_camera_uniform :: proc() -> CameraUniform {
 	return {la.MATRIX4F32_IDENTITY}
 }
 
-update_view_proj :: proc(self: ^Camera_Uniform, camera: ^Camera) {
+update_view_proj :: proc(self: ^CameraUniform, camera: ^Camera) {
 	self.view_proj = build_view_projection_matrix(camera)
 }
 
-new_camera_controller :: proc(speed: f32) -> Camera_Controller {
+new_camera_controller :: proc(speed: f32) -> CameraController {
 	return {speed = speed}
 }
 
-update_camera_controller :: proc(using self: ^Camera_Controller, camera: ^Camera) {
+update_camera_controller :: proc(self: ^CameraController, camera: ^Camera, dt: f64) {
+	// Calculate frame-independent movement speed
+	frame_speed := self.speed * f32(dt)
+
 	forward := camera.target - camera.eye
 	forward_norm := la.normalize(forward)
 	forward_mag := la.length(forward)
 
 	// Prevents glitching when the camera gets too close to the center of the scene.
-	if is_forward_pressed && forward_mag > speed {
-		camera.eye += forward_norm * speed
+	if self.is_forward_pressed && forward_mag > frame_speed {
+		camera.eye += forward_norm * frame_speed
 	}
 
-	if is_backward_pressed {
-		camera.eye -= forward_norm * speed
+	if self.is_backward_pressed {
+		camera.eye -= forward_norm * frame_speed
 	}
 
 	right := la.cross(forward_norm, camera.up)
@@ -406,11 +440,11 @@ update_camera_controller :: proc(using self: ^Camera_Controller, camera: ^Camera
 	forward = camera.target - camera.eye
 	forward_mag = la.length(forward)
 
-	if is_right_pressed {
-		camera.eye = camera.target - la.normalize(forward + right * speed) * forward_mag
+	if self.is_right_pressed {
+		camera.eye = camera.target - la.normalize(forward + right * frame_speed) * forward_mag
 	}
 
-	if is_left_pressed {
-		camera.eye = camera.target - la.normalize(forward - right * speed) * forward_mag
+	if self.is_left_pressed {
+		camera.eye = camera.target - la.normalize(forward - right * frame_speed) * forward_mag
 	}
 }

@@ -1,73 +1,88 @@
 package microui_example
 
-// STD Library
-import "base:builtin"
-@(require) import "core:log"
+// Packages
+import "core:log"
 
 // Vendor
 import mu "vendor:microui"
 
 // Local packages
-import wgpu "../../wrapper"
-import wmu "./../../utils/microui"
-import rl "./../../utils/renderlink"
+import wgpu "./../../"
+import app "./../../utils/application"
 
-State :: struct {
-	mu_ctx          : ^mu.Context,
-	log_buf         : [64000]u8,
-	log_buf_len     : int,
-	log_buf_updated : bool,
-	bg              : mu.Color,
+Example :: struct {
+	log_buf:         [64000]u8,
+	log_buf_len:     int,
+	log_buf_updated: bool,
+	bg:              mu.Color,
+	render_pass:     struct {
+		color_attachments: [1]wgpu.RenderPassColorAttachment,
+		descriptor:        wgpu.RenderPassDescriptor,
+	},
 }
 
-State_Context :: rl.Context(State)
+Context :: app.Context(Example)
 
 EXAMPLE_TITLE :: "MicroUI Example"
 
-init :: proc(ctx: ^State_Context) -> (ok: bool) {
-	// Initialize the MicroUI renderer and context
-	ctx.mu_ctx = wmu.init(ctx.gpu.device, ctx.gpu.queue, ctx.gpu.config) or_return
-
+init :: proc(ctx: ^Context) -> (ok: bool) {
 	// Set initial state
 	ctx.bg = {56, 130, 210, 255}
 
-	return true
-}
+	ctx.render_pass.color_attachments[0] = {
+		view        = nil, /* Assigned later */
+		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
+		load_op     = .Clear,
+		store_op    = .Store,
+		clear_value = get_color_from_mu_color(ctx.bg),
+	}
 
-quit :: proc(ctx: ^State_Context) {
-	wmu.destroy()
-	free(ctx.mu_ctx)
+	ctx.render_pass.descriptor = {
+		label             = "Render pass descriptor",
+		color_attachments = ctx.render_pass.color_attachments[:],
+	}
+
+	return true
 }
 
 get_color_from_mu_color :: proc(color: mu.Color) -> wgpu.Color {
 	return {f64(color.r) / 255.0, f64(color.g) / 255.0, f64(color.b) / 255.0, 1.0}
 }
 
-handle_events :: proc(event: rl.Event, ctx: ^State_Context) {
-	rl.event_mu_set_event(ctx.mu_ctx, event)
+handle_event :: proc(ctx: ^Context, event: app.Event) {
+	app.ui_handle_event(ctx, event)
 }
 
-resize :: proc(event: rl.Resize_Event, ctx: ^State_Context) -> bool {
-	wmu.resize(i32(event.width), i32(event.height))
+ui_update :: proc(ctx: ^Context, mu_ctx: ^mu.Context) -> (ok: bool) {
+	// UI definition
+	test_window(ctx, mu_ctx)
+	log_window(ctx, mu_ctx)
+	style_window(ctx, mu_ctx)
 	return true
 }
 
-update :: proc(dt: f64, ctx: ^State_Context) -> bool {
-	// UI definition and update
-	mu.begin(ctx.mu_ctx)
-	test_window(&ctx.state)
-	log_window(&ctx.state)
-	style_window(&ctx.state)
-	mu.end(ctx.mu_ctx)
-
-	rl.graphics_clear(get_color_from_mu_color(ctx.bg))
-
+update :: proc(ctx: ^Context, dt: f64) -> bool {
+	ctx.render_pass.color_attachments[0].clear_value = get_color_from_mu_color(ctx.bg)
 	return true
 }
 
-draw :: proc(ctx: ^State_Context) -> bool {
-	// micro-ui rendering
-	wmu.render(ctx.mu_ctx, ctx.gpu.render_pass) or_return
+draw :: proc(ctx: ^Context) -> bool {
+	ctx.cmd = wgpu.device_create_command_encoder(ctx.gpu.device) or_return
+	defer wgpu.release(ctx.cmd)
+
+	ctx.render_pass.color_attachments[0].view = ctx.frame.view
+	render_pass := wgpu.command_encoder_begin_render_pass(ctx.cmd, ctx.render_pass.descriptor)
+	defer wgpu.release(render_pass)
+	wgpu.render_pass_end(render_pass) or_return
+
+	app.ui_draw(ctx) or_return
+
+	cmdbuf := wgpu.command_encoder_finish(ctx.cmd) or_return
+	defer wgpu.release(cmdbuf)
+
+	wgpu.queue_submit(ctx.gpu.queue, cmdbuf)
+	wgpu.surface_present(ctx.gpu.surface) or_return
+
 	return true
 }
 
@@ -77,23 +92,23 @@ main :: proc() {
 		defer log.destroy_console_logger(context.logger)
 	}
 
-	state := builtin.new(State_Context)
-	assert(state != nil, "Failed to allocate application state")
-	defer builtin.free(state)
+	settings := app.DEFAULT_SETTINGS
+	settings.title = EXAMPLE_TITLE
 
-	state.callbacks = {
+	example, ok := app.create(Context, settings)
+	if !ok {
+		log.fatalf("Failed to create example [%s]", EXAMPLE_TITLE)
+		return
+	}
+	defer app.destroy(example)
+
+	example.callbacks = {
 		init          = init,
-		quit          = quit,
-		resize        = resize,
-		handle_events = handle_events,
+		handle_event = handle_event,
+		ui_update     = ui_update,
 		update        = update,
 		draw          = draw,
 	}
 
-	settings := rl.DEFAULT_SETTINGS
-	settings.title = EXAMPLE_TITLE
-
-	if ok := rl.init(state, settings); !ok do return
-
-	rl.begin_run(state) // Start the main loop
+	app.run(example) // Start the main loop
 }

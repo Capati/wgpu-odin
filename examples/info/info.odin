@@ -1,10 +1,10 @@
 package info
 
-// STD Library
+// Packages
+import "base:runtime"
 import "core:fmt"
 
-// Local packages
-import wgpu "../../wrapper"
+import wgpu "./../../"
 
 run :: proc() -> (ok: bool) {
 	wgpu_version := wgpu.get_version()
@@ -20,21 +20,22 @@ run :: proc() -> (ok: bool) {
 	instance := wgpu.create_instance() or_return
 	defer wgpu.instance_release(instance)
 
-	adapters := wgpu.instance_enumerate_adapters(instance, wgpu.Instance_Backend_All)
-	defer delete(adapters)
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+	ta := context.temp_allocator
 
-	for &a in adapters {
-		wgpu.adapter_print_info(a)
+	adapters := wgpu.instance_enumerate_adapters(instance, wgpu.INSTANCE_BACKEND_ALL, ta) or_return
+
+	for a in adapters {
+		info := wgpu.adapter_get_info(a, ta)
+		wgpu.adapter_info_print_info(info)
 	}
 
-	adapter := wgpu.instance_request_adapter(
-		instance,
-		{power_preference = .High_Performance},
-	) or_return
+	adapter := wgpu.instance_request_adapter(instance) or_return
 	defer wgpu.adapter_release(adapter)
 
 	fmt.println("\nSelected adapter:\n")
-	wgpu.adapter_print_info(adapter)
+	info := wgpu.adapter_get_info(adapter, ta)
+	wgpu.adapter_info_print_info(info)
 
 	return true
 }
