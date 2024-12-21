@@ -1,0 +1,7 @@
+# A simple triangle object with vertex colors
+o Triangle
+v 0 0 0 1 0 0
+v 1 0 0 0 1 0
+v 0 1 0 0 0 1
+
+f -3 -2 -1

@@ -1,0 +1,48 @@
+# Simple cube with texture coordinates and normals
+# 8 vertices
+v -0.5 -0.5  0.5
+v  0.5 -0.5  0.5
+v  0.5  0.5  0.5
+v -0.5  0.5  0.5
+v -0.5 -0.5 -0.5
+v  0.5 -0.5 -0.5
+v  0.5  0.5 -0.5
+v -0.5  0.5 -0.5
+
+# Texture coordinates
+vt 0.0 0.0
+vt 1.0 0.0
+vt 1.0 1.0
+vt 0.0 1.0
+
+# Normals
+vn  0.0  0.0  1.0    # Front
+vn  0.0  0.0 -1.0    # Back
+vn  0.0  1.0  0.0    # Top
+vn  0.0 -1.0  0.0    # Bottom
+vn  1.0  0.0  0.0    # Right
+vn -1.0  0.0  0.0    # Left
+
+# Front face
+f 1/1/1 2/2/1 3/3/1
+f 1/1/1 3/3/1 4/4/1
+
+# Back face
+f 5/1/2 7/3/2 6/2/2
+f 5/1/2 8/4/2 7/3/2
+
+# Top face
+f 4/1/3 3/2/3 7/3/3
+f 4/1/3 7/3/3 8/4/3
+
+# Bottom face
+f 1/1/4 6/3/4 2/2/4
+f 1/1/4 5/4/4 6/3/4
+
+# Right face
+f 2/1/5 6/2/5 7/3/5
+f 2/1/5 7/3/5 3/4/5
+
+# Left face
+f 1/1/6 4/2/6 8/3/6
+f 1/1/6 8/3/6 5/4/6

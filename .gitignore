@@ -13,6 +13,8 @@
 *.res
 *.manifest
 
+!/utils/tobj/**/*.obj
+
 # IDE/Editor
 /.vscode
 *.sublime-workspace
