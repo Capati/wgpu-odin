@@ -8,7 +8,7 @@ import "core:slice"
 
 from_bytes :: slice.reinterpret
 
-when #config(WGPU_CHECK_TO_BYTES, true) {
+when ODIN_DEBUG {
 	@(private = "file")
 	can_be_bytes :: proc(T: typeid) -> bool {
 		id := reflect.typeid_core(T)
@@ -52,7 +52,7 @@ when #config(WGPU_CHECK_TO_BYTES, true) {
 
 	dynamic_array_to_bytes :: proc(arr: $T/[dynamic]$E) -> []u8 {
 		if can_be_bytes(E) {
-			return slice.to_bytes(arr[:])
+			return dynamic_array_to_bytes_contextless(arr)
 		} else {
 			fmt.panicf("Cannot fully convert to bytes: %v", typeid_of(T))
 		}
@@ -60,7 +60,7 @@ when #config(WGPU_CHECK_TO_BYTES, true) {
 
 	slice_to_bytes :: proc(s: $T/[]$E) -> []u8 {
 		if can_be_bytes(E) {
-			return slice.to_bytes(s)
+			return slice_to_bytes_contextless(s)
 		} else {
 			fmt.panicf("Cannot fully convert to bytes: %v", typeid_of(T))
 		}
@@ -83,14 +83,26 @@ when #config(WGPU_CHECK_TO_BYTES, true) {
 	}
 }
 
-buffer_stream_to_bytes :: proc "contextless" (b: bytes.Buffer) -> []u8 {
-	return b.buf[b.off:]
-}
-
-// Compile time panic stub
+/* Compile time panic stub. */
 @(private = "file")
 map_to_bytes :: proc(m: $T/map[$K]$V) -> []u8 {
 	#panic("Cannot fully convert map to bytes")
+}
+
+buffer_stream_to_bytes :: #force_inline proc "contextless" (
+	b: bytes.Buffer,
+) -> []u8 #no_bounds_check {
+	return b.buf[b.off:]
+}
+
+dynamic_array_to_bytes_contextless :: #force_inline proc "contextless" (
+	arr: $T/[dynamic]$E,
+) -> []u8 {
+	return slice.to_bytes(arr[:])
+}
+
+slice_to_bytes_contextless :: #force_inline proc "contextless" (s: $T/[]$E) -> []u8 {
+	return slice.to_bytes(s)
 }
 
 to_bytes :: proc {
@@ -99,12 +111,4 @@ to_bytes :: proc {
 	dynamic_array_to_bytes,
 	map_to_bytes,
 	any_to_bytes,
-}
-
-dynamic_array_to_bytes_contextless :: proc "contextless" (arr: $T/[dynamic]$E) -> []u8 {
-	return slice.to_bytes(arr[:])
-}
-
-slice_to_bytes_contextless :: proc "contextless" (s: $T/[]$E) -> []u8 {
-	return slice.to_bytes(s)
 }
