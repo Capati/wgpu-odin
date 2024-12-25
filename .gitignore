@@ -13,6 +13,7 @@
 *.res
 *.manifest
 
+# Keep obj models in this folder
 !/utils/tobj/**/*.obj
 
 # IDE/Editor
