@@ -13,15 +13,50 @@ Corresponds to [WebGPU `GPUSampler`](https://gpuweb.github.io/gpuweb/#sampler-in
 */
 Sampler :: distinct rawptr
 
-/* Set debug label. */
+/*
+Describes a `Sampler`.
+
+For use with `device_create_sampler`.
+
+Corresponds to [WebGPU `GPUSamplerDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpusamplerdescriptor).
+*/
+SamplerDescriptor :: struct {
+	label:          string,
+	address_mode_u: AddressMode,
+	address_mode_v: AddressMode,
+	address_mode_w: AddressMode,
+	mag_filter:     FilterMode,
+	min_filter:     FilterMode,
+	mipmap_filter:  MipmapFilterMode,
+	lod_min_clamp:  f32,
+	lod_max_clamp:  f32,
+	compare:        CompareFunction,
+	max_anisotropy: u16,
+}
+
+DEFAULT_SAMPLER_DESCRIPTOR :: SamplerDescriptor {
+	address_mode_u = .ClampToEdge,
+	address_mode_v = .ClampToEdge,
+	address_mode_w = .ClampToEdge,
+	mag_filter     = .Nearest,
+	min_filter     = .Nearest,
+	mipmap_filter  = .Nearest,
+	lod_min_clamp  = 0.0,
+	lod_max_clamp  = 32.0,
+	compare        = .Undefined,
+	max_anisotropy = 1,
+}
+
+/* Sets a debug label for the given `Sampler`. */
 @(disabled = !ODIN_DEBUG)
 sampler_set_label :: proc "contextless" (self: Sampler, label: string) {
 	c_label: StringViewBuffer
 	wgpuSamplerSetLabel(self, init_string_buffer(&c_label, label))
 }
 
-/* Increase the reference count. */
+/* Increase the `Sampler` reference count. */
 sampler_add_ref :: wgpuSamplerAddRef
 
-/* Release the `Sampler`. */
+/* Release the `Sampler` resources, use to decrease the reference count. */
 sampler_release :: wgpuSamplerRelease

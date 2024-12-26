@@ -77,7 +77,7 @@ GraphicsContext :: struct {
 	adapter:  wgpu.Adapter,
 	device:   wgpu.Device,
 	queue:    wgpu.Queue,
-	features: wgpu.DeviceFeatures,
+	features: wgpu.Features,
 	limits:   wgpu.Limits,
 	caps:     wgpu.SurfaceCapabilities,
 	config:   wgpu.SurfaceConfiguration,
@@ -155,7 +155,7 @@ create :: proc(
 	wgpu.set_log_callback(gpu_log_callback, app)
 
 	instance_descriptor := wgpu.InstanceDescriptor {
-		backends = wgpu.INSTANCE_BACKEND_PRIMARY,
+		backends = wgpu.BACKENDS_PRIMARY,
 		flags    = {.Validation},
 	}
 
@@ -164,14 +164,14 @@ create :: proc(
 	// Try to read WGPU_BACKEND_TYPE config to see if a backend type should be forced
 	if WGPU_BACKEND_TYPE != "" {
 		// Try to get the backend type from the string configuration
-		backend, backend_ok := reflect.enum_from_name(wgpu.InstanceBackendBits, WGPU_BACKEND_TYPE)
+		backend, backend_ok := reflect.enum_from_name(wgpu.BackendBits, WGPU_BACKEND_TYPE)
 
 		if backend_ok {
 			instance_descriptor.backends = {backend}
 			log.infof("Backend type selected with [WGPU_BACKEND_TYPE]: [%v]", backend)
 		} else {
 			log.errorf(
-				"Backend type [%v] is invalid, possible values are from [InstanceBackend] (case sensitive): \n\tVulkan,\n\tGL,\n\tMetal,\n\tDX12,\n\tDX11,\n\tBrowser_WebGPU",
+				"Backend type [%v] is invalid, possible values are from [Backends] (case sensitive): \n\tVulkan,\n\tGL,\n\tMetal,\n\tDX12,\n\tDX11,\n\tBrowser_WebGPU",
 				WGPU_BACKEND_TYPE,
 			)
 			return
@@ -219,8 +219,8 @@ create :: proc(
 		wgpu.device_release(app.gpu.device)
 	}
 
-	app.gpu.features = wgpu.device_get_features(app.gpu.device)
-	app.gpu.limits = wgpu.device_get_limits(app.gpu.device) or_return
+	app.gpu.features = wgpu.device_features(app.gpu.device)
+	app.gpu.limits = wgpu.device_limits(app.gpu.device) or_return
 
 	app.gpu.queue = wgpu.device_get_queue(app.gpu.device)
 	defer if !ok {

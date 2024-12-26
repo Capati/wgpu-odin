@@ -1,31 +1,12 @@
 package wgpu
 
+// Packages
+import intr "base:intrinsics"
+
+/* location information for a vertex in a shader. */
 VertexLocation :: struct {
 	location: ShaderLocation,
 	format:   VertexFormat,
-}
-
-size_of_vertex_format :: proc(format: VertexFormat) -> u64 {
-	#partial switch format {
-	case .Uint8x2, .Sint8x2, .Unorm8x2, .Snorm8x2:
-		return 2
-	case .Uint8x4, .Sint8x4, .Unorm8x4, .Snorm8x4:
-		return 4
-	case .Uint16x2, .Sint16x2, .Unorm16x2, .Snorm16x2, .Float16x2:
-		return 4
-	case .Uint16x4, .Sint16x4, .Unorm16x4, .Snorm16x4, .Float16x4:
-		return 8
-	case .Float32, .Uint32, .Sint32:
-		return 4
-	case .Float32x2, .Uint32x2, .Sint32x2:
-		return 8
-	case .Float32x3, .Uint32x3, .Sint32x3:
-		return 12
-	case .Float32x4, .Uint32x4, .Sint32x4:
-		return 16
-	}
-
-	return 0
 }
 
 /*
@@ -75,10 +56,59 @@ vertex_attr_array :: proc(
 			offset          = offset,
 			shader_location = v.location,
 		}
-		offset += size_of_vertex_format(format)
+		offset += vertex_format_size(format)
 	}
 
 	return
+}
+
+Range :: struct($T: typeid) where intr.type_is_ordered(T) {
+	start, end: T,
+}
+
+range_init :: proc "contextless" (
+	$T: typeid,
+	start, end: T,
+) -> Range(T) where intr.type_is_ordered(T) {
+	return Range(T){start, end}
+}
+
+/* Get the length of the Range */
+range_len :: proc "contextless" (r: Range($T)) -> T {
+	if range_is_empty(r) {
+		return 0
+	}
+	return (r.end - r.start) + 1
+}
+
+/* Check if the range is empty */
+range_is_empty :: proc "contextless" (r: Range($T)) -> bool {
+	return r.end < r.start
+}
+
+/* Check if a value is within the Range */
+range_contains :: proc "contextless" (r: Range($T), value: T) -> bool {
+	return value >= r.start && value < r.end
+}
+
+/* Iterator for the Range */
+Range_Iterator :: struct($T: typeid) {
+	current, end: T,
+}
+
+/* Create an iterator for the Range */
+range_iterator :: proc "contextless" (r: Range($T)) -> Range_Iterator(T) {
+	return Range_Iterator(T){r.start, r.end}
+}
+
+/* Get the next value from the iterator */
+range_next :: proc "contextless" (it: ^Range_Iterator($T), value: ^T) -> bool {
+	if it.current < it.end {
+		value^ = it.current
+		it.current += 1
+		return true
+	}
+	return false
 }
 
 /* Release a resource. */
@@ -104,6 +134,7 @@ release :: proc {
 	shader_module_release,
 	surface_release,
 	texture_release,
+	surface_texture_release,
 	texture_view_release,
 }
 

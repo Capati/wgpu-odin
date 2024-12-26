@@ -31,7 +31,7 @@ Error :: union #shared_nil {
 	CompilationInfoRequestStatus,
 	CreatePipelineAsyncStatus,
 	QueueWorkDoneStatus,
-	SurfaceGetCurrentTextureStatus,
+	SurfaceStatus,
 	mem.Allocator_Error,
 	IOError,
 }

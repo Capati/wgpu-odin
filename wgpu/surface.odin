@@ -16,69 +16,51 @@ serves a similar role.
 */
 Surface :: distinct rawptr
 
-/*
-Describes a `Surface`.
-
-For use with `surface_configure`.
-
-Corresponds to [WebGPU `GPUCanvasConfiguration`](
-https://gpuweb.github.io/gpuweb/#canvas-configuration).
-*/
-SurfaceConfiguration :: struct {
-	device:                        Device,
-	format:                        TextureFormat,
-	usage:                         TextureUsage,
-	width:                         u32,
-	height:                        u32,
-	view_formats:                  []TextureFormat,
-	alpha_mode:                    CompositeAlphaMode,
-	present_mode:                  PresentMode,
-	// Extras
-	desired_maximum_frame_latency: u32,
+SurfaceSourceAndroidNativeWindow :: struct {
+	chain:  ChainedStruct,
+	window: rawptr,
 }
 
-/*
-Initializes `Surface` for presentation.
+SurfaceSourceMetalLayer :: struct {
+	chain: ChainedStruct,
+	layer: rawptr,
+}
 
-**Panics**
-- A old `SurfaceTexture` is still alive referencing an old surface.
-- Texture format requested is unsupported on the surface.
-- `config.width` or `config.height` is zero.
-*/
-surface_configure :: proc "contextless" (
-	self: Surface,
-	config: SurfaceConfiguration,
-	loc := #caller_location,
-) -> (
-	ok: bool,
-) {
-	raw_config := WGPUSurfaceConfiguration {
-		device       = config.device,
-		format       = config.format,
-		usage        = config.usage,
-		width        = config.width,
-		height       = config.height,
-		alpha_mode   = config.alpha_mode,
-		present_mode = config.present_mode,
-	}
+SurfaceSourceWaylandSurface :: struct {
+	chain:   ChainedStruct,
+	display: rawptr,
+	surface: rawptr,
+}
 
-	if len(config.view_formats) > 0 {
-		raw_config.view_format_count = len(config.view_formats)
-		raw_config.view_formats = raw_data(config.view_formats)
-	}
+SurfaceSourceWindowsHWND :: struct {
+	chain:     ChainedStruct,
+	hinstance: rawptr,
+	hwnd:      rawptr,
+}
 
-	extras: SurfaceConfigurationExtras
-	if config.desired_maximum_frame_latency > 0 {
-		extras = {
-			chain = {stype = .SurfaceConfigurationExtras},
-			desired_maximum_frame_latency = config.desired_maximum_frame_latency,
-		}
-		raw_config.next_in_chain = &extras.chain
-	}
+SurfaceSourceXCBWindow :: struct {
+	chain:      ChainedStruct,
+	connection: rawptr,
+	window:     u32,
+}
 
-	error_reset_data(loc)
-	wgpuSurfaceConfigure(self, raw_config)
-	return has_no_error()
+SurfaceSourceXlibWindow :: struct {
+	chain:   ChainedStruct,
+	display: rawptr,
+	window:  u64,
+}
+
+/* Describes a surface target. */
+SurfaceDescriptor :: struct {
+	label:  string,
+	target: union {
+		SurfaceSourceAndroidNativeWindow,
+		SurfaceSourceMetalLayer,
+		SurfaceSourceWaylandSurface,
+		SurfaceSourceWindowsHWND,
+		SurfaceSourceXCBWindow,
+		SurfaceSourceXlibWindow,
+	},
 }
 
 /*
@@ -143,70 +125,31 @@ surface_get_capabilities :: proc(
 	return caps, true
 }
 
-/*
-Returns the next texture to be presented by the swapchain for drawing.
-
-In order to present the `SurfaceTexture` returned by this method,
-first a `queue_submit` needs to be done with some work rendering to this texture.
-Then `surface_present` needs to be called.
-
-If a `SurfaceTexture` referencing this surface is alive when the swapchain is recreated,
-recreating the swapchain will panic.
-*/
-@(require_results)
-surface_get_current_texture :: proc "contextless" (
-	self: Surface,
-	loc := #caller_location,
-) -> (
-	surface_texture: SurfaceTexture,
-	ok: bool,
-) #optional_ok {
-	error_reset_data(loc)
-	wgpuSurfaceGetCurrentTexture(self, &surface_texture)
-	if has_error() {
-		if surface_texture.texture != nil {
-			wgpuTextureRelease(surface_texture.texture)
-		}
-		return
-	}
-	return surface_texture, true
+@(private)
+WGPUSurfaceConfigurationExtras :: struct {
+	chain:                         ChainedStruct,
+	desired_maximum_frame_latency: u32,
 }
 
 /*
-Schedule this texture to be presented on the owning surface.
+Describes a `Surface`.
 
-Needs to be called after any work on the texture is scheduled via `queue_submit`.
+For use with `surface_configure`.
 
-**Platform dependent behavior**
-
-On Wayland, `present` will attach a `wl_buffer` to the underlying `wl_surface` and commit the new
-surface state. If it is desired to do things such as request a frame callback, scale the surface
- using the viewporter or synchronize other double buffered state, then these operations should be
- done before the call to `present`.
+Corresponds to [WebGPU `GPUCanvasConfiguration`](
+https://gpuweb.github.io/gpuweb/#canvas-configuration).
 */
-surface_present :: proc(self: Surface, loc := #caller_location) -> (ok: bool) {
-	error_reset_data(loc)
-	status := wgpuSurfacePresent(self)
-	if has_error() {
-		return
-	}
-	if status == .Error {
-		error_reset_and_update(ErrorType.Unknown, "Failed to present", loc)
-		return
-	}
-	return true
-}
-
-/* Set debug label. */
-@(disabled = !ODIN_DEBUG)
-surface_set_label :: proc "contextless" (self: Surface, label: string) {
-	c_label: StringViewBuffer
-	wgpuSurfaceSetLabel(self, init_string_buffer(&c_label, label))
-}
-
-/* Removes the surface configuration. Destroys any textures produced while configured. */
-surface_unconfigure :: proc "contextless" (self: Surface) {
-	wgpuSurfaceUnconfigure(self)
+SurfaceConfiguration :: struct {
+	device:                        Device,
+	format:                        TextureFormat,
+	usage:                         TextureUsages,
+	width:                         u32,
+	height:                        u32,
+	view_formats:                  []TextureFormat,
+	alpha_mode:                    CompositeAlphaMode,
+	present_mode:                  PresentMode,
+	// Extras
+	desired_maximum_frame_latency: u32,
 }
 
 /*
@@ -239,8 +182,175 @@ surface_get_default_config :: proc(
 	return config, true
 }
 
-/* Increase the reference count. */
+/*
+Initializes `Surface` for presentation.
+
+**Panics**
+- A old `SurfaceTexture` is still alive referencing an old surface.
+- Texture format requested is unsupported on the surface.
+- `config.width` or `config.height` is zero.
+*/
+surface_configure :: proc "contextless" (
+	self: Surface,
+	config: SurfaceConfiguration,
+	loc := #caller_location,
+) -> (
+	ok: bool,
+) {
+	raw_config := WGPUSurfaceConfiguration {
+		device       = config.device,
+		format       = config.format,
+		usage        = config.usage,
+		width        = config.width,
+		height       = config.height,
+		alpha_mode   = config.alpha_mode,
+		present_mode = config.present_mode,
+	}
+
+	if len(config.view_formats) > 0 {
+		raw_config.view_format_count = len(config.view_formats)
+		raw_config.view_formats = raw_data(config.view_formats)
+	}
+
+	extras: WGPUSurfaceConfigurationExtras
+	if config.desired_maximum_frame_latency > 0 {
+		extras = {
+			chain = {stype = .SurfaceConfigurationExtras},
+			desired_maximum_frame_latency = config.desired_maximum_frame_latency,
+		}
+		raw_config.next_in_chain = &extras.chain
+	}
+
+	error_reset_data(loc)
+	wgpuSurfaceConfigure(self, raw_config)
+	return has_no_error()
+}
+
+/* Removes the surface configuration. Destroys any textures produced while configured. */
+surface_unconfigure :: wgpuSurfaceUnconfigure
+
+@(private)
+WGPUSurfaceTexture :: struct {
+	next_in_chain: ^ChainedStructOut,
+	texture:       Texture,
+	status:        SurfaceStatus,
+}
+
+/*
+Surface texture that can be rendered to.
+Result of a successful call to `surface_get_current_texture`.
+
+This type is unique to the `wgpu-native`. In the WebGPU specification,
+the [`GPUCanvasContext`](https://gpuweb.github.io/gpuweb/#canvas-context) provides
+a texture without any additional information.
+*/
+SurfaceTexture :: struct {
+	surface: Surface,
+	texture: Texture,
+	status:  SurfaceStatus,
+}
+
+/*
+Returns the next texture to be presented by the swapchain for drawing.
+
+In order to present the `SurfaceTexture` returned by this method,
+first a `queue_submit` needs to be done with some work rendering to this texture.
+Then `surface_present` needs to be called.
+
+If a `SurfaceTexture` referencing this surface is alive when the swapchain is recreated,
+recreating the swapchain will panic.
+*/
+@(require_results)
+surface_get_current_texture :: proc "contextless" (
+	self: Surface,
+	loc := #caller_location,
+) -> (
+	surface_texture: SurfaceTexture,
+	ok: bool,
+) #optional_ok {
+	surface_texture_raw: WGPUSurfaceTexture
+
+	error_reset_data(loc)
+	wgpuSurfaceGetCurrentTexture(self, &surface_texture_raw)
+	if has_error() {
+		if surface_texture_raw.texture != nil {
+			wgpuTextureRelease(surface_texture_raw.texture)
+		}
+		return
+	}
+
+	surface_texture = {
+		surface = self,
+		texture = surface_texture_raw.texture,
+		status  = surface_texture_raw.status,
+	}
+
+	return surface_texture, true
+}
+
+/*
+Schedule this texture to be presented on the owning surface.
+
+Needs to be called after any work on the texture is scheduled via [`Queue::submit`].
+
+**Platform dependent behavior**
+
+On Wayland, `surface_present` will attach a `wl_buffer` to the underlying `wl_surface` and commit
+the new surface state. If it is desired to do things such as request a frame callback, scale the
+surface using the viewporter or synchronize other double buffered state, then these operations
+should be done before the call to `present`.
+*/
+surface_present :: proc "contextless" (self: Surface, loc := #caller_location) -> (ok: bool) {
+	error_reset_data(loc)
+	status := wgpuSurfacePresent(self)
+	if has_error() {
+		return
+	}
+	if status == .Error {
+		error_reset_and_update(ErrorType.Unknown, "Failed to present", loc)
+		return
+	}
+	return true
+}
+
+/*
+Schedule this texture to be presented on the owning surface.
+
+Needs to be called after any work on the texture is scheduled via [`Queue::submit`].
+
+**Platform dependent behavior**
+
+On Wayland, `present` will attach a `wl_buffer` to the underlying `wl_surface` and commit the new
+surface state. If it is desired to do things such as request a frame callback, scale the surface
+using the viewporter or synchronize other double buffered state, then these operations should be
+done before the call to `present`.
+*/
+surface_texture_present :: proc "contextless" (self: SurfaceTexture) {
+	surface_present(self.surface)
+}
+
+/*
+Release the `Texture` resources from this `SurfaceTexture`, use to decrease the reference count.
+*/
+surface_texture_release :: proc "contextless" (self: SurfaceTexture) {
+	wgpuTextureRelease(self.texture)
+}
+
+/* Sets a debug label for the given `Surface`. */
+@(disabled = !ODIN_DEBUG)
+surface_set_label :: proc "contextless" (self: Surface, label: string) {
+	c_label: StringViewBuffer
+	wgpuSurfaceSetLabel(self, init_string_buffer(&c_label, label))
+}
+
+/* Increase the `Surface` reference count. */
 surface_add_ref :: wgpuSurfaceAddRef
 
-/* Release the `Surface` resources. */
+/* Release the `Surface` resources, use to decrease the reference count. */
 surface_release :: wgpuSurfaceRelease
+
+@(private)
+WGPUSurfaceDescriptor :: struct {
+	next_in_chain: ^ChainedStruct,
+	label:         StringView,
+}

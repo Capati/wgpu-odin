@@ -11,7 +11,7 @@ StringView :: struct {
 
 STRLEN :: max(uint)
 
-STRING_VIEW_BUFFER_SIZE :: #config(WGPU_STRING_VIEW_BUFFER_SIZE, 128)
+STRING_VIEW_BUFFER_SIZE :: #config(WGPU_STRING_VIEW_BUFFER_SIZE, 256)
 
 StringViewBuffer :: struct {
 	data:   [STRING_VIEW_BUFFER_SIZE]u8,
@@ -27,6 +27,10 @@ init_string_buffer :: proc "contextless" (buffer: ^StringViewBuffer, str: string
 	}
 	string_buffer_append(buffer, str)
 	return string_buffer_get(buffer)
+}
+
+init_string_buffer_owned :: proc(str: string, allocator := context.allocator) -> StringView {
+	return {data = strings.clone_to_cstring(str, allocator), length = STRLEN}
 }
 
 string_buffer_append :: proc "contextless" (self: ^StringViewBuffer, str: string) {
@@ -45,7 +49,6 @@ string_buffer_append :: proc "contextless" (self: ^StringViewBuffer, str: string
 	string_buffer_update(self) // Update the StringView
 }
 
-/* Updates the StringView to reflect current buffer content */
 string_buffer_update :: proc "contextless" (self: ^StringViewBuffer) {
 	if (self.length == 0) {
 		self.str.data = nil
@@ -57,7 +60,6 @@ string_buffer_update :: proc "contextless" (self: ^StringViewBuffer) {
 	}
 }
 
-// Clears the buffer
 string_buffer_clear :: proc "contextless" (self: ^StringViewBuffer) {
 	mem.zero_slice(self.data[:])
 	self.length = 0
@@ -67,7 +69,6 @@ string_buffer_clear :: proc "contextless" (self: ^StringViewBuffer) {
 	}
 }
 
-// Gets the StringView from buffer
 string_buffer_get :: proc "contextless" (self: ^StringViewBuffer) -> StringView {
 	return self.str
 }

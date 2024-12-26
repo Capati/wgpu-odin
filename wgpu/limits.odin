@@ -3,12 +3,45 @@ package wgpu
 // Packages
 import "base:runtime"
 import "core:fmt"
+import "core:log"
 import "core:reflect"
 import "core:slice"
 import "core:strings"
 
-/* Represents the sets of limits an adapter/device supports. */
+/*
+Represents the sets of limits an adapter/device supports.
+
+We provide three different defaults.
+- [`Limits::downlevel_defaults()`].This is a set of limits that is guaranteed to work on almost
+all backends, including "downlevel" backends such as OpenGL and D3D11, other than WebGL.For
+most applications we recommend using these limits, assuming they are high enough for your
+application, and you do not intent to support WebGL.
+- [`Limits::downlevel_webgl2_defaults()`] This is a set of limits that is lower even than the
+[`downlevel_defaults()`], configured to be low enough to support running in the browser using
+WebGL2.
+- [`Limits::default()`].This is the set of limits that is guaranteed to work on all modern
+backends and is guaranteed to be supported by WebGPU.Applications needing more modern
+features can use this as a reasonable set of limits if they are targeting only desktop and
+modern mobile devices.
+
+We recommend starting with the most restrictive limits you can and manually increasing the
+limits you need boosted.This will let you stay running on all hardware that supports the limits
+you need.
+
+Limits "better" than the default must be supported by the adapter and requested when requesting
+a device.If limits "better" than the adapter supports are requested, requesting a device will
+panic.Once a device is requested, you may only use resources up to the limits requested _even_
+if the adapter supports "better" limits.
+
+Requesting limits that are "better" than you need may cause performance to decrease because the
+implementation needs to support more than is needed.You should ideally only request exactly
+what you need.
+
+Corresponds to [WebGPU `GPUSupportedLimits`](
+https://gpuweb.github.io/gpuweb/#gpusupportedlimits).
+*/
 Limits :: struct {
+	// WebGPU
 	max_texture_dimension_1d:                        u32,
 	max_texture_dimension_2d:                        u32,
 	max_texture_dimension_3d:                        u32,
@@ -41,18 +74,19 @@ Limits :: struct {
 	max_compute_workgroup_size_z:                    u32,
 	max_compute_workgroups_per_dimension:            u32,
 
-	// Native limits (extras)
+	// Native
 	max_push_constant_size:                          u32,
 	max_non_sampler_bindings:                        u32,
 }
 
 /*
 This is the set of limits that is guaranteed to work on all modern backends and is
-guaranteed to be supported by WebGPU. Applications needing more modern features can
+guaranteed to be supported by WebGPU.Applications needing more modern features can
 use this as a reasonable set of limits if they are targeting only desktop and modern
 mobile devices.
 */
 DEFAULT_LIMITS :: Limits {
+	// WebGPU
 	max_texture_dimension_1d                        = 8192, // 8k
 	max_texture_dimension_2d                        = 8192, // 8k
 	max_texture_dimension_3d                        = 2048, // 2k
@@ -85,19 +119,20 @@ DEFAULT_LIMITS :: Limits {
 	max_compute_workgroup_size_z                    = 64,
 	max_compute_workgroups_per_dimension            = 65535,
 
-	// Native limits (extras)
+	// Native
 	max_push_constant_size                          = 0,
 	max_non_sampler_bindings                        = 1_000_000,
 }
 
 /*
 This is a set of limits that is guaranteed to work on almost all backends, including
-“downlevel” backends such as OpenGL and D3D11, other than WebGL. For most applications
+“downlevel” backends such as OpenGL and D3D11, other than WebGL.For most applications
 we recommend using these limits, assuming they are high enough for your application,
 and you {
 not intent to support WebGL.}
 */
 DOWNLEVEL_LIMITS :: Limits {
+	// WebGPU
 	max_texture_dimension_1d                        = 2048,
 	max_texture_dimension_2d                        = 2048,
 	max_texture_dimension_3d                        = 256,
@@ -130,7 +165,7 @@ DOWNLEVEL_LIMITS :: Limits {
 	max_compute_workgroup_size_z                    = 64,
 	max_compute_workgroups_per_dimension            = 65535,
 
-	// Native limits (extras)
+	// Native
 	max_push_constant_size                          = 0,
 	max_non_sampler_bindings                        = 1_000_000,
 }
@@ -140,6 +175,7 @@ This is a set of limits that is lower even than the `DOWNLEVEL_LIMITS`, configur
 to be low enough to support running in the browser using WebGL2.
 */
 DOWNLEVEL_WEBGL2_LIMITS :: Limits {
+	// WebGPU
 	max_texture_dimension_1d                        = 2048,
 	max_texture_dimension_2d                        = 2048,
 	max_texture_dimension_3d                        = 256,
@@ -177,7 +213,15 @@ DOWNLEVEL_WEBGL2_LIMITS :: Limits {
 	max_non_sampler_bindings                        = 1_000_000,
 }
 
-/* Modify the current limits to use the resolution limits of the other. */
+DEFAULT_MINIMUM_LIMITS :: DOWNLEVEL_LIMITS
+
+/*
+Modify the current limits to use the resolution limits of the other.
+
+This is useful because the swapchain might need to be larger than any other image in the application.
+
+If your application only needs 512x512, you might be running on a 4k display and need extremely high resolution limits.
+*/
 limits_using_resolution :: proc(self: ^Limits, other: Limits) -> Limits {
 	self.max_texture_dimension_1d = other.max_texture_dimension_1d
 	self.max_texture_dimension_2d = other.max_texture_dimension_2d
@@ -185,8 +229,19 @@ limits_using_resolution :: proc(self: ^Limits, other: Limits) -> Limits {
 	return self^
 }
 
-/* For `Limits` check. Doesn't use `Ada_Case` for consistency with the struct name. */
-LimitsName :: enum {
+/*
+Modify the current limits to use the buffer alignment limits of the adapter.
+
+This is useful for when you'd like to dynamically use the "best" supported buffer alignments.
+*/
+limits_using_alignment :: proc(self: ^Limits, other: Limits) -> Limits {
+	self.min_uniform_buffer_offset_alignment = other.min_uniform_buffer_offset_alignment
+	self.min_storage_buffer_offset_alignment = other.min_storage_buffer_offset_alignment
+	return self^
+}
+
+/* For `Limits` check.Doesn't use `Pascal` for consistency with the struct name.*/
+LimitName :: enum {
 	max_texture_dimension_1d,
 	max_texture_dimension_2d,
 	max_texture_dimension_3d,
@@ -219,19 +274,19 @@ LimitsName :: enum {
 	max_compute_workgroup_size_z,
 	max_compute_workgroups_per_dimension,
 
-	// Native limits (extras)
+	// Native
 	max_push_constant_size,
 	max_non_sampler_bindings,
 }
 
-LimitsNameFlags :: bit_set[LimitsName]
+LimitsNameFlags :: bit_set[LimitName]
 
 LimitViolationValue :: struct {
 	current: u64,
 	allowed: u64,
 }
 
-LimitViolationData :: [LimitsName]LimitViolationValue
+LimitViolationData :: [LimitName]LimitViolationValue
 
 LimitViolation :: struct {
 	data:             LimitViolationData,
@@ -276,7 +331,7 @@ limits_check :: proc(
 
 	check :: proc(
 		violations: ^LimitViolation,
-		name: LimitsName,
+		name: LimitName,
 		self_value, allowed_value: u64,
 		expected_order: slice.Ordering,
 	) {
@@ -317,8 +372,8 @@ limits_check :: proc(
 			unreachable()
 		}
 
-		// Get the corresponding LimitsName enum value
-		limits_name, limits_name_ok := reflect.enum_from_name(LimitsName, name)
+		// Get the corresponding LimitName enum value
+		limits_name, limits_name_ok := reflect.enum_from_name(LimitName, name)
 		assert(limits_name_ok, "Invalid limit name")
 
 		expected_order := slice.Ordering.Less
@@ -336,34 +391,10 @@ limits_check :: proc(
 	return
 }
 
-print_limits_violation :: proc(violation: LimitViolation) {
-	if violation.ok || violation.flags == {} {
-		fmt.println("No limits violations detected.")
-		return
-	}
-
-	fmt.println("Limits violations detected:")
-
-	iter := violation.total_violations
-
-	for name in violation.flags {
-		data := violation.data[name]
-		fmt.printf("  %s:\n", name)
-		fmt.printf("    Current value: %d\n", data.current)
-		fmt.printf("    Allowed value: %d\n", data.allowed)
-		fmt.printf("    Violation: ")
-
-		if data.current > data.allowed {
-			fmt.printf("Value exceeds the maximum allowed.\n")
-		} else {
-			fmt.printf("Value is below the minimum required.\n")
-		}
-
-		if iter > 1 {
-			fmt.println()
-		}
-		iter -= 1
-	}
+log_limits_violation :: proc(violation: LimitViolation) {
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+	violation_str := limits_violation_to_string(violation, context.temp_allocator)
+	log.fatalf("Limits violations detected:\n%s", violation_str)
 }
 
 limits_violation_to_string :: proc(
@@ -381,16 +412,14 @@ limits_violation_to_string :: proc(
 	b := strings.builder_make(context.temp_allocator)
 	defer strings.builder_destroy(&b)
 
-	strings.write_string(&b, "Limits violations detected:\n")
-
 	iter := violation.total_violations
 
 	for name in violation.flags {
 		data := violation.data[name]
-		fmt.sbprintf(&b, "  %s:\n", name)
-		fmt.sbprintf(&b, "    Current value: %d\n", data.current)
-		fmt.sbprintf(&b, "    Allowed value: %d\n", data.allowed)
-		strings.write_string(&b, "    Violation: ")
+		fmt.sbprintf(&b, "%s:\n", name)
+		fmt.sbprintf(&b, "  Current value: %d\n", data.current)
+		fmt.sbprintf(&b, "  Allowed value: %d\n", data.allowed)
+		strings.write_string(&b, "  Violation: ")
 
 		if data.current > data.allowed {
 			strings.write_string(&b, "Value exceeds the maximum allowed.\n")
@@ -409,166 +438,153 @@ limits_violation_to_string :: proc(
 	return
 }
 
-limits_ensure_minimum :: proc "contextless" (limits: ^Limits, minimum := DOWNLEVEL_WEBGL2_LIMITS) {
-	limits.max_texture_dimension_1d = max(
-		limits.max_texture_dimension_1d,
-		minimum.max_texture_dimension_1d,
+limits_ensure_minimum :: proc "contextless" (a: ^Limits, b := DEFAULT_MINIMUM_LIMITS) -> Limits {
+	// WebGPU
+	a.max_texture_dimension_1d = max(a.max_texture_dimension_1d, b.max_texture_dimension_1d)
+	a.max_texture_dimension_2d = max(a.max_texture_dimension_2d, b.max_texture_dimension_2d)
+	a.max_texture_dimension_3d = max(a.max_texture_dimension_3d, b.max_texture_dimension_3d)
+	a.max_texture_array_layers = max(a.max_texture_array_layers, b.max_texture_array_layers)
+	a.max_bind_groups = max(a.max_bind_groups, b.max_bind_groups)
+	a.max_bind_groups_plus_vertex_buffers = max(
+		a.max_bind_groups_plus_vertex_buffers,
+		b.max_bind_groups_plus_vertex_buffers,
 	)
-	limits.max_texture_dimension_2d = max(
-		limits.max_texture_dimension_2d,
-		minimum.max_texture_dimension_2d,
+	a.max_bindings_per_bind_group = max(
+		a.max_bindings_per_bind_group,
+		b.max_bindings_per_bind_group,
 	)
-	limits.max_texture_dimension_3d = max(
-		limits.max_texture_dimension_3d,
-		minimum.max_texture_dimension_3d,
+	a.max_dynamic_uniform_buffers_per_pipeline_layout = max(
+		a.max_dynamic_uniform_buffers_per_pipeline_layout,
+		b.max_dynamic_uniform_buffers_per_pipeline_layout,
 	)
-	limits.max_texture_array_layers = max(
-		limits.max_texture_array_layers,
-		minimum.max_texture_array_layers,
+	a.max_dynamic_storage_buffers_per_pipeline_layout = max(
+		a.max_dynamic_storage_buffers_per_pipeline_layout,
+		b.max_dynamic_storage_buffers_per_pipeline_layout,
 	)
-	limits.max_bind_groups = max(limits.max_bind_groups, minimum.max_bind_groups)
-	limits.max_bind_groups_plus_vertex_buffers = max(
-		limits.max_bind_groups_plus_vertex_buffers,
-		minimum.max_bind_groups_plus_vertex_buffers,
+	a.max_sampled_textures_per_shader_stage = max(
+		a.max_sampled_textures_per_shader_stage,
+		b.max_sampled_textures_per_shader_stage,
 	)
-	limits.max_bindings_per_bind_group = max(
-		limits.max_bindings_per_bind_group,
-		minimum.max_bindings_per_bind_group,
+	a.max_samplers_per_shader_stage = max(
+		a.max_samplers_per_shader_stage,
+		b.max_samplers_per_shader_stage,
 	)
-	limits.max_dynamic_uniform_buffers_per_pipeline_layout = max(
-		limits.max_dynamic_uniform_buffers_per_pipeline_layout,
-		minimum.max_dynamic_uniform_buffers_per_pipeline_layout,
+	a.max_storage_buffers_per_shader_stage = max(
+		a.max_storage_buffers_per_shader_stage,
+		b.max_storage_buffers_per_shader_stage,
 	)
-	limits.max_dynamic_storage_buffers_per_pipeline_layout = max(
-		limits.max_dynamic_storage_buffers_per_pipeline_layout,
-		minimum.max_dynamic_storage_buffers_per_pipeline_layout,
+	a.max_storage_textures_per_shader_stage = max(
+		a.max_storage_textures_per_shader_stage,
+		b.max_storage_textures_per_shader_stage,
 	)
-	limits.max_sampled_textures_per_shader_stage = max(
-		limits.max_sampled_textures_per_shader_stage,
-		minimum.max_sampled_textures_per_shader_stage,
+	a.max_uniform_buffers_per_shader_stage = max(
+		a.max_uniform_buffers_per_shader_stage,
+		b.max_uniform_buffers_per_shader_stage,
 	)
-	limits.max_samplers_per_shader_stage = max(
-		limits.max_samplers_per_shader_stage,
-		minimum.max_samplers_per_shader_stage,
+	a.max_uniform_buffer_binding_size = max(
+		a.max_uniform_buffer_binding_size,
+		b.max_uniform_buffer_binding_size,
 	)
-	limits.max_storage_buffers_per_shader_stage = max(
-		limits.max_storage_buffers_per_shader_stage,
-		minimum.max_storage_buffers_per_shader_stage,
+	a.max_storage_buffer_binding_size = max(
+		a.max_storage_buffer_binding_size,
+		b.max_storage_buffer_binding_size,
 	)
-	limits.max_storage_textures_per_shader_stage = max(
-		limits.max_storage_textures_per_shader_stage,
-		minimum.max_storage_textures_per_shader_stage,
+	a.min_uniform_buffer_offset_alignment = min(
+		a.min_uniform_buffer_offset_alignment,
+		b.min_uniform_buffer_offset_alignment,
 	)
-	limits.max_uniform_buffers_per_shader_stage = max(
-		limits.max_uniform_buffers_per_shader_stage,
-		minimum.max_uniform_buffers_per_shader_stage,
+	a.min_storage_buffer_offset_alignment = min(
+		a.min_storage_buffer_offset_alignment,
+		b.min_storage_buffer_offset_alignment,
 	)
-	limits.max_uniform_buffer_binding_size = max(
-		limits.max_uniform_buffer_binding_size,
-		minimum.max_uniform_buffer_binding_size,
+	a.max_vertex_buffers = max(a.max_vertex_buffers, b.max_vertex_buffers)
+	a.max_buffer_size = max(a.max_buffer_size, b.max_buffer_size)
+	a.max_vertex_attributes = max(a.max_vertex_attributes, b.max_vertex_attributes)
+	a.max_vertex_buffer_array_stride = max(
+		a.max_vertex_buffer_array_stride,
+		b.max_vertex_buffer_array_stride,
 	)
-	limits.max_storage_buffer_binding_size = max(
-		limits.max_storage_buffer_binding_size,
-		minimum.max_storage_buffer_binding_size,
+	a.max_inter_stage_shader_variables = max(
+		a.max_inter_stage_shader_variables,
+		b.max_inter_stage_shader_variables,
 	)
-	limits.min_uniform_buffer_offset_alignment = max(
-		limits.min_uniform_buffer_offset_alignment,
-		minimum.min_uniform_buffer_offset_alignment,
+	a.max_color_attachments = max(a.max_color_attachments, b.max_color_attachments)
+	a.max_color_attachment_bytes_per_sample = max(
+		a.max_color_attachment_bytes_per_sample,
+		b.max_color_attachment_bytes_per_sample,
 	)
-	limits.min_storage_buffer_offset_alignment = max(
-		limits.min_storage_buffer_offset_alignment,
-		minimum.min_storage_buffer_offset_alignment,
+	a.max_compute_workgroup_storage_size = max(
+		a.max_compute_workgroup_storage_size,
+		b.max_compute_workgroup_storage_size,
 	)
-	limits.max_vertex_buffers = max(limits.max_vertex_buffers, minimum.max_vertex_buffers)
-	limits.max_buffer_size = max(limits.max_buffer_size, minimum.max_buffer_size)
-	limits.max_vertex_attributes = max(limits.max_vertex_attributes, minimum.max_vertex_attributes)
-	limits.max_vertex_buffer_array_stride = max(
-		limits.max_vertex_buffer_array_stride,
-		minimum.max_vertex_buffer_array_stride,
+	a.max_compute_invocations_per_workgroup = max(
+		a.max_compute_invocations_per_workgroup,
+		b.max_compute_invocations_per_workgroup,
 	)
-	limits.max_inter_stage_shader_variables = max(
-		limits.max_inter_stage_shader_variables,
-		minimum.max_inter_stage_shader_variables,
+	a.max_compute_workgroup_size_x = max(
+		a.max_compute_workgroup_size_x,
+		b.max_compute_workgroup_size_x,
 	)
-	limits.max_color_attachments = max(limits.max_color_attachments, minimum.max_color_attachments)
-	limits.max_color_attachment_bytes_per_sample = max(
-		limits.max_color_attachment_bytes_per_sample,
-		minimum.max_color_attachment_bytes_per_sample,
+	a.max_compute_workgroup_size_y = max(
+		a.max_compute_workgroup_size_y,
+		b.max_compute_workgroup_size_y,
 	)
-	limits.max_compute_workgroup_storage_size = max(
-		limits.max_compute_workgroup_storage_size,
-		minimum.max_compute_workgroup_storage_size,
+	a.max_compute_workgroup_size_z = max(
+		a.max_compute_workgroup_size_z,
+		b.max_compute_workgroup_size_z,
 	)
-	limits.max_compute_invocations_per_workgroup = max(
-		limits.max_compute_invocations_per_workgroup,
-		minimum.max_compute_invocations_per_workgroup,
+	a.max_compute_workgroups_per_dimension = max(
+		a.max_compute_workgroups_per_dimension,
+		b.max_compute_workgroups_per_dimension,
 	)
-	limits.max_compute_workgroup_size_x = max(
-		limits.max_compute_workgroup_size_x,
-		minimum.max_compute_workgroup_size_x,
-	)
-	limits.max_compute_workgroup_size_y = max(
-		limits.max_compute_workgroup_size_y,
-		minimum.max_compute_workgroup_size_y,
-	)
-	limits.max_compute_workgroup_size_z = max(
-		limits.max_compute_workgroup_size_z,
-		minimum.max_compute_workgroup_size_z,
-	)
-	limits.max_compute_workgroups_per_dimension = max(
-		limits.max_compute_workgroups_per_dimension,
-		minimum.max_compute_workgroups_per_dimension,
-	)
-	limits.max_push_constant_size = max(
-		limits.max_push_constant_size,
-		minimum.max_push_constant_size,
-	)
-	limits.max_non_sampler_bindings = max(
-		limits.max_non_sampler_bindings,
-		minimum.max_non_sampler_bindings,
-	)
+
+	// Native
+	a.max_push_constant_size = max(a.max_push_constant_size, b.max_push_constant_size)
+	a.max_non_sampler_bindings = max(a.max_non_sampler_bindings, b.max_non_sampler_bindings)
+
+	return a^
 }
 
-limits_merge_base_with_native :: proc "contextless" (
-	base: WGPULimits,
-	native: NativeLimits,
+limits_merge_webgpu_with_native :: proc "contextless" (
+	webgpu: WGPULimits,
+	native: WGPUNativeLimits,
 ) -> (
 	limits: Limits,
 ) {
 	limits = {
-		max_texture_dimension_1d                        = base.max_texture_dimension_1d,
-		max_texture_dimension_2d                        = base.max_texture_dimension_2d,
-		max_texture_dimension_3d                        = base.max_texture_dimension_3d,
-		max_texture_array_layers                        = base.max_texture_array_layers,
-		max_bind_groups                                 = base.max_bind_groups,
-		max_bind_groups_plus_vertex_buffers             = base.max_bind_groups_plus_vertex_buffers,
-		max_bindings_per_bind_group                     = base.max_bindings_per_bind_group,
-		max_dynamic_uniform_buffers_per_pipeline_layout = base.max_dynamic_uniform_buffers_per_pipeline_layout,
-		max_dynamic_storage_buffers_per_pipeline_layout = base.max_dynamic_storage_buffers_per_pipeline_layout,
-		max_sampled_textures_per_shader_stage           = base.max_sampled_textures_per_shader_stage,
-		max_samplers_per_shader_stage                   = base.max_samplers_per_shader_stage,
-		max_storage_buffers_per_shader_stage            = base.max_storage_buffers_per_shader_stage,
-		max_storage_textures_per_shader_stage           = base.max_storage_textures_per_shader_stage,
-		max_uniform_buffers_per_shader_stage            = base.max_uniform_buffers_per_shader_stage,
-		max_uniform_buffer_binding_size                 = base.max_uniform_buffer_binding_size,
-		max_storage_buffer_binding_size                 = base.max_storage_buffer_binding_size,
-		min_uniform_buffer_offset_alignment             = base.min_uniform_buffer_offset_alignment,
-		min_storage_buffer_offset_alignment             = base.min_storage_buffer_offset_alignment,
-		max_vertex_buffers                              = base.max_vertex_buffers,
-		max_buffer_size                                 = base.max_buffer_size,
-		max_vertex_attributes                           = base.max_vertex_attributes,
-		max_vertex_buffer_array_stride                  = base.max_vertex_buffer_array_stride,
-		max_inter_stage_shader_variables                = base.max_inter_stage_shader_variables,
-		max_color_attachments                           = base.max_color_attachments,
-		max_color_attachment_bytes_per_sample           = base.max_color_attachment_bytes_per_sample,
-		max_compute_workgroup_storage_size              = base.max_compute_workgroup_storage_size,
-		max_compute_invocations_per_workgroup           = base.max_compute_invocations_per_workgroup,
-		max_compute_workgroup_size_x                    = base.max_compute_workgroup_size_x,
-		max_compute_workgroup_size_y                    = base.max_compute_workgroup_size_y,
-		max_compute_workgroup_size_z                    = base.max_compute_workgroup_size_z,
-		max_compute_workgroups_per_dimension            = base.max_compute_workgroups_per_dimension,
+		max_texture_dimension_1d                        = webgpu.max_texture_dimension_1d,
+		max_texture_dimension_2d                        = webgpu.max_texture_dimension_2d,
+		max_texture_dimension_3d                        = webgpu.max_texture_dimension_3d,
+		max_texture_array_layers                        = webgpu.max_texture_array_layers,
+		max_bind_groups                                 = webgpu.max_bind_groups,
+		max_bind_groups_plus_vertex_buffers             = webgpu.max_bind_groups_plus_vertex_buffers,
+		max_bindings_per_bind_group                     = webgpu.max_bindings_per_bind_group,
+		max_dynamic_uniform_buffers_per_pipeline_layout = webgpu.max_dynamic_uniform_buffers_per_pipeline_layout,
+		max_dynamic_storage_buffers_per_pipeline_layout = webgpu.max_dynamic_storage_buffers_per_pipeline_layout,
+		max_sampled_textures_per_shader_stage           = webgpu.max_sampled_textures_per_shader_stage,
+		max_samplers_per_shader_stage                   = webgpu.max_samplers_per_shader_stage,
+		max_storage_buffers_per_shader_stage            = webgpu.max_storage_buffers_per_shader_stage,
+		max_storage_textures_per_shader_stage           = webgpu.max_storage_textures_per_shader_stage,
+		max_uniform_buffers_per_shader_stage            = webgpu.max_uniform_buffers_per_shader_stage,
+		max_uniform_buffer_binding_size                 = webgpu.max_uniform_buffer_binding_size,
+		max_storage_buffer_binding_size                 = webgpu.max_storage_buffer_binding_size,
+		min_uniform_buffer_offset_alignment             = webgpu.min_uniform_buffer_offset_alignment,
+		min_storage_buffer_offset_alignment             = webgpu.min_storage_buffer_offset_alignment,
+		max_vertex_buffers                              = webgpu.max_vertex_buffers,
+		max_buffer_size                                 = webgpu.max_buffer_size,
+		max_vertex_attributes                           = webgpu.max_vertex_attributes,
+		max_vertex_buffer_array_stride                  = webgpu.max_vertex_buffer_array_stride,
+		max_inter_stage_shader_variables                = webgpu.max_inter_stage_shader_variables,
+		max_color_attachments                           = webgpu.max_color_attachments,
+		max_color_attachment_bytes_per_sample           = webgpu.max_color_attachment_bytes_per_sample,
+		max_compute_workgroup_storage_size              = webgpu.max_compute_workgroup_storage_size,
+		max_compute_invocations_per_workgroup           = webgpu.max_compute_invocations_per_workgroup,
+		max_compute_workgroup_size_x                    = webgpu.max_compute_workgroup_size_x,
+		max_compute_workgroup_size_y                    = webgpu.max_compute_workgroup_size_y,
+		max_compute_workgroup_size_z                    = webgpu.max_compute_workgroup_size_z,
+		max_compute_workgroups_per_dimension            = webgpu.max_compute_workgroups_per_dimension,
 
-		// Native limits (extras)
+		// Native
 		max_push_constant_size                          = native.max_push_constant_size,
 		max_non_sampler_bindings                        = native.max_non_sampler_bindings,
 	}

@@ -15,7 +15,19 @@ https://gpuweb.github.io/gpuweb/#gpubindgrouplayout).
 */
 BindGroupLayout :: distinct rawptr
 
-/* Set debug label. */
+/*
+Describes a `BindGroupLayout`.
+
+For use with `device_create_bind_group_layout`.
+
+Corresponds to [WebGPU `GPUBindGroupLayoutDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpubindgrouplayoutdescriptor).
+*/
+BindGroupLayoutDescriptor :: struct {
+	label:   string,
+	entries: []BindGroupLayoutEntry,
+}
+
 @(disabled = !ODIN_DEBUG)
 bind_group_layout_set_label :: proc "contextless" (self: BindGroupLayout, label: string) {
 	c_label: StringViewBuffer
@@ -25,5 +37,5 @@ bind_group_layout_set_label :: proc "contextless" (self: BindGroupLayout, label:
 /* Increase the reference count. */
 bind_group_layout_add_ref :: wgpuBindGroupLayoutAddRef
 
-/* Release the `BindGroupLayout` resources. */
+/* Release resources, use to decrease the reference count. */
 bind_group_layout_release :: wgpuBindGroupLayoutRelease

@@ -18,6 +18,54 @@ Corresponds to [WebGPU `GPUShaderModule`](https://gpuweb.github.io/gpuweb/#shade
 */
 ShaderModule :: distinct rawptr
 
+/* Defines to unlock configured shader features. */
+ShaderDefine :: struct {
+	name:  string,
+	value: string,
+}
+
+/* GLSL module. */
+GLSLSource :: struct {
+	shader:  string,
+	stage:   ShaderStage,
+	defines: []ShaderDefine,
+}
+
+/*
+Source of a shader module:
+
+- `string` or `cstring` for **WGSL**
+- `[]u32` for **SPIR-V**
+- `GLSLSource` for **GLSL**
+
+**Note**: the `cstring` type is assumed to be null-terminated.
+
+The source will be parsed and validated.
+
+Any necessary shader translation (e.g. from WGSL to SPIR-V or vice versa)
+will be done internally by wgpu.
+
+This type is unique to the `wgpu-native`. In the WebGPU specification,
+only WGSL source code strings are accepted.
+*/
+ShaderSource :: union {
+	string, /* WGSL, will be `clone_to_cstring` to ensure null terminated */
+	cstring, /* WGSL, null-terminated */
+	[]u32, /* SPIR-V */
+	GLSLSource, /* GLSL */
+}
+
+/*
+Descriptor for use with `device_create_shader_module`.
+
+Corresponds to [WebGPU `GPUShaderModuleDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpushadermoduledescriptor).
+*/
+ShaderModuleDescriptor :: struct {
+	label:  string,
+	source: ShaderSource,
+}
+
 /* Load a wgsl shader file and return a compiled shader module. */
 device_load_wgsl_shader_module :: proc(
 	self: Device,
@@ -72,15 +120,54 @@ device_load_spirv_shader_module :: proc(
 	return device_create_shader_module(self, descriptor)
 }
 
-/* Set debug label. */
+/*
+Compilation information for a shader module.
+
+Corresponds to [WebGPU `GPUCompilationInfo`](https://gpuweb.github.io/gpuweb/#gpucompilationinfo).
+The source locations use bytes, and index a UTF-8 encoded string.
+*/
+CompilationInfo :: struct {
+	messages: []CompilationMessage,
+}
+
+/* Get the compilation info for the shader module. */
+shader_module_get_compilation_info :: proc(
+	self: ShaderModule,
+	callback_info: CompilationInfoCallbackInfo,
+) -> Future {
+	unimplemented()
+}
+
+/* Sets a debug label for the given `ShaderModule`. */
 @(disabled = !ODIN_DEBUG)
 shader_module_set_label :: proc "contextless" (self: ShaderModule, label: string) {
 	c_label: StringViewBuffer
 	wgpuShaderModuleSetLabel(self, init_string_buffer(&c_label, label))
 }
 
-/* Increase the reference count. */
+/* Increase the `ShaderModule` reference count. */
 shader_module_add_ref :: wgpuShaderModuleAddRef
 
-/* Release the `ShaderModule` resources. */
+/* Release the `ShaderModule` resources, use to decrease the reference count. */
 shader_module_release :: wgpuShaderModuleRelease
+
+@(private)
+WGPUShaderDefine :: struct {
+	name:  StringView,
+	value: StringView,
+}
+
+@(private)
+WGPUShaderModuleGLSLDescriptor :: struct {
+	chain:        ChainedStruct,
+	stage:        ShaderStage,
+	code:         StringView,
+	define_count: u32,
+	defines:      [^]WGPUShaderDefine,
+}
+
+WGPUCompilationInfo :: struct {
+	next_in_chain: ^ChainedStruct,
+	messageCount:  uint,
+	messages:      [^]CompilationMessage,
+}

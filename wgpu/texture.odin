@@ -9,16 +9,29 @@ Corresponds to [WebGPU `GPUTexture`](https://gpuweb.github.io/gpuweb/#texture-in
 */
 Texture :: distinct rawptr
 
-TextureViewDescriptor :: struct {
-	label:             string,
-	format:            TextureFormat,
-	dimension:         TextureViewDimension,
-	base_mip_level:    u32,
-	mip_level_count:   u32,
-	base_array_layer:  u32,
-	array_layer_count: u32,
-	aspect:            TextureAspect,
-	usage:             TextureUsage,
+/*
+Describes a `Texture`.
+
+For use with `device_create_texture`.
+
+Corresponds to [WebGPU `GPUTextureDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gputexturedescriptor).
+*/
+TextureDescriptor :: struct {
+	label:           string,
+	usage:           TextureUsages,
+	dimension:       TextureDimension,
+	size:            Extent3D,
+	format:          TextureFormat,
+	mip_level_count: u32,
+	sample_count:    u32,
+	view_formats:    []TextureFormat,
+}
+
+DEFAULT_TEXTURE_DESCRIPTOR :: TextureDescriptor {
+	mip_level_count = 1,
+	sample_count    = 1,
+	dimension       = .D2,
 }
 
 /* Creates a view of this texture. */
@@ -57,7 +70,7 @@ texture_create_view :: proc "contextless" (
 		texture_view = wgpuTextureCreateView(self, nil)
 	}
 
-	if get_last_error() != nil {
+	if has_error() {
 		if texture_view != nil {
 			wgpuTextureViewRelease(texture_view)
 		}
@@ -146,7 +159,7 @@ Returns the allowed usages of this `Texture`.
 
 This is always equal to the `usage` that was specified when creating the texture.
 */
-texture_usage :: proc "contextless" (self: Texture) -> TextureUsage {
+texture_usage :: proc "contextless" (self: Texture) -> TextureUsages {
 	return wgpuTextureGetUsage(self)
 }
 
@@ -165,15 +178,29 @@ texture_descriptor :: proc "contextless" (self: Texture) -> (desc: TextureDescri
 	return
 }
 
-/* Set a debug label for this `Texture`. */
+/* Set a debug label for the given `Texture`. */
 @(disabled = !ODIN_DEBUG)
 texture_set_label :: proc "contextless" (self: Texture, label: string) {
 	c_label: StringViewBuffer
 	wgpuTextureSetLabel(self, init_string_buffer(&c_label, label))
 }
 
-/* Increase the reference count. */
+/* Increase the `Texture` reference count. */
 texture_add_ref :: wgpuTextureAddRef
 
-/* Release the `Texture` resources. */
+/* Release the `Texture` resources, use to decrease the reference count. */
 texture_release :: wgpuTextureRelease
+
+@(private)
+WGPUTextureDescriptor :: struct {
+	next_in_chain:     ^ChainedStruct,
+	label:             StringView,
+	usage:             TextureUsages,
+	dimension:         TextureDimension,
+	size:              Extent3D,
+	format:            TextureFormat,
+	mip_level_count:   u32,
+	sample_count:      u32,
+	view_format_count: uint,
+	view_formats:      [^]TextureFormat,
+}

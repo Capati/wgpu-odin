@@ -1,10 +1,8 @@
 package wgpu
 
-// Base
+// Packages
 import "base:runtime"
-
-// Core
-// import "core:fmt"
+import "core:fmt"
 import "core:strings"
 
 Version :: struct {
@@ -19,18 +17,18 @@ BINDINGS_VERSION_STRING :: "22.1.0.5"
 
 @(private = "file", init)
 _version_check :: proc() {
-	// version := get_version()
+	version := get_version()
 
-	// if version != BINDINGS_VERSION {
-	// 	fmt.panicf(
-	// 		"Version mismatch: WGPU bindings expect version %s, but linked library is version %d.%d.%d.%d",
-	// 		BINDINGS_VERSION_STRING,
-	// 		version.major,
-	// 		version.minor,
-	// 		version.patch,
-	// 		version.build,
-	// 	)
-	// }
+	if version != {} && version != BINDINGS_VERSION {
+		fmt.panicf(
+			"Version mismatch: WGPU bindings expect version %s, but linked library is version %d.%d.%d.%d",
+			BINDINGS_VERSION_STRING,
+			version.major,
+			version.minor,
+			version.patch,
+			version.build,
+		)
+	}
 }
 
 // Return a struct with `major`, `minor`, `patch` and `build` version of wgpu.

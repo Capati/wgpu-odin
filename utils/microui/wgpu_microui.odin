@@ -207,7 +207,7 @@ init :: proc(
 					{
 						format = surface_config.format,
 						blend = &wgpu.BLEND_STATE_NORMAL,
-						write_mask = wgpu.COLOR_WRITE_MASK_ALL,
+						write_mask = wgpu.COLOR_WRITES_ALL,
 					},
 				},
 			},
@@ -217,7 +217,6 @@ init :: proc(
 				front_face = .CCW,
 				cull_mode = .None,
 			},
-			depth_stencil = nil,
 			multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 		},
 	) or_return
@@ -269,10 +268,11 @@ render :: proc(
 		label             = "MicroUI Render Pass",
 		color_attachments = []wgpu.RenderPassColorAttachment {
 			{
-				view        = color_view,
-				depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-				load_op     = .Load, // Load existing content
-				store_op    = .Store,
+				view = color_view,
+				ops = {
+					load  = .Load, // Load existing content
+					store = .Store,
+				},
 			},
 		},
 	},
@@ -303,9 +303,9 @@ render :: proc(
 reset_state :: proc "contextless" () {
 	r.frame_index = (r.frame_index + 1) % NUM_BUFFERS
 	r.vertex_buffer_offset =
-		wgpu.buffer_get_size(r.vertex_buffer) / u64(NUM_BUFFERS) * u64(r.frame_index)
+		wgpu.buffer_size(r.vertex_buffer) / u64(NUM_BUFFERS) * u64(r.frame_index)
 	r.index_buffer_offset =
-		wgpu.buffer_get_size(r.index_buffer) / u64(NUM_BUFFERS) * u64(r.frame_index)
+		wgpu.buffer_size(r.index_buffer) / u64(NUM_BUFFERS) * u64(r.frame_index)
 	r.quad_count = 0
 	r.current_clip_rect = r.viewport_rect
 	clear(&r.vertices)

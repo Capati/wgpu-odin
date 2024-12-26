@@ -7,13 +7,29 @@ It only supports a handful of render commands, but it makes them reusable.
 It can be created with `device_create_render_bundle_encoder`.
 It can be executed onto a `CommandEncoder` using `render_pass_execute_bundles`.
 
-Executing a `RenderBundle` is often more efficient than issuing the underlying commands
-manually.
+Executing a `RenderBundle` is often more efficient than issuing the underlying commands manually.
 
 Corresponds to [WebGPU `GPURenderBundleEncoder`](
 https://gpuweb.github.io/gpuweb/#gpurenderbundleencoder).
 */
 RenderBundleEncoder :: distinct rawptr
+
+/*
+Describes a `RenderBundle`.
+
+For use with `render_bundle_encoder_finish`.
+
+Corresponds to [WebGPU `GPURenderBundleDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpurenderbundledescriptor).
+*/
+RenderBundleEncoderDescriptor :: struct {
+	label:                string,
+	color_formats:        []TextureFormat,
+	depth_stencil_format: TextureFormat,
+	sample_count:         u32,
+	depth_read_only:      bool,
+	stencil_read_only:    bool,
+}
 
 /* Draws primitives from the active vertex buffer(s). */
 render_bundle_encoder_draw :: proc "contextless" (
@@ -70,10 +86,6 @@ render_bundle_encoder_draw_indirect :: proc "contextless" (
 	wgpuRenderBundleEncoderDrawIndirect(self, indirect_buffer, indirect_offset)
 }
 
-RenderBundleDescriptor :: struct {
-	label: string,
-}
-
 /*
 Finishes recording and returns a `RenderBundle` that can be executed in other render passes.
  */
@@ -117,31 +129,61 @@ render_bundle_encoder_finish :: proc "contextless" (
 }
 
 /* Inserts debug marker. */
-@(disabled = !ODIN_DEBUG)
 render_bundle_encoder_insert_debug_marker :: proc(
 	self: RenderBundleEncoder,
-	marker_label: string,
+	label: string,
+	loc := #caller_location,
+) -> (
+	ok: bool,
 ) {
-	assert(marker_label != "", "Invalid marker label")
-	c_marker_label: StringViewBuffer
-	wgpuRenderBundleEncoderInsertDebugMarker(
-		self,
-		init_string_buffer(&c_marker_label, marker_label),
-	)
-}
-
-/* Stops command recording and creates debug group. */
-@(disabled = !ODIN_DEBUG)
-render_bundle_encoder_pop_debug_group :: proc(self: RenderBundleEncoder) {
-	wgpuRenderBundleEncoderPopDebugGroup(self)
+	when ODIN_DEBUG {
+		error_reset_data(loc)
+		c_label: StringViewBuffer
+		wgpuRenderBundleEncoderPushDebugGroup(
+			self,
+			init_string_buffer(&c_label, label) if label != "" else {},
+		)
+		return has_no_error()
+	} else {
+		return true
+	}
 }
 
 /* Start record commands and group it into debug marker group. */
-@(disabled = !ODIN_DEBUG)
-render_bundle_encoder_push_debug_group :: proc(self: RenderBundleEncoder, group_label: string) {
-	assert(group_label != "", "Invalid group label")
-	c_group_label: StringViewBuffer
-	wgpuRenderBundleEncoderPushDebugGroup(self, init_string_buffer(&c_group_label, group_label))
+render_bundle_encoder_push_debug_group :: proc(
+	self: RenderBundleEncoder,
+	label: string,
+	loc := #caller_location,
+) -> (
+	ok: bool,
+) {
+	when ODIN_DEBUG {
+		error_reset_data(loc)
+		c_label: StringViewBuffer
+		wgpuRenderBundleEncoderPushDebugGroup(
+			self,
+			init_string_buffer(&c_label, label) if label != "" else {},
+		)
+		return has_no_error()
+	} else {
+		return true
+	}
+}
+
+/* Stops command recording and creates debug group. */
+render_bundle_encoder_pop_debug_group :: proc "contextless" (
+	self: RenderBundleEncoder,
+	loc := #caller_location,
+) -> (
+	ok: bool,
+) {
+	when ODIN_DEBUG {
+		error_reset_data(loc)
+		wgpuRenderBundleEncoderPopDebugGroup(self)
+		return has_no_error()
+	} else {
+		return true
+	}
 }
 
 /*
@@ -179,7 +221,7 @@ render_bundle_encoder_set_index_buffer :: proc "contextless" (
 	)
 }
 
-/* Set debug label. */
+/* Sets a debug label for the given `RenderBundleEncoder`. */
 @(disabled = !ODIN_DEBUG)
 render_bundle_encoder_set_label :: proc(self: RenderBundleEncoder, label: string) {
 	c_label: StringViewBuffer
@@ -215,8 +257,8 @@ render_bundle_encoder_set_vertex_buffer :: proc "contextless" (
 	)
 }
 
-/* Increase the reference count. */
+/* Increase the `RenderBundleEncoder` reference count. */
 render_bundle_encoder_add_ref :: wgpuRenderBundleEncoderAddRef
 
-/* Release the `RenderBundleEncoder` resources. */
+/* Release the `RenderBundleEncoder` resources, use to decrease the reference count. */
 render_bundle_encoder_release :: wgpuRenderBundleEncoderRelease

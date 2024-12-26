@@ -14,7 +14,7 @@ package application
 // TextureCreationOptions :: struct {
 // 	label:            string,
 // 	srgb:             bool,
-// 	usage:            TextureUsage,
+// 	usage:            TextureUsages,
 // 	preferred_format: Maybe(TextureFormat),
 // }
 

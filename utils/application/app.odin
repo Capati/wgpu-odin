@@ -119,14 +119,13 @@ create_depth_stencil_state :: proc(
 
 	return {
 		format = format,
-		depth_write_enabled = .True if descriptor.depth_write_enabled else .False,
-		stencil_front = stencil_state_face_descriptor,
-		stencil_back = stencil_state_face_descriptor,
-		stencil_read_mask = max(u32),
-		stencil_write_mask = max(u32),
-		depth_bias = 0,
-		depth_bias_slope_scale = 0.0,
-		depth_bias_clamp = 0.0,
+		depth_write_enabled = descriptor.depth_write_enabled,
+		stencil = {
+			front = stencil_state_face_descriptor,
+			back = stencil_state_face_descriptor,
+			read_mask = max(u32),
+			write_mask = max(u32),
+		},
 	}
 }
 

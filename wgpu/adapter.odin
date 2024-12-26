@@ -1,5 +1,6 @@
 package wgpu
 
+// Packages
 import "base:runtime"
 import sa "core:container/small_array"
 import "core:fmt"
@@ -9,173 +10,16 @@ import "core:strings"
 /*
 Handle to a physical graphics and/or compute device.
 
-Adapters can be used to open a connection to the corresponding `Device` on the host system by
-using `adapter_request_device`.
+Adapters can be created using `instance_request_adapter`.
+
+Adapters can be used to open a connection to the corresponding `Device`
+on the host system by using `adapter_request_device`.
 
 Does not have to be kept alive.
 
-Corresponds to [WebGPU GPUAdapter](https://gpuweb.github.io/gpuweb/#gpu-adapter).
+Corresponds to [WebGPU `GPUAdapter`](https://gpuweb.github.io/gpuweb/#gpu-adapter).
 */
 Adapter :: distinct rawptr
-
-/* Features that are supported/available by an adapter. */
-AdapterFeatures :: distinct Features
-
-/*
-List all features that are supported with this adapter. Features must be explicitly requested in
-`adapter_request_device` in order to use them.
-*/
-adapter_get_features :: proc "contextless" (
-	self: Adapter,
-) -> (
-	features: AdapterFeatures,
-) #no_bounds_check {
-	supported: SupportedFeatures
-	wgpuAdapterGetFeatures(self, &supported)
-
-	raw_features := supported.features[:supported.feature_count]
-	features = cast(AdapterFeatures)features_slice_to_flags(raw_features)
-
-	return
-}
-
-AdapterInfo :: struct {
-	vendor:       string,
-	architecture: string,
-	device:       string,
-	description:  string,
-	backend_type: BackendType,
-	adapter_type: AdapterType,
-	vendor_id:    u32,
-	device_id:    u32,
-}
-
-/* Get info about the adapter itself. */
-adapter_get_info :: proc(
-	self: Adapter,
-	allocator := context.allocator,
-	loc := #caller_location,
-) -> (
-	info: AdapterInfo,
-	ok: bool,
-) #optional_ok {
-	raw_info: WGPUAdapterInfo
-	status := wgpuAdapterGetInfo(self, &raw_info)
-	defer wgpuAdapterInfoFreeMembers(raw_info)
-
-	if status != .Success {
-		error_reset_and_update(ErrorType.Unknown, "Failed to fill adapter information", loc)
-		return
-	}
-
-	if raw_info.vendor.length > 0 {
-		info.vendor = strings.clone(string_view_get_string(raw_info.vendor), allocator)
-	}
-
-	if raw_info.architecture.length > 0 {
-		info.architecture = strings.clone(string_view_get_string(raw_info.architecture), allocator)
-	}
-
-	if raw_info.device.length > 0 {
-		info.device = strings.clone(string_view_get_string(raw_info.device), allocator)
-	}
-
-	if raw_info.description.length > 0 {
-		info.description = strings.clone(string_view_get_string(raw_info.description), allocator)
-	}
-
-	info.backend_type = raw_info.backend_type
-	info.adapter_type = raw_info.adapter_type
-	info.vendor_id = raw_info.vendor_id
-	info.device_id = raw_info.device_id
-
-	return info, true
-}
-
-/* Free the adapter info resources. */
-adapter_info_free_members :: proc(self: AdapterInfo, allocator := context.allocator) {
-	context.allocator = allocator
-	if len(self.vendor) > 0 {delete(self.vendor)}
-	if len(self.architecture) > 0 {delete(self.architecture)}
-	if len(self.device) > 0 {delete(self.device)}
-	if len(self.description) > 0 {delete(self.description)}
-}
-
-/*
-List the “best” limits that are supported by this adapter. Limits must be explicitly requested in
-`adapter_request_device` to set the values that you are allowed to use.
-*/
-adapter_get_limits :: proc "contextless" (
-	self: Adapter,
-	loc := #caller_location,
-) -> (
-	limits: Limits,
-	ok: bool,
-) #optional_ok {
-	native := NativeLimits {
-		chain = {stype = SType.NativeLimits},
-	}
-	base := WGPULimits {
-		next_in_chain = &native.chain,
-	}
-
-	error_reset_data(loc)
-	status := wgpuAdapterGetLimits(self, &base)
-	if get_last_error() != nil {
-		return
-	}
-	if status != .Success {
-		error_update_data(ErrorType.Unknown, "Failed to fill adapter limits")
-		return
-	}
-
-	limits = limits_merge_base_with_native(base, native)
-
-	// Why wgpu returns 0 for some supported limits?
-	// Enforce minimum values for all limits even if the returned values are lower
-	limits_ensure_minimum(&limits, minimum = DOWNLEVEL_WEBGL2_LIMITS)
-
-	return limits, true
-}
-
-/* Check if adapter support all features in the given flags. */
-adapter_has_feature :: proc "contextless" (
-	self: Adapter,
-	features: Features,
-	loc := #caller_location,
-) -> bool {
-	if features == {} {
-		return true
-	}
-	available := adapter_get_features(self)
-	if available == {} {
-		return false
-	}
-	for f in features {
-		if f not_in available {
-			return false
-		}
-	}
-	return true
-}
-
-/*
-Describes a `Device`.
-
-For use with `adapter_request_device`.
-
-Corresponds to [WebGPU `GPUDeviceDescriptor`](
-https://gpuweb.github.io/gpuweb/#dictdef-gpudevicedescriptor).
-*/
-DeviceDescriptor :: struct {
-	label:                          string,
-	optional_features:              Features,
-	required_features:              Features,
-	required_limits:                Limits,
-	device_lost_callback_info:      DeviceLostCallbackInfo,
-	uncaptured_error_callback_info: UncapturedErrorCallbackInfo,
-	trace_path:                     string,
-}
 
 /*
 Requests a connection to a physical device, creating a logical device.
@@ -214,13 +58,13 @@ adapter_request_device :: proc(
 		raw_desc.label = init_string_buffer(&c_label, desc.label)
 	}
 
-	features: sa.Small_Array(int(MAX_FEATURES), FeatureName)
+	features: sa.Small_Array(MAX_FEATURES, FeatureName)
 
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 	ta := context.temp_allocator
 
 	adapter_info := adapter_get_info(self, ta, loc) or_return
-	adapter_features := adapter_get_features(self)
+	adapter_features := adapter_features(self)
 
 	required_features := desc.required_features
 	for f in desc.optional_features {
@@ -241,7 +85,7 @@ adapter_request_device :: proc(
 						"Required feature [%v] not supported by device [%s] using [%s].",
 						f,
 						adapter_info.device,
-						adapter_info.backend_type,
+						adapter_info.backend,
 					),
 					loc,
 				)
@@ -254,21 +98,24 @@ adapter_request_device :: proc(
 		raw_desc.required_features = raw_data(sa.slice(&features))
 	}
 
-	adapter_limits := adapter_get_limits(self, loc) or_return
+	adapter_limits := adapter_limits(self, loc) or_return
 
-	// If no limits is provided, default to adapter best limits
-	limits := desc.required_limits if desc.required_limits != {} else adapter_limits
+	// If no limits is provided, default to the most restrictive limits
+	limits := desc.required_limits if desc.required_limits != {} else DEFAULT_MINIMUM_LIMITS
 
 	// Why wgpu returns 0 for some supported limits?
 	// Enforce minimum values for all limits even if the current values are lower
-	limits_ensure_minimum(&limits, minimum = DOWNLEVEL_WEBGL2_LIMITS)
+	limits_ensure_minimum(&limits, DEFAULT_MINIMUM_LIMITS)
 
 	// Check for unsupported limits
-	if limits != adapter_limits {
+	if limits != DEFAULT_MINIMUM_LIMITS {
 		if limit_violation, limits_ok := limits_check(limits, adapter_limits); !limits_ok {
 			error_reset_and_update(
 				.Validation,
-				limits_violation_to_string(limit_violation, ta),
+				fmt.tprintf(
+					"Limits violations detected:\n%s",
+					limits_violation_to_string(limit_violation, ta),
+				),
 				loc,
 			)
 			return
@@ -309,7 +156,7 @@ adapter_request_device :: proc(
 		max_compute_workgroups_per_dimension            = limits.max_compute_workgroups_per_dimension,
 	}
 
-	native_limits := NativeLimits {
+	native_limits := WGPUNativeLimits {
 		chain = {stype = SType.NativeLimits},
 	}
 	native_limits = {
@@ -324,7 +171,7 @@ adapter_request_device :: proc(
 	raw_desc.uncaptured_error_callback_info = desc.uncaptured_error_callback_info
 
 	when ODIN_DEBUG {
-		device_extras := DeviceExtras {
+		device_extras := WGPUDeviceExtras {
 			chain = {stype = .DeviceExtras},
 		}
 		// Write a trace of all commands to a file so it can be reproduced
@@ -339,29 +186,14 @@ adapter_request_device :: proc(
 	return adapter_request_device_raw(self, &raw_desc, loc)
 }
 
-DeviceResponse :: struct {
-	status:  RequestDeviceStatus,
-	device:  Device,
-	message: StringView,
+RequestDeviceStatus :: enum i32 {
+	Success         = 0x00000001,
+	InstanceDropped = 0x00000002,
+	Error           = 0x00000003,
+	Unknown         = 0x00000004,
 }
 
-adapter_request_device_callback :: proc "c" (
-	status: RequestDeviceStatus,
-	device: Device,
-	message: StringView,
-	userdata1: rawptr,
-	userdata2: rawptr,
-) {
-	response := cast(^DeviceResponse)userdata1
-
-	response.status = status
-	response.message = message
-
-	if status == .Success {
-		response.device = device
-	}
-}
-
+@(private)
 adapter_request_device_raw :: proc(
 	self: Adapter,
 	descriptor: ^WGPUDeviceDescriptor = nil,
@@ -370,6 +202,29 @@ adapter_request_device_raw :: proc(
 	device: Device,
 	ok: bool,
 ) {
+	DeviceResponse :: struct {
+		status:  RequestDeviceStatus,
+		device:  Device,
+		message: StringView,
+	}
+
+	adapter_request_device_callback :: proc "c" (
+		status: RequestDeviceStatus,
+		device: Device,
+		message: StringView,
+		userdata1: rawptr,
+		userdata2: rawptr,
+	) {
+		response := cast(^DeviceResponse)userdata1
+
+		response.status = status
+		response.message = message
+
+		if status == .Success {
+			response.device = device
+		}
+	}
+
 	res: DeviceResponse
 	callback_info := RequestDeviceCallbackInfo {
 		callback  = adapter_request_device_callback,
@@ -409,8 +264,263 @@ adapter_request_device_raw :: proc(
 	return device, true
 }
 
-/*  Increase the reference count. */
+/* Returns whether this adapter may present to the passed surface. */
+adapter_is_surface_supported :: proc(self: Adapter, surface: Surface) -> bool {
+	raw_caps: WGPUSurfaceCapabilities
+	status := wgpuSurfaceGetCapabilities(surface, self, &raw_caps)
+	defer wgpuSurfaceCapabilitiesFreeMembers(raw_caps)
+	// If wgpuSurfaceGetCapabilities returns Error, then the API does not advertise
+	// support for the given surface.
+	return status == .Success
+}
+
+/* The features which can be used to create devices on this adapter. */
+adapter_features :: proc "contextless" (self: Adapter) -> (features: Features) #no_bounds_check {
+	supported: SupportedFeatures
+	wgpuAdapterGetFeatures(self, &supported)
+	defer wgpuSupportedFeaturesFreeMembers(supported)
+
+	raw_features := supported.features[:supported.feature_count]
+	features = features_slice_to_flags(raw_features)
+
+	return
+}
+
+adapter_has_feature :: proc "contextless" (self: Adapter, features: Features) -> bool {
+	if features == {} {
+		return true
+	}
+	available := adapter_features(self)
+	if available == {} {
+		return false
+	}
+	for f in features {
+		if f not_in available {
+			return false
+		}
+	}
+	return true
+}
+
+/* The best limits which can be used to create devices on this adapter. */
+adapter_limits :: proc "contextless" (
+	self: Adapter,
+	loc := #caller_location,
+) -> (
+	limits: Limits,
+	ok: bool,
+) #optional_ok {
+	native := WGPUNativeLimits {
+		chain = {stype = SType.NativeLimits},
+	}
+	base := WGPULimits {
+		next_in_chain = &native.chain,
+	}
+
+	error_reset_data(loc)
+	status := wgpuAdapterGetLimits(self, &base)
+	if get_last_error() != nil {
+		return
+	}
+	if status != .Success {
+		error_update_data(ErrorType.Unknown, "Failed to fill adapter limits")
+		return
+	}
+
+	limits = limits_merge_webgpu_with_native(base, native)
+
+	// Why wgpu returns 0 for some supported limits?
+	// Enforce minimum values for all limits even if the returned values are lower
+	limits_ensure_minimum(&limits, DEFAULT_MINIMUM_LIMITS)
+
+	return limits, true
+}
+
+/* Get info about the adapter itself. */
+adapter_get_info :: proc(
+	self: Adapter,
+	allocator := context.allocator,
+	loc := #caller_location,
+) -> (
+	info: AdapterInfo,
+	ok: bool,
+) #optional_ok {
+	raw_info: WGPUAdapterInfo
+	status := wgpuAdapterGetInfo(self, &raw_info)
+	defer wgpuAdapterInfoFreeMembers(raw_info)
+
+	if status != .Success {
+		error_reset_and_update(ErrorType.Unknown, "Failed to fill adapter information", loc)
+		return
+	}
+
+	fill_adapter_info(&info, &raw_info, allocator)
+
+	return info, true
+}
+
+@(private)
+fill_adapter_info :: proc(
+	self: ^AdapterInfo,
+	raw_info: ^WGPUAdapterInfo,
+	allocator: runtime.Allocator,
+) {
+	if raw_info.vendor.length > 0 {
+		self.vendor = strings.clone(string_view_get_string(raw_info.vendor), allocator)
+	}
+
+	if raw_info.architecture.length > 0 {
+		self.architecture = strings.clone(string_view_get_string(raw_info.architecture), allocator)
+	}
+
+	if raw_info.device.length > 0 {
+		self.device = strings.clone(string_view_get_string(raw_info.device), allocator)
+	}
+
+	if raw_info.description.length > 0 {
+		self.description = strings.clone(string_view_get_string(raw_info.description), allocator)
+	}
+
+	self.backend = raw_info.backend
+	self.device_type = raw_info.device_type
+	self.vendor_id = raw_info.vendor_id
+	self.device_id = raw_info.device_id
+}
+
+/* Release the `AdapterInfo` resources (remove the allocated strings). */
+adapter_info_free_members :: proc(self: AdapterInfo, allocator := context.allocator) {
+	context.allocator = allocator
+	if len(self.vendor) > 0 {delete(self.vendor)}
+	if len(self.architecture) > 0 {delete(self.architecture)}
+	if len(self.device) > 0 {delete(self.device)}
+	if len(self.description) > 0 {delete(self.description)}
+}
+
+/* Get info about the adapter itself as `string`. */
+adapter_info_string :: proc(
+	info: AdapterInfo,
+	allocator := context.allocator,
+) -> (
+	str: string,
+	ok: bool,
+) #optional_ok {
+	sb: strings.Builder
+	err: runtime.Allocator_Error
+
+	ta := context.temp_allocator
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == ta)
+	if sb, err = strings.builder_make(ta); err != nil {
+		return
+	}
+	defer strings.builder_destroy(&sb)
+
+	strings.write_string(&sb, info.device)
+	strings.write_byte(&sb, '\n')
+
+	strings.write_string(&sb, "  - Driver: ")
+	strings.write_string(&sb, info.description if info.description != "" else "Unknown")
+	strings.write_byte(&sb, '\n')
+
+	device_type: string
+	switch info.device_type {
+	case .DiscreteGPU:
+		device_type = "Discrete GPU with separate CPU/GPU memory"
+	case .IntegratedGPU:
+		device_type = "Integrated GPU with shared CPU/GPU memory"
+	case .CPU:
+		device_type = "Cpu / Software Rendering"
+	case .Unknown:
+		device_type = "Unknown"
+	}
+	strings.write_string(&sb, "  - Type: ")
+	strings.write_string(&sb, device_type)
+	strings.write_byte(&sb, '\n')
+
+	backend: string
+	#partial switch info.backend {
+	case .Null:
+		backend = "Empty"
+	case .WebGPU:
+		backend = "WebGPU in the browser"
+	case .D3D11:
+		backend = "Direct3D-11"
+	case .D3D12:
+		backend = "Direct3D-12"
+	case .Metal:
+		backend = "Metal API"
+	case .Vulkan:
+		backend = "Vulkan API"
+	case .OpenGL:
+		backend = "OpenGL"
+	case .OpenGLES:
+		backend = "OpenGLES"
+	}
+	strings.write_string(&sb, "  - Backend: ")
+	strings.write_string(&sb, backend)
+
+	if str, err = strings.clone(strings.to_string(sb), allocator); err != nil {
+		return
+	}
+
+	return str, true
+}
+
+/* Print info about the adapter itself. */
+adapter_info_print_info :: proc(info: AdapterInfo) {
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+	fmt.printfln("%s", adapter_info_string(info, context.temp_allocator))
+}
+
+/*
+Returns the features supported for a given texture format by this adapter.
+
+Note that the WebGPU spec further restricts the available usages/features.
+To disable these restrictions on a device, request the [`Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES`] feature.
+*/
+adapter_get_texture_format_features :: proc(
+	self: Adapter,
+	format: TextureFormat,
+	loc := #caller_location,
+) -> (
+	features: TextureFormatFeatures,
+) {
+	adapter_features := adapter_features(self)
+	return texture_format_guaranteed_format_features(format, adapter_features)
+}
+
+/*  Increase the `Adapter` reference count. */
 adapter_add_ref :: wgpuAdapterAddRef
 
-/*  Release the `Adapter` resources. */
+/*  Release the `Adapter` resources, use to decrease the reference count. */
 adapter_release :: wgpuAdapterRelease
+
+@(private)
+WGPUDeviceExtras :: struct {
+	chain:      ChainedStruct,
+	trace_path: StringView,
+}
+
+@(private)
+WGPUDeviceDescriptor :: struct {
+	next_in_chain:                  ^ChainedStruct,
+	label:                          StringView,
+	required_feature_count:         uint,
+	required_features:              [^]FeatureName,
+	required_limits:                ^WGPULimits,
+	default_queue:                  QueueDescriptor,
+	device_lost_callback_info:      DeviceLostCallbackInfo,
+	uncaptured_error_callback_info: UncapturedErrorCallbackInfo,
+}
+
+@(private)
+WGPUAdapterInfo :: struct {
+	next_in_chain: ^ChainedStructOut,
+	vendor:        StringView,
+	architecture:  StringView,
+	device:        StringView,
+	description:   StringView,
+	backend:       Backend,
+	device_type:   DeviceType,
+	vendor_id:     u32,
+	device_id:     u32,
+}

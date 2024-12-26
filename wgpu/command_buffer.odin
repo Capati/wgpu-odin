@@ -11,15 +11,15 @@ Corresponds to [WebGPU `GPUCommandBuffer`](https://gpuweb.github.io/gpuweb/#comm
 */
 CommandBuffer :: distinct rawptr
 
-/* Set debug label. */
+/* Sets a debug label for the given `CommandBuffer`. */
 @(disabled = !ODIN_DEBUG)
 command_buffer_set_label :: proc "contextless" (self: CommandBuffer, label: string) {
 	c_label: StringViewBuffer
 	wgpuCommandBufferSetLabel(self, init_string_buffer(&c_label, label))
 }
 
-/* Increase the reference count. */
+/* Increase the `CommandBuffer` reference count. */
 command_buffer_add_ref :: wgpuCommandBufferAddRef
 
-/* Release the `CommandBuffer` resources. */
+/* Release the `CommandBuffer` resources, use to decrease the reference count. */
 command_buffer_release :: wgpuCommandBufferRelease

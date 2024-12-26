@@ -38,7 +38,7 @@ TextureLoadOptions :: struct {
 	flip_y:           bool,
 	generate_mipmaps: bool,
 	format:           wgpu.TextureFormat,
-	usage:            wgpu.TextureUsage,
+	usage:            wgpu.TextureUsages,
 	address_mode:     wgpu.AddressMode,
 	color_space:      ColorSpace,
 }
@@ -91,6 +91,7 @@ load_image_from_file :: proc(
 		return out, true
 	}
 
+	// Is this an unsupported format? If so, ignore the error to retry with stbi
 	if img_err != .Unsupported_Format {
 		log.errorf("Failed to load image [%v]: %s", img_err, filename)
 		return
@@ -205,22 +206,16 @@ image_to_texture :: proc(
 ) -> (
 	ok: bool,
 ) {
-	// data_size := size.width * size.height * size.depth_or_array_layers * channels * size_of(u8)
-
 	wgpu.queue_write_texture(
 		queue,
-		{texture = texture, mip_level = 0, origin = {0, 0, 0}, aspect = .All},
+		wgpu.texture_as_image_copy(texture),
 		data,
 		{
 			offset = 0,
 			bytes_per_row = size.width * channels * size_of(u8),
 			rows_per_image = size.height,
 		},
-		{
-			width = size.width,
-			height = size.height,
-			depth_or_array_layers = size.depth_or_array_layers,
-		},
+		size,
 	) or_return
 
 	return true
@@ -279,26 +274,15 @@ load_texture_from_file :: proc(
 		wgpu.release(texture)
 	}
 
-	bytes_per_row := wgpu.texture_format_bytes_per_row(format, width)
-
-	// Prepare image data for upload
-	image_copy_texture := wgpu.texture_as_image_copy(texture)
-	texture_data_layout := wgpu.TexelCopyBufferLayout {
-		offset         = 0,
-		bytes_per_row  = bytes_per_row,
-		rows_per_image = height,
-	}
-
 	// Convert image data if necessary
-	pixels_to_upload := convert_image_data(img, bytes_per_row, context.temp_allocator) or_return
+	image_data_convert(&img, true, context.temp_allocator) or_return
 
-	// Copy image data to texture
-	wgpu.queue_write_texture(
+	image_to_texture(
 		queue,
-		image_copy_texture,
-		pixels_to_upload,
-		texture_data_layout,
+		texture,
+		img.pixels,
 		texture_descriptor.size,
+		u32(img.channels),
 	) or_return
 
 	ret = {
@@ -506,12 +490,12 @@ create_cubemap_texture :: proc(
 		}
 
 		// Convert image data if necessary
-		pixels_to_upload := convert_image_data(img, bytes_per_row, ta) or_return
+		image_data_convert(&img, true, ta) or_return
 
 		wgpu.queue_write_texture(
 			queue,
 			image_copy_texture,
-			pixels_to_upload,
+			img.pixels,
 			texture_data_layout,
 			{img.width, img.height, 1},
 		) or_return
@@ -587,36 +571,49 @@ image_info_texture_format :: proc(info: ImageInfo) -> wgpu.TextureFormat {
 	return .Rgba8Unorm // Default to RGBA8 if channels are unexpected
 }
 
-convert_image_data :: proc(
-	image_data: ImageData,
-	aligned_bytes_per_row: u32,
+image_data_convert :: proc(
+	img: ^ImageData,
+	delete_old_pixels := true,
 	allocator := context.allocator,
 ) -> (
-	data: []byte,
 	ok: bool,
 ) {
 	RGB_CHANNELS :: 3
 	RGBA_CHANNELS :: 4
 
-	bytes_per_pixel := image_data.channels * image_data.bytes_per_channel
+	bytes_per_pixel := img.channels * img.bytes_per_channel
+
+	new_pixels: []byte
+	channels := img.channels
 
 	// Convert RGB to RGBA
-	if image_data.channels == RGB_CHANNELS {
-		new_bytes_per_pixel := RGBA_CHANNELS * image_data.bytes_per_channel
-		data = make([]byte, int(aligned_bytes_per_row * image_data.height), allocator)
-		for y in 0 ..< image_data.height {
-			for x in 0 ..< image_data.width {
-				src_idx := int((y * image_data.width + x)) * bytes_per_pixel
-				dst_idx := int(y) * int(aligned_bytes_per_row) + int(x) * new_bytes_per_pixel
-				copy(data[dst_idx:], image_data.pixels[src_idx:src_idx + bytes_per_pixel])
-				data[dst_idx + 3] = 255 // Full alpha for 8-bit
+	if img.channels == RGB_CHANNELS {
+		// Set the new channels
+		channels = RGBA_CHANNELS
+
+		new_bytes_per_pixel := RGBA_CHANNELS * img.bytes_per_channel
+		dest_bytes_per_row := img.width * RGBA_CHANNELS
+		new_pixels = make([]byte, int(dest_bytes_per_row * img.height), allocator)
+
+		for y in 0 ..< img.height {
+			for x in 0 ..< img.width {
+				src_idx := int((y * img.width + x)) * bytes_per_pixel
+				dst_idx := int(y * dest_bytes_per_row + x * u32(new_bytes_per_pixel))
+				copy(new_pixels[dst_idx:], img.pixels[src_idx:src_idx + bytes_per_pixel])
+				new_pixels[dst_idx + 3] = 255 // Full alpha for 8-bit
 			}
 		}
-	} else {
-		data = image_data.pixels
 	}
 
-	return data, true
+	if len(new_pixels) > 0 {
+		if delete_old_pixels {
+			delete(img.pixels, allocator)
+		}
+		img.pixels = new_pixels
+		img.channels = channels
+	}
+
+	return true
 }
 
 texture_release :: proc(self: Texture) {

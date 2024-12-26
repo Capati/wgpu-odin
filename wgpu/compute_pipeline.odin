@@ -10,7 +10,30 @@ Corresponds to [WebGPU `GPUComputePipeline`](https://gpuweb.github.io/gpuweb/#co
 */
 ComputePipeline :: distinct rawptr
 
-/* Get an object representing the bind group layout at a given index. */
+/*
+Describes a compute pipeline.
+
+For use with `device_create_compute_pipeline`.
+
+Corresponds to [WebGPU `GPUComputePipelineDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpucomputepipelinedescriptor).
+*/
+ComputePipelineDescriptor :: struct {
+	label:       string,
+	layout:      PipelineLayout,
+	module:      ShaderModule,
+	entry_point: string,
+	constants:   []ConstantEntry,
+}
+
+/*
+Get an object representing the bind group layout at a given index.
+
+If this pipeline was created with a default layout, then bind groups created with the returned
+`BindGroupLayout` can only be used with this pipeline.
+
+This method will raise a validation error if there is no bind group layout at `index`.
+*/
 @(require_results)
 compute_pipeline_get_bind_group_layout :: proc "contextless" (
 	self: ComputePipeline,
@@ -37,15 +60,15 @@ compute_pipeline_get_bind_group_layout :: proc "contextless" (
 	return bind_group_layout, true
 }
 
-/* Set debug label. */
+/* Sets a debug label for the given `ComputePipeline`. */
 @(disabled = !ODIN_DEBUG)
 compute_pipeline_set_label :: proc "contextless" (self: ComputePipeline, label: string) {
 	c_label: StringViewBuffer
 	wgpuComputePipelineSetLabel(self, init_string_buffer(&c_label, label))
 }
 
-/* Increase the reference count. */
+/* Increase the `ComputePipeline` reference count. */
 compute_pipeline_add_ref :: wgpuComputePipelineAddRef
 
-/* Release the `ComputePipeline` resources. */
+/* Release the `ComputePipeline` resources, use to decrease the reference count. */
 compute_pipeline_release :: wgpuComputePipelineRelease

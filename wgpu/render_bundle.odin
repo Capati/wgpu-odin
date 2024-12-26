@@ -11,15 +11,25 @@ using `render_pass_encoder_execute_bundles`.
 */
 RenderBundle :: distinct rawptr
 
-/* Set debug label. */
+/*
+Describes a `RenderBundle`.
+
+Corresponds to [WebGPU `GPURenderBundleDescriptor`](
+https://gpuweb.github.io/gpuweb/#dictdef-gpurenderbundledescriptor).
+*/
+RenderBundleDescriptor :: struct {
+	label: string,
+}
+
+/* Sets a debug label for the given `RenderBundle`. */
 @(disabled = !ODIN_DEBUG)
 render_bundle_set_label :: proc "contextless" (self: RenderBundle, label: string) {
 	c_label: StringViewBuffer
 	wgpuRenderBundleSetLabel(self, init_string_buffer(&c_label, label))
 }
 
-/* Increase the reference count. */
+/* Increase the `RenderBundle` reference count. */
 render_bundle_add_ref :: wgpuRenderBundleAddRef
 
-/* Release the `RenderBundle` resources. */
+/* Release the `RenderBundle` resources, use to decrease the reference count. */
 render_bundle_release :: wgpuRenderBundleRelease
