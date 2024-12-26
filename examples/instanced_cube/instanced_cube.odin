@@ -6,9 +6,9 @@ import "core:math"
 import la "core:math/linalg"
 
 // Local packages
-import wgpu "./../../"
-import app "./../../utils/application"
-import cube "./../rotating_cube"
+import cube "root:examples/rotating_cube"
+import app "root:utils/application"
+import "root:wgpu"
 
 CUBE_VERTEX_DATA := cube.CUBE_VERTEX_DATA
 CUBE_INDICES_DATA :: cube.CUBE_INDICES_DATA
@@ -22,15 +22,14 @@ MATRIX_SIZE :: 4 * MATRIX_FLOAT_COUNT
 UNIFORM_BUFFER_SIZE :: MAX_INSTANCES * MATRIX_SIZE
 
 Example :: struct {
-	vertex_buffer:      wgpu.Buffer,
-	index_buffer:       wgpu.Buffer,
-	render_pipeline:    wgpu.RenderPipeline,
-	instance_buffer:     wgpu.Buffer,
-	aspect:             f32,
-	projection_matrix:  la.Matrix4f32,
-	model_matrices:     [MAX_INSTANCES]la.Matrix4f32, // Store original model matrices
-	instances:          [MAX_INSTANCES]la.Matrix4f32, // Store MVP matrices
-	render_pass:        struct {
+	vertex_buffer:     wgpu.Buffer,
+	index_buffer:      wgpu.Buffer,
+	render_pipeline:   wgpu.RenderPipeline,
+	instance_buffer:   wgpu.Buffer,
+	projection_matrix: la.Matrix4f32,
+	model_matrices:    [MAX_INSTANCES]la.Matrix4f32, // Store original model matrices
+	instances:         [MAX_INSTANCES]la.Matrix4f32, // Store MVP matrices
+	render_pass:       struct {
 		color_attachments: [1]wgpu.RenderPassColorAttachment,
 		descriptor:        wgpu.RenderPassDescriptor,
 	},
@@ -98,8 +97,6 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	) or_return
 	defer wgpu.release(shader_module)
 
-	depth_stencil_state := app.create_depth_stencil_state(ctx)
-
 	ctx.render_pipeline = wgpu.device_create_render_pipeline(
 	ctx.gpu.device,
 	{
@@ -115,7 +112,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				{
 					format = ctx.gpu.config.format,
 					blend = &wgpu.BLEND_STATE_NORMAL,
-					write_mask = wgpu.COLOR_WRITE_MASK_ALL,
+					write_mask = wgpu.COLOR_WRITES_ALL,
 				},
 			},
 		},
@@ -129,7 +126,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		},
 		// Enable depth testing so that the fragment closest to the camera
 		// is rendered in front.
-		depth_stencil = &depth_stencil_state,
+		depth_stencil = app.create_depth_stencil_state(ctx),
 		multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 	},
 	) or_return
@@ -164,11 +161,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	}
 
 	ctx.render_pass.color_attachments[0] = {
-		view        = nil, /* Assigned later */
-		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op     = .Clear,
-		store_op    = .Store,
-		clear_value = app.ColorDarkGray,
+		view = nil, /* Assigned later */
+		ops  = {.Clear, .Store, app.ColorDarkGray},
 	}
 
 	app.setup_depth_stencil(ctx) or_return

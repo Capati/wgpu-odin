@@ -9,7 +9,7 @@ import "core:time"
 import "vendor:glfw"
 
 // Local packages
-import wgpu "./../../"
+import "root:wgpu"
 
 EXAMPLE_TITLE :: "Colored Triangle"
 
@@ -97,7 +97,7 @@ init :: proc(ctx: ^Example) -> (ok: bool) {
 	// Options for creating an instance
 	instance_descriptor := wgpu.InstanceDescriptor {
 		// We only want the backends: Vulkan, Metal, DX12 or BrowserWebGPU
-		backends = wgpu.INSTANCE_BACKEND_PRIMARY,
+		backends = wgpu.BACKENDS_PRIMARY,
 		// Allow to show validation errors
 		flags    = {.Validation},
 	}
@@ -214,7 +214,7 @@ init :: proc(ctx: ^Example) -> (ok: bool) {
 				{
 					format = ctx.config.format,
 					blend = &wgpu.BLEND_STATE_NORMAL,
-					write_mask = wgpu.COLOR_WRITE_MASK_ALL,
+					write_mask = wgpu.COLOR_WRITES_ALL,
 				},
 			},
 		},
@@ -336,15 +336,7 @@ render :: proc(ctx: ^Example) -> (ok: bool) {
 	// Describes the attachments of a render pass
 	render_pass_descriptor := wgpu.RenderPassDescriptor {
 		label             = "Render pass descriptor",
-		color_attachments = {
-			{
-				view = frame_view,
-				depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-				load_op = .Clear,
-				store_op = .Store,
-				clear_value = {0.0, 0.0, 0.0, 1.0},
-			},
-		},
+		color_attachments = {{view = frame_view, ops = {.Clear, .Store, {0.0, 0.0, 0.0, 1.0}}}},
 	}
 
 	// Begins recording of a render pass

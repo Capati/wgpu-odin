@@ -6,9 +6,9 @@ import "core:math"
 import la "core:math/linalg"
 
 // Local packages
-import wgpu "./../../"
-import app "./../../utils/application"
-import cube "./../rotating_cube"
+import cube "root:examples/rotating_cube"
+import app "root:utils/application"
+import "root:wgpu"
 
 Example :: struct {
 	vertex_buffer:       wgpu.Buffer,
@@ -18,7 +18,6 @@ Example :: struct {
 	uniform_bind_group1: wgpu.BindGroup,
 	uniform_bind_group2: wgpu.BindGroup,
 	offset:              u64,
-	aspect:              f32,
 	projection_matrix:   la.Matrix4f32,
 	render_pass:         struct {
 		color_attachments: [1]wgpu.RenderPassColorAttachment,
@@ -80,8 +79,6 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	) or_return
 	defer wgpu.release(shader_module)
 
-	depth_stencil_state := app.create_depth_stencil_state(ctx)
-
 	ctx.render_pipeline = wgpu.device_create_render_pipeline(
 	ctx.gpu.device,
 	{
@@ -98,7 +95,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				{
 					format = ctx.gpu.config.format,
 					blend = &wgpu.BLEND_STATE_NORMAL,
-					write_mask = wgpu.COLOR_WRITE_MASK_ALL,
+					write_mask = wgpu.COLOR_WRITES_ALL,
 				},
 			},
 		},
@@ -112,7 +109,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		},
 		// Enable depth testing so that the fragment closest to the camera
 		// is rendered in front.
-		depth_stencil = &depth_stencil_state,
+		depth_stencil = app.create_depth_stencil_state(ctx),
 		multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 	},
 	) or_return
@@ -179,11 +176,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	}
 
 	ctx.render_pass.color_attachments[0] = {
-		view        = nil, /* Assigned later */
-		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op     = .Clear,
-		store_op    = .Store,
-		clear_value = app.ColorDarkGray,
+		view = nil, /* Assigned later */
+		ops  = {.Clear, .Store, app.ColorDarkGray},
 	}
 
 	app.setup_depth_stencil(ctx) or_return
@@ -208,7 +202,6 @@ quit :: proc(ctx: ^Context) {
 }
 
 set_projection_matrix :: proc(ctx: ^Context, size: app.ResizeEvent) {
-	ctx.aspect = f32(size.w) / f32(size.h)
 	ctx.projection_matrix = la.matrix4_perspective(2 * math.PI / 5, ctx.aspect, 1, 100.0)
 }
 

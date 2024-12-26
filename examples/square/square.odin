@@ -6,9 +6,9 @@ import "base:builtin"
 import "core:log"
 
 // Local packages
-import "../common"
-import app "./../../utils/application"
-import wgpu "./../../"
+import "root:examples/common"
+import app "root:utils/application"
+import "root:wgpu"
 
 // odinfmt: disable
 POSITIONS := [?]f32 {
@@ -93,7 +93,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				{
 					format = ctx.gpu.config.format,
 					blend = &wgpu.BLEND_STATE_NORMAL,
-					write_mask = wgpu.COLOR_WRITE_MASK_ALL,
+					write_mask = wgpu.COLOR_WRITES_ALL,
 				},
 			},
 		},
@@ -115,11 +115,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	}
 
 	ctx.render_pass.color_attachments[0] = {
-		view        = nil, /* Assigned later */
-		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op     = .Clear,
-		store_op    = .Store,
-		clear_value = app.ColorBlack,
+		view = nil, /* Assigned later */
+		ops  = {.Clear, .Store, app.ColorBlack},
 	}
 
 	ctx.render_pass.descriptor = {

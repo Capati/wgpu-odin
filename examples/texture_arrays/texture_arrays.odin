@@ -4,8 +4,8 @@ package texture_arrays
 import "core:log"
 
 // Local packages
-import wgpu "./../../"
-import app "./../../utils/application"
+import app "root:utils/application"
+import "root:wgpu"
 
 TextureData :: struct {
 	label: string,
@@ -325,9 +325,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 			fragment = &{
 				module = fragment_shader_module,
 				entry_point = ctx.fragment_entry_point,
-				targets = {
-					{format = ctx.gpu.config.format, write_mask = wgpu.COLOR_WRITE_MASK_ALL},
-				},
+				targets = {{format = ctx.gpu.config.format, write_mask = wgpu.COLOR_WRITES_ALL}},
 			},
 			primitive = wgpu.DEFAULT_PRIMITIVE_STATE,
 			multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
@@ -338,11 +336,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	}
 
 	ctx.render_pass.color_attachments[0] = {
-		view        = nil, /* Assigned later */
-		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op     = .Clear,
-		store_op    = .Store,
-		clear_value = app.ColorBlack,
+		view = nil, /* Assigned later */
+		ops  = {.Clear, .Store, app.ColorBlack},
 	}
 
 	ctx.render_pass.descriptor = {

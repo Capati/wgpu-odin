@@ -7,8 +7,8 @@ import la "core:math/linalg"
 import "core:time"
 
 // Local packages
-import wgpu "./../../"
-import app "./../../utils/application"
+import app "root:utils/application"
+import "root:wgpu"
 
 Example :: struct {
 	// Buffers
@@ -27,7 +27,6 @@ Example :: struct {
 	uniform_bind_group: wgpu.BindGroup,
 
 	// Other state variables
-	aspect:             f32,
 	projection_matrix:  la.Matrix4f32,
 	model_matrix:       la.Matrix4f32,
 	start_time:         time.Time,
@@ -119,8 +118,6 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		attributes   = attributes[:],
 	}
 
-	depth_stencil_state := app.create_depth_stencil_state(ctx)
-
 	ctx.render_pipeline = wgpu.device_create_render_pipeline(
 		ctx.gpu.device,
 		descriptor = wgpu.RenderPipelineDescriptor {
@@ -137,7 +134,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 					{
 						format = ctx.gpu.config.format,
 						blend = &wgpu.BLEND_STATE_NORMAL,
-						write_mask = wgpu.COLOR_WRITE_MASK_ALL,
+						write_mask = wgpu.COLOR_WRITES_ALL,
 					},
 				},
 			},
@@ -145,13 +142,13 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				topology   = .TriangleList,
 				front_face = .CCW,
 				// Since we are seeing from inside of the cube
-				// and we are using the regular cube geomtry data with outward-facing normals,
+				// and we are using the regular cube geometry data with outward-facing normals,
 				// the cullMode should be 'front' or 'none'.
 				cull_mode  = .Front,
 			},
 			// Enable depth testing so that the fragment closest to the camera
 			// is rendered in front.
-			depth_stencil = &depth_stencil_state,
+			depth_stencil = app.create_depth_stencil_state(ctx),
 			multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 		},
 	) or_return
@@ -196,7 +193,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 					binding = 0,
 					resource = wgpu.BufferBinding {
 						buffer = ctx.uniform_buffer,
-						size = wgpu.buffer_get_size(ctx.uniform_buffer),
+						size = wgpu.buffer_size(ctx.uniform_buffer),
 					},
 				},
 				{binding = 1, resource = ctx.cubemap_texture.sampler},
@@ -209,11 +206,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	}
 
 	ctx.render_pass.color_attachments[0] = {
-		view        = nil, /* Assigned later */
-		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op     = .Clear,
-		store_op    = .Store,
-		clear_value = {0.0, 0.0, 0.0, 1.0},
+		view = nil, /* Assigned later */
+		ops  = {.Clear, .Store, {0.0, 0.0, 0.0, 1.0}},
 	}
 
 	app.setup_depth_stencil(ctx) or_return

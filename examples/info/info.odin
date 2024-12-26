@@ -4,7 +4,7 @@ package info
 import "base:runtime"
 import "core:fmt"
 
-import wgpu "./../../"
+import wgpu "./../../wgpu"
 
 run :: proc() -> (ok: bool) {
 	wgpu_version := wgpu.get_version()
@@ -23,8 +23,7 @@ run :: proc() -> (ok: bool) {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 	ta := context.temp_allocator
 
-	adapters := wgpu.instance_enumerate_adapters(instance, wgpu.INSTANCE_BACKEND_ALL, ta) or_return
-
+	adapters := wgpu.instance_enumerate_adapters(instance, wgpu.BACKENDS_ALL, ta) or_return
 	for a in adapters {
 		info := wgpu.adapter_get_info(a, ta)
 		wgpu.adapter_info_print_info(info)

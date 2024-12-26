@@ -3,13 +3,11 @@ package tutorial2_surface
 // Packages
 import "base:runtime"
 import "core:fmt"
-
-// Vendor
 import sdl "vendor:sdl2"
 
 // Local packages
-import wgpu "./../../../../"
-import wgpu_sdl "./../../../../utils/sdl"
+import wgpu_sdl "root:utils/sdl"
+import "root:wgpu"
 
 State :: struct {
 	window:    ^sdl.Window,
@@ -68,7 +66,7 @@ init :: proc() -> (state: ^State, ok: bool) {
 	wgpu.set_log_level(.Warn)
 
 	instance_descriptor := wgpu.InstanceDescriptor {
-		backends = wgpu.INSTANCE_BACKEND_PRIMARY,
+		backends = wgpu.BACKENDS_PRIMARY,
 	}
 
 	instance := wgpu.create_instance(instance_descriptor) or_return
@@ -169,13 +167,7 @@ render :: proc(state: ^State) -> (ok: bool) {
 		{
 			label = "Render Pass",
 			color_attachments = []wgpu.RenderPassColorAttachment {
-				{
-					view = view,
-					resolve_target = nil,
-					load_op = .Clear,
-					store_op = .Store,
-					clear_value = {0.1, 0.2, 0.3, 1.0},
-				},
+				{view = view, resolve_target = nil, ops = {.Clear, .Store, {0.1, 0.2, 0.3, 1.0}}},
 			},
 			depth_stencil_attachment = nil,
 		},

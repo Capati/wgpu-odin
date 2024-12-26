@@ -6,8 +6,8 @@ import "core:math"
 import la "core:math/linalg"
 
 // Local packages
-import wgpu "./../../"
-import app "./../../utils/application"
+import app "root:utils/application"
+import "root:wgpu"
 
 Example :: struct {
 	vertex_buffer:      wgpu.Buffer,
@@ -17,7 +17,6 @@ Example :: struct {
 	uniform_buffer:     wgpu.Buffer,
 	cube_texture:       app.Texture,
 	uniform_bind_group: wgpu.BindGroup,
-	aspect:             f32,
 	projection_matrix:  la.Matrix4f32,
 	render_pass:        struct {
 		color_attachments: [1]wgpu.RenderPassColorAttachment,
@@ -93,7 +92,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 					{
 						format = ctx.gpu.config.format,
 						blend = &wgpu.BLEND_STATE_NORMAL,
-						write_mask = wgpu.COLOR_WRITE_MASK_ALL,
+						write_mask = wgpu.COLOR_WRITES_ALL,
 					},
 				},
 			},
@@ -107,14 +106,16 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 			},
 			// Enable depth testing so that the fragment closest to the camera
 			// is rendered in front.
-			depth_stencil = &{
-				depth_write_enabled = .True,
+			depth_stencil = {
+				depth_write_enabled = true,
 				depth_compare = .Less,
 				format = DEFAULT_DEPTH_FORMAT,
-				stencil_front = {compare = .Always},
-				stencil_back = {compare = .Always},
-				stencil_read_mask = 0xFFFFFFFF,
-				stencil_write_mask = 0xFFFFFFFF,
+				stencil = {
+					front = {compare = .Always},
+					back = {compare = .Always},
+					read_mask = 0xFFFFFFFF,
+					write_mask = 0xFFFFFFFF,
+				},
 			},
 			multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 		},
@@ -136,9 +137,9 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	}
 
 	ctx.cube_texture = app.create_texture_from_file(
+		"./assets/textures/Di-3d.png",
 		ctx.gpu.device,
 		ctx.gpu.queue,
-		"./assets/textures/Di-3d.png",
 	) or_return
 	defer if !ok {
 		app.texture_release(ctx.cube_texture)
@@ -172,11 +173,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	}
 
 	ctx.render_pass.color_attachments[0] = {
-		view        = nil, /* Assigned later */
-		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op     = .Clear,
-		store_op    = .Store,
-		clear_value = app.ColorDarkGray,
+		view = nil, /* Assigned later */
+		ops  = {.Clear, .Store, app.ColorDarkGray},
 	}
 
 	app.setup_depth_stencil(ctx, {format = DEFAULT_DEPTH_FORMAT}) or_return
@@ -187,7 +185,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		depth_stencil_attachment = &ctx.depth_stencil.descriptor,
 	}
 
-	set_projection_matrix(&ctx.state, ctx.gpu.config.width, ctx.gpu.config.height)
+	set_projection_matrix(ctx, ctx.gpu.config.width, ctx.gpu.config.height)
 
 	return true
 }
@@ -201,9 +199,8 @@ quit :: proc(ctx: ^Context) {
 	wgpu.release(ctx.vertex_buffer)
 }
 
-set_projection_matrix :: proc(state: ^Example, w, h: u32) {
-	state.aspect = f32(w) / f32(h)
-	state.projection_matrix = la.matrix4_perspective(2 * math.PI / 5, state.aspect, 1, 100.0)
+set_projection_matrix :: proc(ctx: ^Context, w, h: u32) {
+	ctx.projection_matrix = la.matrix4_perspective(2 * math.PI / 5, ctx.aspect, 1, 100.0)
 }
 
 get_transformation_matrix :: proc(ctx: ^Context) -> (mvp_mat: la.Matrix4f32) {
@@ -227,7 +224,7 @@ get_transformation_matrix :: proc(ctx: ^Context) -> (mvp_mat: la.Matrix4f32) {
 
 resize :: proc(ctx: ^Context, size: app.ResizeEvent) -> bool {
 	app.setup_depth_stencil(ctx, {format = DEFAULT_DEPTH_FORMAT}) or_return
-	set_projection_matrix(&ctx.state, size.w, size.h)
+	set_projection_matrix(ctx, size.w, size.h)
 	return true
 }
 

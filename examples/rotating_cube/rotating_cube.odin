@@ -7,8 +7,8 @@ import la "core:math/linalg"
 import "core:time"
 
 // Local packages
-import wgpu "./../../"
-import app "./../../utils/application"
+import app "root:utils/application"
+import "root:wgpu"
 
 Example :: struct {
 	vertex_buffer:      wgpu.Buffer,
@@ -90,7 +90,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				{
 					format = ctx.gpu.config.format,
 					blend = &wgpu.BLEND_STATE_NORMAL,
-					write_mask = wgpu.COLOR_WRITE_MASK_ALL,
+					write_mask = wgpu.COLOR_WRITES_ALL,
 				},
 			},
 		},
@@ -104,14 +104,16 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		},
 		// Enable depth testing so that the fragment closest to the camera
 		// is rendered in front.
-		depth_stencil = &{
-			depth_write_enabled = .True,
+		depth_stencil = {
+			depth_write_enabled = true,
 			depth_compare = .Less,
 			format = DEPTH_FORMAT,
-			stencil_front = {compare = .Always},
-			stencil_back = {compare = .Always},
-			stencil_read_mask = 0xFFFFFFFF,
-			stencil_write_mask = 0xFFFFFFFF,
+			stencil = {
+				back = {compare = .Always},
+				front = {compare = .Always},
+				read_mask = 0xFFFFFFFF,
+				write_mask = 0xFFFFFFFF,
+			},
 		},
 		multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 	},
@@ -158,11 +160,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	}
 
 	ctx.render_pass.color_attachments[0] = {
-		view        = nil, /* Assigned later */
-		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op     = .Clear,
-		store_op    = .Store,
-		clear_value = app.ColorDarkGray,
+		view = nil, /* Assigned later */
+		ops  = {.Clear, .Store, app.ColorDarkGray},
 	}
 
 	app.setup_depth_stencil(ctx, {format = DEPTH_FORMAT}) or_return

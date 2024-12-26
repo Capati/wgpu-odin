@@ -6,7 +6,7 @@ import "core:fmt"
 import "vendor:stb/image"
 
 // Local packages
-import wgpu "./../../"
+import "root:wgpu"
 
 _log_callback :: proc "c" (level: wgpu.LogLevel, message: wgpu.StringView, user_data: rawptr) {
 	if message.length > 0 {
@@ -43,7 +43,7 @@ run :: proc() -> (ok: bool) {
 	wgpu.set_log_level(.Warn)
 
 	instance_descriptor := wgpu.InstanceDescriptor {
-		backends = wgpu.INSTANCE_BACKEND_PRIMARY,
+		backends = wgpu.BACKENDS_PRIMARY,
 	}
 
 	instance := wgpu.create_instance(instance_descriptor) or_return
@@ -115,12 +115,7 @@ run :: proc() -> (ok: bool) {
 	defer wgpu.command_encoder_release(command_encoder)
 
 	colors: []wgpu.RenderPassColorAttachment = {
-		{
-			view = texture_view,
-			load_op = .Clear,
-			store_op = .Store,
-			clear_value = {1.0, 0.0, 0.0, 1.0},
-		},
+		{view = texture_view, ops = {.Clear, .Store, {1.0, 0.0, 0.0, 1.0}}},
 	}
 
 	render_pass := wgpu.command_encoder_begin_render_pass(
@@ -170,7 +165,7 @@ run :: proc() -> (ok: bool) {
 		buffer_map := cast(^BufferMapContext)userdata1
 		defer wgpu.buffer_release(buffer_map.buffer)
 
-		data_view, data_ok := wgpu.buffer_get_const_mapped_range(buffer_map.buffer, []byte)
+		data_view, data_ok := wgpu.buffer_get_mapped_range(buffer_map.buffer, []byte)
 		if !data_ok {
 			fmt.eprintln("ERROR: Failed to get data from buffer")
 			return
@@ -178,11 +173,11 @@ run :: proc() -> (ok: bool) {
 
 		result := image.write_png(
 			"red.png",
-			cast(i32)buffer_map.dimensions.width,
-			cast(i32)buffer_map.dimensions.height,
+			i32(buffer_map.dimensions.width),
+			i32(buffer_map.dimensions.height),
 			4,
 			raw_data(data_view.data),
-			cast(i32)buffer_map.dimensions.padded_bytes_per_row,
+			i32(buffer_map.dimensions.padded_bytes_per_row),
 		)
 
 		if result == 0 {
@@ -194,7 +189,7 @@ run :: proc() -> (ok: bool) {
 	wgpu.buffer_map_async(
 		output_buffer,
 		{.Read},
-		{offset = 0, size = u64(buffer_size)},
+		{start = 0, end = u64(buffer_size)},
 		{callback = handle_buffer_map, userdata1 = &buffer_map},
 	) or_return
 

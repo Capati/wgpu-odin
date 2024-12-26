@@ -2,13 +2,11 @@ package microui_example
 
 // Packages
 import "core:log"
-
-// Vendor
 import mu "vendor:microui"
 
 // Local packages
-import wgpu "./../../"
-import app "./../../utils/application"
+import app "root:utils/application"
+import "root:wgpu"
 
 Example :: struct {
 	log_buf:         [64000]u8,
@@ -30,11 +28,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	ctx.bg = {56, 130, 210, 255}
 
 	ctx.render_pass.color_attachments[0] = {
-		view        = nil, /* Assigned later */
-		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op     = .Clear,
-		store_op    = .Store,
-		clear_value = get_color_from_mu_color(ctx.bg),
+		view = nil, /* Assigned later */
+		ops  = {.Clear, .Store, get_color_from_mu_color(ctx.bg)},
 	}
 
 	ctx.render_pass.descriptor = {
@@ -62,7 +57,7 @@ ui_update :: proc(ctx: ^Context, mu_ctx: ^mu.Context) -> (ok: bool) {
 }
 
 update :: proc(ctx: ^Context, dt: f64) -> bool {
-	ctx.render_pass.color_attachments[0].clear_value = get_color_from_mu_color(ctx.bg)
+	ctx.render_pass.color_attachments[0].ops.clear_value = get_color_from_mu_color(ctx.bg)
 	return true
 }
 
@@ -103,11 +98,11 @@ main :: proc() {
 	defer app.destroy(example)
 
 	example.callbacks = {
-		init          = init,
+		init         = init,
 		handle_event = handle_event,
-		ui_update     = ui_update,
-		update        = update,
-		draw          = draw,
+		ui_update    = ui_update,
+		update       = update,
+		draw         = draw,
 	}
 
 	app.run(example) // Start the main loop

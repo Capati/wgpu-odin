@@ -4,8 +4,8 @@ package tutorial2_surface_challenge
 import "core:log"
 
 // Local packages
-import wgpu "./../../../../"
-import app "./../../../../utils/application"
+import app "root:utils/application"
+import "root:wgpu"
 
 Example :: struct {
 	clear_value: app.Color,
@@ -23,11 +23,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	ctx.clear_value = app.ColorRoyalBlue
 
 	ctx.render_pass.color_attachments[0] = {
-		view        = nil, /* Assigned later */
-		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op     = .Clear,
-		store_op    = .Store,
-		clear_value = ctx.clear_value,
+		view = nil, /* Assigned later */
+		ops  = {.Clear, .Store, ctx.clear_value},
 	}
 
 	ctx.render_pass.descriptor = {
@@ -60,7 +57,7 @@ draw :: proc(ctx: ^Context) -> bool {
 	defer wgpu.release(ctx.cmd)
 
 	ctx.render_pass.color_attachments[0].view = ctx.frame.view
-	ctx.render_pass.color_attachments[0].clear_value = ctx.clear_value
+	ctx.render_pass.color_attachments[0].ops.clear_value = ctx.clear_value
 	render_pass := wgpu.command_encoder_begin_render_pass(ctx.cmd, ctx.render_pass.descriptor)
 	defer wgpu.release(render_pass)
 	wgpu.render_pass_end(render_pass) or_return

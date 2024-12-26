@@ -6,8 +6,8 @@ import "core:math"
 import la "core:math/linalg"
 
 // Local Packages
-import wgpu "./../../../../"
-import app "./../../../../utils/application"
+import app "root:utils/application"
+import "root:wgpu"
 
 NUM_INSTANCES_PER_ROW :: 10
 INSTANCE_DISPLACEMENT :: la.Vector3f32 {
@@ -91,9 +91,9 @@ DEPTH_FORMAT :: wgpu.TextureFormat.Depth32Float
 init :: proc(ctx: ^Context) -> (ok: bool) {
 	// Load our tree image to texture
 	diffuse_texture := app.create_texture_from_file(
+		"assets/textures/happy-tree.png",
 		ctx.gpu.device,
 		ctx.gpu.queue,
-		"assets/textures/happy-tree.png",
 	) or_return
 	defer app.release(diffuse_texture)
 
@@ -301,20 +301,16 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				{
 					format = ctx.gpu.config.format,
 					blend = &wgpu.BLEND_STATE_REPLACE,
-					write_mask = wgpu.COLOR_WRITE_MASK_ALL,
+					write_mask = wgpu.COLOR_WRITES_ALL,
 				},
 			},
 		},
 		primitive = {topology = .TriangleList, front_face = .CCW, cull_mode = .Back},
-		depth_stencil = &{
+		depth_stencil = {
 			format = DEPTH_FORMAT,
-			depth_write_enabled = .True,
+			depth_write_enabled = true,
 			depth_compare = .Less,
-			stencil_read_mask = max(u32),
-			stencil_write_mask = max(u32),
-			depth_bias = 0,
-			depth_bias_slope_scale = 0.0,
-			depth_bias_clamp = 0.0,
+			stencil = {read_mask = max(u32), write_mask = max(u32)},
 		},
 		multisample = {count = 1, mask = ~u32(0), alpha_to_coverage_enabled = false},
 	}
@@ -363,11 +359,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	create_depth_texture(ctx) or_return
 
 	ctx.render_pass.color_attachments[0] = {
-		view        = nil, /* Assigned later */
-		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op     = .Clear,
-		store_op    = .Store,
-		clear_value = {0.1, 0.2, 0.3, 1.0},
+		view = nil, /* Assigned later */
+		ops  = {.Clear, .Store, {0.1, 0.2, 0.3, 1.0}},
 	}
 
 	ctx.render_pass.descriptor = {

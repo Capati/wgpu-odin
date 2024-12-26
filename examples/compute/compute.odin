@@ -5,7 +5,7 @@ import "base:runtime"
 import "core:fmt"
 
 // Local packages
-import wgpu "./../../"
+import "root:wgpu"
 
 _log_callback :: proc "c" (level: wgpu.LogLevel, message: wgpu.StringView, user_data: rawptr) {
 	if message.length > 0 {
@@ -25,7 +25,7 @@ run :: proc() -> (ok: bool) {
 
 	// Instantiates instance of WebGPU
 	instance := wgpu.create_instance(
-		wgpu.InstanceDescriptor{backends = wgpu.INSTANCE_BACKEND_PRIMARY},
+		wgpu.InstanceDescriptor{backends = wgpu.BACKENDS_PRIMARY},
 	) or_return
 	defer wgpu.instance_release(instance)
 
@@ -134,7 +134,7 @@ run :: proc() -> (ok: bool) {
 	wgpu.compute_pass_set_pipeline(compute_pass, compute_pipeline)
 	wgpu.compute_pass_set_bind_group(compute_pass, 0, bind_group)
 	wgpu.compute_pass_dispatch_workgroups(compute_pass, numbers_length)
-	wgpu.compute_pass_end(compute_pass)
+	wgpu.compute_pass_end(compute_pass) or_return
 
 	// Release the compute_pass before we submit or we get the error:
 	// CommandBuffer cannot be destroyed because is still in use
@@ -171,7 +171,7 @@ run :: proc() -> (ok: bool) {
 	wgpu.buffer_map_async(
 		staging_buffer,
 		{.Read},
-		{offset = 0, size = wgpu.buffer_get_size(staging_buffer)},
+		{start = 0, end = wgpu.buffer_size(staging_buffer)},
 		{callback = handle_buffer_map, userdata1 = &result},
 	)
 

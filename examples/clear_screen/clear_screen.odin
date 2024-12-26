@@ -5,8 +5,8 @@ import "core:log"
 import "core:math"
 
 // Local packages
-import wgpu "./../../"
 import app "./../../utils/application"
+import "./../../wgpu"
 
 EXAMPLE_TITLE :: "Clear Screen"
 
@@ -21,11 +21,8 @@ Context :: app.Context(Example)
 
 init :: proc(ctx: ^Context) -> (ok: bool) {
 	ctx.render_pass.color_attachments[0] = {
-		view        = nil, /* Assigned later */
-		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op     = .Clear,
-		store_op    = .Store,
-		clear_value = {0.0, 0.0, 1.0, 1.0},
+		view = nil, /* Assigned later */
+		ops = {load = .Clear, store = .Store, clear_value = {0.0, 0.0, 1.0, 1.0}},
 	}
 
 	ctx.render_pass.descriptor = {
@@ -39,7 +36,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 update :: proc(ctx: ^Context, dt: f64) -> (ok: bool) {
 	t := math.cos_f64(app.timer_get_time(&ctx.timer)) * 0.5 + 0.5
 	color := app.color_lerp({}, {0.0, 0.0, 1.0, 1.0}, t)
-	ctx.render_pass.color_attachments[0].clear_value = color
+	ctx.render_pass.color_attachments[0].ops.clear_value = color
 	return true
 }
 

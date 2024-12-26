@@ -3,13 +3,11 @@ package tutorial2_surface_glfw
 // Packages
 import "base:runtime"
 import "core:fmt"
-
-// Vendor
 import "vendor:glfw"
 
 // Local packages
-import wgpu "./../../../../"
-import wgpu_glfw "./../../../../utils/glfw"
+import wgpu_glfw "root:utils/glfw"
+import "root:wgpu"
 
 State :: struct {
 	window:    glfw.WindowHandle,
@@ -57,7 +55,7 @@ init :: proc() -> (state: ^State, ok: bool) {
 	wgpu.set_log_level(.Warn)
 
 	instance_descriptor := wgpu.InstanceDescriptor {
-		backends = wgpu.INSTANCE_BACKEND_PRIMARY,
+		backends = wgpu.BACKENDS_PRIMARY,
 	}
 
 	instance := wgpu.create_instance(instance_descriptor) or_return
@@ -143,13 +141,7 @@ render :: proc(state: ^State) -> bool {
 		{
 			label = "Render Pass",
 			color_attachments = []wgpu.RenderPassColorAttachment {
-				{
-					view = view,
-					resolve_target = nil,
-					load_op = .Clear,
-					store_op = .Store,
-					clear_value = {0.1, 0.2, 0.3, 1.0},
-				},
+				{view = view, resolve_target = nil, ops = {.Clear, .Store, {0.1, 0.2, 0.3, 1.0}}},
 			},
 			depth_stencil_attachment = nil,
 		},

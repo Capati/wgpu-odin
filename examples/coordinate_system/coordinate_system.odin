@@ -7,8 +7,8 @@ import "core:log"
 import mu "vendor:microui"
 
 // Local packages
-import wgpu "./../../"
-import app "./../../utils/application"
+import app "root:utils/application"
+import "root:wgpu"
 
 EXAMPLE_TITLE :: "Coordinate System"
 
@@ -51,18 +51,18 @@ Context :: app.Context(Example)
 
 init :: proc(ctx: ^Context) -> (ok: bool) {
 	ctx.texture_cw = app.create_texture_from_file(
+		"./assets/textures/texture_orientation_cw_rgba.png",
 		ctx.gpu.device,
 		ctx.gpu.queue,
-		"./assets/textures/texture_orientation_cw_rgba.png",
 	) or_return
 	defer if !ok {
 		app.texture_release(ctx.texture_cw)
 	}
 
 	ctx.texture_ccw = app.create_texture_from_file(
+		"./assets/textures/texture_orientation_ccw_rgba.png",
 		ctx.gpu.device,
 		ctx.gpu.queue,
-		"./assets/textures/texture_orientation_ccw_rgba.png",
 	) or_return
 	defer if !ok {
 		app.texture_release(ctx.texture_ccw)
@@ -234,11 +234,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	prepare_pipelines(ctx) or_return
 
 	ctx.render_pass.color_attachments[0] = {
-		view        = nil, /* Assigned later */
-		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op     = .Clear,
-		store_op    = .Store,
-		clear_value = {0.0, 0.0, 0.0, 1.0},
+		view = nil, /* Assigned later */
+		ops  = {.Clear, .Store, {0.0, 0.0, 0.0, 1.0}},
 	}
 
 	app.setup_depth_stencil(ctx) or_return
@@ -256,8 +253,6 @@ prepare_pipelines :: proc(ctx: ^Context) -> (ok: bool) {
 	if ctx.render_pipeline != nil {
 		wgpu.render_pipeline_release(ctx.render_pipeline)
 	}
-
-	depth_stencil_state := app.create_depth_stencil_state(ctx)
 
 	ctx.render_pipeline = wgpu.device_create_render_pipeline(
 		ctx.gpu.device,
@@ -289,11 +284,11 @@ prepare_pipelines :: proc(ctx: ^Context) -> (ok: bool) {
 					{
 						format = ctx.gpu.config.format,
 						blend = &wgpu.BLEND_STATE_NORMAL,
-						write_mask = wgpu.COLOR_WRITE_MASK_ALL,
+						write_mask = wgpu.COLOR_WRITES_ALL,
 					},
 				},
 			},
-			depth_stencil = &depth_stencil_state,
+			depth_stencil = app.create_depth_stencil_state(ctx),
 			primitive = {
 				topology = .TriangleList,
 				front_face = ctx.order[ctx.selected_order],
@@ -419,11 +414,11 @@ main :: proc() {
 	defer app.destroy(example)
 
 	example.callbacks = {
-		init          = init,
-		quit          = quit,
+		init         = init,
+		quit         = quit,
 		handle_event = handle_event,
-		ui_update     = ui_update,
-		draw          = draw,
+		ui_update    = ui_update,
+		draw         = draw,
 	}
 
 	app.run(example)

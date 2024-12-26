@@ -7,7 +7,7 @@ import CA "vendor:darwin/QuartzCore"
 import "vendor:glfw"
 
 // Local packages
-import wgpu "./../../"
+import "root:wgpu"
 
 get_surface_descriptor :: proc(window: glfw.WindowHandle) -> (descriptor: wgpu.SurfaceDescriptor) {
 	native_window := (^NS.Window)(glfw.GetCocoaWindow(window))

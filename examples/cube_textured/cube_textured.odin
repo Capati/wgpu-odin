@@ -6,8 +6,8 @@ import "core:math"
 import la "core:math/linalg"
 
 // Local packages
-import wgpu "./../../"
-import app "./../../utils/application"
+import app "root:utils/application"
+import "root:wgpu"
 
 Example :: struct {
 	vertex_buffer:   wgpu.Buffer,
@@ -119,8 +119,6 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		},
 	}
 
-	depth_stencil_state := app.create_depth_stencil_state(ctx)
-
 	ctx.render_pipeline = wgpu.device_create_render_pipeline(
 		ctx.gpu.device,
 		{
@@ -136,11 +134,11 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 					{
 						format = ctx.gpu.config.format,
 						blend = &wgpu.BLEND_STATE_REPLACE,
-						write_mask = wgpu.COLOR_WRITE_MASK_ALL,
+						write_mask = wgpu.COLOR_WRITES_ALL,
 					},
 				},
 			},
-			depth_stencil = &depth_stencil_state,
+			depth_stencil = app.create_depth_stencil_state(ctx),
 			primitive = {topology = .TriangleList, front_face = .CCW, cull_mode = .Back},
 			multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 		},
@@ -176,11 +174,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	}
 
 	ctx.render_pass.color_attachments[0] = {
-		view        = nil, /* Assigned later */
-		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op     = .Clear,
-		store_op    = .Store,
-		clear_value = {0.1, 0.2, 0.3, 1.0},
+		view = nil, /* Assigned later */
+		ops  = {.Clear, .Store, {0.1, 0.2, 0.3, 1.0}},
 	}
 
 	app.setup_depth_stencil(ctx) or_return

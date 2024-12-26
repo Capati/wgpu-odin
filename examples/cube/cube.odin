@@ -6,8 +6,8 @@ import "core:log"
 
 // Local packages
 import "../common"
-import wgpu "./../../"
 import app "./../../utils/application"
+import "./../../wgpu"
 
 Example :: struct {
 	render_pass:     struct {
@@ -78,22 +78,24 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 			targets = {
 				{
 					format = ctx.gpu.config.format,
-					blend = &wgpu.BLEND_STATE_NORMAL,
-					write_mask = wgpu.COLOR_WRITE_MASK_ALL,
+					blend = &wgpu.BLEND_STATE_REPLACE,
+					write_mask = wgpu.COLOR_WRITES_ALL,
 				},
 			},
 		},
 		primitive = {topology = .TriangleList, front_face = .CCW, cull_mode = .Back},
 		// Enable depth testing so that the fragment closest to the camera
 		// is rendered in front.
-		depth_stencil = &{
-			depth_write_enabled = .True,
+		depth_stencil = {
+			depth_write_enabled = true,
 			depth_compare = .Less,
 			format = DEPTH_FORMAT,
-			stencil_front = {compare = .Always},
-			stencil_back = {compare = .Always},
-			stencil_read_mask = 0xFFFFFFFF,
-			stencil_write_mask = 0xFFFFFFFF,
+			stencil = {
+				front = {compare = .Always},
+				back = {compare = .Always},
+				read_mask = 0xFFFFFFFF,
+				write_mask = 0xFFFFFFFF,
+			},
 		},
 		multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 	}
@@ -149,11 +151,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	create_depth_framebuffer(ctx) or_return
 
 	ctx.render_pass.color_attachments[0] = {
-		view        = nil, /* Assigned later */
-		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op     = .Clear,
-		store_op    = .Store,
-		clear_value = app.ColorDarkGray,
+		view = nil, /* Assigned later */
+		ops = {load = .Clear, store = .Store, clear_value = app.ColorDarkGray},
 	}
 
 	ctx.render_pass.descriptor = {

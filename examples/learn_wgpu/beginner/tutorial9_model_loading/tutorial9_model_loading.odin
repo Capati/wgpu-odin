@@ -271,22 +271,21 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				{
 					format = ctx.gpu.config.format,
 					blend = &wgpu.BLEND_STATE_REPLACE,
-					write_mask = wgpu.COLOR_WRITE_MASK_ALL,
+					write_mask = wgpu.COLOR_WRITES_ALL,
 				},
 			},
 		},
 		primitive = {topology = .TriangleList, front_face = .CCW, cull_mode = .Back},
-		depth_stencil = &{
+		depth_stencil = {
 			format = DEPTH_FORMAT,
-			depth_write_enabled = .True,
+			depth_write_enabled = true,
 			depth_compare = .Less,
-			stencil_front = {compare = .Always},
-			stencil_back = {compare = .Always},
-			stencil_read_mask = max(u32),
-			stencil_write_mask = max(u32),
-			depth_bias = 0,
-			depth_bias_slope_scale = 0.0,
-			depth_bias_clamp = 0.0,
+			stencil = {
+				front = {compare = .Always},
+				back = {compare = .Always},
+				read_mask = max(u32),
+				write_mask = max(u32),
+			},
 		},
 		multisample = {count = 1, mask = ~u32(0), alpha_to_coverage_enabled = false},
 	}
@@ -302,11 +301,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	create_depth_texture(ctx) or_return
 
 	ctx.render_pass.color_attachments[0] = {
-		view        = nil, /* Assigned later */
-		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op     = .Clear,
-		store_op    = .Store,
-		clear_value = {0.1, 0.2, 0.3, 1.0},
+		view = nil, /* Assigned later */
+		ops  = {.Clear, .Store, {0.1, 0.2, 0.3, 1.0}},
 	}
 
 	ctx.render_pass.descriptor = {
@@ -506,31 +502,10 @@ handle_event :: proc(ctx: ^Context, event: app.Event) {
 	return
 }
 
-import "core:fmt"
-import "core:mem"
 main :: proc() {
 	when ODIN_DEBUG {
 		context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
 		defer log.destroy_console_logger(context.logger)
-
-		track: mem.Tracking_Allocator
-		mem.tracking_allocator_init(&track, context.allocator)
-		context.allocator = mem.tracking_allocator(&track)
-		defer {
-			fmt.println("\nCONTEXT.ALLOCATOR")
-			fmt.printfln("=== %v items leaked ===", len(track.allocation_map))
-			for _, leak in track.allocation_map {
-				fmt.printf("%v leaked %m\n", leak.location, leak.size)
-			}
-			for bad_free in track.bad_free_array {
-				fmt.eprintf(
-					"\n%v allocation %p was === freed badly ===\n",
-					bad_free.location,
-					bad_free.memory,
-				)
-			}
-			mem.tracking_allocator_destroy(&track) // comes after ^ o/w use after free
-		}
 	}
 
 	settings := app.DEFAULT_SETTINGS

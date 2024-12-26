@@ -4,8 +4,8 @@ package tutorial5_textures
 import "core:log"
 
 // Local Packages
-import wgpu "./../../../../"
-import app "./../../../../utils/application"
+import app "root:utils/application"
+import "root:wgpu"
 
 Vertex :: struct {
 	position:   [3]f32,
@@ -31,9 +31,9 @@ EXAMPLE_TITLE :: "Tutorial 5 - Textures"
 init :: proc(ctx: ^Context) -> (ok: bool) {
 	// Load our tree image to texture
 	diffuse_texture := app.create_texture_from_file(
+		"assets/textures/happy-tree.png",
 		ctx.gpu.device,
 		ctx.gpu.queue,
-		"assets/textures/happy-tree.png",
 	) or_return
 	defer app.release(diffuse_texture)
 
@@ -120,12 +120,11 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				{
 					format = ctx.gpu.config.format,
 					blend = &wgpu.BLEND_STATE_REPLACE,
-					write_mask = wgpu.COLOR_WRITE_MASK_ALL,
+					write_mask = wgpu.COLOR_WRITES_ALL,
 				},
 			},
 		},
 		primitive = {topology = .TriangleList, front_face = .CCW, cull_mode = .Back},
-		depth_stencil = nil,
 		multisample = {count = 1, mask = ~u32(0), alpha_to_coverage_enabled = false},
 	}
 
@@ -171,11 +170,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	) or_return
 
 	ctx.render_pass.color_attachments[0] = {
-		view        = nil, /* Assigned later */
-		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op     = .Clear,
-		store_op    = .Store,
-		clear_value = {0.1, 0.2, 0.3, 1.0},
+		view = nil, /* Assigned later */
+		ops  = {.Clear, .Store, {0.1, 0.2, 0.3, 1.0}},
 	}
 
 	ctx.render_pass.descriptor = {

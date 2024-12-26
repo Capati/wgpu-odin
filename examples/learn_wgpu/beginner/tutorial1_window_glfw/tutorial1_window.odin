@@ -2,8 +2,6 @@ package tutorial1_window_glfw
 
 // Packages
 import "core:fmt"
-
-// Vendor
 import "vendor:glfw"
 
 main :: proc() {

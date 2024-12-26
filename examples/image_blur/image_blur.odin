@@ -8,8 +8,8 @@ import "core:math"
 import mu "vendor:microui"
 
 // Local Packages
-import wgpu "./../../"
-import app "./../../utils/application"
+import app "root:utils/application"
+import "root:wgpu"
 
 Settings :: struct {
 	filter_size: i32,
@@ -85,7 +85,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 					{
 						format = ctx.gpu.config.format,
 						blend = nil,
-						write_mask = wgpu.COLOR_WRITE_MASK_ALL,
+						write_mask = wgpu.COLOR_WRITES_ALL,
 					},
 				},
 			},
@@ -98,9 +98,9 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	}
 
 	ctx.image_texture = app.create_texture_from_file(
+		"./assets/textures/nature.jpg",
 		ctx.gpu.device,
 		ctx.gpu.queue,
-		"./assets/textures/Di-3d.png",
 	) or_return
 	defer if !ok {
 		app.release(ctx.image_texture)
@@ -176,7 +176,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 					binding = 1,
 					resource = wgpu.BufferBinding {
 						buffer = ctx.blur_params_buffer,
-						size = wgpu.buffer_get_size(ctx.blur_params_buffer),
+						size = wgpu.buffer_size(ctx.blur_params_buffer),
 					},
 				},
 			},
@@ -200,7 +200,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 					binding = 3,
 					resource = wgpu.BufferBinding {
 						buffer = ctx.buffer_0,
-						size = wgpu.buffer_get_size(ctx.buffer_0),
+						size = wgpu.buffer_size(ctx.buffer_0),
 					},
 				},
 			},
@@ -221,7 +221,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 					binding = 3,
 					resource = wgpu.BufferBinding {
 						buffer = ctx.buffer_1,
-						size = wgpu.buffer_get_size(ctx.buffer_1),
+						size = wgpu.buffer_size(ctx.buffer_1),
 					},
 				},
 			},
@@ -242,7 +242,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 					binding = 3,
 					resource = wgpu.BufferBinding {
 						buffer = ctx.buffer_0,
-						size = wgpu.buffer_get_size(ctx.buffer_0),
+						size = wgpu.buffer_size(ctx.buffer_0),
 					},
 				},
 			},
@@ -273,11 +273,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	}
 
 	ctx.render_pass.color_attachments[0] = {
-		view        = nil, /* Assigned later */
-		depth_slice = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op     = .Clear,
-		store_op    = .Store,
-		clear_value = app.ColorBlack,
+		view = nil, /* Assigned later */
+		ops  = {.Clear, .Store, app.ColorBlack},
 	}
 
 	ctx.render_pass.descriptor = {
@@ -443,11 +440,11 @@ main :: proc() {
 	defer app.destroy(example)
 
 	example.callbacks = {
-		init          = init,
-		quit          = quit,
+		init         = init,
+		quit         = quit,
 		handle_event = handle_event,
-		ui_update     = ui_update,
-		draw          = draw,
+		ui_update    = ui_update,
+		draw         = draw,
 	}
 
 	app.run(example)

@@ -6,7 +6,7 @@ import win "core:sys/windows"
 import "vendor:glfw"
 
 // Local packages
-import wgpu "./../../"
+import "root:wgpu"
 
 get_surface_descriptor :: proc(window: glfw.WindowHandle) -> (descriptor: wgpu.SurfaceDescriptor) {
 	instance := win.GetModuleHandleW(nil)

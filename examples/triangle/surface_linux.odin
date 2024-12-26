@@ -5,7 +5,7 @@ package triangle
 import "vendor:glfw"
 
 // Local packages
-import wgpu "./../../"
+import "root:wgpu"
 
 get_surface_descriptor :: proc(window: glfw.WindowHandle) -> (descriptor: wgpu.SurfaceDescriptor) {
 	switch glfw.GetPlatform() {

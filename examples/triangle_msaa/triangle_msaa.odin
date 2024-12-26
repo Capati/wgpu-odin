@@ -5,8 +5,8 @@ package triangle_msaa
 import "core:log"
 
 // Local packages
-import wgpu "./../../"
 import app "./../../utils/application"
+import "./../../wgpu"
 
 Example :: struct {
 	render_pipeline: wgpu.RenderPipeline,
@@ -43,7 +43,7 @@ init :: proc(ctx: ^Context) -> bool {
 					{
 						format = ctx.gpu.config.format,
 						blend = &wgpu.BLEND_STATE_NORMAL,
-						write_mask = wgpu.COLOR_WRITE_MASK_ALL,
+						write_mask = wgpu.COLOR_WRITES_ALL,
 					},
 				},
 			},
@@ -54,12 +54,9 @@ init :: proc(ctx: ^Context) -> bool {
 	create_msaa_framebuffer(ctx) or_return
 
 	ctx.render_pass.color_attachments[0] = {
-		view           = nil, /* Assigned later */
+		view = nil, /* Assigned later */
 		resolve_target = nil, /* Assigned later */
-		depth_slice    = wgpu.DEPTH_SLICE_UNDEFINED,
-		load_op        = .Clear,
-		store_op       = .Store,
-		clear_value    = app.ColorBlack,
+		ops = {load = .Clear, store = .Store, clear_value = app.ColorBlack},
 	}
 
 	ctx.render_pass.descriptor = {
