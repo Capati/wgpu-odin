@@ -11,7 +11,7 @@ odin build ./triangle -out:./build/<executable-name>
 Using the build script:
 
 ```shell
-.\build_win.bat triangle
+.\build.bat triangle
 ```
 
 ```shell

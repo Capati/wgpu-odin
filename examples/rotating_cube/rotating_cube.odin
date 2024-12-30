@@ -4,7 +4,6 @@ package rotating_cube
 import "core:log"
 import "core:math"
 import la "core:math/linalg"
-import "core:time"
 
 // Local packages
 import app "root:utils/application"
@@ -17,7 +16,6 @@ Example :: struct {
 	uniform_buffer:     wgpu.Buffer,
 	uniform_bind_group: wgpu.BindGroup,
 	projection_matrix:  la.Matrix4f32,
-	start_time:         time.Time,
 	render_pass:        struct {
 		color_attachments: [1]wgpu.RenderPassColorAttachment,
 		descriptor:        wgpu.RenderPassDescriptor,
@@ -174,8 +172,6 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	set_projection_matrix(ctx, {ctx.gpu.config.width, ctx.gpu.config.height})
 
-	ctx.start_time = time.now()
-
 	return true
 }
 
@@ -188,7 +184,6 @@ quit :: proc(ctx: ^Context) {
 }
 
 set_projection_matrix :: proc(ctx: ^Context, size: app.ResizeEvent) {
-	ctx.aspect = f32(size.w) / f32(size.h)
 	ctx.projection_matrix = la.matrix4_perspective(2 * math.PI / 5, ctx.aspect, 1, 100.0)
 }
 
@@ -212,7 +207,6 @@ get_transformation_matrix :: proc(ctx: ^Context) -> (mvp_mat: la.Matrix4f32) {
 }
 
 resize :: proc(ctx: ^Context, event: app.ResizeEvent) -> bool {
-	app.setup_depth_stencil(ctx, {format = DEPTH_FORMAT}) or_return
 	set_projection_matrix(ctx, {event.w, event.h})
 	return true
 }
