@@ -17,7 +17,9 @@
     + [Info](#info)
   + [Basic Graphics](#basic-graphics)
     + [Clear Screen](#clear-screen)
+    + [Triangle MSAA](#triangle-msaa)
     + [Square](#square)
+    + [Stencil Triangles](#stencil-triangles)
     + [Two Cubes](#two-cubes)
     + [Cubemap](#cubemap)
     + [Coordinate System](#coordinate-system)
@@ -142,6 +144,10 @@ Shows multisampled rendering the previous triangle example.
 #### [Square](./square/square.odin)
 
 This example shows how to render a static colored square with only using vertex buffers.
+
+#### Stencil Triangles
+
+This example renders two different sized triangles to display three same sized triangles, by demonstrating the use of stencil buffers.
 
 #### [Two Cubes](./two_cubes/two_cubes.odin)
 
