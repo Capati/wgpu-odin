@@ -258,30 +258,33 @@ Renders the MicroUI context.
 render :: proc(
 	ctx: ^mu.Context,
 	encoder: wgpu.CommandEncoder,
-	color_view: wgpu.TextureView,
+	frame_view: wgpu.TextureView,
 ) -> (
 	ok: bool,
 ) {
+	cmd: ^mu.Command
+
+	// Check for nothing to do...
+	if !mu.next_command(ctx, &cmd) {
+		return true
+	}
+
+	// We Load the current contents for this new pass
 	r.current_pass = wgpu.command_encoder_begin_render_pass(
-	encoder,
-	wgpu.RenderPassDescriptor {
-		label             = "MicroUI Render Pass",
-		color_attachments = []wgpu.RenderPassColorAttachment {
-			{
-				view = color_view,
-				ops = {
-					load  = .Load, // Load existing content
-					store = .Store,
-				},
+		encoder,
+		wgpu.RenderPassDescriptor {
+			label = "MicroUI Render Pass",
+			color_attachments = []wgpu.RenderPassColorAttachment {
+				{view = frame_view, ops = {load = .Load, store = .Store}},
 			},
 		},
-	},
 	)
+	defer wgpu.release(r.current_pass)
 
 	reset_state()
 	setup_render_pass()
 
-	cmd: ^mu.Command
+	cmd = nil
 	for variant in mu.next_command_iterator(ctx, &cmd) {
 		#partial switch cmd in variant {
 		case ^mu.Command_Text:
@@ -340,6 +343,7 @@ Writes the accumulated vertex and index data to the GPU and issues the draw call
 */
 prepare_and_draw :: proc "contextless" () -> (ok: bool) {
 	if r.quad_count == 0 {
+		wgpu.render_pass_end(r.current_pass) or_return
 		return true
 	}
 
@@ -570,13 +574,12 @@ calculate_viewport_inverses :: proc "contextless" (width, height: i32) {
 }
 
 destroy :: proc() {
-	wgpu.release(r.vertex_buffer)
 	wgpu.release(r.index_buffer)
+	wgpu.release(r.vertex_buffer)
 	wgpu.release(r.render_pipeline)
 	wgpu.release(r.bind_group)
 	wgpu.release(r.atlas_sampler)
 	wgpu.release(r.atlas_view)
-	wgpu.release(r.atlas_texture)
 	wgpu.release(r.atlas_texture)
 
 	wgpu.release(r.queue)
