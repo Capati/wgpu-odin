@@ -734,7 +734,8 @@ device_create_render_pipeline :: proc(
 	}
 
 	depth_stencil: WGPUDepthStencilState
-	if depth_stencil_state_is_depth_enabled(descriptor.depth_stencil) {
+	// Only sets up the depth stencil state if a valid format was specified
+	if descriptor.depth_stencil.format != .Undefined {
 		depth_stencil = {
 			format                 = descriptor.depth_stencil.format,
 			depth_write_enabled    = .True if descriptor.depth_stencil.depth_write_enabled else .False,
