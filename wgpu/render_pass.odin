@@ -126,7 +126,7 @@ RenderPassDescriptor :: struct {
 	label:                    string,
 	color_attachments:        []RenderPassColorAttachment,
 	depth_stencil_attachment: ^RenderPassDepthStencilAttachment,
-	timestamp_writes:         []RenderPassTimestampWrites,
+	timestamp_writes:         RenderPassTimestampWrites,
 	occlusion_query_set:      QuerySet,
 	/* Extras */
 	max_draw_count:           u64,

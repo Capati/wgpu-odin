@@ -115,8 +115,9 @@ command_encoder_begin_render_pass :: proc "contextless" (
 
 	raw_desc.depth_stencil_attachment = descriptor.depth_stencil_attachment
 
-	if len(descriptor.timestamp_writes) > 0 {
-		raw_desc.timestamp_writes = raw_data(descriptor.timestamp_writes)
+	timestamp_writes := descriptor.timestamp_writes
+	if timestamp_writes.query_set != nil {
+		raw_desc.timestamp_writes = &timestamp_writes
 	}
 
 	raw_desc.occlusion_query_set = descriptor.occlusion_query_set
