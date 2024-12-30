@@ -4,7 +4,7 @@ package wgpu_utils_sdl
 import sdl "vendor:sdl2"
 
 // Local packages
-import wgpu "./../../"
+import "./../../wgpu"
 
 get_sys_info :: proc(window: ^sdl.Window) -> (wm_info: sdl.SysWMinfo, ok: bool) {
 	sdl.GetVersion(&wm_info.version)

@@ -5,7 +5,7 @@ package wgpu_utils_sdl
 import sdl "vendor:sdl2"
 
 // Local packages
-import wgpu "./../../"
+import "./../../wgpu"
 
 get_surface_descriptor :: proc(
 	window: ^sdl.Window,

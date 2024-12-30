@@ -7,7 +7,7 @@ import CA "vendor:darwin/QuartzCore"
 import sdl "vendor:sdl2"
 
 // Local packages
-import wgpu "./../../"
+import "./../../wgpu"
 
 get_surface_descriptor :: proc(
 	window: ^sdl.Window,
