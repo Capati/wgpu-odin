@@ -13,6 +13,9 @@
 *.res
 *.manifest
 
+build
+!examples/build
+
 # Keep obj models in this folder
 !/utils/tobj/**/*.obj
 
