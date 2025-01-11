@@ -5,7 +5,7 @@ import "core:mem"
 import "core:strings"
 
 // Local packages
-import wgpu "./../../"
+import "./../../wgpu"
 
 LINEAR_TO_SRGB_WGSL: string : #load("linear_to_srgb.wgsl", string)
 SRGB_TO_LINEAR_WGSL: string : #load("srgb_to_linear.wgsl", string)
