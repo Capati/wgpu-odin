@@ -3,6 +3,12 @@ package wgpu
 // Packages
 import intr "base:intrinsics"
 
+/* Aligns the given size to the specified alignment. */
+@(require_results)
+align_size :: #force_inline proc "contextless" (#any_int size, align: u64) -> u64 {
+	return (size + (align - 1)) & ~(align - 1)
+}
+
 /* location information for a vertex in a shader. */
 VertexLocation :: struct {
 	location: ShaderLocation,

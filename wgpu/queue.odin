@@ -35,7 +35,13 @@ queue_write_buffer :: proc "contextless" (
 	ok: bool,
 ) {
 	error_reset_data(loc)
-	wgpuQueueWriteBuffer(self, buffer, offset, raw_data(data), uint(len(data)))
+	wgpuQueueWriteBuffer(
+		self,
+		buffer,
+		offset,
+		raw_data(data),
+		uint(align_size(len(data), COPY_BUFFER_ALIGNMENT)),
+	)
 	return has_no_error()
 }
 
