@@ -156,9 +156,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		wgpu.release(ctx.render_pipeline)
 	}
 
-	ctx.cubemap_texture = app.create_cubemap_texture(
-		ctx.gpu.device,
-		ctx.gpu.queue,
+	ctx.cubemap_texture = app.create_cubemap_texture_from_files(
+		ctx,
 		{
 			"./assets/textures/cubemaps/bridge2_px.jpg",
 			"./assets/textures/cubemaps/bridge2_nx.jpg",

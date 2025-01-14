@@ -118,8 +118,10 @@ load_image_from_file :: proc(
 
 	out.info = get_image_info_stbi(c_image_path, loc) or_return
 
-	width, height, channels: i32
-	raw_data := stbi.load(c_image_path, &width, &height, &channels, 0)
+	// Ask stbi to output 4 channels since WebGPU doesn't have 3-channels texture format
+	output_channels: i32 = 4
+	width, height: i32
+	raw_data := stbi.load(c_image_path, &width, &height, nil, output_channels)
 	out.bytes_per_channel = 1
 
 	if raw_data == nil {
@@ -133,7 +135,7 @@ load_image_from_file :: proc(
 
 	out.width = u32(width)
 	out.height = u32(height)
-	out.channels = int(channels)
+	out.channels = int(output_channels)
 
 	// Determine bits per channel
 	if out.info.is_hdr {
@@ -373,9 +375,8 @@ create_texture :: proc(
 }
 
 create_texture_from_file :: proc(
+	app: ^Application,
 	filename: string,
-	device: wgpu.Device,
-	queue: wgpu.Queue,
 	options: TextureLoadOptions = {},
 	allocator := context.allocator,
 ) -> (
@@ -385,15 +386,15 @@ create_texture_from_file :: proc(
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
 	load := load_texture_from_file(
 		filename,
-		device,
-		queue,
+		app.gpu.device,
+		app.gpu.queue,
 		options,
 		context.temp_allocator,
 	) or_return
 	defer if !ok {
 		wgpu.release(load.texture)
 	}
-	return create_texture(device, queue, load, options)
+	return create_texture(app.gpu.device, app.gpu.queue, load, options)
 }
 
 texture_format_for_color_space :: proc "contextless" (
@@ -410,10 +411,9 @@ texture_format_for_color_space :: proc "contextless" (
 	}
 }
 
-create_cubemap_texture :: proc(
-	device: wgpu.Device,
-	queue: wgpu.Queue,
-	image_paths: [6]string,
+create_cubemap_texture_from_files :: proc(
+	app: ^Application,
+	file_paths: [6]string,
 	options: TextureLoadOptions = {},
 	loc := #caller_location,
 ) -> (
@@ -426,7 +426,7 @@ create_cubemap_texture :: proc(
 	ta := context.temp_allocator
 
 	// Get info of the first image
-	first_img := load_image_from_file(image_paths[0], ta) or_return
+	first_img := load_image_from_file(file_paths[0], ta) or_return
 
 	// Default texture usage if none is given
 	if options.usage == {} {
@@ -453,7 +453,7 @@ create_cubemap_texture :: proc(
 		format = format,
 		usage = options.usage,
 	}
-	out.texture = wgpu.device_create_texture(device, texture_desc) or_return
+	out.texture = wgpu.device_create_texture(app.gpu.device, texture_desc) or_return
 	defer if !ok {
 		wgpu.release(out.texture)
 	}
@@ -472,12 +472,12 @@ create_cubemap_texture :: proc(
 	// Load and copy each face of the cubemap
 	for i in 0 ..< 6 {
 		// Check info of each face
-		img := load_image_from_file(image_paths[i], ta) or_return
+		img := load_image_from_file(file_paths[i], ta) or_return
 
 		if !image_properties_equal(img.info, first_img.info) {
 			wgpu.error_reset_and_update(
 				.Validation,
-				fmt.tprintf("Cubemap face '%s' has different properties", image_paths[i]),
+				fmt.tprintf("Cubemap face '%s' has different properties", file_paths[i]),
 				loc,
 			)
 			return
@@ -498,7 +498,7 @@ create_cubemap_texture :: proc(
 		image_data_convert(&img, ta) or_return
 
 		wgpu.queue_write_texture(
-			queue,
+			app.gpu.queue,
 			image_copy_texture,
 			img.pixels,
 			texture_data_layout,
@@ -535,7 +535,7 @@ create_cubemap_texture :: proc(
 		max_anisotropy = 1,
 	}
 
-	out.sampler = wgpu.device_create_sampler(device, sampler_descriptor) or_return
+	out.sampler = wgpu.device_create_sampler(app.gpu.device, sampler_descriptor) or_return
 	defer if !ok {
 		wgpu.release(out.sampler)
 	}

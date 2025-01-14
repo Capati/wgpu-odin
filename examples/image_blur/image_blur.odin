@@ -97,11 +97,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		wgpu.release(ctx.fullscreen_quad_pipeline)
 	}
 
-	ctx.image_texture = app.create_texture_from_file(
-		"./assets/textures/nature.jpg",
-		ctx.gpu.device,
-		ctx.gpu.queue,
-	) or_return
+	ctx.image_texture = app.create_texture_from_file(ctx, "./assets/textures/nature.jpg") or_return
 	defer if !ok {
 		app.release(ctx.image_texture)
 	}
