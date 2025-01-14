@@ -218,6 +218,10 @@ process_events :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization
 
 	event: Event = ---
 	for event_poll(&app.events, &event) {
+		if microui_is_initialized(app) {
+			microui_handle_events(app, event)
+		}
+
 		#partial switch &ev in event {
 		case KeyEvent:
 			if app.exit_key != .Unknown && ev.key == app.exit_key {
@@ -264,7 +268,7 @@ process_events :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization
 				if app.depth_stencil.enabled {
 					setup_depth_stencil(app, {format = app.depth_stencil.format}) or_return
 				}
-				if app.callbacks.ui_update != nil {
+				if microui_is_initialized(app) {
 					wmu.resize(i32(app.framebuffer_size.w), i32(app.framebuffer_size.h))
 				}
 				if app.callbacks.resize != nil {
@@ -289,8 +293,8 @@ CallbackList :: struct($T: typeid) where intr.type_is_struct(T) {
 	init:           proc(ctx: ^Context(T)) -> bool,
 	// Callback procedure triggered when the application is closed.
 	quit:           proc(ctx: ^Context(T)),
-	// Callback procedure used to update the state of the UI every frame.
-	ui_update:      proc(ctx: ^Context(T), mu_ctx: ^mu.Context) -> (ok: bool),
+	// Callback procedure used to update the state of the MicroUI every frame.
+	microui_update: proc(ctx: ^Context(T), mu_ctx: ^mu.Context) -> (ok: bool),
 	// Callback procedure used to update the state of the application every frame.
 	update:         proc(ctx: ^Context(T), dt: f64) -> bool,
 	// Callback procedure used to draw on the screen every frame.

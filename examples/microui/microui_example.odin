@@ -24,6 +24,9 @@ Context :: app.Context(Example)
 EXAMPLE_TITLE :: "MicroUI Example"
 
 init :: proc(ctx: ^Context) -> (ok: bool) {
+	// Initialize MicroUI context with default settings
+	app.microui_init(ctx) or_return
+
 	// Set initial state
 	ctx.bg = {56, 130, 210, 255}
 
@@ -44,11 +47,7 @@ get_color_from_mu_color :: proc(color: mu.Color) -> wgpu.Color {
 	return {f64(color.r) / 255.0, f64(color.g) / 255.0, f64(color.b) / 255.0, 1.0}
 }
 
-handle_event :: proc(ctx: ^Context, event: app.Event) {
-	app.ui_handle_event(ctx, event)
-}
-
-ui_update :: proc(ctx: ^Context, mu_ctx: ^mu.Context) -> (ok: bool) {
+microui_update :: proc(ctx: ^Context, mu_ctx: ^mu.Context) -> (ok: bool) {
 	// UI definition
 	test_window(ctx, mu_ctx)
 	log_window(ctx, mu_ctx)
@@ -68,9 +67,10 @@ draw :: proc(ctx: ^Context) -> bool {
 	ctx.render_pass.color_attachments[0].view = ctx.frame.view
 	render_pass := wgpu.command_encoder_begin_render_pass(ctx.cmd, ctx.render_pass.descriptor)
 	defer wgpu.release(render_pass)
-	wgpu.render_pass_end(render_pass) or_return
 
-	app.ui_draw(ctx) or_return
+	app.microui_draw(ctx, render_pass) or_return
+
+	wgpu.render_pass_end(render_pass) or_return
 
 	cmdbuf := wgpu.command_encoder_finish(ctx.cmd) or_return
 	defer wgpu.release(cmdbuf)
@@ -98,11 +98,10 @@ main :: proc() {
 	defer app.destroy(example)
 
 	example.callbacks = {
-		init         = init,
-		handle_event = handle_event,
-		ui_update    = ui_update,
-		update       = update,
-		draw         = draw,
+		init           = init,
+		microui_update = microui_update,
+		update         = update,
+		draw           = draw,
 	}
 
 	app.run(example) // Start the main loop

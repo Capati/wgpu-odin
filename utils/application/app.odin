@@ -208,7 +208,9 @@ release :: proc {
 }
 
 destroy :: proc(self: ^Application) {
-	destroy_ui(self)
+	if microui_is_initialized(self) {
+		microui_destroy(self)
+	}
 
 	if self.depth_stencil.enabled {
 		wgpu.release(self.depth_stencil.texture)

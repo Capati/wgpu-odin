@@ -31,12 +31,17 @@ run :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Cont
 		app.callbacks.quit(app)
 	}
 
-	// Create a MicroUI context to use in `ui_update` callback
-	if app.callbacks.ui_update != nil {
-		if !setup_ui(app) {
-			log.fatal("Failed to setup MicroUI renderer")
-			return
-		}
+	// Check MicroUI initialization and callback
+	if microui_is_initialized(app) && app.callbacks.microui_update == nil {
+		log.warn(
+			"MicroUI initialization incomplete - " +
+			"'microui_update' callback procedure is required for frame updates",
+		)
+	} else if app.callbacks.microui_update != nil && !microui_is_initialized(app) {
+		log.warn(
+			"'microui_update' callback procedure is set but MicroUI is not initialized - " +
+			"call app.microui_init(ctx) before setting callbacks",
+		)
 	}
 
 	timer_init(&app.timer)

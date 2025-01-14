@@ -2,8 +2,6 @@ package microui_example
 
 // Packages
 import "core:fmt"
-
-// Vendor
 import mu "vendor:microui"
 
 // Local packages
@@ -94,9 +92,18 @@ test_window :: proc(ctx: ^Context, mu_ctx: ^mu.Context) {
 			mu.layout_begin_column(mu_ctx)
 			{
 				mu.layout_row(mu_ctx, {46, -1}, 0)
-				mu.label(mu_ctx, "Red:");app.ui_slider(mu_ctx, &ctx.bg.r, 0, 255, 0, SLIDER_FMT)
-				mu.label(mu_ctx, "Green:");app.ui_slider(mu_ctx, &ctx.bg.g, 0, 255, 0, SLIDER_FMT)
-				mu.label(mu_ctx, "Blue:");app.ui_slider(mu_ctx, &ctx.bg.b, 0, 255, 0, SLIDER_FMT)
+				mu.label(
+					mu_ctx,
+					"Red:",
+				);app.microui_slider(mu_ctx, &ctx.bg.r, 0, 255, 0, SLIDER_FMT)
+				mu.label(
+					mu_ctx,
+					"Green:",
+				);app.microui_slider(mu_ctx, &ctx.bg.g, 0, 255, 0, SLIDER_FMT)
+				mu.label(
+					mu_ctx,
+					"Blue:",
+				);app.microui_slider(mu_ctx, &ctx.bg.b, 0, 255, 0, SLIDER_FMT)
 			}
 			mu.layout_end_column(mu_ctx)
 
@@ -196,10 +203,10 @@ style_window :: proc(ctx: ^Context, mu_ctx: ^mu.Context) {
 		mu.layout_row(mu_ctx, {80, sw, sw, sw, sw, -1})
 		for label, col in colors {
 			mu.label(mu_ctx, label)
-			app.ui_slider(mu_ctx, &mu_ctx.style.colors[col].r, 0, 255, 0, SLIDER_FMT)
-			app.ui_slider(mu_ctx, &mu_ctx.style.colors[col].g, 0, 255, 0, SLIDER_FMT)
-			app.ui_slider(mu_ctx, &mu_ctx.style.colors[col].b, 0, 255, 0, SLIDER_FMT)
-			app.ui_slider(mu_ctx, &mu_ctx.style.colors[col].a, 0, 255, 0, SLIDER_FMT)
+			app.microui_slider(mu_ctx, &mu_ctx.style.colors[col].r, 0, 255, 0, SLIDER_FMT)
+			app.microui_slider(mu_ctx, &mu_ctx.style.colors[col].g, 0, 255, 0, SLIDER_FMT)
+			app.microui_slider(mu_ctx, &mu_ctx.style.colors[col].b, 0, 255, 0, SLIDER_FMT)
+			app.microui_slider(mu_ctx, &mu_ctx.style.colors[col].a, 0, 255, 0, SLIDER_FMT)
 			mu.draw_rect(mu_ctx, mu.layout_next(mu_ctx), mu_ctx.style.colors[col])
 		}
 	}

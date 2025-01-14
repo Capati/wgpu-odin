@@ -2,43 +2,84 @@ package application
 
 // Packages
 import intr "base:intrinsics"
-
-// Vendor
 import mu "vendor:microui"
 
 // Local packages
+import "./../../wgpu"
 import wmu "./../microui"
 
+MicroUIInitInfo :: struct {
+	num_frames_in_flight:       u32,
+	depth_stencil_format:       wgpu.TextureFormat,
+	pipeline_multisample_state: wgpu.MultisampleState,
+	atlas_text_width:           proc(font: mu.Font, text: string) -> (width: i32),
+	atlas_text_height:          proc(font: mu.Font) -> i32,
+}
+
+DEFAULT_MICROUI_INIT_INFO :: MicroUIInitInfo {
+	num_frames_in_flight       = wmu.DEFAULT_MICROUI_FRAMES_IN_FLIGHT,
+	depth_stencil_format       = .Undefined,
+	pipeline_multisample_state = wgpu.DEFAULT_MULTISAMPLE_STATE,
+	atlas_text_width           = mu.default_atlas_text_width,
+	atlas_text_height          = mu.default_atlas_text_height,
+}
+
+/* Initializes the microui library for use in the application. */
 @(require_results)
-setup_ui :: proc(app: ^Application) -> (ok: bool) {
-	app.mu_ctx = new(mu.Context)
-	assert(app.mu_ctx != nil, "Failed to allocate microui context")
+microui_init :: proc(
+	app: ^Application,
+	init_info := DEFAULT_MICROUI_INIT_INFO,
+	loc := #caller_location,
+) -> (
+	ok: bool,
+) {
+	app.mu_ctx = new(mu.Context, loc = loc)
+	ensure(app.mu_ctx != nil, "Failed to allocate MicroUI context")
 	defer if !ok {
 		free(app.mu_ctx)
 	}
 	mu.init(app.mu_ctx)
-	app.mu_ctx.text_width = mu.default_atlas_text_width
-	app.mu_ctx.text_height = mu.default_atlas_text_height
+	app.mu_ctx.text_width = init_info.atlas_text_width
+	app.mu_ctx.text_height = init_info.atlas_text_height
 
-	wmu.init(app.gpu.device, app.gpu.queue, app.gpu.config) or_return
+	microui_init_info := wmu.InitInfo {
+		num_frames_in_flight       = init_info.num_frames_in_flight,
+		surface_config             = app.gpu.config,
+		depth_stencil_format       = init_info.depth_stencil_format,
+		pipeline_multisample_state = init_info.pipeline_multisample_state,
+	}
+	wmu.init(microui_init_info, loc) or_return
 
 	return true
 }
 
-destroy_ui :: proc(app: ^Application) {
-	if app.mu_ctx != nil {
+microui_destroy :: proc(app: ^Application) {
+	if microui_is_initialized(app) {
 		wmu.destroy()
 		free(app.mu_ctx)
 	}
 }
 
 @(require_results)
-ui_draw :: proc(app: ^Application) -> (ok: bool) {
-	return wmu.render(app.mu_ctx, app.cmd, app.frame.view)
+microui_is_initialized :: #force_inline proc(app: ^Application) -> bool {
+	return app.mu_ctx != nil
+}
+
+microui_new_frame :: proc(app: ^Application) {
+	mu.begin(app.mu_ctx)
+}
+
+microui_end_frame :: proc(app: ^Application) {
+	mu.end(app.mu_ctx)
 }
 
 @(require_results)
-ui_mouse_button :: proc(button: MouseButton) -> (mu_mouse: mu.Mouse) {
+microui_draw :: proc(app: ^Application, pass: wgpu.RenderPass) -> (ok: bool) {
+	return wmu.render(app.mu_ctx, pass)
+}
+
+@(require_results)
+microui_mouse_button :: proc(button: MouseButton) -> (mu_mouse: mu.Mouse) {
 	if button == .Left {
 		mu_mouse = .LEFT
 	} else if button == .Right {
@@ -50,7 +91,7 @@ ui_mouse_button :: proc(button: MouseButton) -> (mu_mouse: mu.Mouse) {
 }
 
 @(require_results)
-ui_key :: proc(key: Key) -> (mu_key: mu.Key) {
+microui_key :: proc(key: Key) -> (mu_key: mu.Key) {
 	if key == .LeftShift || key == .RightShift {
 		mu_key = .SHIFT
 	} else if key == .LeftControl || key == .RightControl {
@@ -65,15 +106,15 @@ ui_key :: proc(key: Key) -> (mu_key: mu.Key) {
 	return
 }
 
-ui_handle_event :: proc(app: ^Application, event: Event) {
+microui_handle_events :: proc(app: ^Application, event: Event) {
 	#partial switch &ev in event {
 	// case Text_Input_Event:
 	// 	mu.input_text(mu_ctx, string(cstring(&ev.buf[0])))
 	case KeyEvent:
 		if ev.action == .Pressed {
-			mu.input_key_down(app.mu_ctx, ui_key(ev.key))
+			mu.input_key_down(app.mu_ctx, microui_key(ev.key))
 		} else {
-			mu.input_key_up(app.mu_ctx, ui_key(ev.key))
+			mu.input_key_up(app.mu_ctx, microui_key(ev.key))
 		}
 	case MouseButtonEvent:
 		if ev.action == .Pressed {
@@ -81,10 +122,15 @@ ui_handle_event :: proc(app: ^Application, event: Event) {
 				app.mu_ctx,
 				i32(ev.pos.x),
 				i32(ev.pos.y),
-				ui_mouse_button(ev.button),
+				microui_mouse_button(ev.button),
 			)
 		} else {
-			mu.input_mouse_up(app.mu_ctx, i32(ev.pos.x), i32(ev.pos.y), ui_mouse_button(ev.button))
+			mu.input_mouse_up(
+				app.mu_ctx,
+				i32(ev.pos.x),
+				i32(ev.pos.y),
+				microui_mouse_button(ev.button),
+			)
 		}
 	case MouseWheelEvent:
 		mu.input_scroll(app.mu_ctx, i32(ev.x * -25), i32(ev.y * -25))
@@ -93,7 +139,7 @@ ui_handle_event :: proc(app: ^Application, event: Event) {
 	}
 }
 
-ui_combobox :: proc(
+microui_combobox :: proc(
 	ctx: ^mu.Context,
 	name: string,
 	current_item: ^u32,
@@ -157,7 +203,7 @@ ui_combobox :: proc(
 	return res
 }
 
-ui_slider :: proc(
+microui_slider :: proc(
 	ctx: ^mu.Context,
 	val: ^$T,
 	lo, hi: T,

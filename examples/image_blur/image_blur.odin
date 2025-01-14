@@ -3,8 +3,6 @@ package image_blur
 // Packages
 import "core:log"
 import "core:math"
-
-// Vendor
 import mu "vendor:microui"
 
 // Local Packages
@@ -52,6 +50,9 @@ SLIDER_FMT :: "%.0f"
 EXAMPLE_TITLE :: "Image Blur"
 
 init :: proc(ctx: ^Context) -> (ok: bool) {
+	// Initialize MicroUI context with default settings
+	app.microui_init(ctx) or_return
+
 	// Initialize example objects
 	BLUR_SOURCE :: #load("./blur.wgsl")
 	blur_shader := wgpu.device_create_shader_module(
@@ -319,11 +320,7 @@ update_settings :: proc(ctx: ^Context) -> bool {
 	return true
 }
 
-handle_event :: proc(ctx: ^Context, event: app.Event) {
-	app.ui_handle_event(ctx, event)
-}
-
-ui_update :: proc(ctx: ^Context, mu_ctx: ^mu.Context) -> bool {
+microui_update :: proc(ctx: ^Context, mu_ctx: ^mu.Context) -> bool {
 	if mu.begin_window(mu_ctx, "Settings", {10, 10, 245, 78}, {.NO_RESIZE, .NO_CLOSE}) {
 		mu.layout_row(mu_ctx, {-1}, 40)
 		mu.layout_begin_column(mu_ctx)
@@ -331,12 +328,12 @@ ui_update :: proc(ctx: ^Context, mu_ctx: ^mu.Context) -> bool {
 			mu.layout_row(mu_ctx, {60, -1}, 0)
 			mu.label(mu_ctx, "Filter size:")
 			if .CHANGE in
-			   app.ui_slider(mu_ctx, &ctx.blur_settings.filter_size, 2, 34, 2, SLIDER_FMT) {
+			   app.microui_slider(mu_ctx, &ctx.blur_settings.filter_size, 2, 34, 2, SLIDER_FMT) {
 				update_settings(ctx) or_return
 			}
 			mu.label(mu_ctx, "Iterations:")
 			if .CHANGE in
-			   app.ui_slider(mu_ctx, &ctx.blur_settings.iterations, 1, 20, 1, SLIDER_FMT) {
+			   app.microui_slider(mu_ctx, &ctx.blur_settings.iterations, 1, 20, 1, SLIDER_FMT) {
 				update_settings(ctx) or_return
 			}
 		}
@@ -362,6 +359,7 @@ compute :: proc(ctx: ^Context) -> bool {
 		compute_pass,
 		u32(math.ceil(f32(image_size.width) / f32(ctx.block_dim))),
 		u32(math.ceil(f32(image_size.height) / BATCH)),
+		1,
 	)
 
 	wgpu.compute_pass_set_bind_group(compute_pass, 1, ctx.compute_bind_group_1)
@@ -369,6 +367,7 @@ compute :: proc(ctx: ^Context) -> bool {
 		compute_pass,
 		u32(math.ceil(f32(image_size.height) / f32(ctx.block_dim))),
 		u32(math.ceil(f32(image_size.width) / BATCH)),
+		1,
 	)
 
 	for _ in 0 ..< ctx.blur_settings.iterations - 1 {
@@ -377,6 +376,7 @@ compute :: proc(ctx: ^Context) -> bool {
 			compute_pass,
 			u32(math.ceil(f32(image_size.width) / f32(ctx.block_dim))),
 			u32(math.ceil(f32(image_size.height) / BATCH)),
+			1,
 		)
 
 		wgpu.compute_pass_set_bind_group(compute_pass, 1, ctx.compute_bind_group_1)
@@ -384,6 +384,7 @@ compute :: proc(ctx: ^Context) -> bool {
 			compute_pass,
 			u32(math.ceil(f32(image_size.height) / f32(ctx.block_dim))),
 			u32(math.ceil(f32(image_size.width) / BATCH)),
+			1,
 		)
 	}
 
@@ -406,9 +407,9 @@ draw :: proc(ctx: ^Context) -> bool {
 	wgpu.render_pass_set_bind_group(render_pass, 0, ctx.show_result_bind_group)
 	wgpu.render_pass_draw(render_pass, {0, 6})
 
-	wgpu.render_pass_end(render_pass) or_return
+	app.microui_draw(ctx, render_pass) or_return // MicroUI rendering
 
-	app.ui_draw(ctx) or_return // MicroUI rendering
+	wgpu.render_pass_end(render_pass) or_return
 
 	cmdbuf := wgpu.command_encoder_finish(ctx.cmd) or_return
 	defer wgpu.release(cmdbuf)
@@ -436,11 +437,10 @@ main :: proc() {
 	defer app.destroy(example)
 
 	example.callbacks = {
-		init         = init,
-		quit         = quit,
-		handle_event = handle_event,
-		ui_update    = ui_update,
-		draw         = draw,
+		init           = init,
+		quit           = quit,
+		microui_update = microui_update,
+		draw           = draw,
 	}
 
 	app.run(example)

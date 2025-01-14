@@ -50,19 +50,24 @@ Vertex :: struct {
 Context :: app.Context(Example)
 
 init :: proc(ctx: ^Context) -> (ok: bool) {
+	microui_init_info := app.DEFAULT_MICROUI_INIT_INFO
+	// This example uses depth stencil created by the application framework
+	// The microui renderer will use the same default depth format
+	microui_init_info.depth_stencil_format = app.DEFAULT_DEPTH_FORMAT
+	// Initialize MicroUI context with the given info
+	app.microui_init(ctx, microui_init_info) or_return
+
 	ctx.texture_cw = app.create_texture_from_file(
+		ctx,
 		"./assets/textures/texture_orientation_cw_rgba.png",
-		ctx.gpu.device,
-		ctx.gpu.queue,
 	) or_return
 	defer if !ok {
 		app.texture_release(ctx.texture_cw)
 	}
 
 	ctx.texture_ccw = app.create_texture_from_file(
+		ctx,
 		"./assets/textures/texture_orientation_ccw_rgba.png",
-		ctx.gpu.device,
-		ctx.gpu.queue,
 	) or_return
 	defer if !ok {
 		app.texture_release(ctx.texture_ccw)
@@ -318,18 +323,15 @@ quit :: proc(ctx: ^Context) {
 	app.texture_release(ctx.texture_cw)
 }
 
-handle_event :: proc(ctx: ^Context, event: app.Event) {
-	app.ui_handle_event(ctx, event)
-}
-
-ui_update :: proc(ctx: ^Context, mu_ctx: ^mu.Context) -> (ok: bool) {
+microui_update :: proc(ctx: ^Context, mu_ctx: ^mu.Context) -> (ok: bool) {
 	if mu.begin_window(mu_ctx, "Settings", {40, 75, 230, 200}, {.NO_CLOSE, .NO_RESIZE}) {
 		defer mu.end_window(mu_ctx)
 
 		mu.layout_row(mu_ctx, {-1})
 		mu.label(mu_ctx, "Quad Type:")
 		mu.layout_row(mu_ctx, {-1})
-		if .CHANGE in app.ui_combobox(mu_ctx, "##quadtype", &ctx.selected_quad, ctx.quad_str[:]) {
+		if .CHANGE in
+		   app.microui_combobox(mu_ctx, "##quadtype", &ctx.selected_quad, ctx.quad_str[:]) {
 			log.infof("Quad type: %s", ctx.quad_str[ctx.selected_quad])
 		}
 
@@ -337,7 +339,7 @@ ui_update :: proc(ctx: ^Context, mu_ctx: ^mu.Context) -> (ok: bool) {
 		mu.label(mu_ctx, "Winding Order:")
 		mu.layout_row(mu_ctx, {-1})
 		if .CHANGE in
-		   app.ui_combobox(mu_ctx, "##windingorder", &ctx.selected_order, ctx.order_str[:]) {
+		   app.microui_combobox(mu_ctx, "##windingorder", &ctx.selected_order, ctx.order_str[:]) {
 			log.infof("Winding order: %s", ctx.order_str[ctx.selected_order])
 			prepare_pipelines(ctx) or_return
 		}
@@ -345,7 +347,8 @@ ui_update :: proc(ctx: ^Context, mu_ctx: ^mu.Context) -> (ok: bool) {
 		mu.layout_row(mu_ctx, {-1, -1})
 		mu.label(mu_ctx, "Cull Mode:")
 		mu.layout_row(mu_ctx, {-1})
-		if .CHANGE in app.ui_combobox(mu_ctx, "##cullmode", &ctx.selected_face, ctx.face_str[:]) {
+		if .CHANGE in
+		   app.microui_combobox(mu_ctx, "##cullmode", &ctx.selected_face, ctx.face_str[:]) {
 			log.infof("Cull mode: %s", ctx.face_str[ctx.selected_face])
 			prepare_pipelines(ctx) or_return
 		}
@@ -383,9 +386,9 @@ draw :: proc(ctx: ^Context) -> (ok: bool) {
 	wgpu.render_pass_set_index_buffer(render_pass, {buffer = ctx.buffer_indices_ccw}, .Uint32)
 	wgpu.render_pass_draw_indexed(render_pass, {0, 6})
 
-	wgpu.render_pass_end(render_pass) or_return
+	app.microui_draw(ctx, render_pass) or_return
 
-	app.ui_draw(ctx) or_return
+	wgpu.render_pass_end(render_pass) or_return
 
 	cmdbuf := wgpu.command_encoder_finish(ctx.cmd) or_return
 	defer wgpu.release(cmdbuf)
@@ -414,11 +417,10 @@ main :: proc() {
 	defer app.destroy(example)
 
 	example.callbacks = {
-		init         = init,
-		quit         = quit,
-		handle_event = handle_event,
-		ui_update    = ui_update,
-		draw         = draw,
+		init           = init,
+		quit           = quit,
+		microui_update = microui_update,
+		draw           = draw,
 	}
 
 	app.run(example)
