@@ -3,10 +3,8 @@ package application
 
 // Packages
 import "base:runtime"
-import "core:fmt"
 import "core:image"
 import "core:image/png"
-import "core:log"
 import "core:math"
 import "core:mem"
 import "core:strings"
@@ -96,7 +94,7 @@ load_image_from_file :: proc(
 
 	// Is this an unsupported format? If so, ignore the error to retry with stbi
 	if img_err != .Unsupported_Format {
-		log.errorf("Failed to load image [%v]: %s", img_err, filename)
+		log_loc("Failed to load image [%v]: %s", img_err, filename, level = .Error, loc = loc)
 		return
 	}
 
@@ -109,9 +107,11 @@ load_image_from_file :: proc(
 		return "unknown"
 	}
 
-	log.warnf(
-		"Image package: unsupported format [%v], retrying with stb image...",
+	log_loc(
+		"Image: unsupported format [%v], retrying with stb image...",
 		get_extension(filename),
+		level = .Warn,
+		loc = loc,
 	)
 
 	c_image_path := strings.clone_to_cstring(filename, ta)
@@ -125,10 +125,12 @@ load_image_from_file :: proc(
 	out.bytes_per_channel = 1
 
 	if raw_data == nil {
-		wgpu.error_reset_and_update(
-			.LoadImageFailed,
-			fmt.tprintf("Failed to load image '%s': %s", filename, stbi.failure_reason()),
-			loc,
+		log_loc(
+			"Failed to load image '%s': %s",
+			filename,
+			stbi.failure_reason(),
+			level = .Fatal,
+			loc = loc,
 		)
 		return
 	}
@@ -176,15 +178,12 @@ get_image_info_stbi :: proc(
 ) #optional_ok {
 	w, h, c: i32
 	if stbi.info(image_path, &w, &h, &c) == 0 {
-		runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-		wgpu.error_reset_and_update(
-			.LoadImageFailed,
-			fmt.tprintf(
-				"Failed to get image info for '%s': %s",
-				image_path,
-				stbi.failure_reason(),
-			),
-			loc,
+		log_loc(
+			"Failed to get image info for '%s': %s",
+			image_path,
+			stbi.failure_reason(),
+			level = .Fatal,
+			loc = loc,
 		)
 		return
 	}
@@ -232,6 +231,7 @@ load_texture_from_file :: proc(
 	queue: wgpu.Queue,
 	options: TextureLoadOptions = {},
 	allocator := context.allocator,
+	loc := #caller_location,
 ) -> (
 	ret: TextureLoad,
 	ok: bool,
@@ -239,7 +239,7 @@ load_texture_from_file :: proc(
 	ta := context.temp_allocator
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == ta)
 
-	img := load_image_from_file(filename, allocator) or_return
+	img := load_image_from_file(filename, allocator, loc) or_return
 
 	width := u32(img.width)
 	height := u32(img.height)
@@ -379,6 +379,7 @@ create_texture_from_file :: proc(
 	filename: string,
 	options: TextureLoadOptions = {},
 	allocator := context.allocator,
+	loc := #caller_location,
 ) -> (
 	ret: Texture,
 	ok: bool,
@@ -390,6 +391,7 @@ create_texture_from_file :: proc(
 		app.gpu.queue,
 		options,
 		context.temp_allocator,
+		loc,
 	) or_return
 	defer if !ok {
 		wgpu.release(load.texture)
@@ -426,7 +428,7 @@ create_cubemap_texture_from_files :: proc(
 	ta := context.temp_allocator
 
 	// Get info of the first image
-	first_img := load_image_from_file(file_paths[0], ta) or_return
+	first_img := load_image_from_file(file_paths[0], ta, loc) or_return
 
 	// Default texture usage if none is given
 	if options.usage == {} {
@@ -472,13 +474,14 @@ create_cubemap_texture_from_files :: proc(
 	// Load and copy each face of the cubemap
 	for i in 0 ..< 6 {
 		// Check info of each face
-		img := load_image_from_file(file_paths[i], ta) or_return
+		img := load_image_from_file(file_paths[i], ta, loc) or_return
 
 		if !image_properties_equal(img.info, first_img.info) {
-			wgpu.error_reset_and_update(
-				.Validation,
-				fmt.tprintf("Cubemap face '%s' has different properties", file_paths[i]),
-				loc,
+			log_loc(
+				"Cubemap face '%s' has different properties",
+				file_paths[i],
+				level = .Error,
+				loc = loc,
 			)
 			return
 		}

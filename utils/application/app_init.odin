@@ -7,13 +7,11 @@ import "base:runtime"
 import "core:log"
 import "core:reflect"
 import "core:strings"
-
-// Vendor
 import "vendor:glfw"
 
 // Local packages
-import wgpu "./../../wgpu"
 import wgpu_glfw "./../../utils/glfw"
+import wgpu "./../../wgpu"
 
 WindowSettings :: struct {
 	title:         string,
@@ -93,17 +91,18 @@ foreign _ {
 create :: proc(
 	$T: typeid,
 	settings := DEFAULT_SETTINGS,
+	loc := #caller_location,
 ) -> (
 	app: ^T,
 	ok: bool,
 ) where intr.type_is_specialization_of(T, Context) {
 	app = new(T)
-	assert(app != nil, "Failed to allocate application")
+	ensure(app != nil, "Failed to allocate application")
 
 	app.settings = settings
 	app.logger = context.logger
 
-	glfw.Init()
+	ensure(bool(glfw.Init()), "Failed to initialize GLFW")
 	defer if !ok {
 		glfw.Terminate()
 	}
@@ -111,7 +110,7 @@ create :: proc(
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
 	app.monitor = glfw.GetPrimaryMonitor()
-	assert(app.monitor != nil, "Failed to get primary monitor")
+	ensure(app.monitor != nil, "Failed to get primary monitor")
 
 	if app.settings.centered {
 		// Calculate the window centered position
@@ -133,7 +132,7 @@ create :: proc(
 		nil,
 		nil,
 	)
-	assert(app.window != nil, "Failed to create window")
+	ensure(app.window != nil, "Failed to create window")
 	defer if !ok {
 		glfw.DestroyWindow(app.window)
 	}
@@ -170,9 +169,11 @@ create :: proc(
 			instance_descriptor.backends = {backend}
 			log.infof("Backend type selected with [WGPU_BACKEND_TYPE]: [%v]", backend)
 		} else {
-			log.errorf(
+			log_loc(
 				"Backend type [%v] is invalid, possible values are from [Backends] (case sensitive): \n\tVulkan,\n\tGL,\n\tMetal,\n\tDX12,\n\tDX11,\n\tBrowser_WebGPU",
 				WGPU_BACKEND_TYPE,
+				level = .Error,
+				loc = loc,
 			)
 			return
 		}
@@ -252,7 +253,7 @@ create :: proc(
 	if app.settings.remove_srgb_from_surface && app.gpu.is_srgb {
 		app.gpu.is_srgb = false
 		preferred_format_non_srgb := wgpu.texture_format_remove_srgb_suffix(preferred_format)
-		log.warnf("SRGB removed from surface format, now using: [%v]", preferred_format_non_srgb)
+		log.infof("SRGB removed from surface format, now using: [%v]", preferred_format_non_srgb)
 		preferred_format = preferred_format_non_srgb
 	}
 
