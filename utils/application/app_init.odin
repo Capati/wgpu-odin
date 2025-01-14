@@ -284,9 +284,15 @@ create :: proc(
 		app.gpu.features,
 	)
 
+	surface_allowed_usages := surface_format_features.allowed_usages
+	// DX12 backend doesn't support this usage for surface textures
+	if .TextureBinding in surface_allowed_usages {
+		surface_allowed_usages -= {.TextureBinding}
+	}
+
 	app.gpu.config = wgpu.SurfaceConfiguration {
 		device                        = app.gpu.device,
-		usage                         = surface_format_features.allowed_usages,
+		usage                         = surface_allowed_usages,
 		format                        = preferred_format,
 		width                         = size.w,
 		height                        = size.h,
