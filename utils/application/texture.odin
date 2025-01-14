@@ -61,6 +61,7 @@ ImageInfo :: struct {
 }
 
 ImageData :: struct {
+	allocator:         mem.Allocator,
 	pixels:            []byte,
 	bytes_per_channel: int,
 	using info:        ImageInfo,
@@ -74,8 +75,10 @@ load_image_from_file :: proc(
 	out: ImageData,
 	ok: bool,
 ) #optional_ok {
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
 	ta := context.temp_allocator
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == ta)
+
+	out.allocator = allocator
 
 	img, img_err := image.load_from_file(filename, allocator = ta)
 	if img_err == nil {
@@ -231,7 +234,9 @@ load_texture_from_file :: proc(
 	ret: TextureLoad,
 	ok: bool,
 ) #optional_ok {
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
+	ta := context.temp_allocator
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == ta)
+
 	img := load_image_from_file(filename, allocator) or_return
 
 	width := u32(img.width)
@@ -275,7 +280,7 @@ load_texture_from_file :: proc(
 	}
 
 	// Convert image data if necessary
-	image_data_convert(&img, true, context.temp_allocator) or_return
+	image_data_convert(&img, ta) or_return
 
 	image_to_texture(
 		queue,
@@ -490,7 +495,7 @@ create_cubemap_texture :: proc(
 		}
 
 		// Convert image data if necessary
-		image_data_convert(&img, true, ta) or_return
+		image_data_convert(&img, ta) or_return
 
 		wgpu.queue_write_texture(
 			queue,
@@ -571,13 +576,7 @@ image_info_texture_format :: proc(info: ImageInfo) -> wgpu.TextureFormat {
 	return .Rgba8Unorm // Default to RGBA8 if channels are unexpected
 }
 
-image_data_convert :: proc(
-	img: ^ImageData,
-	delete_old_pixels := true,
-	allocator := context.allocator,
-) -> (
-	ok: bool,
-) {
+image_data_convert :: proc(img: ^ImageData, allocator := context.allocator) -> (ok: bool) {
 	RGB_CHANNELS :: 3
 	RGBA_CHANNELS :: 4
 
@@ -585,6 +584,7 @@ image_data_convert :: proc(
 
 	new_pixels: []byte
 	channels := img.channels
+	was_allocation: bool
 
 	// Convert RGB to RGBA
 	if img.channels == RGB_CHANNELS {
@@ -594,6 +594,7 @@ image_data_convert :: proc(
 		new_bytes_per_pixel := RGBA_CHANNELS * img.bytes_per_channel
 		dest_bytes_per_row := img.width * RGBA_CHANNELS
 		new_pixels = make([]byte, int(dest_bytes_per_row * img.height), allocator)
+		was_allocation = true
 
 		for y in 0 ..< img.height {
 			for x in 0 ..< img.width {
@@ -605,10 +606,9 @@ image_data_convert :: proc(
 		}
 	}
 
-	if len(new_pixels) > 0 {
-		if delete_old_pixels {
-			delete(img.pixels, allocator)
-		}
+	if was_allocation {
+		delete(img.pixels, img.allocator)
+		img.allocator = allocator
 		img.pixels = new_pixels
 		img.channels = channels
 	}
