@@ -15,12 +15,13 @@ import mu "vendor:microui"
 import wmu "./../microui"
 
 run :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Context) {
+	// Initialize application specific (the `init` callback)
 	if app.callbacks.init != nil {
 		log.infof("Initializing '%s'", app.settings.title)
 		if !app.callbacks.init(app) {
 			log.fatal(
-				"Failed to initialize application specific. " +
-				"Make sure your 'init' procedure is returning 'true'.",
+				"Failed to initialize application, " +
+				"make sure your 'init' procedure is returning 'true'",
 			)
 			return
 		}
@@ -67,11 +68,9 @@ run :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Cont
 			mu.end(app.mu_ctx)
 		}
 
-		if app.callbacks.update != nil {
-			if !app.callbacks.update(app, dt) {
+		if app.callbacks.update != nil && !app.callbacks.update(app, dt) {
 				log.fatal("Error in 'update' procedure!")
 				return
-			}
 		}
 
 		if app.minimized {
@@ -89,11 +88,9 @@ run :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Cont
 			continue
 		}
 
-		if app.callbacks.draw != nil {
-			if !app.callbacks.draw(app) {
+		if app.callbacks.draw != nil && !app.callbacks.draw(app) {
 				log.fatal("Error in 'draw' procedure!")
 				return
-			}
 		}
 
 		when ODIN_DEBUG {

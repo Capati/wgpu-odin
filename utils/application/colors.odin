@@ -9,7 +9,6 @@ import "./../../wgpu"
 
 Color :: wgpu.Color
 
-
 /*
 Returns a gray color.
 

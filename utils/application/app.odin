@@ -218,6 +218,7 @@ destroy :: proc(self: ^Application) {
 	}
 
 	wgpu.surface_capabilities_free_members(self.gpu.caps)
+
 	wgpu.queue_release(self.gpu.queue)
 	wgpu.device_release(self.gpu.device)
 	wgpu.adapter_release(self.gpu.adapter)

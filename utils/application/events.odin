@@ -7,8 +7,6 @@ import "base:runtime"
 import "core:container/queue"
 import "core:log"
 import "core:time"
-
-// Vendor
 import "vendor:glfw"
 import mu "vendor:microui"
 
