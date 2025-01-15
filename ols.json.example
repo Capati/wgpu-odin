@@ -9,5 +9,5 @@
 	"enable_checker_only_saved": true,
 	"enable_inlay_hints": false,
 	"enable_fake_methods": true,
-	"checker_args": "-vet -debug -vet-cast -vet-style -vet-using-param -vet-tabs -strict-style -disallow-do"
+	"checker_args": "-vet -debug -vet-cast -vet-style -vet-using-param -vet-tabs -strict-style -disallow-do -warnings-as-errors"
 }
