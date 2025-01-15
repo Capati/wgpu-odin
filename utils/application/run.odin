@@ -6,8 +6,6 @@ import intr "base:intrinsics"
 import "core:fmt"
 import "core:log"
 import "core:time"
-
-// Vendor
 import "vendor:glfw"
 import mu "vendor:microui"
 
@@ -32,17 +30,8 @@ run :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Cont
 		app.callbacks.quit(app)
 	}
 
-	// Check MicroUI initialization and callback
-	if microui_is_initialized(app) && app.callbacks.microui_update == nil {
-		log.warn(
-			"MicroUI initialization incomplete - " +
-			"'microui_update' callback procedure is required for frame updates",
-		)
-	} else if app.callbacks.microui_update != nil && !microui_is_initialized(app) {
-		log.warn(
-			"'microui_update' callback procedure is set but MicroUI is not initialized - " +
-			"call app.microui_init(ctx) before setting callbacks",
-		)
+	when ODIN_DEBUG {
+		check_callbacks(app) or_return
 	}
 
 	timer_init(&app.timer)
@@ -59,18 +48,11 @@ run :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Cont
 			return
 		}
 
-		if app.callbacks.ui_update != nil {
-			mu.begin(app.mu_ctx)
-			if !app.callbacks.ui_update(app, app.mu_ctx) {
-				log.fatal("Error in 'ui_update' procedure!")
-				return
-			}
-			mu.end(app.mu_ctx)
-		}
+		update_ui(app) or_return
 
 		if app.callbacks.update != nil && !app.callbacks.update(app, dt) {
-				log.fatal("Error in 'update' procedure!")
-				return
+			log.fatal("Error in 'update' procedure!")
+			return
 		}
 
 		if app.minimized {
@@ -89,8 +71,8 @@ run :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Cont
 		}
 
 		if app.callbacks.draw != nil && !app.callbacks.draw(app) {
-				log.fatal("Error in 'draw' procedure!")
-				return
+			log.fatal("Error in 'draw' procedure!")
+			return
 		}
 
 		when ODIN_DEBUG {
@@ -101,6 +83,58 @@ run :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Cont
 	}
 
 	log.info("Exiting...")
+
+	return true
+}
+
+check_callbacks :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Context) {
+	// Check ImGui initialization and callback
+	if imgui_is_initialized(app) && app.callbacks.imgui_update == nil {
+		log.warn(
+			"ImGui initialization incomplete - " +
+			"'imgui_update' callback procedure is required for frame updates",
+		)
+	} else if app.callbacks.imgui_update != nil && !imgui_is_initialized(app) {
+		log.warn(
+			"'imgui_update' callback procedure is set but ImGui is not initialized - " +
+			"call app.imgui_init(ctx) before setting callbacks",
+		)
+	}
+
+	// Check MicroUI initialization and callback
+	if microui_is_initialized(app) && app.callbacks.microui_update == nil {
+		log.warn(
+			"MicroUI initialization incomplete - " +
+			"'microui_update' callback procedure is required for frame updates",
+		)
+	} else if app.callbacks.microui_update != nil && !microui_is_initialized(app) {
+		log.warn(
+			"'microui_update' callback procedure is set but MicroUI is not initialized - " +
+			"call app.microui_init(ctx) before setting callbacks",
+		)
+	}
+
+	return true
+}
+
+update_ui :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Context) {
+	if imgui_is_initialized(app) {
+		imgui_new_frame(app) or_return
+		if app.callbacks.imgui_update != nil && !app.callbacks.imgui_update(app, app.im_ctx) {
+			log.error("Error in 'imgui_update' procedure!")
+			return
+		}
+		imgui_end_frame(app)
+	}
+
+	if microui_is_initialized(app) {
+		microui_new_frame(app)
+		if app.callbacks.microui_update != nil && !app.callbacks.microui_update(app, app.mu_ctx) {
+			log.error("Error in 'microui_update' procedure!")
+			return
+		}
+		microui_end_frame(app)
+	}
 
 	return true
 }
