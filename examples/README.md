@@ -35,6 +35,7 @@
     + [Texture Arrays](#texture-arrays)
     + [Capture](#capture)
   + [UI and Integration](#ui-and-integration)
+    + [ImGui](#imgui)
     + [MicroUI](#microui)
   + [Tutorials](#tutorials)
     + [Learn WGPU](#learn-wgpu)
@@ -208,9 +209,13 @@ Demonstrates how to capture and save the contents of a render target to an image
 
 ### UI and Integration
 
+#### [ImGui](./imgui/imgui_example.odin)
+
+Shows integration with the ImGui for creating user interfaces in WGPU.
+
 #### [MicroUI](./microui/microui.odin)
 
-Shows integration with the MicroUI immediate mode GUI library for creating user interfaces in WGPU.
+Shows integration with the MicroUI for creating user interfaces in WGPU.
 
 ### Tutorials
 
