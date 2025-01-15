@@ -7,18 +7,15 @@ include(FetchContent)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Options
-option(IMGUI_ENABLE_FREETYPE "ImGui: Enable FreeType font rasterizer" OFF)
+# option(IMGUI_ENABLE_FREETYPE "ImGui: Enable FreeType font rasterizer" OFF)
 
 # Versions
-set(GLFW_VERSION "3.4")
 set(IMGUI_VERSION "v1.91.6")
 set(DEAR_BINDINGS_VERSION "139b5b8")
 
 # Ensures everything uses the same static runtime
 if(MSVC)
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-  add_compile_options($<$<CONFIG:>:/MT> $<$<CONFIG:Debug>:/MTd>
+  add_compile_options($<$<CONFIG:>:/MT> $<$<CONFIG:Debug>:/MT>
                       $<$<CONFIG:Release>:/MT>)
 endif()
 
@@ -32,13 +29,6 @@ FetchContent_GetProperties(imgui)
 if(NOT imgui_POPULATED)
   FetchContent_Populate(imgui)
 endif()
-
-set(IMGUI_BACKENDS_DIR
-    ${imgui_SOURCE_DIR}/backends
-    CACHE STRING "" FORCE)
-set(IMGUI_MISC_DIR
-    ${imgui_SOURCE_DIR}/misc
-    CACHE STRING "" FORCE)
 
 message(STATUS "Fetching Dear_Bindings ${DEAR_BINDINGS_VERSION}")
 FetchContent_Declare(
@@ -96,42 +86,8 @@ endfunction()
 # Generate bindings for imgui.h
 generate_binding(${imgui_SOURCE_DIR}/imgui.h dcimgui)
 
-set(GENERATED_BACKENDS_BINDINGS_DIR ${GENERATED_BINDINGS_DIR}/backends)
-
-# Helper function to generate bindings for headers
-function(generate_backend_binding BACKEND)
-  add_custom_command(
-    OUTPUT ${GENERATED_BACKENDS_BINDINGS_DIR}/dcimgui_impl_${BACKEND}.h
-           ${GENERATED_BACKENDS_BINDINGS_DIR}/dcimgui_impl_${BACKEND}.cpp
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-            ${GENERATED_BACKENDS_BINDINGS_DIR}
-    COMMAND
-      ${VENV_PYTHON} ${dear_bindings_SOURCE_DIR}/dear_bindings.py
-      --nogeneratedefaultargfunctions --backend --imconfig-path
-      ${imgui_SOURCE_DIR}/imconfig.h -o
-      ${GENERATED_BACKENDS_BINDINGS_DIR}/dcimgui_impl_${BACKEND}
-      ${IMGUI_BACKENDS_DIR}/imgui_impl_${BACKEND}.h
-    DEPENDS ${IMGUI_BACKENDS_DIR}/imgui_impl_${BACKEND}.h setup_venv)
-endfunction()
-
-# List of backends controlled by options
-set(ENABLED_BACKENDS "")
-
-# Generate bindings for enabled backends
-foreach(BACKEND ${ENABLED_BACKENDS})
-  generate_backend_binding(${BACKEND})
-endforeach()
-
 set(IMGUI_GENERATED_HEADERS ${GENERATED_BINDINGS_DIR}/dcimgui.h)
 set(IMGUI_GENERATED_SOURCES ${GENERATED_BINDINGS_DIR}/dcimgui.cpp)
-
-# Ensure backend bindings are part of the target
-foreach(BACKEND ${ENABLED_BACKENDS})
-  list(APPEND IMGUI_GENERATED_HEADERS
-       ${GENERATED_BACKENDS_BINDINGS_DIR}/dcimgui_impl_${BACKEND}.h)
-  list(APPEND IMGUI_GENERATED_SOURCES
-       ${GENERATED_BACKENDS_BINDINGS_DIR}/dcimgui_impl_${BACKEND}.cpp)
-endforeach()
 
 # Create a custom target for the bindings generation
 add_custom_target(generate_imgui_bindings DEPENDS ${IMGUI_GENERATED_HEADERS}
@@ -157,9 +113,8 @@ target_sources(
   PUBLIC ${IMGUI_GENERATED_HEADERS})
 add_dependencies(imgui_generated_sources generate_imgui_bindings)
 
-target_include_directories(
-  imgui_generated_sources PUBLIC ${GENERATED_BINDINGS_DIR} ${imgui_SOURCE_DIR}
-                                 ${IMGUI_BACKENDS_DIR})
+target_include_directories(imgui_generated_sources
+                           PUBLIC ${GENERATED_BINDINGS_DIR} ${imgui_SOURCE_DIR})
 
 target_compile_definitions(
   imgui_generated_sources PRIVATE IMGUI_DISABLE_OBSOLETE_FUNCTIONS
@@ -170,13 +125,12 @@ add_library(imgui STATIC ${IMGUI_SOURCE_FILES} ${IMGUI_HEADER_FILES})
 target_link_libraries(imgui PUBLIC imgui_generated_sources)
 
 # Set include directories for ImGui
-target_include_directories(
-  imgui PUBLIC ${GENERATED_BINDINGS_DIR} ${imgui_SOURCE_DIR}
-               ${IMGUI_BACKENDS_DIR})
+target_include_directories(imgui PUBLIC ${GENERATED_BINDINGS_DIR}
+                                        ${imgui_SOURCE_DIR})
 
 target_compile_definitions(
   imgui PRIVATE IMGUI_DISABLE_OBSOLETE_FUNCTIONS IMGUI_DISABLE_OBSOLETE_KEYIO
-                "VK_NO_PROTOTYPES" "IMGUI_IMPL_API=extern \"C\"")
+                "IMGUI_IMPL_API=extern \"C\"")
 
 # Determine platform and architecture for library naming
 if(WIN32)
