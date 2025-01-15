@@ -151,6 +151,19 @@ shader_module_add_ref :: wgpuShaderModuleAddRef
 /* Release the `ShaderModule` resources, use to decrease the reference count. */
 shader_module_release :: wgpuShaderModuleRelease
 
+/*
+Safely releases the `ShaderModule` resources and invalidates the handle.
+The procedure checks both the pointer and handle before releasing.
+
+Note: After calling this, the handle will be set to `nil` and should not be used.
+*/
+shader_module_release_safe :: #force_inline proc(self: ^ShaderModule) {
+	if self != nil && self^ != nil {
+		wgpuShaderModuleRelease(self^)
+		self^ = nil
+	}
+}
+
 @(private)
 WGPUShaderDefine :: struct {
 	name:  StringView,

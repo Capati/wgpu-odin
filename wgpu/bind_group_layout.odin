@@ -39,3 +39,16 @@ bind_group_layout_add_ref :: wgpuBindGroupLayoutAddRef
 
 /* Release resources, use to decrease the reference count. */
 bind_group_layout_release :: wgpuBindGroupLayoutRelease
+
+/*
+Safely releases the `BindGroupLayout` resources and invalidates the handle.
+The procedure checks both the pointer validity and the Bind group layout handle before releasing.
+
+Note: After calling this, the Bind group layout handle will be set to `nil` and should not be used.
+*/
+bind_group_layout_release_safe :: #force_inline proc(self: ^BindGroupLayout) {
+	if self != nil && self^ != nil {
+		wgpuBindGroupLayoutRelease(self^)
+		self^ = nil
+	}
+}

@@ -72,3 +72,16 @@ compute_pipeline_add_ref :: wgpuComputePipelineAddRef
 
 /* Release the `ComputePipeline` resources, use to decrease the reference count. */
 compute_pipeline_release :: wgpuComputePipelineRelease
+
+/*
+Safely releases the `ComputePipeline` resources and invalidates the handle.
+The procedure checks both the pointer and handle before releasing.
+
+Note: After calling this, the handle will be set to `nil` and should not be used.
+*/
+compute_pipeline_release_safe :: #force_inline proc(self: ^ComputePipeline) {
+	if self != nil && self^ != nil {
+		wgpuComputePipelineRelease(self^)
+		self^ = nil
+	}
+}

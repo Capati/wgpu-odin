@@ -23,3 +23,16 @@ command_buffer_add_ref :: wgpuCommandBufferAddRef
 
 /* Release the `CommandBuffer` resources, use to decrease the reference count. */
 command_buffer_release :: wgpuCommandBufferRelease
+
+/*
+Safely releases the `CommandBuffer` resources and invalidates the handle.
+The procedure checks both the pointer validity and Command buffer handle before releasing.
+
+Note: After calling this, Command buffer handle will be set to `nil` and should not be used.
+*/
+command_buffer_release_safe :: #force_inline proc(self: ^CommandBuffer) {
+	if self != nil && self^ != nil {
+		wgpuCommandBufferRelease(self^)
+		self^ = nil
+	}
+}

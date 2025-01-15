@@ -262,3 +262,16 @@ render_bundle_encoder_add_ref :: wgpuRenderBundleEncoderAddRef
 
 /* Release the `RenderBundleEncoder` resources, use to decrease the reference count. */
 render_bundle_encoder_release :: wgpuRenderBundleEncoderRelease
+
+/*
+Safely releases the `RenderBundleEncoder` resources and invalidates the handle.
+The procedure checks both the pointer and handle before releasing.
+
+Note: After calling this, the handle will be set to `nil` and should not be used.
+*/
+render_bundle_encoder_release_safe :: #force_inline proc(self: ^RenderBundleEncoder) {
+	if self != nil && self^ != nil {
+		wgpuRenderBundleEncoderRelease(self^)
+		self^ = nil
+	}
+}

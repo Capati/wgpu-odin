@@ -22,3 +22,16 @@ texture_view_add_ref :: wgpuTextureViewAddRef
 
 /* Release the `TextureView` resources, use to decrease the reference count. */
 texture_view_release :: wgpuTextureViewRelease
+
+/*
+Safely releases the `TextureView` resources and invalidates the handle.
+The procedure checks both the pointer and handle before releasing.
+
+Note: After calling this, the handle will be set to `nil` and should not be used.
+*/
+texture_view_release_safe :: #force_inline proc(self: ^TextureView) {
+	if self != nil && self^ != nil {
+		wgpuTextureViewRelease(self^)
+		self^ = nil
+	}
+}

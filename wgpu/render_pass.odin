@@ -594,6 +594,19 @@ render_pass_add_ref :: wgpuRenderPassEncoderAddRef
 /* Release the `RenderPass`, use to decrease the reference count. */
 render_pass_release :: wgpuRenderPassEncoderRelease
 
+/*
+Safely releases the `RenderPass` resources and invalidates the handle.
+The procedure checks both the pointer and handle before releasing.
+
+Note: After calling this, the handle will be set to `nil` and should not be used.
+*/
+render_pass_release_safe :: #force_inline proc(self: ^RenderPass) {
+	if self != nil && self^ != nil {
+		wgpuRenderPassEncoderRelease(self^)
+		self^ = nil
+	}
+}
+
 @(private)
 WGPURenderPassColorAttachment :: struct {
 	next_in_chain:  ^ChainedStruct,

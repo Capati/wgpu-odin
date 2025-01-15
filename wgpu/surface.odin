@@ -336,6 +336,19 @@ surface_texture_release :: proc "contextless" (self: SurfaceTexture) {
 	wgpuTextureRelease(self.texture)
 }
 
+/*
+Safely releases the `SurfaceTexture` resources and invalidates the handle.
+The procedure checks both the pointer and handle before releasing.
+
+Note: After calling this, the handle will be set to `nil` and should not be used.
+*/
+surface_texture_release_safe :: #force_inline proc(self: ^SurfaceTexture) {
+	if self != nil && self.texture != nil {
+		wgpuTextureRelease(self.texture)
+		self.texture = nil
+	}
+}
+
 /* Sets a debug label for the given `Surface`. */
 @(disabled = !ODIN_DEBUG)
 surface_set_label :: proc "contextless" (self: Surface, label: string) {
@@ -348,6 +361,19 @@ surface_add_ref :: wgpuSurfaceAddRef
 
 /* Release the `Surface` resources, use to decrease the reference count. */
 surface_release :: wgpuSurfaceRelease
+
+/*
+Safely releases the `Surface` resources and invalidates the handle.
+The procedure checks both the pointer and handle before releasing.
+
+Note: After calling this, the handle will be set to `nil` and should not be used.
+*/
+surface_release_safe :: #force_inline proc(self: ^Surface) {
+	if self != nil && self^ != nil {
+		wgpuSurfaceRelease(self^)
+		self^ = nil
+	}
+}
 
 @(private)
 WGPUSurfaceDescriptor :: struct {

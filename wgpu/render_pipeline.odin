@@ -119,3 +119,16 @@ render_pipeline_add_ref :: wgpuRenderPipelineAddRef
 
 /* Release the `RenderPipeline` resources, use to decrease the reference count. */
 render_pipeline_release :: wgpuRenderPipelineRelease
+
+/*
+Safely releases the `RenderPipeline` resources and invalidates the handle.
+The procedure checks both the pointer and handle before releasing.
+
+Note: After calling this, the handle will be set to `nil` and should not be used.
+*/
+render_pipeline_release_safe :: #force_inline proc(self: ^RenderPipeline) {
+	if self != nil && self^ != nil {
+		wgpuRenderPipelineRelease(self^)
+		self^ = nil
+	}
+}

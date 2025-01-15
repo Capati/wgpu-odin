@@ -36,3 +36,16 @@ pipeline_layout_add_ref :: wgpuPipelineLayoutAddRef
 
 /* Release the `PipelineLayout` resources, use to decrease the reference count. */
 pipeline_layout_release :: wgpuPipelineLayoutRelease
+
+/*
+Safely releases the `PipelineLayout` resources and invalidates the handle.
+The procedure checks both the pointer and handle before releasing.
+
+Note: After calling this, the handle will be set to `nil` and should not be used.
+*/
+pipeline_layout_release_safe :: #force_inline proc(self: ^PipelineLayout) {
+	if self != nil && self^ != nil {
+		wgpuPipelineLayoutRelease(self^)
+		self^ = nil
+	}
+}

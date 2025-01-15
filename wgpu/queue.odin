@@ -149,3 +149,16 @@ queue_add_ref :: wgpuQueueAddRef
 
 /* Release the `Queue` resources, use to decrease the reference count. */
 queue_release :: wgpuQueueRelease
+
+/*
+Safely releases the `Queue` resources and invalidates the handle.
+The procedure checks both the pointer and handle before releasing.
+
+Note: After calling this, the handle will be set to `nil` and should not be used.
+*/
+queue_release_safe :: #force_inline proc(self: ^Queue) {
+	if self != nil && self^ != nil {
+		wgpuQueueRelease(self^)
+		self^ = nil
+	}
+}

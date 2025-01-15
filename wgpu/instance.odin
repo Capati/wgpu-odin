@@ -342,6 +342,19 @@ instance_add_ref :: wgpuInstanceAddRef
 /* Release the `Instance` resources. */
 instance_release :: wgpuInstanceRelease
 
+/*
+Safely releases the `Instance` resources and invalidates the handle.
+The procedure checks both the pointer and handle before releasing.
+
+Note: After calling this, the handle will be set to `nil` and should not be used.
+*/
+instance_release_safe :: #force_inline proc(self: ^Instance) {
+	if self != nil && self^ != nil {
+		wgpuInstanceRelease(self^)
+		self^ = nil
+	}
+}
+
 @(private)
 WGPUInstanceDescriptor :: struct {
 	next_in_chain: ^ChainedStruct,

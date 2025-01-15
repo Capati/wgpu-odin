@@ -362,6 +362,19 @@ buffer_add_ref :: wgpuBufferAddRef
 /* Release the `Buffer` resources, use to decrease the reference count. */
 buffer_release :: wgpuBufferRelease
 
+/*
+Safely releases the `Buffer` resources and invalidates the handle.
+The procedure checks both the pointer validity and buffer handle before releasing.
+
+Note: After calling this, buffer handle will be set to `nil` and should not be used.
+*/
+buffer_release_safe :: #force_inline proc(self: ^Buffer) {
+	if self != nil && self^ != nil {
+		wgpuBufferRelease(self^)
+		self^ = nil
+	}
+}
+
 @(private)
 WGPUBufferDescriptor :: struct {
 	next_in_chain:      ^ChainedStruct,

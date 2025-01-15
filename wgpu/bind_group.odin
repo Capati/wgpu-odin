@@ -77,6 +77,19 @@ bind_group_add_ref :: wgpuBindGroupAddRef
 /* Release resources, use to decrease the reference count. */
 bind_group_release :: wgpuBindGroupRelease
 
+/*
+Safely releases the `BindGroup` resources and invalidates the handle.
+The procedure checks both the pointer validity and the Bind group handle before releasing.
+
+Note: After calling this, the Bind group handle will be set to `nil` and should not be used.
+*/
+bind_group_release_safe :: #force_inline proc(self: ^BindGroup) {
+	if self != nil && self^ != nil {
+		wgpuBindGroupRelease(self^)
+		self^ = nil
+	}
+}
+
 @(private)
 WGPUBindGroupEntry :: struct {
 	next_in_chain: ^ChainedStruct,

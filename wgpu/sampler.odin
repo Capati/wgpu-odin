@@ -60,3 +60,16 @@ sampler_add_ref :: wgpuSamplerAddRef
 
 /* Release the `Sampler` resources, use to decrease the reference count. */
 sampler_release :: wgpuSamplerRelease
+
+/*
+Safely releases the `Sampler` resources and invalidates the handle.
+The procedure checks both the pointer and handle before releasing.
+
+Note: After calling this, the handle will be set to `nil` and should not be used.
+*/
+sampler_release_safe :: #force_inline proc(self: ^Sampler) {
+	if self != nil && self^ != nil {
+		wgpuSamplerRelease(self^)
+		self^ = nil
+	}
+}

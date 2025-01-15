@@ -140,8 +140,35 @@ release :: proc {
 	shader_module_release,
 	surface_release,
 	texture_release,
-	surface_texture_release,
 	texture_view_release,
+	surface_texture_release,
+}
+
+/* Safely releases a resource. */
+release_safe :: proc {
+	adapter_release_safe,
+	bind_group_release_safe,
+	bind_group_layout_release_safe,
+	buffer_release_safe,
+	command_buffer_release_safe,
+	command_encoder_release_safe,
+	compute_pass_release_safe,
+	compute_pipeline_release_safe,
+	device_release_safe,
+	instance_release_safe,
+	pipeline_layout_release_safe,
+	query_set_release_safe,
+	queue_release_safe,
+	render_bundle_release_safe,
+	render_bundle_encoder_release_safe,
+	render_pass_release_safe,
+	render_pipeline_release_safe,
+	sampler_release_safe,
+	shader_module_release_safe,
+	surface_release_safe,
+	texture_release_safe,
+	texture_view_release_safe,
+	surface_texture_release_safe,
 }
 
 /* Increase the reference count of a resource. */

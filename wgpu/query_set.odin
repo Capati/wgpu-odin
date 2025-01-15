@@ -92,6 +92,19 @@ query_set_add_ref :: wgpuQuerySetAddRef
 /* Release the `QuerySet` resources, use to decrease the reference count. */
 query_set_release :: wgpuQuerySetRelease
 
+/*
+Safely releases the `QuerySet` resources and invalidates the handle.
+The procedure checks both the pointer and handle before releasing.
+
+Note: After calling this, the handle will be set to `nil` and should not be used.
+*/
+query_set_release_safe :: #force_inline proc(self: ^QuerySet) {
+	if self != nil && self^ != nil {
+		wgpuQuerySetRelease(self^)
+		self^ = nil
+	}
+}
+
 @(private)
 WGPUQuerySetDescriptor :: struct {
 	next_in_chain: ^ChainedStruct,

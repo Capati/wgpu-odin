@@ -494,6 +494,19 @@ adapter_add_ref :: wgpuAdapterAddRef
 /*  Release the `Adapter` resources, use to decrease the reference count. */
 adapter_release :: wgpuAdapterRelease
 
+/*
+Safely releases the `Adapter` resources and invalidates the handle.
+The procedure checks both the pointer validity and the adapter handle before releasing.
+
+Note: After calling this, the adapter handle will be set to `nil` and should not be used.
+*/
+adapter_release_safe :: #force_inline proc(self: ^Adapter) {
+	if self != nil && self^ != nil {
+		wgpuAdapterRelease(self^)
+		self^ = nil
+	}
+}
+
 @(private)
 WGPUDeviceExtras :: struct {
 	chain:      ChainedStruct,

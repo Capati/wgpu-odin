@@ -191,6 +191,19 @@ texture_add_ref :: wgpuTextureAddRef
 /* Release the `Texture` resources, use to decrease the reference count. */
 texture_release :: wgpuTextureRelease
 
+/*
+Safely releases the `Texture` resources and invalidates the handle.
+The procedure checks both the pointer and handle before releasing.
+
+Note: After calling this, the handle will be set to `nil` and should not be used.
+*/
+texture_release_safe :: #force_inline proc(self: ^Texture) {
+	if self != nil && self^ != nil {
+		wgpuTextureRelease(self^)
+		self^ = nil
+	}
+}
+
 @(private)
 WGPUTextureDescriptor :: struct {
 	next_in_chain:     ^ChainedStruct,

@@ -186,3 +186,16 @@ compute_pass_add_ref :: wgpuComputePassEncoderAddRef
 
 /* Release the `ComputePass` resources, use to decrease the reference count. */
 compute_pass_release :: wgpuComputePassEncoderRelease
+
+/*
+Safely releases the `ComputePass` resources and invalidates the handle.
+The procedure checks both the pointer and handle before releasing.
+
+Note: After calling this, the handle will be set to `nil` and should not be used.
+*/
+compute_pass_release_safe :: #force_inline proc(self: ^ComputePass) {
+	if self != nil && self^ != nil {
+		wgpuComputePassEncoderRelease(self^)
+		self^ = nil
+	}
+}

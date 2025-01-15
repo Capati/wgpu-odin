@@ -1268,6 +1268,19 @@ device_add_ref :: wgpuDeviceAddRef
 // Release the `Device` resources, use to decrease the reference count.
 device_release :: wgpuDeviceRelease
 
+/*
+Safely releases the `Device` resources and invalidates the handle.
+The procedure checks both the pointer and handle before releasing.
+
+Note: After calling this, the handle will be set to `nil` and should not be used.
+*/
+device_release_safe :: #force_inline proc(self: ^Device) {
+	if self != nil && self^ != nil {
+		wgpuDeviceRelease(self^)
+		self^ = nil
+	}
+}
+
 @(private)
 WGPUPrimitiveTopology :: enum i32 {
 	Undefined     = 0x00000000,
