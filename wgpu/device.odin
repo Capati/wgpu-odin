@@ -949,7 +949,7 @@ device_create_buffer_with_data :: proc(
 	// Synchronously and immediately map a buffer for reading. If the buffer is not
 	// immediately mappable through `mapped_at_creation` or
 	// `buffer_map_async`, will panic.
-	mapped_buffer_view := buffer_get_mapped_range_bytes(buffer, {0, unpadded_size}, loc) or_return
+	mapped_buffer_view := buffer_get_mapped_range_bytes(buffer, {0, padded_size}, loc) or_return
 	copy(mapped_buffer_view.data, descriptor.contents)
 	buffer_unmap(buffer, loc) or_return
 
