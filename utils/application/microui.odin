@@ -8,15 +8,15 @@ import mu "vendor:microui"
 import "./../../wgpu"
 import wmu "./../microui"
 
-MicroUIInitInfo :: struct {
+MicroUI_Init_Info :: struct {
 	num_frames_in_flight:       u32,
-	depth_stencil_format:       wgpu.TextureFormat,
-	pipeline_multisample_state: wgpu.MultisampleState,
+	depth_stencil_format:       wgpu.Texture_Format,
+	pipeline_multisample_state: wgpu.Multisample_State,
 	atlas_text_width:           proc(font: mu.Font, text: string) -> (width: i32),
 	atlas_text_height:          proc(font: mu.Font) -> i32,
 }
 
-DEFAULT_MICROUI_INIT_INFO :: MicroUIInitInfo {
+DEFAULT_MICROUI_INIT_INFO :: MicroUI_Init_Info {
 	num_frames_in_flight       = wmu.DEFAULT_MICROUI_FRAMES_IN_FLIGHT,
 	depth_stencil_format       = .Undefined,
 	pipeline_multisample_state = wgpu.DEFAULT_MULTISAMPLE_STATE,
@@ -42,7 +42,7 @@ microui_init :: proc(
 	app.mu_ctx.text_width = init_info.atlas_text_width
 	app.mu_ctx.text_height = init_info.atlas_text_height
 
-	microui_init_info := wmu.InitInfo {
+	microui_init_info := wmu.Init_Info {
 		num_frames_in_flight       = init_info.num_frames_in_flight,
 		surface_config             = app.gpu.config,
 		depth_stencil_format       = init_info.depth_stencil_format,
@@ -74,12 +74,12 @@ microui_end_frame :: proc(app: ^Application) {
 }
 
 @(require_results)
-microui_draw :: proc(app: ^Application, pass: wgpu.RenderPass) -> (ok: bool) {
+microui_draw :: proc(app: ^Application, pass: wgpu.Render_Pass) -> (ok: bool) {
 	return wmu.render(app.mu_ctx, pass)
 }
 
 @(require_results)
-microui_mouse_button :: proc(button: MouseButton) -> (mu_mouse: mu.Mouse) {
+microui_mouse_button :: proc(button: Mouse_Button) -> (mu_mouse: mu.Mouse) {
 	if button == .Left {
 		mu_mouse = .LEFT
 	} else if button == .Right {
@@ -110,13 +110,13 @@ microui_handle_events :: proc(app: ^Application, event: Event) {
 	#partial switch &ev in event {
 	// case Text_Input_Event:
 	// 	mu.input_text(mu_ctx, string(cstring(&ev.buf[0])))
-	case KeyEvent:
+	case Key_Event:
 		if ev.action == .Pressed {
 			mu.input_key_down(app.mu_ctx, microui_key(ev.key))
 		} else {
 			mu.input_key_up(app.mu_ctx, microui_key(ev.key))
 		}
-	case MouseButtonEvent:
+	case Mouse_Button_Event:
 		if ev.action == .Pressed {
 			mu.input_mouse_down(
 				app.mu_ctx,
@@ -132,9 +132,9 @@ microui_handle_events :: proc(app: ^Application, event: Event) {
 				microui_mouse_button(ev.button),
 			)
 		}
-	case MouseWheelEvent:
+	case Mouse_Wheel_Event:
 		mu.input_scroll(app.mu_ctx, i32(ev.x * -25), i32(ev.y * -25))
-	case MouseMovedEvent:
+	case Mouse_Moved_Event:
 		mu.input_mouse_move(app.mu_ctx, i32(ev.x), i32(ev.y))
 	}
 }

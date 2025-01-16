@@ -2,17 +2,15 @@ package application
 
 // Packages
 import "core:mem"
-
-// Vendor
 import "vendor:glfw"
 
-WindowSize :: struct {
+Window_Size :: struct {
 	w, h: u32,
 }
 
-FramebufferSize :: WindowSize
+Framebuffer_Size :: Window_Size
 
-get_framebuffer_size :: proc(app: ^Application) -> WindowSize {
+get_framebuffer_size :: proc(app: ^Application) -> Window_Size {
 	width, height := glfw.GetFramebufferSize(app.window)
 	return {u32(width), u32(height)}
 }

@@ -1,10 +1,14 @@
 # Odin ImGui
 
-Bindings for **ImGui 1.91.6 (docking branch)** with native backends implementations written in Odin.
+[Odin Language][] bindings for **[Dear ImGui][imgui] 1.91.6 (docking branch)** with native backends implementations written in Odin.
 
-## Features
+## Introduction
 
-- **Automated Bindings**: C API generated using [Dear Bindings](https://github.com/dearimgui/dear_bindings)
+[Dear ImGui][imgui] is an immediate-mode library for programming and rendering graphical user interfaces.
+
+### Features
+
+- **Automated Bindings**: C API generated using [Dear Bindings][]
 - **Native Backend Support**:
   - WGPU, GLFW
   - All backends written purely in Odin for better integration
@@ -37,14 +41,12 @@ The provided `CMakeLists.txt` handles the entire build process, including fetchi
 
 ## Naming Convention
 
-Types and values follow the
-[Odin Naming Convention](https://github.com/odin-lang/Odin/wiki/Naming-Convention), except for
-`Ada_Case`. In general, `PascalCase` for types and `snake_case` for values.
+Types and values follow the [Odin Naming Convention][]. In general, `Ada_Case` for types and `snake_case` for values.
 
 | Element           | Convention           | Example               |
 |-------------------|----------------------|-----------------------|
-| Types             | PascalCase           | `DrawData`            |
-| Enum Values       | PascalCase           | `NoTitleBar`          |
+| Types             | Ada_Case             | `Draw_Data`           |
+| Enum Values       | Ada_Case             | `No_Title_Bar`        |
 | Procedures        | snake_case           | `new_frame`           |
 | Local Variables   | snake_case           | `draw_lists`          |
 | Struct Fields     | snake_case           | `tex_desired_width`   |
@@ -121,7 +123,12 @@ im.wgpu_render_draw_data(im.get_draw_data(), render_pass) or_return
 
 ## Acknowledgements
 
-- [Odin Language](https://odin-lang.org/) - The Odin programming language
+- [Odin Language][] - The Odin programming language
 - [Dear Bindings](https://github.com/dearimgui/dear_bindings) - Tool to generate the C API
-- [Dear ImGui](https://github.com/ocornut/imgui) - The original ImGui library
+- [Dear ImGui][imgui] - The original ImGui library
 - [Odin Imgui](https://gitlab.com/L-4/odin-imgui) - by L4
+
+[imgui]: https://github.com/ocornut/imgui
+[Dear Bindings]: https://github.com/dearimgui/dear_bindings
+[Odin Language]: https://odin-lang.org/
+[Odin Naming Convention]: https://github.com/odin-lang/Odin/wiki/Naming-Convention

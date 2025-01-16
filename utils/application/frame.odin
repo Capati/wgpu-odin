@@ -7,10 +7,10 @@ import "core:time"
 // Local packages
 import "./../../wgpu"
 
-FrameTexture :: struct {
-	using _texture:   wgpu.SurfaceTexture,
+Frame_Texture :: struct {
+	using _texture:   wgpu.Surface_Texture,
 	skip:             bool,
-	view:             wgpu.TextureView,
+	view:             wgpu.Texture_View,
 	texture_released: bool,
 	view_released:    bool,
 }
@@ -28,11 +28,11 @@ get_current_frame :: proc(app: ^Application) -> (ok: bool) {
 		app.frame.skip = false
 
 		switch app.frame.status {
-		case .SuccessOptimal:
+		case .Success_Optimal:
 			app.frame.view = wgpu.texture_create_view(app.frame.texture) or_return
 			app.frame.view_released = false
 			return true
-		case .SuccessSuboptimal:
+		case .Success_Suboptimal:
 			resize_surface(app, get_framebuffer_size(app)) or_return
 			continue // Try again with the new size
 		case .Timeout:
@@ -51,7 +51,7 @@ get_current_frame :: proc(app: ^Application) -> (ok: bool) {
 				continue
 			}
 			break loop
-		case .OutOfMemory, .DeviceLost, .Error:
+		case .Out_Of_Memory, .Device_Lost, .Error:
 			break loop
 		}
 	}
@@ -60,7 +60,7 @@ get_current_frame :: proc(app: ^Application) -> (ok: bool) {
 	return
 }
 
-resize_surface :: proc (app: ^Application, size: WindowSize) -> (ok: bool) {
+resize_surface :: proc(app: ^Application, size: Window_Size) -> (ok: bool) {
 	release_current_frame(app)
 
 	// Panic if width or height is zero.

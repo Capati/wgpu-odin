@@ -6,26 +6,26 @@ import "core:log"
 
 // Local packages
 import "../common"
-import app "./../../utils/application"
-import "./../../wgpu"
+import app "root:utils/application"
+import "root:wgpu"
 
 Example :: struct {
 	render_pass:     struct {
-		color_attachments:        [1]wgpu.RenderPassColorAttachment,
-		depth_stencil_attachment: wgpu.RenderPassDepthStencilAttachment,
-		descriptor:               wgpu.RenderPassDescriptor,
+		color_attachments:        [1]wgpu.Render_Pass_Color_Attachment,
+		depth_stencil_attachment: wgpu.Render_Pass_Depth_Stencil_Attachment,
+		descriptor:               wgpu.Render_Pass_Descriptor,
 	},
 	vertex_buffer:   wgpu.Buffer,
-	render_pipeline: wgpu.RenderPipeline,
+	render_pipeline: wgpu.Render_Pipeline,
 	uniform_buffer:  wgpu.Buffer,
-	bind_group:      wgpu.BindGroup,
-	depth_view:      wgpu.TextureView,
+	bind_group:      wgpu.Bind_Group,
+	depth_view:      wgpu.Texture_View,
 }
 
 Context :: app.Context(Example)
 
 EXAMPLE_TITLE :: "Colored Cube"
-DEPTH_FORMAT :: wgpu.TextureFormat.Depth24Plus
+DEPTH_FORMAT :: wgpu.Texture_Format.Depth24Plus
 
 init :: proc(ctx: ^Context) -> (ok: bool) {
 	CUBE_WGSL :: #load("./cube.wgsl")
@@ -50,7 +50,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	vertex_attributes := wgpu.vertex_attr_array(2, {0, .Float32x3}, {1, .Float32x3})
 
 	// Above line expands to:
-	// vertex_attributes := [?]wgpu.VertexAttribute {
+	// vertex_attributes := [?]wgpu.Vertex_Attribute {
 	// 	{format = .Float32x3, offset = 0, shader_location = 0},
 	// 	{
 	// 		format = .Float32x3,
@@ -59,13 +59,13 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	// 	},
 	// }
 
-	vertex_buffer_layout := wgpu.VertexBufferLayout {
+	vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
 		array_stride = size_of(Vertex),
 		step_mode    = .Vertex,
 		attributes   = vertex_attributes[:],
 	}
 
-	pipeline_descriptor := wgpu.RenderPipelineDescriptor {
+	pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
 		label = EXAMPLE_TITLE + " Render Pipeline",
 		vertex = {
 			module = shader_module,
@@ -83,7 +83,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				},
 			},
 		},
-		primitive = {topology = .TriangleList, front_face = .CCW, cull_mode = .Back},
+		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
 		// Enable depth testing so that the fragment closest to the camera
 		// is rendered in front.
 		depth_stencil = {
@@ -116,7 +116,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		{
 			label = EXAMPLE_TITLE + " Uniform Buffer",
 			contents = wgpu.to_bytes(mvp_mat),
-			usage = {.Uniform, .CopyDst},
+			usage = {.Uniform, .Copy_Dst},
 		},
 	) or_return
 	defer if !ok {
@@ -136,7 +136,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 			entries = {
 				{
 					binding = 0,
-					resource = wgpu.BufferBinding {
+					resource = wgpu.Buffer_Binding {
 						buffer = ctx.uniform_buffer,
 						size = wgpu.WHOLE_SIZE,
 					},
@@ -152,7 +152,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.render_pass.color_attachments[0] = {
 		view = nil, /* Assigned later */
-		ops = {load = .Clear, store = .Store, clear_value = app.ColorDarkGray},
+		ops = {load = .Clear, store = .Store, clear_value = app.Color_Dark_Gray},
 	}
 
 	ctx.render_pass.descriptor = {
@@ -172,7 +172,7 @@ create_depth_framebuffer :: proc(ctx: ^Context) -> (ok: bool) {
 
 	size := ctx.framebuffer_size
 
-	texture_descriptor := wgpu.TextureDescriptor {
+	texture_descriptor := wgpu.Texture_Descriptor {
 		size            = {size.w, size.h, 1},
 		mip_level_count = 1,
 		sample_count    = 1,
@@ -205,7 +205,7 @@ quit :: proc(ctx: ^Context) {
 	wgpu.release(ctx.vertex_buffer)
 }
 
-resize :: proc(ctx: ^Context, size: app.ResizeEvent) -> bool {
+resize :: proc(ctx: ^Context, size: app.Resize_Event) -> bool {
 	wgpu.release(ctx.depth_view)
 	create_depth_framebuffer(ctx) or_return
 

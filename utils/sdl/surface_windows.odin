@@ -10,13 +10,13 @@ import "./../../wgpu"
 get_surface_descriptor :: proc(
 	window: ^sdl.Window,
 ) -> (
-	descriptor: wgpu.SurfaceDescriptor,
+	descriptor: wgpu.Surface_Descriptor,
 	ok: bool,
 ) {
 	wm_info := get_sys_info(window) or_return
 
 	// Setup surface information
-	descriptor.target = wgpu.SurfaceSourceWindowsHWND {
+	descriptor.target = wgpu.Surface_Source_Windows_HWND {
 		hinstance = wm_info.info.win.hinstance,
 		hwnd      = wm_info.info.win.window,
 	}

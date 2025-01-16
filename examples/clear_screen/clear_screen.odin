@@ -5,15 +5,15 @@ import "core:log"
 import "core:math"
 
 // Local packages
-import app "./../../utils/application"
-import "./../../wgpu"
+import app "root:utils/application"
+import "root:wgpu"
 
 EXAMPLE_TITLE :: "Clear Screen"
 
 Example :: struct {
 	render_pass: struct {
-		color_attachments: [1]wgpu.RenderPassColorAttachment,
-		descriptor:        wgpu.RenderPassDescriptor,
+		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
+		descriptor:        wgpu.Render_Pass_Descriptor,
 	},
 }
 

@@ -21,8 +21,8 @@ Example :: struct {
 	show_another_window: bool,
 	im_io:               ^im.IO,
 	render_pass:         struct {
-		color_attachments: [1]wgpu.RenderPassColorAttachment,
-		descriptor:        wgpu.RenderPassDescriptor,
+		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
+		descriptor:        wgpu.Render_Pass_Descriptor,
 	},
 }
 
@@ -42,7 +42,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.render_pass.color_attachments[0] = {
 		view = nil, /* Assigned later */
-		ops = {load = .Clear, store = .Store, clear_value = app.ColorBlack},
+		ops = {load = .Clear, store = .Store, clear_value = app.Color_Black},
 	}
 
 	ctx.clear_color = {0.1, 0.2, 0.3}
@@ -73,7 +73,7 @@ imgui_update :: proc(ctx: ^Context, im_ctx: ^im.Context) -> (ok: bool) {
 		im.text("Pointer = = %p", ctx.texture.view)
 		im.text("Size = %d x %d", ctx.texture.size.width, ctx.texture.size.height)
 		im.image(
-			im.TextureID(uintptr(ctx.texture.view)),
+			im.Texture_ID(uintptr(ctx.texture.view)),
 			{f32(ctx.texture.size.width), f32(ctx.texture.size.height)},
 		)
 	}

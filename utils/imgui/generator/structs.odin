@@ -1,4 +1,4 @@
-package imgui_generator
+package imgui_gen
 
 // Packages
 import "base:runtime"
@@ -24,21 +24,31 @@ write_structs :: proc(gen: ^Generator, handle: os.Handle, json_data: ^json.Value
 	// proc_pointer_list: [dynamic]string;proc_pointer_list.allocator = ta
 
 	loop: for &struct_entry in structs.(json.Array) {
+		struct_entry_obj := struct_entry.(json.Object)
+
 		// Ignore obsolete names
-		if test_ifndef_condition(&struct_entry.(json.Object), "IMGUI_DISABLE_OBSOLETE_KEYIO") {
+		if test_ifndef_condition(&struct_entry_obj, "IMGUI_DISABLE_OBSOLETE_KEYIO") {
 			continue
 		}
 
 		defer free_all(gen.tmp_ally)
 
-		// Get field name and clean up
-		struct_name := get_type_string(gen, &struct_entry.(json.Object), false, ta)
-
 		b := strings.builder_make(ta)
+
+		// Start by writing preceding comments (if any)
+		if preceding_comments, preceding_comments_ok := get_preceding_comments(
+			obj = &struct_entry_obj,
+			allocator = gen.tmp_ally,
+		); preceding_comments_ok {
+			strings.write_string(&b, preceding_comments)
+		}
+
+		// Get field name and clean up
+		struct_name := get_type_string(gen, &struct_entry_obj, false, ta)
 		strings.write_string(&b, struct_name)
 		strings.write_string(&b, " :: struct")
 
-		fields_obj, fields_obj_ok := struct_entry.(json.Object)["fields"]
+		fields_obj, fields_obj_ok := struct_entry_obj["fields"]
 		assert(fields_obj_ok, "Fields array is missing!")
 
 		fields := fields_obj.(json.Array)
@@ -102,21 +112,20 @@ write_structs :: proc(gen: ^Generator, handle: os.Handle, json_data: ^json.Value
 				strings.write_string(&b, field_name)
 				strings.write_string(&b, ": ")
 				strings.write_string(&b, field_type)
-				strings.write_string(&b, ",\n")
+				strings.write_byte(&b, ',')
+
+				attached_comments, attached_comments_ok := get_attached_comments(&field_obj, ta)
+				if attached_comments_ok {
+					strings.write_byte(&b, ' ')
+					strings.write_string(&b, attached_comments)
+				}
+
+				strings.write_byte(&b, '\n')
 			}
+
 			strings.write_string(&b, "}\n\n")
 		}
 
 		os.write_string(handle, strings.to_string(b))
 	}
-
-	// if len(proc_pointer_list) > 0 {
-	// 	b := strings.builder_make(ta)
-	// 	for v in proc_pointer_list {
-	// 		strings.write_string(&b, v)
-	// 		strings.write_byte(&b, '\n')
-	// 	}
-	// 	strings.write_byte(&b, '\n')
-	// 	os.write_string(handle, strings.to_string(b))
-	// }
 }

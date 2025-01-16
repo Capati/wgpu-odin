@@ -8,21 +8,21 @@ import "vendor:stb/image"
 // Local packages
 import "root:wgpu"
 
-_log_callback :: proc "c" (level: wgpu.LogLevel, message: wgpu.StringView, user_data: rawptr) {
+_log_callback :: proc "c" (level: wgpu.Log_Level, message: wgpu.String_View, user_data: rawptr) {
 	if message.length > 0 {
 		context = runtime.default_context()
 		fmt.eprintf("[wgpu] [%v] %s\n\n", level, wgpu.string_view_get_string(message))
 	}
 }
 
-BufferDimensions :: struct {
+Buffer_Dimensions :: struct {
 	width:                  uint,
 	height:                 uint,
 	unpadded_bytes_per_row: uint,
 	padded_bytes_per_row:   uint,
 }
 
-buffer_dimensions_init :: proc(r: ^BufferDimensions, width, height: uint) {
+buffer_dimensions_init :: proc(r: ^Buffer_Dimensions, width, height: uint) {
 	bytes_per_pixel := size_of(u32(0))
 	unpadded_bytes_per_row := width * cast(uint)bytes_per_pixel
 	align := cast(uint)wgpu.COPY_BYTES_PER_ROW_ALIGNMENT
@@ -35,14 +35,14 @@ buffer_dimensions_init :: proc(r: ^BufferDimensions, width, height: uint) {
 	r.padded_bytes_per_row = padded_bytes_per_row
 }
 
-IMAGE_WIDTH: uint : 100
-IMAGE_HEIGHT: uint : 200
+IMAGE_WIDTH :: 100
+IMAGE_HEIGHT :: 200
 
 run :: proc() -> (ok: bool) {
 	wgpu.set_log_callback(_log_callback, nil)
 	wgpu.set_log_level(.Warn)
 
-	instance_descriptor := wgpu.InstanceDescriptor {
+	instance_descriptor := wgpu.Instance_Descriptor {
 		backends = wgpu.BACKENDS_PRIMARY,
 	}
 
@@ -51,14 +51,14 @@ run :: proc() -> (ok: bool) {
 
 	adapter := wgpu.instance_request_adapter(
 		instance,
-		wgpu.RequestAdapterOptions{power_preference = .HighPerformance},
+		wgpu.Request_Adapter_Options{power_preference = .High_Performance},
 	) or_return
 	defer wgpu.adapter_release(adapter)
 
 	adapter_info := wgpu.adapter_get_info(adapter) or_return
 	defer wgpu.adapter_info_free_members(adapter_info)
 
-	device_descriptor := wgpu.DeviceDescriptor {
+	device_descriptor := wgpu.Device_Descriptor {
 		label = adapter_info.description,
 	}
 
@@ -68,7 +68,7 @@ run :: proc() -> (ok: bool) {
 	queue := wgpu.device_get_queue(device)
 	defer wgpu.queue_release(queue)
 
-	buffer_dimensions := BufferDimensions{}
+	buffer_dimensions := Buffer_Dimensions{}
 	buffer_dimensions_init(&buffer_dimensions, IMAGE_WIDTH, IMAGE_HEIGHT)
 
 	fmt.printf("%#v\n", buffer_dimensions)
@@ -77,15 +77,15 @@ run :: proc() -> (ok: bool) {
 
 	output_buffer := wgpu.device_create_buffer(
 		device,
-		wgpu.BufferDescriptor {
+		wgpu.Buffer_Descriptor {
 			label = "Buffer output",
 			size = cast(u64)buffer_size,
-			usage = {.MapRead, .CopyDst},
+			usage = {.Map_Read, .Copy_Dst},
 			mapped_at_creation = false,
 		},
 	) or_return
 
-	texture_extent := wgpu.Extent3D {
+	texture_extent := wgpu.Extent_3D {
 		width                 = cast(u32)buffer_dimensions.width,
 		height                = cast(u32)buffer_dimensions.height,
 		depth_or_array_layers = 1,
@@ -93,14 +93,14 @@ run :: proc() -> (ok: bool) {
 
 	texture := wgpu.device_create_texture(
 		device,
-		wgpu.TextureDescriptor {
+		wgpu.Texture_Descriptor {
 			label = "Texture",
 			size = texture_extent,
 			mip_level_count = 1,
 			sample_count = 1,
 			dimension = .D2,
 			format = .Rgba8UnormSrgb,
-			usage = {.RenderAttachment, .CopySrc},
+			usage = {.Render_Attachment, .Copy_Src},
 		},
 	) or_return
 	defer wgpu.texture_release(texture)
@@ -110,11 +110,11 @@ run :: proc() -> (ok: bool) {
 
 	command_encoder := wgpu.device_create_command_encoder(
 		device,
-		wgpu.CommandEncoderDescriptor{label = "command_encoder"},
+		wgpu.Command_Encoder_Descriptor{label = "command_encoder"},
 	) or_return
 	defer wgpu.command_encoder_release(command_encoder)
 
-	colors: []wgpu.RenderPassColorAttachment = {
+	colors: []wgpu.Render_Pass_Color_Attachment = {
 		{view = texture_view, ops = {.Clear, .Store, {1.0, 0.0, 0.0, 1.0}}},
 	}
 
@@ -144,14 +144,14 @@ run :: proc() -> (ok: bool) {
 
 	wgpu.queue_submit(queue, command_buffer)
 
-	BufferMapContext :: struct {
+	Buffer_Map_Context :: struct {
 		buffer:     wgpu.Buffer,
-		dimensions: BufferDimensions,
+		dimensions: Buffer_Dimensions,
 	}
 
 	handle_buffer_map := proc "c" (
-		status: wgpu.MapAsyncStatus,
-		message: wgpu.StringView,
+		status: wgpu.Map_Async_Status,
+		message: wgpu.String_View,
 		userdata1: rawptr,
 		userdata2: rawptr,
 	) {
@@ -162,7 +162,7 @@ run :: proc() -> (ok: bool) {
 			return
 		}
 
-		buffer_map := cast(^BufferMapContext)userdata1
+		buffer_map := cast(^Buffer_Map_Context)userdata1
 		defer wgpu.buffer_release(buffer_map.buffer)
 
 		data_view, data_ok := wgpu.buffer_get_mapped_range(buffer_map.buffer, []byte)
@@ -185,7 +185,7 @@ run :: proc() -> (ok: bool) {
 		}
 	}
 
-	buffer_map := BufferMapContext{output_buffer, buffer_dimensions}
+	buffer_map := Buffer_Map_Context{output_buffer, buffer_dimensions}
 	wgpu.buffer_map_async(
 		output_buffer,
 		{.Read},

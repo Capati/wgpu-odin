@@ -13,13 +13,13 @@ Vertex :: struct {
 }
 
 Example :: struct {
-	render_pipeline: wgpu.RenderPipeline,
+	render_pipeline: wgpu.Render_Pipeline,
 	vertex_buffer:   wgpu.Buffer,
 	index_buffer:    wgpu.Buffer,
 	num_indices:     u32,
 	render_pass:     struct {
-		color_attachments: [1]wgpu.RenderPassColorAttachment,
-		descriptor:        wgpu.RenderPassDescriptor,
+		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
+		descriptor:        wgpu.Render_Pass_Descriptor,
 	},
 }
 
@@ -41,7 +41,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	) or_return
 	defer wgpu.release(render_pipeline_layout)
 
-	vertex_buffer_layout := wgpu.VertexBufferLayout {
+	vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
 		array_stride = size_of(Vertex),
 		step_mode    = .Vertex,
 		attributes   = {
@@ -50,7 +50,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		},
 	}
 
-	render_pipeline_descriptor := wgpu.RenderPipelineDescriptor {
+	render_pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
 		label = EXAMPLE_TITLE + "  Render Pipeline",
 		layout = render_pipeline_layout,
 		vertex = {
@@ -69,7 +69,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				},
 			},
 		},
-		primitive = {topology = .TriangleList, front_face = .CCW, cull_mode = .Back},
+		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
 		multisample = {count = 1, mask = ~u32(0), alpha_to_coverage_enabled = false},
 	}
 
@@ -102,7 +102,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.vertex_buffer = wgpu.device_create_buffer_with_data(
 		ctx.gpu.device,
-		wgpu.BufferDataDescriptor {
+		wgpu.Buffer_Data_Descriptor {
 			label = EXAMPLE_TITLE + " Vertex Buffer",
 			contents = wgpu.to_bytes(vertices),
 			usage = {.Vertex},
@@ -114,7 +114,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.index_buffer = wgpu.device_create_buffer_with_data(
 		ctx.gpu.device,
-		wgpu.BufferDataDescriptor {
+		wgpu.Buffer_Data_Descriptor {
 			label = EXAMPLE_TITLE + " Index Buffer",
 			contents = wgpu.to_bytes(indices),
 			usage = {.Index},

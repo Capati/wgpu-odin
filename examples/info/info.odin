@@ -4,7 +4,8 @@ package info
 import "base:runtime"
 import "core:fmt"
 
-import wgpu "./../../wgpu"
+// Local packages
+import "root:wgpu"
 
 run :: proc() -> (ok: bool) {
 	wgpu_version := wgpu.get_version()

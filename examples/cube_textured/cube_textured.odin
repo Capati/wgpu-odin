@@ -13,11 +13,11 @@ Example :: struct {
 	vertex_buffer:   wgpu.Buffer,
 	index_buffer:    wgpu.Buffer,
 	uniform_buffer:  wgpu.Buffer,
-	render_pipeline: wgpu.RenderPipeline,
-	bind_group:      wgpu.BindGroup,
+	render_pipeline: wgpu.Render_Pipeline,
+	bind_group:      wgpu.Bind_Group,
 	render_pass:     struct {
-		color_attachments: [1]wgpu.RenderPassColorAttachment,
-		descriptor:        wgpu.RenderPassDescriptor,
+		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
+		descriptor:        wgpu.Render_Pass_Descriptor,
 	},
 }
 
@@ -51,7 +51,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		wgpu.release(ctx.index_buffer)
 	}
 
-	texture_extent := wgpu.Extent3D {
+	texture_extent := wgpu.Extent_3D {
 		width                 = TEXEL_SIZE,
 		height                = TEXEL_SIZE,
 		depth_or_array_layers = 1,
@@ -65,7 +65,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 			sample_count = 1,
 			dimension = .D2,
 			format = .R8Uint,
-			usage = {.TextureBinding, .CopyDst},
+			usage = {.Texture_Binding, .Copy_Dst},
 		},
 	) or_return
 	defer wgpu.release(texture)
@@ -92,7 +92,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		{
 			label = EXAMPLE_TITLE + " Uniform Buffer",
 			contents = wgpu.to_bytes(mx_total),
-			usage = {.Uniform, .CopyDst},
+			usage = {.Uniform, .Copy_Dst},
 		},
 	) or_return
 	defer if !ok {
@@ -106,7 +106,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	) or_return
 	defer wgpu.release(shader_module)
 
-	vertex_buffer_layout := wgpu.VertexBufferLayout {
+	vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
 		array_stride = size_of(Vertex),
 		step_mode    = .Vertex,
 		attributes   = {
@@ -139,7 +139,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				},
 			},
 			depth_stencil = app.create_depth_stencil_state(ctx),
-			primitive = {topology = .TriangleList, front_face = .CCW, cull_mode = .Back},
+			primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
 			multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 		},
 	) or_return
@@ -160,7 +160,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 			entries = {
 				{
 					binding = 0,
-					resource = wgpu.BufferBinding {
+					resource = wgpu.Buffer_Binding {
 						buffer = ctx.uniform_buffer,
 						size = wgpu.WHOLE_SIZE,
 					},
@@ -224,7 +224,7 @@ create_view_projection_matrix :: proc(aspect: f32) -> la.Matrix4f32 {
 	return la.mul(projection, view)
 }
 
-resize :: proc(ctx: ^Context, size: app.ResizeEvent) -> bool {
+resize :: proc(ctx: ^Context, size: app.Resize_Event) -> bool {
 	app.setup_depth_stencil(ctx) or_return
 	wgpu.queue_write_buffer(
 		ctx.gpu.queue,

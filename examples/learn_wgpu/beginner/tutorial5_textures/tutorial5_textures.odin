@@ -13,14 +13,14 @@ Vertex :: struct {
 }
 
 Example :: struct {
-	diffuse_bind_group: wgpu.BindGroup,
-	render_pipeline:    wgpu.RenderPipeline,
+	diffuse_bind_group: wgpu.Bind_Group,
+	render_pipeline:    wgpu.Render_Pipeline,
 	num_indices:        u32,
 	vertex_buffer:      wgpu.Buffer,
 	index_buffer:       wgpu.Buffer,
 	render_pass:        struct {
-		color_attachments: [1]wgpu.RenderPassColorAttachment,
-		descriptor:        wgpu.RenderPassDescriptor,
+		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
+		descriptor:        wgpu.Render_Pass_Descriptor,
 	},
 }
 
@@ -31,21 +31,20 @@ EXAMPLE_TITLE :: "Tutorial 5 - Textures"
 init :: proc(ctx: ^Context) -> (ok: bool) {
 	// Load our tree image to texture
 	diffuse_texture := app.create_texture_from_file(
+		ctx,
 		"assets/textures/happy-tree.png",
-		ctx.gpu.device,
-		ctx.gpu.queue,
 	) or_return
 	defer app.release(diffuse_texture)
 
 	texture_bind_group_layout := wgpu.device_create_bind_group_layout(
 		ctx.gpu.device,
-		wgpu.BindGroupLayoutDescriptor {
+		wgpu.Bind_Group_Layout_Descriptor {
 			label = EXAMPLE_TITLE + "  Bind Group Layout",
 			entries = {
 				{
 					binding = 0,
 					visibility = {.Fragment},
-					type = wgpu.TextureBindingLayout {
+					type = wgpu.Texture_Binding_Layout {
 						multisampled = false,
 						view_dimension = .D2,
 						sample_type = .Float,
@@ -54,7 +53,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				{
 					binding = 1,
 					visibility = {.Fragment},
-					type = wgpu.SamplerBindingLayout{type = .Filtering},
+					type = wgpu.Sampler_Binding_Layout{type = .Filtering},
 				},
 			},
 		},
@@ -63,7 +62,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.diffuse_bind_group = wgpu.device_create_bind_group(
 		ctx.gpu.device,
-		wgpu.BindGroupDescriptor {
+		wgpu.Bind_Group_Descriptor {
 			label = EXAMPLE_TITLE + " Diffuse Bind Group",
 			layout = texture_bind_group_layout,
 			entries = {
@@ -85,7 +84,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	) or_return
 	defer wgpu.release(render_pipeline_layout)
 
-	vertex_buffer_layout := wgpu.VertexBufferLayout {
+	vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
 		array_stride = size_of(Vertex),
 		step_mode    = .Vertex,
 		attributes   = {
@@ -105,7 +104,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	) or_return
 	defer wgpu.release(shader_module)
 
-	render_pipeline_descriptor := wgpu.RenderPipelineDescriptor {
+	render_pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
 		label = EXAMPLE_TITLE + " Render Pipeline",
 		layout = render_pipeline_layout,
 		vertex = {
@@ -124,7 +123,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				},
 			},
 		},
-		primitive = {topology = .TriangleList, front_face = .CCW, cull_mode = .Back},
+		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
 		multisample = {count = 1, mask = ~u32(0), alpha_to_coverage_enabled = false},
 	}
 
@@ -150,7 +149,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.vertex_buffer = wgpu.device_create_buffer_with_data(
 		ctx.gpu.device,
-		wgpu.BufferDataDescriptor {
+		wgpu.Buffer_Data_Descriptor {
 			label = EXAMPLE_TITLE + " Vertex Buffer",
 			contents = wgpu.to_bytes(vertices),
 			usage = {.Vertex},
@@ -162,7 +161,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.index_buffer = wgpu.device_create_buffer_with_data(
 		ctx.gpu.device,
-		wgpu.BufferDataDescriptor {
+		wgpu.Buffer_Data_Descriptor {
 			label = EXAMPLE_TITLE + " Index Buffer",
 			contents = wgpu.to_bytes(indices),
 			usage = {.Index},

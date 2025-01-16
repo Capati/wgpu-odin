@@ -13,10 +13,10 @@ import "vendor:glfw"
 import wgpu_glfw "./../../utils/glfw"
 import wgpu "./../../wgpu"
 
-WindowSettings :: struct {
+Window_Settings :: struct {
 	title:         string,
-	size:          WindowSize,
-	min_size:      WindowSize,
+	size:          Window_Size,
+	min_size:      Window_Size,
 	centered:      bool,
 	resizable:     bool,
 	borderless:    bool,
@@ -24,25 +24,25 @@ WindowSettings :: struct {
 	fullscreen:    bool,
 }
 
-GPUSettings :: struct {
-	power_preference:              wgpu.PowerPreference,
+GPU_Settings :: struct {
+	power_preference:              wgpu.Power_Preference,
 	force_fallback_adapter:        bool,
-	desired_surface_format:        wgpu.TextureFormat,
+	desired_surface_format:        wgpu.Texture_Format,
 	optional_features:             wgpu.Features,
 	required_features:             wgpu.Features,
 	required_limits:               wgpu.Limits,
-	desired_present_mode:          wgpu.PresentMode,
-	present_mode:                  wgpu.PresentMode,
+	desired_present_mode:          wgpu.Present_Mode,
+	present_mode:                  wgpu.Present_Mode,
 	remove_srgb_from_surface:      bool,
 	desired_maximum_frame_latency: u32,
 }
 
 Settings :: struct {
-	using window: WindowSettings,
-	using gpu:    GPUSettings,
+	using window: Window_Settings,
+	using gpu:    GPU_Settings,
 }
 
-DEFAULT_WINDOW_SETTINGS :: WindowSettings {
+DEFAULT_WINDOW_SETTINGS :: Window_Settings {
 	title         = "Untitled",
 	size          = {800, 600},
 	min_size      = {1, 1},
@@ -54,8 +54,8 @@ DEFAULT_WINDOW_SETTINGS :: WindowSettings {
 }
 
 DEFAULT_DESIRED_MAXIMUM_FRAME_LATENCY :: 2
-DEFAULT_GPU_SETTINGS :: GPUSettings {
-	power_preference              = .HighPerformance,
+DEFAULT_GPU_SETTINGS :: GPU_Settings {
+	power_preference              = .High_Performance,
 	required_limits               = wgpu.DOWNLEVEL_LIMITS,
 	desired_present_mode          = .Mailbox,
 	present_mode                  = .Fifo,
@@ -68,8 +68,8 @@ DEFAULT_SETTINGS :: Settings {
 	gpu    = DEFAULT_GPU_SETTINGS,
 }
 
-GraphicsContext :: struct {
-	settings: GPUSettings,
+Graphics_Context :: struct {
+	settings: GPU_Settings,
 	instance: wgpu.Instance,
 	surface:  wgpu.Surface,
 	adapter:  wgpu.Adapter,
@@ -77,14 +77,14 @@ GraphicsContext :: struct {
 	queue:    wgpu.Queue,
 	features: wgpu.Features,
 	limits:   wgpu.Limits,
-	caps:     wgpu.SurfaceCapabilities,
-	config:   wgpu.SurfaceConfiguration,
+	caps:     wgpu.Surface_Capabilities,
+	config:   wgpu.Surface_Configuration,
 	is_srgb:  bool,
 }
 
 @(default_calling_convention = "c", link_prefix = "glfw")
 foreign _ {
-	GetMonitorWorkarea :: proc(monitor: glfw.MonitorHandle, xpos, ypos, width, height: ^i32) ---
+	GetMonitorWorkarea :: proc(monitor: Monitor, xpos, ypos, width, height: ^i32) ---
 }
 
 @(require_results)
@@ -153,7 +153,7 @@ create :: proc(
 	wgpu.set_log_level(.Warn)
 	wgpu.set_log_callback(gpu_log_callback, app)
 
-	instance_descriptor := wgpu.InstanceDescriptor {
+	instance_descriptor := wgpu.Instance_Descriptor {
 		backends = wgpu.BACKENDS_PRIMARY,
 		flags    = {.Validation},
 	}
@@ -163,7 +163,7 @@ create :: proc(
 	// Try to read WGPU_BACKEND_TYPE config to see if a backend type should be forced
 	if WGPU_BACKEND_TYPE != "" {
 		// Try to get the backend type from the string configuration
-		backend, backend_ok := reflect.enum_from_name(wgpu.BackendBits, WGPU_BACKEND_TYPE)
+		backend, backend_ok := reflect.enum_from_name(wgpu.Backend_Bits, WGPU_BACKEND_TYPE)
 
 		if backend_ok {
 			instance_descriptor.backends = {backend}
@@ -189,7 +189,7 @@ create :: proc(
 		wgpu.surface_release(app.gpu.surface)
 	}
 
-	adapter_options := wgpu.RequestAdapterOptions {
+	adapter_options := wgpu.Request_Adapter_Options {
 		compatible_surface     = app.gpu.surface,
 		power_preference       = app.settings.power_preference,
 		force_fallback_adapter = app.settings.force_fallback_adapter,
@@ -208,7 +208,7 @@ create :: proc(
 		wgpu.adapter_info_string(adapter_info, context.temp_allocator),
 	)
 
-	device_descriptor := wgpu.DeviceDescriptor {
+	device_descriptor := wgpu.Device_Descriptor {
 		label             = adapter_info.device,
 		required_limits   = app.settings.required_limits,
 		optional_features = app.settings.optional_features,
@@ -233,7 +233,7 @@ create :: proc(
 		wgpu.surface_capabilities_free_members(app.gpu.caps)
 	}
 
-	preferred_format: wgpu.TextureFormat
+	preferred_format: wgpu.Texture_Format
 	if app.settings.desired_surface_format != .Undefined {
 		for f in app.gpu.caps.formats {
 			if app.settings.desired_surface_format == f {
@@ -287,11 +287,11 @@ create :: proc(
 
 	surface_allowed_usages := surface_format_features.allowed_usages
 	// DX12 backend doesn't support this usage for surface textures
-	if .TextureBinding in surface_allowed_usages {
-		surface_allowed_usages -= {.TextureBinding}
+	if .Texture_Binding in surface_allowed_usages {
+		surface_allowed_usages -= {.Texture_Binding}
 	}
 
-	app.gpu.config = wgpu.SurfaceConfiguration {
+	app.gpu.config = wgpu.Surface_Configuration {
 		device                        = app.gpu.device,
 		usage                         = surface_allowed_usages,
 		format                        = preferred_format,
@@ -315,7 +315,7 @@ create :: proc(
 	return app, true
 }
 
-gpu_log_callback :: proc "c" (level: wgpu.LogLevel, message: wgpu.StringView, userdata: rawptr) {
+gpu_log_callback :: proc "c" (level: wgpu.Log_Level, message: wgpu.String_View, userdata: rawptr) {
 	if message.length == 0 {return}
 	app := cast(^Application)userdata
 	if app.logger.data == nil {return}

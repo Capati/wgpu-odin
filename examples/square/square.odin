@@ -28,12 +28,12 @@ COLORS := [?]f32 {
 
 Example :: struct {
 	render_pass:      struct {
-		color_attachments: [1]wgpu.RenderPassColorAttachment,
-		descriptor:        wgpu.RenderPassDescriptor,
+		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
+		descriptor:        wgpu.Render_Pass_Descriptor,
 	},
 	positions_buffer: wgpu.Buffer,
 	colors_buffer:    wgpu.Buffer,
-	render_pipeline:  wgpu.RenderPipeline,
+	render_pipeline:  wgpu.Render_Pipeline,
 }
 
 Context :: app.Context(Example)
@@ -46,7 +46,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		{
 			label = "Positions buffer",
 			contents = wgpu.to_bytes(POSITIONS),
-			usage = {.Vertex, .CopyDst},
+			usage = {.Vertex, .Copy_Dst},
 		},
 	) or_return
 	defer if !ok {
@@ -55,7 +55,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.colors_buffer = wgpu.device_create_buffer_with_data(
 		ctx.gpu.device,
-		{label = "Colors buffer", contents = wgpu.to_bytes(COLORS), usage = {.Vertex, .CopyDst}},
+		{label = "Colors buffer", contents = wgpu.to_bytes(COLORS), usage = {.Vertex, .Copy_Dst}},
 	) or_return
 	defer if !ok {
 		wgpu.release(ctx.colors_buffer)
@@ -68,7 +68,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	) or_return
 	defer wgpu.release(shader_module)
 
-	pipeline_descriptor := wgpu.RenderPipelineDescriptor {
+	pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
 		label = EXAMPLE_TITLE + " Render Pipeline",
 		vertex = {
 			module = shader_module,
@@ -98,7 +98,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 			},
 		},
 		primitive = {
-			topology = .TriangleStrip,
+			topology = .Triangle_Strip,
 			strip_index_format = .Uint32,
 			front_face = .CCW,
 			cull_mode = .Front,
@@ -116,7 +116,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.render_pass.color_attachments[0] = {
 		view = nil, /* Assigned later */
-		ops  = {.Clear, .Store, app.ColorBlack},
+		ops  = {.Clear, .Store, app.Color_Black},
 	}
 
 	ctx.render_pass.descriptor = {

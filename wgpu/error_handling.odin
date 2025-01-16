@@ -16,7 +16,7 @@ ERROR_MESSAGE_BUFFER_LEN :: #config(WGPU_ERROR_MESSAGE_BUFFER_LEN, 1024)
 
 LOG_ENABLED :: ENABLE_ERROR_HANDLING && LOG_ON_ERROR
 
-IOError :: enum {
+IO_Error :: enum {
 	None,
 	ReadFileFailed,
 	LoadImageFailed,
@@ -24,19 +24,19 @@ IOError :: enum {
 
 /* General WGPU error types "merged" with custom types. */
 Error :: union #shared_nil {
-	ErrorType,
-	RequestAdapterStatus,
-	RequestDeviceStatus,
-	MapAsyncStatus,
-	CompilationInfoRequestStatus,
-	CreatePipelineAsyncStatus,
-	QueueWorkDoneStatus,
-	SurfaceStatus,
+	Error_Type,
+	Request_Adapter_Status,
+	Request_Device_Status,
+	Map_Async_Status,
+	Compilation_Info_Request_Status,
+	Create_Pipeline_Async_Status,
+	Queue_Work_Done_Status,
+	Surface_Status,
 	mem.Allocator_Error,
-	IOError,
+	IO_Error,
 }
 
-ErrorDataInfo :: struct {
+Error_Data_Info :: struct {
 	error:     Error, /*  */
 	message:   [ERROR_MESSAGE_BUFFER_LEN]byte, /* Last message from the error callback */
 	loc:       runtime.Source_Code_Location, /* Where the api was called */
@@ -44,15 +44,15 @@ ErrorDataInfo :: struct {
 	thread_id: int, /* The thread that called the api */
 }
 
-ErrorData :: struct {
-	using info: ErrorDataInfo,
-	user_cb:    UncapturedErrorCallback,
+Error_Data :: struct {
+	using info: Error_Data_Info,
+	user_cb:    Uncaptured_Error_Callback,
 	userdata1:  rawptr,
 	userdata2:  rawptr,
 }
 
 @(thread_local, private = "file")
-g_error: ErrorData
+g_error: Error_Data
 
 @(disabled = !ENABLE_ERROR_HANDLING)
 error_reset_data :: proc "contextless" (loc: runtime.Source_Code_Location) {
@@ -104,8 +104,8 @@ error_reset_and_update :: proc "contextless" (
 /* Callback procedure for handling uncaptured errors from the api. */
 uncaptured_error_data_callback :: proc "c" (
 	device: ^Device,
-	type: ErrorType,
-	message: StringView,
+	type: Error_Type,
+	message: String_View,
 	userdata1: rawptr,
 	userdata2: rawptr,
 ) {
@@ -124,7 +124,7 @@ uncaptured_error_data_callback :: proc "c" (
 
 set_uncaptured_error_callback :: proc "contextless" (
 	device: Device,
-	user_callback: UncapturedErrorCallback,
+	user_callback: Uncaptured_Error_Callback,
 	userdata1: rawptr,
 	userdata2: rawptr,
 ) {
@@ -177,7 +177,7 @@ Get more information about the last error.
 
 **Returns**
 
-	ErrorDataInfo :: struct {
+	Error_Data_Info :: struct {
 		id        : int,
 		type      : Error_Data_Type,
 		error     : Error,
@@ -187,14 +187,14 @@ Get more information about the last error.
 		thread_id : int,
 	}
 
-- The last error data as an `ErrorDataInfo`. Returns an empty struct if error handling is
+- The last error data as an `Error_Data_Info`. Returns an empty struct if error handling is
 disabled or no error has occurred.
 
 **Notes**
 1. Error data is set to `{}` in the next procedure/API all.
 */
 get_last_error_data :: #force_inline proc "contextless" (
-) -> ErrorDataInfo #no_bounds_check {
+) -> Error_Data_Info #no_bounds_check {
 	current_err := g_error
 	return {
 		error = current_err.error,
@@ -225,7 +225,7 @@ print_last_error :: proc "contextless" () #no_bounds_check {
 	get_last_error :: #force_inline proc "contextless" () -> Error {return nil}
 	has_no_error :: #force_inline proc "contextless" () -> bool {return true}
 	has_error :: #force_inline proc "contextless" () -> bool {return false}
-	get_last_error_data :: #force_inline proc "contextless" () -> ErrorDataInfo {return {}}
+	get_last_error_data :: #force_inline proc "contextless" () -> Error_Data_Info {return {}}
 	@(disabled = true)
 	print_last_error :: proc "contextless" () {}
 }

@@ -12,8 +12,8 @@ Version :: struct {
 	build: u8,
 }
 
-BINDINGS_VERSION :: Version{22, 1, 0, 5}
-BINDINGS_VERSION_STRING :: "22.1.0.5"
+BINDINGS_VERSION :: Version{23, 1, 0, 0}
+BINDINGS_VERSION_STRING :: "23.1.0.0"
 
 @(private = "file", init)
 _version_check :: proc() {

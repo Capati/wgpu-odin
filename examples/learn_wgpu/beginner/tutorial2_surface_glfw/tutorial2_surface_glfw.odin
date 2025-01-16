@@ -15,7 +15,7 @@ State :: struct {
 	surface:   wgpu.Surface,
 	device:    wgpu.Device,
 	queue:     wgpu.Queue,
-	config:    wgpu.SurfaceConfiguration,
+	config:    wgpu.Surface_Configuration,
 }
 
 Physical_Size :: struct {
@@ -23,7 +23,7 @@ Physical_Size :: struct {
 	height: u32,
 }
 
-_log_callback :: proc "c" (level: wgpu.LogLevel, message: wgpu.StringView, userdata: rawptr) {
+_log_callback :: proc "c" (level: wgpu.Log_Level, message: wgpu.String_View, userdata: rawptr) {
 	context = runtime.default_context()
 	fmt.eprintf("[wgpu] [%v] %s\n\n", level, wgpu.string_view_get_string(message))
 }
@@ -54,7 +54,7 @@ init :: proc() -> (state: ^State, ok: bool) {
 	wgpu.set_log_callback(_log_callback, nil)
 	wgpu.set_log_level(.Warn)
 
-	instance_descriptor := wgpu.InstanceDescriptor {
+	instance_descriptor := wgpu.Instance_Descriptor {
 		backends = wgpu.BACKENDS_PRIMARY,
 	}
 
@@ -67,8 +67,8 @@ init :: proc() -> (state: ^State, ok: bool) {
 		wgpu.release(state.surface)
 	}
 
-	adapter_options := wgpu.RequestAdapterOptions {
-		power_preference       = .HighPerformance,
+	adapter_options := wgpu.Request_Adapter_Options {
+		power_preference       = .High_Performance,
 		compatible_surface     = state.surface,
 		force_fallback_adapter = false,
 	}
@@ -79,7 +79,7 @@ init :: proc() -> (state: ^State, ok: bool) {
 	adapter_info := wgpu.adapter_get_info(adapter) or_return
 	defer wgpu.adapter_info_free_members(adapter_info)
 
-	device_descriptor := wgpu.DeviceDescriptor {
+	device_descriptor := wgpu.Device_Descriptor {
 		label           = adapter_info.description,
 		required_limits = wgpu.DEFAULT_LIMITS,
 	}
@@ -101,7 +101,7 @@ init :: proc() -> (state: ^State, ok: bool) {
 
 	state.config = {
 		device       = state.device,
-		usage        = {.RenderAttachment},
+		usage        = {.Render_Attachment},
 		format       = caps.formats[0],
 		width        = cast(u32)width,
 		height       = cast(u32)height,
@@ -132,7 +132,7 @@ render :: proc(state: ^State) -> bool {
 
 	encoder := wgpu.device_create_command_encoder(
 		state.device,
-		wgpu.CommandEncoderDescriptor{label = "Command Encoder"},
+		wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
 	) or_return
 	defer wgpu.release(encoder)
 
@@ -140,7 +140,7 @@ render :: proc(state: ^State) -> bool {
 		encoder,
 		{
 			label = "Render Pass",
-			color_attachments = []wgpu.RenderPassColorAttachment {
+			color_attachments = []wgpu.Render_Pass_Color_Attachment {
 				{view = view, resolve_target = nil, ops = {.Clear, .Store, {0.1, 0.2, 0.3, 1.0}}},
 			},
 			depth_stencil_attachment = nil,

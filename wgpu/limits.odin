@@ -241,13 +241,13 @@ limits_using_alignment :: proc(self: ^Limits, other: Limits) -> Limits {
 }
 
 /* For `Limits` check.Doesn't use `Pascal` for consistency with the struct name.*/
-LimitName :: enum {
+Limit_Name :: enum {
 	max_texture_dimension_1d,
 	max_texture_dimension_2d,
 	max_texture_dimension_3d,
 	max_texture_array_layers,
 	max_bind_groups,
-	max_bind_groups_plus_vertex_buffers,
+	// max_bind_groups_plus_vertex_buffers, // TODO: not used
 	max_bindings_per_bind_group,
 	max_dynamic_uniform_buffers_per_pipeline_layout,
 	max_dynamic_storage_buffers_per_pipeline_layout,
@@ -264,9 +264,9 @@ LimitName :: enum {
 	max_buffer_size,
 	max_vertex_attributes,
 	max_vertex_buffer_array_stride,
-	max_inter_stage_shader_variables,
-	max_color_attachments,
-	max_color_attachment_bytes_per_sample,
+	// max_inter_stage_shader_variables, // TODO: not used
+	// max_color_attachments, // TODO: not used
+	// max_color_attachment_bytes_per_sample, // TODO: not used
 	max_compute_workgroup_storage_size,
 	max_compute_invocations_per_workgroup,
 	max_compute_workgroup_size_x,
@@ -279,18 +279,18 @@ LimitName :: enum {
 	max_non_sampler_bindings,
 }
 
-LimitsNameFlags :: bit_set[LimitName]
+Limits_Name_Flags :: bit_set[Limit_Name]
 
-LimitViolationValue :: struct {
+Limit_Violation_Value :: struct {
 	current: u64,
 	allowed: u64,
 }
 
-LimitViolationData :: [LimitName]LimitViolationValue
+Limit_Violation_Data :: [Limit_Name]Limit_Violation_Value
 
-LimitViolation :: struct {
-	data:             LimitViolationData,
-	flags:            LimitsNameFlags,
+Limit_Violation :: struct {
+	data:             Limit_Violation_Data,
+	flags:            Limits_Name_Flags,
 	ok:               bool,
 	total_violations: u8,
 }
@@ -304,21 +304,21 @@ fall short of the `allowed` limits.
 - `allowed: Limits`: The reference limits that `self` is checked against.
 
 **Returns**
-- `violations: LimitViolation`: A structure containing information about any limit violations.
+- `violations: Limit_Violation`: A structure containing information about any limit violations.
 */
 @(require_results)
 limits_check :: proc(
 	self: Limits,
 	allowed: Limits,
 ) -> (
-	violations: LimitViolation,
+	violations: Limit_Violation,
 	ok: bool,
 ) #optional_ok {
 	compare :: proc(
 		self_value, allowed_value: u64,
 		expected_order: slice.Ordering,
 	) -> (
-		LimitViolationValue,
+		Limit_Violation_Value,
 		bool,
 	) {
 		order := slice.cmp(self_value, allowed_value)
@@ -330,8 +330,8 @@ limits_check :: proc(
 	}
 
 	check :: proc(
-		violations: ^LimitViolation,
-		name: LimitName,
+		violations: ^Limit_Violation,
+		name: Limit_Name,
 		self_value, allowed_value: u64,
 		expected_order: slice.Ordering,
 	) {
@@ -344,9 +344,6 @@ limits_check :: proc(
 	}
 
 	fields := reflect.struct_fields_zipped(Limits)
-	// Ensure that the number of fields in Limits matches LimitViolationData
-	assert(len(fields) == len(LimitViolationData), "Mismatch limits")
-
 	for &field in fields {
 		name := field.name
 
@@ -372,9 +369,11 @@ limits_check :: proc(
 			unreachable()
 		}
 
-		// Get the corresponding LimitName enum value
-		limits_name, limits_name_ok := reflect.enum_from_name(LimitName, name)
-		assert(limits_name_ok, "Invalid limit name")
+		// Get the corresponding Limit_Name enum value
+		limits_name, limits_name_ok := reflect.enum_from_name(Limit_Name, name)
+		if !limits_name_ok {
+			continue
+		}
 
 		expected_order := slice.Ordering.Less
 		#partial switch limits_name {
@@ -391,14 +390,14 @@ limits_check :: proc(
 	return
 }
 
-log_limits_violation :: proc(violation: LimitViolation) {
+log_limits_violation :: proc(violation: Limit_Violation) {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 	violation_str := limits_violation_to_string(violation, context.temp_allocator)
 	log.fatalf("Limits violations detected:\n%s", violation_str)
 }
 
 limits_violation_to_string :: proc(
-	violation: LimitViolation,
+	violation: Limit_Violation,
 	allocator := context.allocator,
 ) -> (
 	str: string,
@@ -546,8 +545,8 @@ limits_ensure_minimum :: proc "contextless" (a: ^Limits, b := DEFAULT_MINIMUM_LI
 }
 
 limits_merge_webgpu_with_native :: proc "contextless" (
-	webgpu: WGPULimits,
-	native: WGPUNativeLimits,
+	webgpu: WGPU_Limits,
+	native: WGPU_Native_Limits,
 ) -> (
 	limits: Limits,
 ) {

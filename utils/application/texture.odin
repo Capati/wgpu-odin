@@ -16,53 +16,53 @@ import stbi "vendor:stb/image"
 import "./../../wgpu"
 
 Texture :: struct {
-	size:            wgpu.Extent3D,
+	size:            wgpu.Extent_3D,
 	mip_level_count: u32,
-	format:          wgpu.TextureFormat,
-	dimension:       wgpu.TextureDimension,
+	format:          wgpu.Texture_Format,
+	dimension:       wgpu.Texture_Dimension,
 	texture:         wgpu.Texture,
-	view:            wgpu.TextureView,
+	view:            wgpu.Texture_View,
 	sampler:         wgpu.Sampler,
 }
 
-ColorSpace :: enum {
+Color_Space :: enum {
 	Undefined,
 	Srgb,
 	Linear,
 }
 
-TextureLoadOptions :: struct {
+Texture_Load_Options :: struct {
 	label:            string,
 	flip_y:           bool,
 	generate_mipmaps: bool,
-	format:           wgpu.TextureFormat,
-	usage:            wgpu.TextureUsages,
-	address_mode:     wgpu.AddressMode,
-	color_space:      ColorSpace,
+	format:           wgpu.Texture_Format,
+	usage:            wgpu.Texture_Usages,
+	address_mode:     wgpu.Address_Mode,
+	color_space:      Color_Space,
 }
 
-TextureLoad :: struct {
+Texture_Load :: struct {
 	texture:         wgpu.Texture,
 	width:           u32,
 	height:          u32,
 	depth:           u32,
 	mip_level_count: u32,
-	format:          wgpu.TextureFormat,
-	dimension:       wgpu.TextureDimension,
+	format:          wgpu.Texture_Format,
+	dimension:       wgpu.Texture_Dimension,
 }
 
-ImageInfo :: struct {
+Image_Info :: struct {
 	width, height: u32,
 	channels:      int,
 	depth:         int, // Channel depth in bits
 	is_hdr:        bool,
 }
 
-ImageData :: struct {
+Image_Data :: struct {
 	allocator:         mem.Allocator,
 	pixels:            []byte,
 	bytes_per_channel: int,
-	using info:        ImageInfo,
+	using info:        Image_Info,
 }
 
 load_image_from_file :: proc(
@@ -70,7 +70,7 @@ load_image_from_file :: proc(
 	allocator := context.allocator,
 	loc := #caller_location,
 ) -> (
-	out: ImageData,
+	out: Image_Data,
 	ok: bool,
 ) #optional_ok {
 	ta := context.temp_allocator
@@ -160,7 +160,7 @@ LoadMethod :: enum {
 	Load_F32,
 }
 
-image_info_determine_load_method :: proc(info: ImageInfo) -> LoadMethod {
+image_info_determine_load_method :: proc(info: Image_Info) -> LoadMethod {
 	if info.is_hdr {
 		return .Load_F32
 	} else if info.depth == 16 {
@@ -173,7 +173,7 @@ get_image_info_stbi :: proc(
 	image_path: cstring,
 	loc := #caller_location,
 ) -> (
-	info: ImageInfo,
+	info: Image_Info,
 	ok: bool,
 ) #optional_ok {
 	w, h, c: i32
@@ -205,7 +205,7 @@ image_to_texture :: proc(
 	queue: wgpu.Queue,
 	texture: wgpu.Texture,
 	data: []u8,
-	size: wgpu.Extent3D,
+	size: wgpu.Extent_3D,
 	channels: u32,
 ) -> (
 	ok: bool,
@@ -229,11 +229,11 @@ load_texture_from_file :: proc(
 	filename: string,
 	device: wgpu.Device,
 	queue: wgpu.Queue,
-	options: TextureLoadOptions = {},
+	options: Texture_Load_Options = {},
 	allocator := context.allocator,
 	loc := #caller_location,
 ) -> (
-	ret: TextureLoad,
+	ret: Texture_Load,
 	ok: bool,
 ) #optional_ok {
 	ta := context.temp_allocator
@@ -251,10 +251,10 @@ load_texture_from_file :: proc(
 
 	usage := options.usage
 	if usage == {} {
-		usage = {.CopyDst, .TextureBinding}
+		usage = {.Copy_Dst, .Texture_Binding}
 	}
 
-	texture_size := wgpu.Extent3D {
+	texture_size := wgpu.Extent_3D {
 		width                 = width,
 		height                = height,
 		depth_or_array_layers = 1,
@@ -267,7 +267,7 @@ load_texture_from_file :: proc(
 		format = .Rgba8Unorm
 	}
 
-	texture_descriptor := wgpu.TextureDescriptor {
+	texture_descriptor := wgpu.Texture_Descriptor {
 		usage           = usage,
 		dimension       = .D2,
 		size            = texture_size,
@@ -313,15 +313,15 @@ calculate_mip_levels :: proc(#any_int width, height: int) -> u32 {
 create_texture :: proc(
 	device: wgpu.Device,
 	queue: wgpu.Queue,
-	load: TextureLoad,
-	options: TextureLoadOptions = {},
+	load: Texture_Load,
+	options: Texture_Load_Options = {},
 ) -> (
 	ret: Texture,
 	ok: bool,
 ) #optional_ok {
 	is_cubemap := load.depth == 6
 
-	texture_view_descriptor := wgpu.TextureViewDescriptor {
+	texture_view_descriptor := wgpu.Texture_View_Descriptor {
 		format            = load.format,
 		dimension         = .Cube if is_cubemap else .D2,
 		base_mip_level    = 0,
@@ -338,13 +338,13 @@ create_texture :: proc(
 	is_size_power_of_2 :=
 		math.is_power_of_two(int(load.width)) && math.is_power_of_two(int(load.height))
 
-	mipmap_filter: wgpu.MipmapFilterMode =
+	mipmap_filter: wgpu.Mipmap_Filter_Mode =
 		.Linear if is_size_power_of_2 && is_cubemap else .Nearest
 
-	address_mode: wgpu.AddressMode =
-		options.address_mode if options.address_mode != .Undefined else .ClampToEdge
+	address_mode: wgpu.Address_Mode =
+		options.address_mode if options.address_mode != .Undefined else .Clamp_To_Edge
 
-	sampler_descriptor := wgpu.SamplerDescriptor {
+	sampler_descriptor := wgpu.Sampler_Descriptor {
 		address_mode_u = address_mode,
 		address_mode_v = address_mode,
 		address_mode_w = address_mode,
@@ -377,7 +377,7 @@ create_texture :: proc(
 create_texture_from_file :: proc(
 	app: ^Application,
 	filename: string,
-	options: TextureLoadOptions = {},
+	options: Texture_Load_Options = {},
 	allocator := context.allocator,
 	loc := #caller_location,
 ) -> (
@@ -400,9 +400,9 @@ create_texture_from_file :: proc(
 }
 
 texture_format_for_color_space :: proc "contextless" (
-	format: wgpu.TextureFormat,
-	color_space: ColorSpace,
-) -> wgpu.TextureFormat {
+	format: wgpu.Texture_Format,
+	color_space: Color_Space,
+) -> wgpu.Texture_Format {
 	#partial switch color_space {
 	case .Linear:
 		return wgpu.texture_format_remove_srgb_suffix(format)
@@ -416,7 +416,7 @@ texture_format_for_color_space :: proc "contextless" (
 create_cubemap_texture_from_files :: proc(
 	app: ^Application,
 	file_paths: [6]string,
-	options: TextureLoadOptions = {},
+	options: Texture_Load_Options = {},
 	loc := #caller_location,
 ) -> (
 	out: Texture,
@@ -432,7 +432,7 @@ create_cubemap_texture_from_files :: proc(
 
 	// Default texture usage if none is given
 	if options.usage == {} {
-		options.usage = {.TextureBinding, .CopyDst, .RenderAttachment}
+		options.usage = {.Texture_Binding, .Copy_Dst, .Render_Attachment}
 	}
 
 	// Determine the texture format based on the image info or use the preferred format
@@ -442,7 +442,7 @@ create_cubemap_texture_from_files :: proc(
 	}
 
 	// Create the cubemap texture
-	texture_desc := wgpu.TextureDescriptor {
+	texture_desc := wgpu.Texture_Descriptor {
 		label = options.label,
 		size = {
 			width = u32(first_img.width),
@@ -463,7 +463,7 @@ create_cubemap_texture_from_files :: proc(
 	// Calculate bytes per row, ensuring it meets the WGPU alignment requirements
 	bytes_per_row := wgpu.texture_format_bytes_per_row(format, u32(first_img.width))
 
-	image_properties_equal :: proc(img1, img2: ImageInfo) -> bool {
+	image_properties_equal :: proc(img1, img2: Image_Info) -> bool {
 		if img1.width != img2.width {return false}
 		if img1.height != img2.height {return false}
 		if img1.channels != img2.channels {return false}
@@ -487,11 +487,11 @@ create_cubemap_texture_from_files :: proc(
 		}
 
 		// Copy the face image to the appropriate layer of the cubemap texture
-		origin := wgpu.Origin3D{0, 0, u32(i)}
+		origin := wgpu.Origin_3D{0, 0, u32(i)}
 
 		// Prepare image data for upload
 		image_copy_texture := wgpu.texture_as_image_copy(out.texture, origin)
-		texture_data_layout := wgpu.TexelCopyBufferLayout {
+		texture_data_layout := wgpu.Texel_Copy_Buffer_Layout {
 			offset         = 0,
 			bytes_per_row  = bytes_per_row,
 			rows_per_image = u32(img.height),
@@ -509,7 +509,7 @@ create_cubemap_texture_from_files :: proc(
 		) or_return
 	}
 
-	cube_view_descriptor := wgpu.TextureViewDescriptor {
+	cube_view_descriptor := wgpu.Texture_View_Descriptor {
 		label             = "Cube Texture View",
 		format            = wgpu.texture_format(out.texture), // Use the same format as the texture
 		dimension         = .Cube,
@@ -525,7 +525,7 @@ create_cubemap_texture_from_files :: proc(
 	}
 
 	// Create a sampler with linear filtering for smooth interpolation.
-	sampler_descriptor := wgpu.SamplerDescriptor {
+	sampler_descriptor := wgpu.Sampler_Descriptor {
 		address_mode_u = .Repeat,
 		address_mode_v = .Repeat,
 		address_mode_w = .Repeat,
@@ -546,7 +546,7 @@ create_cubemap_texture_from_files :: proc(
 	return out, true
 }
 
-image_info_texture_format :: proc(info: ImageInfo) -> wgpu.TextureFormat {
+image_info_texture_format :: proc(info: Image_Info) -> wgpu.Texture_Format {
 	if info.is_hdr {
 		switch info.channels {
 		case 1:
@@ -579,7 +579,7 @@ image_info_texture_format :: proc(info: ImageInfo) -> wgpu.TextureFormat {
 	return .Rgba8Unorm // Default to RGBA8 if channels are unexpected
 }
 
-image_data_convert :: proc(img: ^ImageData, allocator := context.allocator) -> (ok: bool) {
+image_data_convert :: proc(img: ^Image_Data, allocator := context.allocator) -> (ok: bool) {
 	RGB_CHANNELS :: 3
 	RGBA_CHANNELS :: 4
 

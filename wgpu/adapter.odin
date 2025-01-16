@@ -40,7 +40,7 @@ If another device is wanted, call `instance_request_adapter` again to get a fres
 @(require_results)
 adapter_request_device :: proc(
 	self: Adapter,
-	descriptor: Maybe(DeviceDescriptor) = nil,
+	descriptor: Maybe(Device_Descriptor) = nil,
 	loc := #caller_location,
 ) -> (
 	device: Device,
@@ -51,14 +51,14 @@ adapter_request_device :: proc(
 		return adapter_request_device_raw(self, nil, loc)
 	}
 
-	raw_desc: WGPUDeviceDescriptor
+	raw_desc: WGPU_Device_Descriptor
 
-	c_label: StringViewBuffer
+	c_label: String_View_Buffer
 	if desc.label != "" {
 		raw_desc.label = init_string_buffer(&c_label, desc.label)
 	}
 
-	features: sa.Small_Array(MAX_FEATURES, FeatureName)
+	features: sa.Small_Array(MAX_FEATURES, Feature_Name)
 
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 	ta := context.temp_allocator
@@ -103,7 +103,7 @@ adapter_request_device :: proc(
 	// If no limits is provided, default to the most restrictive limits
 	limits := desc.required_limits if desc.required_limits != {} else DEFAULT_MINIMUM_LIMITS
 
-	// Why wgpu returns 0 for some supported limits?
+	// WGPU returns 0 for unused limits
 	// Enforce minimum values for all limits even if the current values are lower
 	limits_ensure_minimum(&limits, DEFAULT_MINIMUM_LIMITS)
 
@@ -122,7 +122,7 @@ adapter_request_device :: proc(
 		}
 	}
 
-	base_limits := WGPULimits {
+	base_limits := WGPU_Limits {
 		max_texture_dimension_1d                        = limits.max_texture_dimension_1d,
 		max_texture_dimension_2d                        = limits.max_texture_dimension_2d,
 		max_texture_dimension_3d                        = limits.max_texture_dimension_3d,
@@ -156,8 +156,8 @@ adapter_request_device :: proc(
 		max_compute_workgroups_per_dimension            = limits.max_compute_workgroups_per_dimension,
 	}
 
-	native_limits := WGPUNativeLimits {
-		chain = {stype = SType.NativeLimits},
+	native_limits := WGPU_Native_Limits {
+		chain = {stype = SType.Native_Limits},
 	}
 	native_limits = {
 		max_push_constant_size   = limits.max_push_constant_size,
@@ -171,12 +171,12 @@ adapter_request_device :: proc(
 	raw_desc.uncaptured_error_callback_info = desc.uncaptured_error_callback_info
 
 	when ODIN_DEBUG {
-		device_extras := WGPUDeviceExtras {
-			chain = {stype = .DeviceExtras},
+		device_extras := WGPU_Device_Extras {
+			chain = {stype = .Device_Extras},
 		}
 		// Write a trace of all commands to a file so it can be reproduced
 		// elsewhere. The trace is cross-platform.
-		c_trace_path: StringViewBuffer
+		c_trace_path: String_View_Buffer
 		if desc.trace_path != "" {
 			device_extras.trace_path = init_string_buffer(&c_trace_path, desc.trace_path)
 			raw_desc.next_in_chain = &device_extras.chain
@@ -186,36 +186,36 @@ adapter_request_device :: proc(
 	return adapter_request_device_raw(self, &raw_desc, loc)
 }
 
-RequestDeviceStatus :: enum i32 {
-	Success         = 0x00000001,
-	InstanceDropped = 0x00000002,
-	Error           = 0x00000003,
-	Unknown         = 0x00000004,
+Request_Device_Status :: enum i32 {
+	Success          = 0x00000001,
+	Instance_Dropped = 0x00000002,
+	Error            = 0x00000003,
+	Unknown          = 0x00000004,
 }
 
 @(private)
 adapter_request_device_raw :: proc(
 	self: Adapter,
-	descriptor: ^WGPUDeviceDescriptor = nil,
+	descriptor: ^WGPU_Device_Descriptor = nil,
 	loc := #caller_location,
 ) -> (
 	device: Device,
 	ok: bool,
 ) {
-	DeviceResponse :: struct {
-		status:  RequestDeviceStatus,
+	Device_Response :: struct {
+		status:  Request_Device_Status,
 		device:  Device,
-		message: StringView,
+		message: String_View,
 	}
 
 	adapter_request_device_callback :: proc "c" (
-		status: RequestDeviceStatus,
+		status: Request_Device_Status,
 		device: Device,
-		message: StringView,
+		message: String_View,
 		userdata1: rawptr,
 		userdata2: rawptr,
 	) {
-		response := cast(^DeviceResponse)userdata1
+		response := cast(^Device_Response)userdata1
 
 		response.status = status
 		response.message = message
@@ -225,15 +225,15 @@ adapter_request_device_raw :: proc(
 		}
 	}
 
-	res: DeviceResponse
-	callback_info := RequestDeviceCallbackInfo {
+	res: Device_Response
+	callback_info := Request_Device_Callback_Info {
 		callback  = adapter_request_device_callback,
 		userdata1 = &res,
 	}
 
 	// Force the uncaptured error callback in debug mode
 	when ODIN_DEBUG {
-		desc: WGPUDeviceDescriptor
+		desc: WGPU_Device_Descriptor
 		desc = descriptor^ if descriptor != nil else {}
 		// Errors will propagate from this callback
 		desc.uncaptured_error_callback_info.callback = uncaptured_error_data_callback
@@ -266,7 +266,7 @@ adapter_request_device_raw :: proc(
 
 /* Returns whether this adapter may present to the passed surface. */
 adapter_is_surface_supported :: proc(self: Adapter, surface: Surface) -> bool {
-	raw_caps: WGPUSurfaceCapabilities
+	raw_caps: WGPU_Surface_Capabilities
 	status := wgpuSurfaceGetCapabilities(surface, self, &raw_caps)
 	defer wgpuSurfaceCapabilitiesFreeMembers(raw_caps)
 	// If wgpuSurfaceGetCapabilities returns Error, then the API does not advertise
@@ -276,7 +276,7 @@ adapter_is_surface_supported :: proc(self: Adapter, surface: Surface) -> bool {
 
 /* The features which can be used to create devices on this adapter. */
 adapter_features :: proc "contextless" (self: Adapter) -> (features: Features) #no_bounds_check {
-	supported: SupportedFeatures
+	supported: WGPU_Supported_Features
 	wgpuAdapterGetFeatures(self, &supported)
 	defer wgpuSupportedFeaturesFreeMembers(supported)
 
@@ -310,10 +310,10 @@ adapter_limits :: proc "contextless" (
 	limits: Limits,
 	ok: bool,
 ) #optional_ok {
-	native := WGPUNativeLimits {
-		chain = {stype = SType.NativeLimits},
+	native := WGPU_Native_Limits {
+		chain = {stype = SType.Native_Limits},
 	}
-	base := WGPULimits {
+	base := WGPU_Limits {
 		next_in_chain = &native.chain,
 	}
 
@@ -323,13 +323,13 @@ adapter_limits :: proc "contextless" (
 		return
 	}
 	if status != .Success {
-		error_update_data(ErrorType.Unknown, "Failed to fill adapter limits")
+		error_update_data(Error_Type.Unknown, "Failed to fill adapter limits")
 		return
 	}
 
 	limits = limits_merge_webgpu_with_native(base, native)
 
-	// Why wgpu returns 0 for some supported limits?
+	// WGPU returns 0 for unused limits
 	// Enforce minimum values for all limits even if the returned values are lower
 	limits_ensure_minimum(&limits, DEFAULT_MINIMUM_LIMITS)
 
@@ -342,15 +342,15 @@ adapter_get_info :: proc(
 	allocator := context.allocator,
 	loc := #caller_location,
 ) -> (
-	info: AdapterInfo,
+	info: Adapter_Info,
 	ok: bool,
 ) #optional_ok {
-	raw_info: WGPUAdapterInfo
+	raw_info: WGPU_Adapter_Info
 	status := wgpuAdapterGetInfo(self, &raw_info)
 	defer wgpuAdapterInfoFreeMembers(raw_info)
 
 	if status != .Success {
-		error_reset_and_update(ErrorType.Unknown, "Failed to fill adapter information", loc)
+		error_reset_and_update(Error_Type.Unknown, "Failed to fill adapter information", loc)
 		return
 	}
 
@@ -361,8 +361,8 @@ adapter_get_info :: proc(
 
 @(private)
 fill_adapter_info :: proc(
-	self: ^AdapterInfo,
-	raw_info: ^WGPUAdapterInfo,
+	self: ^Adapter_Info,
+	raw_info: ^WGPU_Adapter_Info,
 	allocator: runtime.Allocator,
 ) {
 	if raw_info.vendor.length > 0 {
@@ -387,8 +387,8 @@ fill_adapter_info :: proc(
 	self.device_id = raw_info.device_id
 }
 
-/* Release the `AdapterInfo` resources (remove the allocated strings). */
-adapter_info_free_members :: proc(self: AdapterInfo, allocator := context.allocator) {
+/* Release the `Adapter_Info` resources (remove the allocated strings). */
+adapter_info_free_members :: proc(self: Adapter_Info, allocator := context.allocator) {
 	context.allocator = allocator
 	if len(self.vendor) > 0 {delete(self.vendor)}
 	if len(self.architecture) > 0 {delete(self.architecture)}
@@ -398,7 +398,7 @@ adapter_info_free_members :: proc(self: AdapterInfo, allocator := context.alloca
 
 /* Get info about the adapter itself as `string`. */
 adapter_info_string :: proc(
-	info: AdapterInfo,
+	info: Adapter_Info,
 	allocator := context.allocator,
 ) -> (
 	str: string,
@@ -423,9 +423,9 @@ adapter_info_string :: proc(
 
 	device_type: string
 	switch info.device_type {
-	case .DiscreteGPU:
+	case .Discrete_GPU:
 		device_type = "Discrete GPU with separate CPU/GPU memory"
-	case .IntegratedGPU:
+	case .Integrated_GPU:
 		device_type = "Integrated GPU with shared CPU/GPU memory"
 	case .CPU:
 		device_type = "Cpu / Software Rendering"
@@ -466,7 +466,7 @@ adapter_info_string :: proc(
 }
 
 /* Print info about the adapter itself. */
-adapter_info_print_info :: proc(info: AdapterInfo) {
+adapter_info_print_info :: proc(info: Adapter_Info) {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 	fmt.printfln("%s", adapter_info_string(info, context.temp_allocator))
 }
@@ -479,10 +479,10 @@ To disable these restrictions on a device, request the [`Features::TEXTURE_ADAPT
 */
 adapter_get_texture_format_features :: proc(
 	self: Adapter,
-	format: TextureFormat,
+	format: Texture_Format,
 	loc := #caller_location,
 ) -> (
-	features: TextureFormatFeatures,
+	features: Texture_Format_Features,
 ) {
 	adapter_features := adapter_features(self)
 	return texture_format_guaranteed_format_features(format, adapter_features)
@@ -508,32 +508,32 @@ adapter_release_safe :: #force_inline proc(self: ^Adapter) {
 }
 
 @(private)
-WGPUDeviceExtras :: struct {
-	chain:      ChainedStruct,
-	trace_path: StringView,
+WGPU_Device_Extras :: struct {
+	chain:      Chained_Struct,
+	trace_path: String_View,
 }
 
 @(private)
-WGPUDeviceDescriptor :: struct {
-	next_in_chain:                  ^ChainedStruct,
-	label:                          StringView,
+WGPU_Device_Descriptor :: struct {
+	next_in_chain:                  ^Chained_Struct,
+	label:                          String_View,
 	required_feature_count:         uint,
-	required_features:              [^]FeatureName,
-	required_limits:                ^WGPULimits,
-	default_queue:                  QueueDescriptor,
-	device_lost_callback_info:      DeviceLostCallbackInfo,
-	uncaptured_error_callback_info: UncapturedErrorCallbackInfo,
+	required_features:              [^]Feature_Name,
+	required_limits:                ^WGPU_Limits,
+	default_queue:                  Queue_Descriptor,
+	device_lost_callback_info:      Device_Lost_Callback_Info,
+	uncaptured_error_callback_info: Uncaptured_Error_Callback_Info,
 }
 
 @(private)
-WGPUAdapterInfo :: struct {
-	next_in_chain: ^ChainedStructOut,
-	vendor:        StringView,
-	architecture:  StringView,
-	device:        StringView,
-	description:   StringView,
+WGPU_Adapter_Info :: struct {
+	next_in_chain: ^Chained_Struct_Out,
+	vendor:        String_View,
+	architecture:  String_View,
+	device:        String_View,
+	description:   String_View,
 	backend:       Backend,
-	device_type:   DeviceType,
+	device_type:   Device_Type,
 	vendor_id:     u32,
 	device_id:     u32,
 }

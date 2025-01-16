@@ -22,7 +22,7 @@ set_log_callback :: wgpuSetLogCallback
 /*
 Defines the available log levels for WGPU logging, levels are ordered from least to most verbose.
 */
-LogLevel :: enum i32 {
+Log_Level :: enum i32 {
 	Off,
 	Error,
 	Warn,
@@ -40,9 +40,9 @@ Inputs:
 - `message`: The content of the log message as a string view
 - `user_data`: Optional pointer to user-provided data that was passed when setting the callback
 */
-LogCallback :: #type proc "c" (level: LogLevel, message: StringView, user_data: rawptr)
+Log_Callback :: #type proc "c" (level: Log_Level, message: String_View, user_data: rawptr)
 
-convert_odin_to_wgpu_log_level :: proc(level: runtime.Logger_Level) -> LogLevel {
+convert_odin_to_wgpu_log_level :: proc(level: runtime.Logger_Level) -> Log_Level {
 	// odinfmt: disable
 	switch {
 	case level < .Debug   : return .Trace
@@ -54,7 +54,7 @@ convert_odin_to_wgpu_log_level :: proc(level: runtime.Logger_Level) -> LogLevel 
 	// odinfmt: enable
 }
 
-convert_wgpu_to_odin_log_level :: proc(level: LogLevel) -> runtime.Logger_Level {
+convert_wgpu_to_odin_log_level :: proc(level: Log_Level) -> runtime.Logger_Level {
 	// odinfmt: disable
 	switch level {
 	case .Off,   .Trace, .Debug : return .Debug

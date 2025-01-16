@@ -1,4 +1,4 @@
-package imgui_generator
+package imgui_gen
 
 // Packages
 import "base:runtime"
@@ -38,7 +38,8 @@ write_enums :: proc(gen: ^Generator, handle: os.Handle, json_data: ^json.Value) 
 			enum_name_raw_no_suffix = enum_name_raw[:len(enum_name_raw) - 1]
 		}
 
-		enum_name := remove_imgui(enum_name_raw_no_suffix, gen.allocator)
+		enum_name := remove_imgui(enum_name_raw_no_suffix, gen.tmp_ally)
+		enum_name = pascal_to_ada_case(enum_name, gen.allocator)
 
 		// Add this name to the map of identifiers found, will be used later
 		// to generate remain definitions
@@ -65,38 +66,38 @@ write_enums :: proc(gen: ^Generator, handle: os.Handle, json_data: ^json.Value) 
 	}
 }
 
-EnumKind :: enum {
+Enum_Kind :: enum {
 	None,
 	Basic,
 	Bitset,
 }
 
-EnumConstant :: struct {
+Enum_Constant :: struct {
 	allocator: mem.Allocator,
 	comment:   string,
 	name:      string,
 	value:     int,
 }
 
-AliasConstant :: struct {
+Alias_Constant :: struct {
 	name:  string,
 	value: int,
 }
 
-GroupedAliases :: struct {
+Grouped_Aliases :: struct {
 	name:    string,
 	aliases: [dynamic]string,
 }
 
-EnumDefinition :: struct {
+Enum_Definition :: struct {
 	allocator:    mem.Allocator,
-	kind:         EnumKind,
+	kind:         Enum_Kind,
 	name:         string,
 	comment:      string,
-	constants:    [dynamic]EnumConstant,
-	alias_values: [dynamic]AliasConstant,
+	constants:    [dynamic]Enum_Constant,
+	alias_values: [dynamic]Alias_Constant,
 	flags:        [dynamic]string,
-	flag_groups:  [dynamic]GroupedAliases,
+	flag_groups:  [dynamic]Grouped_Aliases,
 }
 
 create_enum_entry :: proc(
@@ -107,7 +108,7 @@ create_enum_entry :: proc(
 	is_flags: bool,
 	allocator: runtime.Allocator,
 ) -> (
-	entry: EnumDefinition,
+	entry: Enum_Definition,
 ) {
 	entry.allocator = allocator
 
@@ -121,23 +122,12 @@ create_enum_entry :: proc(
 	ta := context.temp_allocator
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
-	comments_b := strings.builder_make(ta)
-
-	if comments_value, has_comments := enum_entry["comments"]; has_comments {
-		comments_obj := comments_value.(json.Object)
-		if comments_preceding_value, has_preceding := comments_obj["preceding"]; has_preceding {
-			comments_preceding := comments_preceding_value.(json.Array)
-			for &c in comments_preceding {
-				comment := c.(json.String)
-				strings.write_string(&comments_b, comment)
-				strings.write_byte(&comments_b, '\n')
-			}
-		}
-	}
-
-	comments_preceding := strings.to_string(comments_b)
-	if comments_preceding != "" {
-		entry.comment = strings.clone(comments_preceding, allocator)
+	// Get preceding comments (if any)
+	if preceding_comments, preceding_comments_ok := get_preceding_comments(
+		obj = enum_entry,
+		allocator = allocator,
+	); preceding_comments_ok {
+		entry.comment = preceding_comments
 	}
 
 	if is_flags {
@@ -179,7 +169,7 @@ create_enum_entry :: proc(
 		value := int(json_value) // Convert float to int first
 
 		if strings.starts_with(entry_name, "ImGui") {
-			append(&entry.alias_values, AliasConstant{entry_name, value})
+			append(&entry.alias_values, Alias_Constant{entry_name, value})
 			continue
 		}
 
@@ -194,7 +184,7 @@ create_enum_entry :: proc(
 			if expr, expr_ok := json_get_string(&e, "value_expression"); expr_ok {
 				if strings.contains(expr, "|") {
 					flags := strings.fields(expr, ta)
-					flag_groups: GroupedAliases;flag_groups.aliases.allocator = allocator
+					flag_groups: Grouped_Aliases;flag_groups.aliases.allocator = allocator
 					flag_groups.name = strings.clone(entry_name, allocator)
 					for f in flags {
 						if f == "|" {
@@ -221,21 +211,12 @@ create_enum_entry :: proc(
 			}
 		}
 
-		comment_attached: string
-
-		if comments_value, has_comments := element_obj["comments"]; has_comments {
-			comments_obj := comments_value.(json.Object)
-			if comments_attached_value, has_attached := comments_obj["attached"]; has_attached {
-				comment_attached = strings.clone(comments_attached_value.(json.String), allocator)
-			}
-		}
-
 		append(
 			&entry.constants,
-			EnumConstant {
+			Enum_Constant {
 				allocator = allocator,
-				comment = comment_attached,
-				name = strings.clone(entry_name, allocator),
+				comment = get_attached_comments(&element_obj, allocator),
+				name = pascal_to_ada_case(entry_name, allocator),
 				value = value,
 			},
 		)
@@ -244,7 +225,7 @@ create_enum_entry :: proc(
 	return
 }
 
-write_enum_entry :: proc(entry: EnumDefinition, handle: os.Handle) {
+write_enum_entry :: proc(entry: Enum_Definition, handle: os.Handle) {
 	ta := context.temp_allocator
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
@@ -274,7 +255,7 @@ write_enum_entry :: proc(entry: EnumDefinition, handle: os.Handle) {
 	strings.write_string(&b, " {")
 	strings.write_rune(&b, '\n')
 
-	can_be_constant := [?]string{"NamedKey_"}
+	can_be_constant := [?]string{"Named_Key_"}
 	check_can_be_constant :: proc(arr: []string, name: string) -> bool {
 		for v in arr {
 			if strings.starts_with(name, v) {
@@ -284,14 +265,14 @@ write_enum_entry :: proc(entry: EnumDefinition, handle: os.Handle) {
 		return false
 	}
 
-	constants: [dynamic]EnumConstant;constants.allocator = ta
+	constants: [dynamic]Enum_Constant;constants.allocator = ta
 	found_count: bool
 
 	create_enum_constant :: proc(
-		entry: EnumDefinition,
-		curr: EnumConstant,
+		entry: Enum_Definition,
+		curr: Enum_Constant,
 		allocator: runtime.Allocator,
-	) -> EnumConstant {
+	) -> Enum_Constant {
 		name := strings.concatenate({entry.name, "_", curr.name}, allocator = allocator)
 		name = to_constant_case(name, allocator)
 		value := curr.value
@@ -383,12 +364,14 @@ write_enum_entry :: proc(entry: EnumDefinition, handle: os.Handle) {
 					for f, _ in curr {
 						flag_entry_name := f[strings.index(f, "_") + 1:]
 						strings.write_byte(&b_flags, '.')
+						flag_entry_name = pascal_to_ada_case(flag_entry_name, ta)
 						strings.write_string(&b_flags, flag_entry_name)
 						strings.write_string(&b_flags, ", ")
 					}
 					continue
 				}
 				flag_entry_name := flag[strings.index(flag, "_") + 1:]
+				flag_entry_name = pascal_to_ada_case(flag_entry_name, ta)
 				strings.write_byte(&b_flags, '.')
 				strings.write_string(&b_flags, flag_entry_name)
 				if flag_idx < len(v.aliases) - 1 {

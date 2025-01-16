@@ -12,15 +12,15 @@ import "root:wgpu"
 Example :: struct {
 	vertex_buffer:      wgpu.Buffer,
 	index_buffer:       wgpu.Buffer,
-	render_pipeline:    wgpu.RenderPipeline,
-	depth_stencil_view: wgpu.TextureView,
+	render_pipeline:    wgpu.Render_Pipeline,
+	depth_stencil_view: wgpu.Texture_View,
 	uniform_buffer:     wgpu.Buffer,
 	cube_texture:       app.Texture,
-	uniform_bind_group: wgpu.BindGroup,
+	uniform_bind_group: wgpu.Bind_Group,
 	projection_matrix:  la.Matrix4f32,
 	render_pass:        struct {
-		color_attachments: [1]wgpu.RenderPassColorAttachment,
-		descriptor:        wgpu.RenderPassDescriptor,
+		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
+		descriptor:        wgpu.Render_Pass_Descriptor,
 	},
 }
 
@@ -56,7 +56,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	attributes := wgpu.vertex_attr_array(2, {0, .Float32x4}, {1, .Float32x2})
 
-	vertex_buffer_layout := wgpu.VertexBufferLayout {
+	vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
 		array_stride = size_of(Vertex),
 		step_mode    = .Vertex,
 		attributes   = attributes[:],
@@ -79,7 +79,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.render_pipeline = wgpu.device_create_render_pipeline(
 		ctx.gpu.device,
-		descriptor = wgpu.RenderPipelineDescriptor {
+		descriptor = wgpu.Render_Pipeline_Descriptor {
 			vertex = {
 				module = shader_module,
 				entry_point = "vs_main",
@@ -97,7 +97,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				},
 			},
 			primitive = {
-				topology   = .TriangleList,
+				topology   = .Triangle_List,
 				front_face = .CCW,
 				// Backface culling since the cube is solid piece of geometry.
 				// Faces pointing away from the camera will be occluded by faces
@@ -126,21 +126,17 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.uniform_buffer = wgpu.device_create_buffer(
 		ctx.gpu.device,
-		descriptor = wgpu.BufferDescriptor {
+		descriptor = wgpu.Buffer_Descriptor {
 			label = EXAMPLE_TITLE + " Uniform Buffer",
 			size  = size_of(la.Matrix4f32), // 4x4 matrix
-			usage = {.Uniform, .CopyDst},
+			usage = {.Uniform, .Copy_Dst},
 		},
 	) or_return
 	defer if !ok {
 		wgpu.release(ctx.uniform_buffer)
 	}
 
-	ctx.cube_texture = app.create_texture_from_file(
-		"./assets/textures/Di-3d.png",
-		ctx.gpu.device,
-		ctx.gpu.queue,
-	) or_return
+	ctx.cube_texture = app.create_texture_from_file(ctx, "./assets/textures/Di-3d.png") or_return
 	defer if !ok {
 		app.texture_release(ctx.cube_texture)
 	}
@@ -158,7 +154,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 			entries = {
 				{
 					binding = 0,
-					resource = wgpu.BufferBinding {
+					resource = wgpu.Buffer_Binding {
 						buffer = ctx.uniform_buffer,
 						size = wgpu.WHOLE_SIZE,
 					},
@@ -174,7 +170,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.render_pass.color_attachments[0] = {
 		view = nil, /* Assigned later */
-		ops  = {.Clear, .Store, app.ColorDarkGray},
+		ops  = {.Clear, .Store, app.Color_Dark_Gray},
 	}
 
 	app.setup_depth_stencil(ctx, {format = DEFAULT_DEPTH_FORMAT}) or_return
@@ -222,7 +218,7 @@ get_transformation_matrix :: proc(ctx: ^Context) -> (mvp_mat: la.Matrix4f32) {
 	return
 }
 
-resize :: proc(ctx: ^Context, size: app.ResizeEvent) -> bool {
+resize :: proc(ctx: ^Context, size: app.Resize_Event) -> bool {
 	app.setup_depth_stencil(ctx, {format = DEFAULT_DEPTH_FORMAT}) or_return
 	set_projection_matrix(ctx, size.w, size.h)
 	return true

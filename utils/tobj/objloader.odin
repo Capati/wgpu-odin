@@ -42,7 +42,7 @@ Material :: struct {
 	unknown_param:      map[string]string,
 }
 
-MaterialMap :: map[string]Material
+Material_Map :: map[string]Material
 
 Mesh :: struct {
 	allocator:         runtime.Allocator,
@@ -64,33 +64,33 @@ Model :: struct {
 	name:      string,
 }
 
-VertexIndices :: struct {
+Vertex_Indices :: struct {
 	v, vt, vn: int,
 }
 
 Point :: struct {
-	a: VertexIndices,
+	a: Vertex_Indices,
 }
 
 Line :: struct {
-	a: VertexIndices,
-	b: VertexIndices,
+	a: Vertex_Indices,
+	b: Vertex_Indices,
 }
 
 Triangle :: struct {
-	a: VertexIndices,
-	b: VertexIndices,
-	c: VertexIndices,
+	a: Vertex_Indices,
+	b: Vertex_Indices,
+	c: Vertex_Indices,
 }
 
 Quad :: struct {
-	a: VertexIndices,
-	b: VertexIndices,
-	c: VertexIndices,
-	d: VertexIndices,
+	a: Vertex_Indices,
+	b: Vertex_Indices,
+	c: Vertex_Indices,
+	d: Vertex_Indices,
 }
 
-Polygon :: [dynamic]VertexIndices
+Polygon :: [dynamic]Vertex_Indices
 
 Face :: union {
 	Point,
@@ -100,26 +100,26 @@ Face :: union {
 	Polygon,
 }
 
-LoadSettings :: struct {
+Load_Settings :: struct {
 	triangulate:   bool,
 	ignore_points: bool,
 	ignore_lines:  bool,
 }
 
-DEFAULT_LOAD_SETTINGS :: LoadSettings {
+DEFAULT_LOAD_SETTINGS :: Load_Settings {
 	triangulate   = true,
 	ignore_points = true,
 	ignore_lines  = true,
 }
 
 /* Maps unique vertex combinations to mesh indices */
-IndexMap :: map[VertexIndices]u32
+Index_Map :: map[Vertex_Indices]u32
 
-TempData :: struct {
+Temp_Data :: struct {
 	line_allocator: mem.Allocator,
 	marker:         Marker,
-	settings:       LoadSettings,
-	index_map:      IndexMap,
+	settings:       Load_Settings,
+	index_map:      Index_Map,
 	vertices:       [dynamic]f32,
 	colors:         [dynamic]f32,
 	texture_coords: [dynamic]f32,
@@ -163,7 +163,7 @@ load_obj_bytes :: proc(
 	mem.arena_init(&line_block_arena, line_block[:])
 	line_allocator := mem.arena_allocator(&line_block_arena)
 
-	data: TempData
+	data: Temp_Data
 	data.line_allocator = line_allocator
 	data.settings = settings
 	data.index_map.allocator = ally
@@ -534,7 +534,7 @@ load_mtl :: proc {
 
 add_mesh :: proc(
 	models: ^[dynamic]Model,
-	data: ^TempData,
+	data: ^Temp_Data,
 	material_id: uint,
 	name: string,
 ) -> (
@@ -612,12 +612,12 @@ Parse the vertex indices from the face string.
 @(require_results)
 parse_face_indices :: proc(
 	face_str: string,
-	data: ^TempData,
+	data: ^Temp_Data,
 ) -> (
-	indices: VertexIndices,
+	indices: Vertex_Indices,
 	err: Maybe(Error),
 ) {
-	indices = VertexIndices {
+	indices = Vertex_Indices {
 		v  = MISSING_INDEX,
 		vt = MISSING_INDEX,
 		vn = MISSING_INDEX,
@@ -684,8 +684,8 @@ Parse vertex indices for a face and append it to the list of faces passed.
 
 Returns `Error` if an error occurred parsing the face.
 */
-parse_face :: proc(tokens: []string, data: ^TempData) -> (err: Maybe(Error)) {
-	indices := make([dynamic]VertexIndices, data.line_allocator)
+parse_face :: proc(tokens: []string, data: ^Temp_Data) -> (err: Maybe(Error)) {
+	indices := make([dynamic]Vertex_Indices, data.line_allocator)
 
 	for token in tokens {
 		res := parse_face_indices(token, data) or_return
@@ -713,7 +713,7 @@ Add a vertex to a mesh by either re-using an existing index (e.g. it's in
 the `index_map`) or appending the position, texcoord and normal as
 appropriate and creating a new vertex.
 */
-add_vertex :: proc(mesh: ^Mesh, vert: VertexIndices, data: ^TempData) -> (err: Maybe(Error)) {
+add_vertex :: proc(mesh: ^Mesh, vert: Vertex_Indices, data: ^Temp_Data) -> (err: Maybe(Error)) {
 	// Check if this exact combination of vertex attributes already exists
 	if index, exists := data.index_map[vert]; exists {
 		append(&mesh.indices, index) // Reuse existing vertex
@@ -797,7 +797,7 @@ add_vertex :: proc(mesh: ^Mesh, vert: VertexIndices, data: ^TempData) -> (err: M
 }
 
 export_faces :: proc(
-	data: ^TempData,
+	data: ^Temp_Data,
 	allocator := context.allocator,
 ) -> (
 	mesh: Mesh,

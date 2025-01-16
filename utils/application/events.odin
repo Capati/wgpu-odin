@@ -14,26 +14,26 @@ import mu "vendor:microui"
 import im "./../imgui"
 import wmu "./../microui"
 
-InputAction :: enum u8 {
+Input_Action :: enum u8 {
 	None,
 	Pressed,
 	Released,
 }
 
-KeyEvent :: struct {
+Key_Event :: struct {
 	key:       Key,
 	scancode:  i32,
 	is_repeat: bool,
-	action:    InputAction,
+	action:    Input_Action,
 }
 
-MousePosition :: struct {
+Mouse_Position :: struct {
 	x, y: f32,
 }
 
-MouseMovedEvent :: distinct MousePosition
+Mouse_Moved_Event :: distinct Mouse_Position
 
-MouseButton :: enum i32 {
+Mouse_Button :: enum i32 {
 	Unknown = -1,
 	Left    = glfw.MOUSE_BUTTON_LEFT,
 	Middle  = glfw.MOUSE_BUTTON_MIDDLE,
@@ -42,34 +42,34 @@ MouseButton :: enum i32 {
 	Five    = glfw.MOUSE_BUTTON_5,
 }
 
-MouseButtonEvent :: struct {
-	button:  MouseButton,
-	action:  InputAction,
-	pos:     MousePosition,
+Mouse_Button_Event :: struct {
+	button:  Mouse_Button,
+	action:  Input_Action,
+	pos:     Mouse_Position,
 	presses: u32,
 }
 
-MouseWheelEvent :: distinct MousePosition
+Mouse_Wheel_Event :: distinct Mouse_Position
 
-ResizeEvent :: WindowSize
+Resize_Event :: Window_Size
 
-MinimizedEvent :: struct {
+Minimized_Event :: struct {
 	value: bool,
 }
 
-RestoredEvent :: struct {
+Restored_Event :: struct {
 	value: bool,
 }
 
-QuitEvent :: struct {}
+Quit_Event :: struct {}
 
 Event :: union {
-	KeyEvent,
+	Key_Event,
 	// TextInputEvent,
 	// TextEditedEvent,
-	MouseMovedEvent,
-	MouseButtonEvent,
-	MouseWheelEvent,
+	Mouse_Moved_Event,
+	Mouse_Button_Event,
+	Mouse_Wheel_Event,
 	// JoystickPressedEvent,
 	// JoystickAxisMotionEvent,
 	// JoystickHatMotionEvent,
@@ -79,27 +79,27 @@ Event :: union {
 	// GamepadSensorUpdateEvent,
 	// FocusEvent,
 	// MouseFocusEvent,
-	ResizeEvent,
+	Resize_Event,
 	// VisibleEvent,
 	// MovedEvent,
-	MinimizedEvent,
-	RestoredEvent,
+	Minimized_Event,
+	Restored_Event,
 	// DisplayRotatedEvent,
-	QuitEvent,
+	Quit_Event,
 }
 
 /* FIFO Queue */
-EventList :: distinct queue.Queue(Event)
+Event_List :: distinct queue.Queue(Event)
 
 /* Default events queue capacity */
 DEFAULT_EVENTS_CAPACITY :: #config(DEFAULT_EVENTS_CAPACITY, 16)
 
-EventState :: struct {
-	data:            EventList,
+Event_State :: struct {
+	data:            Event_List,
 	window_dragging: bool,
 }
 
-event_init :: proc(self: ^EventState) -> (ok: bool) {
+event_init :: proc(self: ^Event_State) -> (ok: bool) {
 	if err := queue.init(&self.data, DEFAULT_EVENTS_CAPACITY); err != nil {
 		log.fatalf("Failed to initialize events: [%v]", err)
 		return
@@ -108,47 +108,47 @@ event_init :: proc(self: ^EventState) -> (ok: bool) {
 }
 
 /* Clears the event queue. */
-event_clear :: proc(self: ^EventState) {
+event_clear :: proc(self: ^Event_State) {
 	queue.clear(&self.data)
 }
 
 // Pop the next event from the front of the FIFO event queue, if any, and return it.
-event_poll :: proc(self: ^EventState, event: ^Event) -> (has_next: bool) {
+event_poll :: proc(self: ^Event_State, event: ^Event) -> (has_next: bool) {
 	event^, has_next = event_pop(self)
 	return
 }
 
 // Adds an event to the event queue.
-event_push :: proc(self: ^EventState, event: Event) {
+event_push :: proc(self: ^Event_State, event: Event) {
 	queue.push_front(&self.data, event)
 }
 
 // Wait for and return the next available window event
-event_wait :: proc(self: ^EventState, event: ^Event, timeout: f64 = 0) -> (has_next: bool) {
+event_wait :: proc(self: ^Event_State, event: ^Event, timeout: f64 = 0) -> (has_next: bool) {
 	glfw.WaitEventsTimeout(timeout)
 	event^, has_next = event_pop(self)
 	return
 }
 
-event_pop :: proc(self: ^EventState) -> (Event, bool) {
+event_pop :: proc(self: ^Event_State) -> (Event, bool) {
 	if !event_is_empty(self) {
 		return queue.pop_back_safe(&self.data)
 	}
 	return nil, false
 }
 
-event_has_next :: proc(self: ^EventState) -> bool {
+event_has_next :: proc(self: ^Event_State) -> bool {
 	return self.data.len > 0
 }
 
-event_is_empty :: proc(self: ^EventState) -> bool {
+event_is_empty :: proc(self: ^Event_State) -> bool {
 	return self.data.len == 0
 }
 
-size_callback :: proc "c" (window: glfw.WindowHandle, width, height: i32) {
+size_callback :: proc "c" (window: Window, width, height: i32) {
 	context = runtime.default_context()
 	app := cast(^Application)glfw.GetWindowUserPointer(window)
-	size := WindowSize{u32(width), u32(height)}
+	size := Window_Size{u32(width), u32(height)}
 	app.framebuffer_size = size
 	// Avoid stack multiple events while user is resizing
 	if app.should_resize {
@@ -158,25 +158,25 @@ size_callback :: proc "c" (window: glfw.WindowHandle, width, height: i32) {
 	app.should_resize = true
 }
 
-minimize_callback :: proc "c" (window: glfw.WindowHandle, iconified: i32) {
+minimize_callback :: proc "c" (window: Window, iconified: i32) {
 	context = runtime.default_context()
 	app := cast(^Application)glfw.GetWindowUserPointer(window)
 	app.minimized = bool(iconified)
-	event_push(&app.events, MinimizedEvent{bool(iconified)})
+	event_push(&app.events, Minimized_Event{bool(iconified)})
 }
 
-focus_callback :: proc "c" (window: glfw.WindowHandle, focused: i32) {
+focus_callback :: proc "c" (window: Window, focused: i32) {
 	context = runtime.default_context()
 	app := cast(^Application)glfw.GetWindowUserPointer(window)
-	event_push(&app.events, RestoredEvent{bool(focused)})
+	event_push(&app.events, Restored_Event{bool(focused)})
 }
 
-key_callback :: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods: i32) {
+key_callback :: proc "c" (window: Window, key, scancode, action, mods: i32) {
 	context = runtime.default_context()
 	app := cast(^Application)glfw.GetWindowUserPointer(window)
 	event_push(
 		&app.events,
-		KeyEvent {
+		Key_Event {
 			key = Key(key),
 			scancode = scancode,
 			action = .Pressed if action == glfw.PRESS || action == glfw.REPEAT else .Released,
@@ -184,30 +184,30 @@ key_callback :: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods
 	)
 }
 
-cursor_position_callback :: proc "c" (window: glfw.WindowHandle, xpos, ypos: f64) {
+cursor_position_callback :: proc "c" (window: Window, xpos, ypos: f64) {
 	context = runtime.default_context()
 	app := cast(^Application)glfw.GetWindowUserPointer(window)
-	event_push(&app.events, MouseMovedEvent{x = f32(xpos), y = f32(ypos)})
+	event_push(&app.events, Mouse_Moved_Event{x = f32(xpos), y = f32(ypos)})
 }
 
-mouse_button_callback :: proc "c" (window: glfw.WindowHandle, button, action, mods: i32) {
+mouse_button_callback :: proc "c" (window: Window, button, action, mods: i32) {
 	context = runtime.default_context()
 	app := cast(^Application)glfw.GetWindowUserPointer(window)
 	xpos, ypos := glfw.GetCursorPos(window)
 	event_push(
 		&app.events,
-		MouseButtonEvent {
-			button = MouseButton(button),
+		Mouse_Button_Event {
+			button = Mouse_Button(button),
 			action = .Pressed if action == glfw.PRESS else .Released,
 			pos = {x = f32(xpos), y = f32(ypos)},
 		},
 	)
 }
 
-scroll_callback :: proc "c" (window: glfw.WindowHandle, xoffset, yoffset: f64) {
+scroll_callback :: proc "c" (window: Window, xoffset, yoffset: f64) {
 	context = runtime.default_context()
 	app := cast(^Application)glfw.GetWindowUserPointer(window)
-	event_push(&app.events, MouseWheelEvent{f32(xoffset), f32(yoffset)})
+	event_push(&app.events, Mouse_Wheel_Event{f32(xoffset), f32(yoffset)})
 }
 
 @(require_results)
@@ -222,7 +222,7 @@ process_events :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization
 		}
 
 		#partial switch &ev in event {
-		case KeyEvent:
+		case Key_Event:
 			if app.exit_key != .Unknown && ev.key == app.exit_key {
 				quit(app)
 			}
@@ -230,32 +230,32 @@ process_events :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization
 				app.callbacks.key(app, ev)
 			}
 
-		case MouseButtonEvent:
+		case Mouse_Button_Event:
 			if app.callbacks.mouse_button != nil {
 				app.callbacks.mouse_button(app, ev)
 			}
 
-		case MouseMovedEvent:
+		case Mouse_Moved_Event:
 			if app.callbacks.mouse_position != nil {
 				app.callbacks.mouse_position(app, ev)
 			}
 
-		case MouseWheelEvent:
+		case Mouse_Wheel_Event:
 			if app.callbacks.wheel_moved != nil {
 				app.callbacks.wheel_moved(app, ev)
 			}
 
-		case MinimizedEvent:
+		case Minimized_Event:
 			if app.callbacks.minimized != nil {
 				app.callbacks.minimized(app, ev.value)
 			}
 
-		case RestoredEvent:
+		case Restored_Event:
 			if app.callbacks.restored != nil {
 				app.callbacks.restored(app, ev.value)
 			}
 
-		case WindowSize:
+		case Window_Size:
 			if app.should_resize && !app.minimized {
 				log.infof(
 					"Framebuffer resize: %d x %d",
@@ -278,7 +278,7 @@ process_events :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization
 				}
 			}
 
-		case QuitEvent:
+		case Quit_Event:
 			quit(app)
 		}
 
@@ -290,7 +290,7 @@ process_events :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization
 	return true
 }
 
-CallbackList :: struct($T: typeid) where intr.type_is_struct(T) {
+Callback_List :: struct($T: typeid) where intr.type_is_struct(T) {
 	// This procedure is called exactly once at the beginning of the application.
 	init:           proc(ctx: ^Context(T)) -> bool,
 	// Callback procedure triggered when the application is closed.
@@ -313,7 +313,7 @@ CallbackList :: struct($T: typeid) where intr.type_is_struct(T) {
 	// // Callback procedure triggered when window receives or loses mouse focus.
 	// mouse_focus:             proc(event: Mouse_Focus_Event, ctx: ^Context(T)),
 	// Called when the window is resized.
-	resize:         proc(ctx: ^Context(T), size: WindowSize) -> bool,
+	resize:         proc(ctx: ^Context(T), size: Window_Size) -> bool,
 	// // Callback procedure triggered when window is shown or hidden.
 	// visible:                 proc(event: Visible_Event, ctx: ^Context(T)),
 	// // Callback procedure triggered when window is moved (dragged).
@@ -324,22 +324,22 @@ CallbackList :: struct($T: typeid) where intr.type_is_struct(T) {
 	restored:       proc(ctx: ^Context(T), focused: bool),
 
 	// Callback procedure triggered when a key is pressed.
-	key:            proc(ctx: ^Context(T), key: KeyEvent),
+	key:            proc(ctx: ^Context(T), key: Key_Event),
 	// // Callback procedure triggered when a keyboard key is released.
-	// key_released:            proc(event: KeyEvent, ctx: ^Context(T)),
+	// key_released:            proc(event: Key_Event, ctx: ^Context(T)),
 	// // Called when text has been entered by the user.
 	// text_input:              proc(event: Text_Input_Event, ctx: ^Context(T)),
 	// // Called when the candidate text for an IME has changed.
 	// text_edited:             proc(event: Text_Edited_Event, ctx: ^Context(T)),
 
 	// Callback procedure triggered when the mouse is moved.
-	mouse_position: proc(ctx: ^Context(T), position: MouseMovedEvent),
+	mouse_position: proc(ctx: ^Context(T), position: Mouse_Moved_Event),
 	// Callback procedure triggered when a mouse button is pressed.
-	mouse_button:   proc(ctx: ^Context(T), button: MouseButtonEvent),
+	mouse_button:   proc(ctx: ^Context(T), button: Mouse_Button_Event),
 	// // Callback procedure triggered when a mouse button is released.
-	// mouse_released:          proc(event: MouseButtonEvent, ctx: ^Context(T)),
+	// mouse_released:          proc(event: Mouse_Button_Event, ctx: ^Context(T)),
 	// Callback procedure triggered when the mouse wheel is moved.
-	wheel_moved:    proc(ctx: ^Context(T), event: MouseWheelEvent),
+	wheel_moved:    proc(ctx: ^Context(T), event: Mouse_Wheel_Event),
 
 	// // Called when a joystick button is pressed.
 	// joystick_pressed:        proc(event: Joystick_Pressed_Event, ctx: ^Context(T)),

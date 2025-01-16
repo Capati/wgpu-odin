@@ -11,14 +11,14 @@ import "root:wgpu"
 Example :: struct {
 	outer_vertex_buffer: wgpu.Buffer,
 	mask_vertex_buffer:  wgpu.Buffer,
-	outer_pipeline:      wgpu.RenderPipeline,
-	mask_pipeline:       wgpu.RenderPipeline,
+	outer_pipeline:      wgpu.Render_Pipeline,
+	mask_pipeline:       wgpu.Render_Pipeline,
 	stencil_buffer:      wgpu.Texture,
-	depth_view:          wgpu.TextureView,
+	depth_view:          wgpu.Texture_View,
 	render_pass:         struct {
-		color_attachments: [1]wgpu.RenderPassColorAttachment,
-		depth_stencil:     wgpu.RenderPassDepthStencilAttachment,
-		descriptor:        wgpu.RenderPassDescriptor,
+		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
+		depth_stencil:     wgpu.Render_Pass_Depth_Stencil_Attachment,
+		descriptor:        wgpu.Render_Pass_Descriptor,
 	},
 }
 
@@ -29,7 +29,7 @@ Vertex :: struct {
 }
 
 EXAMPLE_TITLE :: "Stencil Triangles"
-STENCIL_FORMAT :: wgpu.TextureFormat.Stencil8
+STENCIL_FORMAT :: wgpu.Texture_Format.Stencil8
 
 vertex :: proc(x, y: f32) -> Vertex {
 	return {pos = {x, y, 0.0, 1.0}}
@@ -67,7 +67,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	) or_return
 	defer wgpu.release(shader)
 
-	vertex_buffers := [1]wgpu.VertexBufferLayout {
+	vertex_buffers := [1]wgpu.Vertex_Buffer_Layout {
 		{
 			array_stride = size_of(Vertex),
 			step_mode = .Vertex,
@@ -75,7 +75,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		},
 	}
 
-	descriptor := wgpu.RenderPipelineDescriptor {
+	descriptor := wgpu.Render_Pipeline_Descriptor {
 		layout = pipeline_layout,
 		vertex = {module = shader, entry_point = "vs_main", buffers = vertex_buffers[:]},
 		fragment = &{
@@ -157,14 +157,14 @@ create_stencil_buffer :: proc(ctx: ^Context) -> (ok: bool) {
 			sample_count = 1,
 			dimension = .D2,
 			format = STENCIL_FORMAT,
-			usage = {.RenderAttachment},
+			usage = {.Render_Attachment},
 		},
 	) or_return
 	defer if !ok {
 		wgpu.release(ctx.stencil_buffer)
 	}
 
-	texture_view_descriptor := wgpu.TextureViewDescriptor {
+	texture_view_descriptor := wgpu.Texture_View_Descriptor {
 		format            = STENCIL_FORMAT,
 		dimension         = .D2,
 		base_mip_level    = 0,
@@ -211,7 +211,7 @@ quit :: proc(ctx: ^Context) {
 	wgpu.release(ctx.outer_vertex_buffer)
 }
 
-resize :: proc(ctx: ^Context, size: app.WindowSize) -> (ok: bool) {
+resize :: proc(ctx: ^Context, size: app.Window_Size) -> (ok: bool) {
 	create_stencil_buffer(ctx) or_return
 	return true
 }

@@ -16,23 +16,23 @@ Example :: struct {
 	index_buffer:       wgpu.Buffer,
 
 	// Pipeline setup
-	bind_group_layout:  wgpu.BindGroupLayout,
-	render_pipeline:    wgpu.RenderPipeline,
+	bind_group_layout:  wgpu.Bind_Group_Layout,
+	render_pipeline:    wgpu.Render_Pipeline,
 
 	// Texture and related resources
 	cubemap_texture:    app.Texture,
 
 	// Uniform buffer and bind group
 	uniform_buffer:     wgpu.Buffer,
-	uniform_bind_group: wgpu.BindGroup,
+	uniform_bind_group: wgpu.Bind_Group,
 
 	// Other state variables
 	projection_matrix:  la.Matrix4f32,
 	model_matrix:       la.Matrix4f32,
 	start_time:         time.Time,
 	render_pass:        struct {
-		color_attachments: [1]wgpu.RenderPassColorAttachment,
-		descriptor:        wgpu.RenderPassDescriptor,
+		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
+		descriptor:        wgpu.Render_Pass_Descriptor,
 	},
 }
 
@@ -74,13 +74,13 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.bind_group_layout = wgpu.device_create_bind_group_layout(
 	ctx.gpu.device,
-	wgpu.BindGroupLayoutDescriptor {
+	wgpu.Bind_Group_Layout_Descriptor {
 		label   = EXAMPLE_TITLE + " Bind group layout",
 		entries = {
 			{
 				binding = 0,
 				visibility = {.Vertex},
-				type = wgpu.BufferBindingLayout {
+				type = wgpu.Buffer_Binding_Layout {
 					type             = .Uniform,
 					min_binding_size = size_of(la.Matrix4f32), // 4x4 matrix,
 				},
@@ -88,12 +88,12 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 			{
 				binding = 1,
 				visibility = {.Fragment},
-				type = wgpu.SamplerBindingLayout{type = .Filtering},
+				type = wgpu.Sampler_Binding_Layout{type = .Filtering},
 			},
 			{
 				binding = 2,
 				visibility = {.Fragment},
-				type = wgpu.TextureBindingLayout{sample_type = .Float, view_dimension = .Cube},
+				type = wgpu.Texture_Binding_Layout{sample_type = .Float, view_dimension = .Cube},
 			},
 		},
 	},
@@ -112,7 +112,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	defer wgpu.release(pipeline_layout)
 
 	attributes := wgpu.vertex_attr_array(2, {0, .Float32x4}, {1, .Float32x2})
-	vertex_buffer_layout := wgpu.VertexBufferLayout {
+	vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
 		array_stride = size_of(Vertex),
 		step_mode    = .Vertex,
 		attributes   = attributes[:],
@@ -120,7 +120,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.render_pipeline = wgpu.device_create_render_pipeline(
 		ctx.gpu.device,
-		descriptor = wgpu.RenderPipelineDescriptor {
+		descriptor = wgpu.Render_Pipeline_Descriptor {
 			layout = pipeline_layout,
 			vertex = {
 				module = shader_module,
@@ -139,7 +139,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				},
 			},
 			primitive = {
-				topology   = .TriangleList,
+				topology   = .Triangle_List,
 				front_face = .CCW,
 				// Since we are seeing from inside of the cube
 				// and we are using the regular cube geometry data with outward-facing normals,
@@ -173,10 +173,10 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.uniform_buffer = wgpu.device_create_buffer(
 		ctx.gpu.device,
-		descriptor = wgpu.BufferDescriptor {
+		descriptor = wgpu.Buffer_Descriptor {
 			label = EXAMPLE_TITLE + " Uniform Buffer",
 			size  = size_of(la.Matrix4f32), // 4x4 matrix
-			usage = {.Uniform, .CopyDst},
+			usage = {.Uniform, .Copy_Dst},
 		},
 	) or_return
 	defer if !ok {
@@ -190,7 +190,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 			entries = {
 				{
 					binding = 0,
-					resource = wgpu.BufferBinding {
+					resource = wgpu.Buffer_Binding {
 						buffer = ctx.uniform_buffer,
 						size = wgpu.buffer_size(ctx.uniform_buffer),
 					},
@@ -245,7 +245,7 @@ quit :: proc(ctx: ^Context) {
 	wgpu.release(ctx.vertex_buffer)
 }
 
-set_projection_matrix :: proc(size: app.WindowSize, ctx: ^Context) {
+set_projection_matrix :: proc(size: app.Window_Size, ctx: ^Context) {
 	ctx.aspect = f32(ctx.gpu.config.width) / f32(ctx.gpu.config.height)
 	ctx.projection_matrix = la.matrix4_perspective((2 * math.PI) / 5, ctx.aspect, 1, 3000.0)
 }
@@ -266,7 +266,6 @@ get_transformation_matrix :: proc(ctx: ^Context) -> (mvp_mat: la.Matrix4f32) {
 }
 
 update :: proc(ctx: ^Context, dt: f64) -> bool {
-	app.setup_depth_stencil(ctx) or_return
 	transformation_matrix := get_transformation_matrix(ctx)
 	wgpu.queue_write_buffer(
 		ctx.gpu.queue,
@@ -303,7 +302,7 @@ draw :: proc(ctx: ^Context) -> bool {
 	return true
 }
 
-resize :: proc(ctx: ^Context, size: app.ResizeEvent) -> bool {
+resize :: proc(ctx: ^Context, size: app.Resize_Event) -> bool {
 	set_projection_matrix({size.w, size.h}, ctx)
 	return true
 }

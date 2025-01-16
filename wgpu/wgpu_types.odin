@@ -5,13 +5,13 @@ import intr "base:intrinsics"
 import "base:runtime"
 
 /* Integral type used for buffer offsets.*/
-BufferAddress :: u64
+Buffer_Address :: u64
 /* Integral type used for buffer slice sizes.*/
-BufferSize :: u64
+Buffer_Size :: u64
 /* Integral type used for buffer slice sizes.*/
-ShaderLocation :: u32
+Shader_Location :: u32
 /* Integral type used for dynamic bind group offsets.*/
-DynamicOffset :: u32
+Dynamic_Offset :: u32
 
 /*
 Buffer-Texture copies must have `bytes_per_row` aligned to this number.
@@ -20,15 +20,15 @@ This doesn’t apply to `queue_write_texture`.
 */
 COPY_BYTES_PER_ROW_ALIGNMENT: u32 : 256
 /* An offset into the query resolve buffer has to be aligned to self.*/
-QUERY_RESOLVE_BUFFER_ALIGNMENT: BufferAddress : 256
+QUERY_RESOLVE_BUFFER_ALIGNMENT: Buffer_Address : 256
 /* Buffer to buffer copy, buffer clear offsets and sizes must be aligned to this number.*/
-COPY_BUFFER_ALIGNMENT: BufferAddress : 4
+COPY_BUFFER_ALIGNMENT: Buffer_Address : 4
 /* Buffer alignment mask to calculate proper size.*/
 COPY_BUFFER_ALIGNMENT_MASK :: COPY_BUFFER_ALIGNMENT - 1
 /* Size to align mappings.*/
-MAP_ALIGNMENT: BufferAddress : 8
+MAP_ALIGNMENT: Buffer_Address : 8
 /* Vertex buffer strides have to be aligned to this number.*/
-VERTEX_STRIDE_ALIGNMENT: BufferAddress : 4
+VERTEX_STRIDE_ALIGNMENT: Buffer_Address : 4
 /* Alignment all push constants need.*/
 PUSH_CONSTANT_ALIGNMENT: u32 : 4
 /* Maximum queries in a query set.*/
@@ -78,32 +78,32 @@ Power Preference when choosing a physical adapter.
 Corresponds to [WebGPU `GPUPowerPreference`](
 https://gpuweb.github.io/gpuweb/#enumdef-gpupowerpreference).
 */
-PowerPreference :: enum i32 {
-	Undefined       = 0x00000000,
-	LowPower        = 0x00000001,
-	HighPerformance = 0x00000002,
+Power_Preference :: enum i32 {
+	Undefined        = 0x00000000,
+	Low_Power        = 0x00000001,
+	High_Performance = 0x00000002,
 }
 
-/* HighPerformance. */
-DEFAULT_POWER_PREFERENCE: PowerPreference = .HighPerformance
+/* High_Performance. */
+DEFAULT_POWER_PREFERENCE: Power_Preference = .High_Performance
 
-BackendBits :: enum u64 {
+Backend_Bits :: enum u64 {
 	Vulkan,
 	GL,
 	Metal,
 	DX12,
 	DX11,
-	BrowserWebGPU,
+	Browser_WebGPU,
 }
 
 /* Represents the backends that wgpu will use.*/
-Backends :: distinct bit_set[BackendBits;u64]
+Backends :: distinct bit_set[Backend_Bits;u64]
 
 /* All the apis that wgpu supports.*/
 BACKENDS_ALL :: Backends{}
 
 /* All the apis that wgpu offers first tier of support for.*/
-BACKENDS_PRIMARY :: Backends{.Vulkan, .Metal, .DX12, .BrowserWebGPU}
+BACKENDS_PRIMARY :: Backends{.Vulkan, .Metal, .DX12, .Browser_WebGPU}
 
 /*
 All the apis that wgpu offers second tier of support for.These may
@@ -117,18 +117,18 @@ Options for requesting adapter.
 Corresponds to [WebGPU `GPURequestAdapterOptions`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpurequestadapteroptions).
  */
-RequestAdapterOptions :: struct {
-	feature_level:          FeatureLevel,
+Request_Adapter_Options :: struct {
+	feature_level:          Feature_Level,
 	compatible_surface:     Surface,
-	power_preference:       PowerPreference,
+	power_preference:       Power_Preference,
 	backend:                Backend,
 	force_fallback_adapter: bool,
 }
 
-InstanceFlag :: enum u64 {
+Instance_Flag :: enum u64 {
 	Debug,
 	Validation,
-	DiscardHalLabels,
+	Discard_Hal_Labels,
 }
 
 /*
@@ -136,35 +136,35 @@ Instance debugging flags.
 
 These are not part of the webgpu standard.
 */
-InstanceFlags :: distinct bit_set[InstanceFlag;u64]
+Instance_Flags :: distinct bit_set[Instance_Flag;u64]
 
-INSTANCE_FLAGS_DEFAULT :: InstanceFlags{}
+INSTANCE_FLAGS_DEFAULT :: Instance_Flags{}
 
 /* Enable recommended debugging and validation flags.*/
-INSTANCE_FLAGS_DEBUGGING :: InstanceFlags{.Debug, .Validation}
+INSTANCE_FLAGS_DEBUGGING :: Instance_Flags{.Debug, .Validation}
 
 /* Supported physical device types.*/
-DeviceType :: enum i32 {
-	DiscreteGPU   = 0x00000001,
-	IntegratedGPU = 0x00000002,
-	CPU           = 0x00000003,
-	Unknown       = 0x00000004,
+Device_Type :: enum i32 {
+	Discrete_GPU   = 0x00000001,
+	Integrated_GPU = 0x00000002,
+	CPU            = 0x00000003,
+	Unknown        = 0x00000004,
 }
 
 /* Information about an adapter.*/
-AdapterInfo :: struct {
+Adapter_Info :: struct {
 	vendor:       string,
 	architecture: string,
 	device:       string,
 	description:  string,
 	backend:      Backend,
-	device_type:  DeviceType,
+	device_type:  Device_Type,
 	vendor_id:    u32,
 	device_id:    u32,
 }
 
 /*  */
-ShaderStage :: enum Flags {
+Shader_Stage :: enum Flags {
 	Vertex,
 	Fragment,
 	Compute,
@@ -176,23 +176,23 @@ Describes the shader stages that a binding will be visible from.
 These can be combined so something that is visible from both vertex and fragment shaders can be
 defined as:
 
-`ShaderStages{.Vertex, .Fragment}`
+`Shader_Stages{.Vertex, .Fragment}`
 
 Corresponds to [WebGPU `GPUShaderStageFlags`](
 https://gpuweb.github.io/gpuweb/#typedefdef-gpushaderstageflags).
 */
-ShaderStages :: distinct bit_set[ShaderStage;Flags]
+Shader_Stages :: distinct bit_set[Shader_Stage;Flags]
 
 /* Binding is not visible from any shader stage.*/
-SHADER_STAGE_NONE :: ShaderStages{}
+SHADER_STAGE_NONE :: Shader_Stages{}
 
 /* Binding is visible from the vertex and fragment shaders of a render pipeline.*/
-SHADER_STAGE_VERTEX_FRAGMENT :: ShaderStages{.Vertex, .Fragment}
+SHADER_STAGE_VERTEX_FRAGMENT :: Shader_Stages{.Vertex, .Fragment}
 
 /* Order in which texture data is laid out in memory.*/
-TextureDataOrder :: enum {
-	LayerMajor,
-	MipMajor,
+Texture_Data_Order :: enum {
+	Layer_Major,
+	Mip_Major,
 }
 
 /*
@@ -201,14 +201,14 @@ Dimensions of a particular texture view.
 Corresponds to [WebGPU `GPUTextureViewDimension`](
 https://gpuweb.github.io/gpuweb/#enumdef-gputextureviewdimension).
 */
-TextureViewDimension :: enum i32 {
-	Undefined = 0x00000000,
-	D1        = 0x00000001,
-	D2        = 0x00000002,
-	D2Array   = 0x00000003,
-	Cube      = 0x00000004,
-	CubeArray = 0x00000005,
-	D3        = 0x00000006,
+Texture_View_Dimension :: enum i32 {
+	Undefined  = 0x00000000,
+	D1         = 0x00000001,
+	D2         = 0x00000002,
+	D2_Array   = 0x00000003,
+	Cube       = 0x00000004,
+	Cube_Array = 0x00000005,
+	D3         = 0x00000006,
 }
 
 /*
@@ -220,25 +220,25 @@ https://gpuweb.github.io/gpuweb/#enumdef-gpublendfactor).
 For further details on how the blend factors are applied, see the analogous
 functionality in OpenGL: <https://www.khronos.org/opengl/wiki/Blending#Blending_Parameters>.
 */
-BlendFactor :: enum i32 {
-	Undefined         = 0x00000000,
-	Zero              = 0x00000001,
-	One               = 0x00000002,
-	Src               = 0x00000003,
-	OneMinusSrc       = 0x00000004,
-	SrcAlpha          = 0x00000005,
-	OneMinusSrcAlpha  = 0x00000006,
-	Dst               = 0x00000007,
-	OneMinusDst       = 0x00000008,
-	DstAlpha          = 0x00000009,
-	OneMinusDstAlpha  = 0x0000000A,
-	SrcAlphaSaturated = 0x0000000B,
-	Constant          = 0x0000000C,
-	OneMinusConstant  = 0x0000000D,
-	Src1              = 0x0000000E,
-	OneMinusSrc1      = 0x0000000F,
-	Src1Alpha         = 0x00000010,
-	OneMinusSrc1Alpha = 0x00000011,
+Blend_Factor :: enum i32 {
+	Undefined            = 0x00000000,
+	Zero                 = 0x00000001,
+	One                  = 0x00000002,
+	Src                  = 0x00000003,
+	One_Minus_Src        = 0x00000004,
+	Src_Alpha            = 0x00000005,
+	One_Minus_Src_Alpha  = 0x00000006,
+	Dst                  = 0x00000007,
+	One_Minus_Dst        = 0x00000008,
+	Dst_Alpha            = 0x00000009,
+	One_Minus_Dst_Alpha  = 0x0000000A,
+	Src_Alpha_Saturated  = 0x0000000B,
+	Constant             = 0x0000000C,
+	One_Minus_Constant   = 0x0000000D,
+	Src1                 = 0x0000000E,
+	One_Minus_Src1       = 0x0000000F,
+	Src1_Alpha           = 0x00000010,
+	One_Minus_Src1_Alpha = 0x00000011,
 }
 
 /*
@@ -251,46 +251,46 @@ For further details on how the blend operations are applied, see
 the analogous functionality in OpenGL:
 <https://www.khronos.org/opengl/wiki/Blending#Blend_Equations>.
 */
-BlendOperation :: enum i32 {
-	Undefined       = 0x00000000,
-	Add             = 0x00000001,
-	Subtract        = 0x00000002,
-	ReverseSubtract = 0x00000003,
-	Min             = 0x00000004,
-	Max             = 0x00000005,
+Blend_Operation :: enum i32 {
+	Undefined        = 0x00000000,
+	Add              = 0x00000001,
+	Subtract         = 0x00000002,
+	Reverse_Subtract = 0x00000003,
+	Min              = 0x00000004,
+	Max              = 0x00000005,
 }
 
 /*
-Describes a blend component of a [`BlendState`].
+Describes a blend component of a [`Blend_State`].
 
 Corresponds to [WebGPU `GPUBlendComponent`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpublendcomponent).
 */
-BlendComponent :: struct {
-	operation:  BlendOperation,
-	src_factor: BlendFactor,
-	dst_factor: BlendFactor,
+Blend_Component :: struct {
+	operation:  Blend_Operation,
+	src_factor: Blend_Factor,
+	dst_factor: Blend_Factor,
 }
 
 /* Standard blending state that blends source and destination based on source alpha.*/
-BLEND_COMPONENT_NORMAL :: BlendComponent {
+BLEND_COMPONENT_NORMAL :: Blend_Component {
 	operation  = .Add,
-	src_factor = .SrcAlpha,
-	dst_factor = .OneMinusSrcAlpha,
+	src_factor = .Src_Alpha,
+	dst_factor = .One_Minus_Src_Alpha,
 }
 
 // Default blending state that replaces destination with the source.
-BLEND_COMPONENT_REPLACE :: BlendComponent {
+BLEND_COMPONENT_REPLACE :: Blend_Component {
 	operation  = .Add,
 	src_factor = .One,
 	dst_factor = .Zero,
 }
 
 // Blend state of (1 * src) + ((1 - src_alpha) * dst)
-BLEND_COMPONENT_OVER :: BlendComponent {
+BLEND_COMPONENT_OVER :: Blend_Component {
 	operation  = .Add,
 	src_factor = .One,
-	dst_factor = .OneMinusSrcAlpha,
+	dst_factor = .One_Minus_Src_Alpha,
 }
 
 /*  */
@@ -300,51 +300,51 @@ DEFAULT_BLEND_COMPONENT :: BLEND_COMPONENT_REPLACE
 Returns `true` if the state relies on the constant color, which is
 set independently on a render command encoder.
 */
-blend_component_uses_constant :: proc "contextless" (self: BlendComponent) -> bool {
+blend_component_uses_constant :: proc "contextless" (self: Blend_Component) -> bool {
 	return(
 		self.src_factor == .Constant ||
-		self.src_factor == .OneMinusConstant ||
+		self.src_factor == .One_Minus_Constant ||
 		self.dst_factor == .Constant ||
-		self.dst_factor == .OneMinusConstant \
+		self.dst_factor == .One_Minus_Constant \
 	)
 }
 
 /*
 Describe the blend state of a render pipeline,
-within `ColorTargetState`.
+within `Color_Target_State`.
 
 Corresponds to [WebGPU `GPUBlendState`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpublendstate).
 */
-BlendState :: struct {
-	color: BlendComponent,
-	alpha: BlendComponent,
+Blend_State :: struct {
+	color: Blend_Component,
+	alpha: Blend_Component,
 }
 
 /* Uses alpha blending for both color and alpha channels.*/
 @(rodata)
-BLEND_STATE_NORMAL := BlendState {
+BLEND_STATE_NORMAL := Blend_State {
 	color = BLEND_COMPONENT_NORMAL,
 	alpha = BLEND_COMPONENT_NORMAL,
 }
 
 /* Does no color blending, just overwrites the output with the contents of the shader.*/
 @(rodata)
-BLEND_STATE_REPLACE := BlendState {
+BLEND_STATE_REPLACE := Blend_State {
 	color = BLEND_COMPONENT_REPLACE,
 	alpha = BLEND_COMPONENT_REPLACE,
 }
 
 /* Does standard alpha blending with non-premultiplied alpha.*/
 @(rodata)
-BLEND_STATE_ALPHA_BLENDING := BlendState {
+BLEND_STATE_ALPHA_BLENDING := Blend_State {
 	color = BLEND_COMPONENT_NORMAL,
 	alpha = BLEND_COMPONENT_OVER,
 }
 
 /* Does standard alpha blending with premultiplied alpha.*/
 @(rodata)
-BLEND_STATE_PREMULTIPLIED_ALPHA_BLENDING := BlendState {
+BLEND_STATE_PREMULTIPLIED_ALPHA_BLENDING := Blend_State {
 	color = BLEND_COMPONENT_OVER,
 	alpha = BLEND_COMPONENT_OVER,
 }
@@ -355,14 +355,14 @@ Describes the color state of a render pipeline.
 Corresponds to [WebGPU `GPUColorTargetState`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpucolortargetstate).
 */
-ColorTargetState :: struct {
-	next_in_chain: ^ChainedStruct,
-	format:        TextureFormat,
-	blend:         ^BlendState,
-	write_mask:    ColorWrites,
+Color_Target_State :: struct {
+	next_in_chain: ^Chained_Struct,
+	format:        Texture_Format,
+	blend:         ^Blend_State,
+	write_mask:    Color_Writes,
 }
 
-color_target_state_from_texture_format :: proc(format: TextureFormat) -> ColorTargetState {
+color_target_state_from_texture_format :: proc(format: Texture_Format) -> Color_Target_State {
 	return {format = format, blend = nil, write_mask = COLOR_WRITES_ALL}
 }
 
@@ -372,17 +372,17 @@ Primitive type the input mesh is composed of.
 Corresponds to [WebGPU `GPUPrimitiveTopology`](
 https://gpuweb.github.io/gpuweb/#enumdef-gpuprimitivetopology).
 */
-PrimitiveTopology :: enum {
-	TriangleList, // Default here, not in wgpu
-	PointList,
-	LineList,
-	LineStrip,
-	TriangleStrip,
+Primitive_Topology :: enum {
+	Triangle_List, // Default here, not in wgpu
+	Point_List,
+	Line_List,
+	Line_Strip,
+	Triangle_Strip,
 }
 
-primitive_topology_is_strip :: proc "contextless" (self: PrimitiveTopology) -> bool {
+primitive_topology_is_strip :: proc "contextless" (self: Primitive_Topology) -> bool {
 	#partial switch self {
-	case .TriangleStrip, .LineStrip:
+	case .Triangle_Strip, .Line_Strip:
 		return true
 	}
 	return false
@@ -394,7 +394,7 @@ Vertex winding order which classifies the "front" face of a triangle.
 Corresponds to [WebGPU `GPUFrontFace`](
 https://gpuweb.github.io/gpuweb/#enumdef-gpufrontface).
 */
-FrontFace :: enum i32 {
+Front_Face :: enum i32 {
 	Undefined = 0x00000000,
 	CCW       = 0x00000001,
 	CW        = 0x00000002,
@@ -419,16 +419,16 @@ Describes the state of primitive assembly and rasterization in a render pipeline
 Corresponds to [WebGPU `GPUPrimitiveState`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpuprimitivestate).
 */
-PrimitiveState :: struct {
-	topology:           PrimitiveTopology,
-	strip_index_format: IndexFormat,
-	front_face:         FrontFace,
+Primitive_State :: struct {
+	topology:           Primitive_Topology,
+	strip_index_format: Index_Format,
+	front_face:         Front_Face,
 	cull_mode:          Face,
 	unclipped_depth:    bool,
 }
 
-DEFAULT_PRIMITIVE_STATE :: PrimitiveState {
-	topology   = .TriangleList,
+DEFAULT_PRIMITIVE_STATE :: Primitive_State {
+	topology   = .Triangle_List,
 	front_face = .CCW,
 	cull_mode  = .None,
 }
@@ -439,15 +439,15 @@ Describes the multi-sampling state of a render pipeline.
 Corresponds to [WebGPU `GPUMultisampleState`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpumultisamplestate).
 */
-MultisampleState :: struct {
-	next_in_chain:             ^ChainedStruct,
+Multisample_State :: struct {
+	next_in_chain:             ^Chained_Struct,
 	count:                     u32,
 	mask:                      u32,
 	alpha_to_coverage_enabled: bool,
 }
 
 /* Default `count = 1` and mask all pixels `0xFFFFFFFF`.*/
-DEFAULT_MULTISAMPLE_STATE :: MultisampleState {
+DEFAULT_MULTISAMPLE_STATE :: Multisample_State {
 	next_in_chain             = nil,
 	count                     = 1,
 	mask                      = max(u32), // 0xFFFFFFFF
@@ -478,7 +478,7 @@ multisample_to_value :: proc(self: Multisample) -> u32 {
 	return 1
 }
 
-ColorWrite :: enum Flags {
+Color_Write :: enum Flags {
 	Red,
 	Green,
 	Blue,
@@ -491,16 +491,16 @@ Color write mask. Disabled color channels will not be written to.
 Corresponds to [WebGPU `GPUColorWriteFlags`](
 https://gpuweb.github.io/gpuweb/#typedefdef-gpucolorwriteflags).
 */
-ColorWrites :: distinct bit_set[ColorWrite;Flags]
+Color_Writes :: distinct bit_set[Color_Write;Flags]
 
 /*  */
-COLOR_WRITES_NONE :: ColorWrites{}
+COLOR_WRITES_NONE :: Color_Writes{}
 
 /* Enable red, green, and blue channel writes. */
-COLOR_WRITES_COLOR :: ColorWrites{.Red, .Green, .Blue}
+COLOR_WRITES_COLOR :: Color_Writes{.Red, .Green, .Blue}
 
 /* Enable writes to all channels. */
-COLOR_WRITES_ALL :: ColorWrites{.Red, .Green, .Blue, .Alpha}
+COLOR_WRITES_ALL :: Color_Writes{.Red, .Green, .Blue, .Alpha}
 
 /*  */
 DEFAULT_COLOR_WRITES :: COLOR_WRITES_ALL
@@ -508,20 +508,20 @@ DEFAULT_COLOR_WRITES :: COLOR_WRITES_ALL
 /*
 State of the stencil operation (fixed-pipeline stage).
 
-For use in `DepthStencilState`.
+For use in `Depth_Stencil_State`.
 
 Corresponds to a portion of [WebGPU `GPUDepthStencilState`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpudepthstencilstate).
 */
-StencilState :: struct {
-	front:      StencilFaceState,
-	back:       StencilFaceState,
+Stencil_State :: struct {
+	front:      Stencil_Face_State,
+	back:       Stencil_Face_State,
 	read_mask:  u32,
 	write_mask: u32,
 }
 
 /* Returns true if the stencil test is enabled. */
-stencil_state_is_enabled :: proc "contextless" (self: StencilState) -> bool {
+stencil_state_is_enabled :: proc "contextless" (self: Stencil_State) -> bool {
 	return(
 		(self.front != STENCIL_FACE_STATE_IGNORE || self.back != STENCIL_FACE_STATE_IGNORE) &&
 		(self.read_mask != 0 || self.write_mask != 0) \
@@ -529,7 +529,7 @@ stencil_state_is_enabled :: proc "contextless" (self: StencilState) -> bool {
 }
 
 /* Returns `true` if the state doesn't mutate the target values. */
-stencil_state_is_read_only :: proc "contextless" (self: StencilState, cull_mode: Face) -> bool {
+stencil_state_is_read_only :: proc "contextless" (self: Stencil_State, cull_mode: Face) -> bool {
 	// The rules are defined in step 7 of the "Device timeline initialization steps"
 	// subsection of the "Render Pipeline Creation" section of WebGPU
 	// (link to the section: https://gpuweb.github.io/gpuweb/#render-pipeline-creation)
@@ -544,7 +544,7 @@ stencil_state_is_read_only :: proc "contextless" (self: StencilState, cull_mode:
 }
 
 /* Returns true if the stencil state uses the reference value for testing. */
-stencil_state_needs_ref_value :: proc "contextless" (self: StencilState) -> bool {
+stencil_state_needs_ref_value :: proc "contextless" (self: Stencil_State) -> bool {
 	return(
 		stencil_face_state_needs_ref_value(self.front) ||
 		stencil_face_state_needs_ref_value(self.back) \
@@ -554,19 +554,19 @@ stencil_state_needs_ref_value :: proc "contextless" (self: StencilState) -> bool
 /*
 Describes the biasing setting for the depth target.
 
-For use in `DepthStencilState`.
+For use in `Depth_Stencil_State`.
 
 Corresponds to a portion of [WebGPU `GPUDepthStencilState`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpudepthstencilstate).
 */
-DepthBiasState :: struct {
+Depth_Bias_State :: struct {
 	constant:    i32,
 	slope_scale: f32,
 	clamp:       f32,
 }
 
 /* Returns true if the depth biasing is enabled. */
-depth_bias_state_is_enabled :: proc "contextless" (self: DepthBiasState) -> bool {
+depth_bias_state_is_enabled :: proc "contextless" (self: Depth_Bias_State) -> bool {
 	return self.constant != 0 || self.slope_scale != 0.0
 }
 
@@ -576,16 +576,16 @@ Describes the depth/stencil state in a render pipeline.
 Corresponds to [WebGPU `GPUDepthStencilState`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpudepthstencilstate).
 */
-DepthStencilState :: struct {
-	format:              TextureFormat,
+Depth_Stencil_State :: struct {
+	format:              Texture_Format,
 	depth_write_enabled: bool,
-	depth_compare:       CompareFunction,
-	stencil:             StencilState,
-	bias:                DepthBiasState,
+	depth_compare:       Compare_Function,
+	stencil:             Stencil_State,
+	bias:                Depth_Bias_State,
 }
 
 /* Returns `true` if the depth testing is enabled. */
-depth_stencil_state_is_depth_enabled :: proc "contextless" (self: DepthStencilState) -> bool {
+depth_stencil_state_is_depth_enabled :: proc "contextless" (self: Depth_Stencil_State) -> bool {
 	return(
 		(self.depth_compare != .Undefined && self.depth_compare != .Always) ||
 		self.depth_write_enabled \
@@ -593,13 +593,13 @@ depth_stencil_state_is_depth_enabled :: proc "contextless" (self: DepthStencilSt
 }
 
 /* Returns `true` if the state doesn't mutate the depth buffer. */
-depth_stencil_state_is_depth_read_only :: proc "contextless" (self: DepthStencilState) -> bool {
+depth_stencil_state_is_depth_read_only :: proc "contextless" (self: Depth_Stencil_State) -> bool {
 	return !self.depth_write_enabled
 }
 
 /* Returns true if the state doesn't mutate the stencil. */
 depth_stencil_state_is_stencil_read_only :: proc "contextless" (
-	self: DepthStencilState,
+	self: Depth_Stencil_State,
 	cull_mode: Face,
 ) -> bool {
 	return stencil_state_is_read_only(self.stencil, cull_mode)
@@ -607,7 +607,7 @@ depth_stencil_state_is_stencil_read_only :: proc "contextless" (
 
 /* Returns true if the state doesn't mutate either depth or stencil of the target. */
 depth_stencil_state_is_read_only :: proc "contextless" (
-	self: DepthStencilState,
+	self: Depth_Stencil_State,
 	cull_mode: Face,
 ) -> bool {
 	return(
@@ -622,7 +622,7 @@ Format of indices used with pipeline.
 Corresponds to [WebGPU `GPUIndexFormat`](
 https://gpuweb.github.io/gpuweb/#enumdef-gpuindexformat).
 */
-IndexFormat :: enum i32 {
+Index_Format :: enum i32 {
 	Undefined = 0x00000000,
 	Uint16    = 0x00000001,
 	Uint32    = 0x00000002,
@@ -634,16 +634,16 @@ Operation to perform on the stencil value.
 Corresponds to [WebGPU `GPUStencilOperation`](
 https://gpuweb.github.io/gpuweb/#enumdef-gpustenciloperation).
 */
-StencilOperation :: enum i32 {
-	Undefined      = 0x00000000,
-	Keep           = 0x00000001,
-	Zero           = 0x00000002,
-	Replace        = 0x00000003,
-	Invert         = 0x00000004,
-	IncrementClamp = 0x00000005,
-	DecrementClamp = 0x00000006,
-	IncrementWrap  = 0x00000007,
-	DecrementWrap  = 0x00000008,
+Stencil_Operation :: enum i32 {
+	Undefined       = 0x00000000,
+	Keep            = 0x00000001,
+	Zero            = 0x00000002,
+	Replace         = 0x00000003,
+	Invert          = 0x00000004,
+	Increment_Clamp = 0x00000005,
+	Decrement_Clamp = 0x00000006,
+	Increment_Wrap  = 0x00000007,
+	Decrement_Wrap  = 0x00000008,
 }
 
 /*
@@ -654,15 +654,15 @@ If you are not using stencil state, set this to `STENCIL_FACE_STATE_IGNORE`.
 Corresponds to [WebGPU `GPUStencilFaceState`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpustencilfacestate).
 */
-StencilFaceState :: struct {
-	compare:       CompareFunction,
-	fail_op:       StencilOperation,
-	depth_fail_op: StencilOperation,
-	pass_op:       StencilOperation,
+Stencil_Face_State :: struct {
+	compare:       Compare_Function,
+	fail_op:       Stencil_Operation,
+	depth_fail_op: Stencil_Operation,
+	pass_op:       Stencil_Operation,
 }
 
 /* Ignore the stencil state for the face. */
-STENCIL_FACE_STATE_IGNORE :: StencilFaceState {
+STENCIL_FACE_STATE_IGNORE :: Stencil_Face_State {
 	compare       = .Always,
 	fail_op       = .Keep,
 	depth_fail_op = .Keep,
@@ -670,7 +670,7 @@ STENCIL_FACE_STATE_IGNORE :: StencilFaceState {
 }
 
 /* Returns true if the face state uses the reference value for testing or operation. */
-stencil_face_state_needs_ref_value :: proc "contextless" (self: StencilFaceState) -> bool {
+stencil_face_state_needs_ref_value :: proc "contextless" (self: Stencil_Face_State) -> bool {
 	return(
 		compare_function_needs_ref_value(self.compare) ||
 		self.fail_op == .Replace ||
@@ -680,7 +680,7 @@ stencil_face_state_needs_ref_value :: proc "contextless" (self: StencilFaceState
 }
 
 /* Returns true if the face state doesn't mutate the target values. */
-stencil_face_state_is_read_only :: proc "contextless" (self: StencilFaceState) -> bool {
+stencil_face_state_is_read_only :: proc "contextless" (self: Stencil_Face_State) -> bool {
 	return self.pass_op == .Keep && self.depth_fail_op == .Keep && self.fail_op == .Keep
 }
 
@@ -690,20 +690,20 @@ Comparison function used for depth and stencil operations.
 Corresponds to [WebGPU `GPUCompareFunction`](
 https://gpuweb.github.io/gpuweb/#enumdef-gpucomparefunction).
 */
-CompareFunction :: enum i32 {
-	Undefined    = 0x00000000,
-	Never        = 0x00000001,
-	Less         = 0x00000002,
-	Equal        = 0x00000003,
-	LessEqual    = 0x00000004,
-	Greater      = 0x00000005,
-	NotEqual     = 0x00000006,
-	GreaterEqual = 0x00000007,
-	Always       = 0x00000008,
+Compare_Function :: enum i32 {
+	Undefined     = 0x00000000,
+	Never         = 0x00000001,
+	Less          = 0x00000002,
+	Equal         = 0x00000003,
+	Less_Equal    = 0x00000004,
+	Greater       = 0x00000005,
+	Not_Equal     = 0x00000006,
+	Greater_Equal = 0x00000007,
+	Always        = 0x00000008,
 }
 
 /* Returns `true` if the comparison depends on the reference value. */
-compare_function_needs_ref_value :: proc "contextless" (self: CompareFunction) -> bool {
+compare_function_needs_ref_value :: proc "contextless" (self: Compare_Function) -> bool {
 	return self == .Never || self == .Always
 }
 
@@ -713,11 +713,11 @@ Whether a vertex buffer is indexed by vertex or by instance.
 Corresponds to [WebGPU `GPUVertexStepMode`](
 https://gpuweb.github.io/gpuweb/#enumdef-gpuvertexstepmode).
 */
-VertexStepMode :: enum i32 {
-	VertexBufferNotUsed = 0x00000000,
-	Undefined           = 0x00000001,
-	Vertex              = 0x00000002,
-	Instance            = 0x00000003,
+Vertex_Step_Mode :: enum i32 {
+	Vertex_Buffer_Not_Used = 0x00000000,
+	Undefined              = 0x00000001,
+	Vertex                 = 0x00000002,
+	Instance               = 0x00000003,
 }
 
 /*
@@ -729,19 +729,19 @@ macro. Vertex attributes are assumed to be tightly packed.
 Corresponds to [WebGPU `GPUVertexAttribute`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpuvertexattribute).
 */
-VertexAttribute :: struct {
-	format:          VertexFormat,
+Vertex_Attribute :: struct {
+	format:          Vertex_Format,
 	offset:          u64,
 	shader_location: u32,
 }
 
 /*
-Vertex Format for a `VertexAttribute` (input).
+Vertex Format for a `Vertex_Attribute` (input).
 
 Corresponds to [WebGPU `GPUVertexFormat`](
 https://gpuweb.github.io/gpuweb/#enumdef-gpuvertexformat).
 */
-VertexFormat :: enum i32 {
+Vertex_Format :: enum i32 {
 	Uint8           = 0x00000001,
 	Uint8x2         = 0x00000002,
 	Uint8x4         = 0x00000003,
@@ -782,17 +782,17 @@ VertexFormat :: enum i32 {
 	Sint32x3        = 0x00000026,
 	Sint32x4        = 0x00000027,
 	Unorm10_10_10_2 = 0x00000028,
-	Unorm8x4Bgra    = 0x00000029,
+	Unorm8x4_Bgra   = 0x00000029,
 }
 
-vertex_format_size :: proc "contextless" (self: VertexFormat) -> u64 {
+vertex_format_size :: proc "contextless" (self: Vertex_Format) -> u64 {
 	// odinfmt: disable
 	switch self {
 	case .Uint8, .Sint8, .Unorm8, .Snorm8: return 1
 	case .Uint8x2, .Sint8x2, .Unorm8x2, .Snorm8x2, .Uint16, .Sint16, .Unorm16, .Snorm16, .Float16:
 		return 2
 	case .Uint8x4, .Sint8x4, .Unorm8x4, .Snorm8x4, .Uint16x2, .Sint16x2, .Unorm16x2, .Snorm16x2,
-		 .Float16x2, .Float32, .Uint32, .Sint32, .Unorm10_10_10_2, .Unorm8x4Bgra: return 4
+		 .Float16x2, .Float32, .Uint32, .Sint32, .Unorm10_10_10_2, .Unorm8x4_Bgra: return 4
 	case .Uint16x4, .Sint16x4, .Unorm16x4, .Snorm16x4, .Float16x4, .Float32x2, .Uint32x2,
 		 .Sint32x2 /* .Float64 */: return 8
 	case .Float32x3, .Uint32x3, .Sint32x3: return 12
@@ -804,17 +804,17 @@ vertex_format_size :: proc "contextless" (self: VertexFormat) -> u64 {
 	return 0
 }
 
-BufferUsage :: enum Flags {
-	MapRead,
-	MapWrite,
-	CopySrc,
-	CopyDst,
+Buffer_Usage :: enum Flags {
+	Map_Read,
+	Map_Write,
+	Copy_Src,
+	Copy_Dst,
 	Index,
 	Vertex,
 	Uniform,
 	Storage,
 	Indirect,
-	QueryResolve,
+	Query_Resolve,
 }
 
 /*
@@ -826,31 +826,31 @@ actions the buffer can partake in.
 Corresponds to [WebGPU `GPUBufferUsageFlags`](
 https://gpuweb.github.io/gpuweb/#typedefdef-gpubufferusageflags).
 */
-BufferUsages :: distinct bit_set[BufferUsage;Flags]
+Buffer_Usages :: distinct bit_set[Buffer_Usage;Flags]
 
-BUFFER_USAGE_NONE :: BufferUsages{}
+BUFFER_USAGE_NONE :: Buffer_Usages{}
 
 /*
-Describes a `CommandEncoder`
+Describes a `Command_Encoder`
 
 Corresponds to [WebGPU `GPUCommandEncoderDescriptor`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpucommandencoderdescriptor).
 */
-CommandEncoderDescriptor :: struct {
+Command_Encoder_Descriptor :: struct {
 	label: string,
 }
 
 /* Behavior of the presentation engine based on frame rate. */
-PresentMode :: enum i32 {
-	Undefined   = 0x00000000,
-	Fifo        = 0x00000001,
-	FifoRelaxed = 0x00000002,
-	Immediate   = 0x00000003,
-	Mailbox     = 0x00000004,
+Present_Mode :: enum i32 {
+	Undefined    = 0x00000000,
+	Fifo         = 0x00000001,
+	Fifo_Relaxed = 0x00000002,
+	Immediate    = 0x00000003,
+	Mailbox      = 0x00000004,
 }
 
 /* Specifies how the alpha channel of the textures should be handled during compositing. */
-CompositeAlphaMode :: enum i32 {
+Composite_Alpha_Mode :: enum i32 {
 	Auto            = 0x00000000,
 	Opaque          = 0x00000001,
 	Premultiplied   = 0x00000002,
@@ -858,13 +858,12 @@ CompositeAlphaMode :: enum i32 {
 	Inherit         = 0x00000004,
 }
 
-
-TextureUsage :: enum Flags {
-	CopySrc,
-	CopyDst,
-	TextureBinding,
-	StorageBinding,
-	RenderAttachment,
+Texture_Usage :: enum Flags {
+	Copy_Src,
+	Copy_Dst,
+	Texture_Binding,
+	Storage_Binding,
+	Render_Attachment,
 }
 
 /*
@@ -876,28 +875,28 @@ actions the texture can partake in.
 Corresponds to [WebGPU `GPUTextureUsageFlags`](
 https://gpuweb.github.io/gpuweb/#typedefdef-gputextureusageflags).
 */
-TextureUsages :: distinct bit_set[TextureUsage;Flags]
+Texture_Usages :: distinct bit_set[Texture_Usage;Flags]
 
-TEXTURE_USAGES_NONE :: TextureUsages{}
+TEXTURE_USAGES_NONE :: Texture_Usages{}
 
-TEXTURE_USAGES_ALL :: TextureUsages {
-	.CopySrc,
-	.CopyDst,
-	.TextureBinding,
-	.StorageBinding,
-	.RenderAttachment,
+TEXTURE_USAGES_ALL :: Texture_Usages {
+	.Copy_Src,
+	.Copy_Dst,
+	.Texture_Binding,
+	.Storage_Binding,
+	.Render_Attachment,
 }
 
 /* The capabilities of a given surface and adapter. */
-SurfaceCapabilities :: struct {
+Surface_Capabilities :: struct {
 	allocator:     runtime.Allocator,
-	formats:       []TextureFormat,
-	present_modes: []PresentMode,
-	alpha_modes:   []CompositeAlphaMode,
-	usages:        TextureUsages,
+	formats:       []Texture_Format,
+	present_modes: []Present_Mode,
+	alpha_modes:   []Composite_Alpha_Mode,
+	usages:        Texture_Usages,
 }
 
-surface_capabilities_free_members :: proc(self: SurfaceCapabilities) {
+surface_capabilities_free_members :: proc(self: Surface_Capabilities) {
 	context.allocator = self.allocator
 	delete(self.formats)
 	delete(self.present_modes)
@@ -905,30 +904,26 @@ surface_capabilities_free_members :: proc(self: SurfaceCapabilities) {
 }
 
 /* Status of the received surface image. */
-SurfaceStatus :: enum i32 {
-	SuccessOptimal    = 0x00000001,
-	SuccessSuboptimal = 0x00000002,
-	Timeout           = 0x00000003,
-	Outdated          = 0x00000004,
-	Lost              = 0x00000005,
-	OutOfMemory       = 0x00000006,
-	DeviceLost        = 0x00000007,
-	Error             = 0x00000008,
+Surface_Status :: enum i32 {
+	Success_Optimal    = 0x00000001,
+	Success_Suboptimal = 0x00000002,
+	Timeout            = 0x00000003,
+	Outdated           = 0x00000004,
+	Lost               = 0x00000005,
+	Out_Of_Memory      = 0x00000006,
+	Device_Lost        = 0x00000007,
+	Error              = 0x00000008,
 }
 
 @(private)
-WGPUColor :: struct {
+WGPU_Color :: struct {
 	r: f64,
 	g: f64,
 	b: f64,
 	a: f64,
 }
 
-/*
-RGBA double precision color.
-
-This is not to be used as a generic color type, only for specific wgpu interfaces.
-*/
+/* RGBA double precision color. */
 Color :: [4]f64
 
 COLOR_TRANSPARENT :: Color{0.0, 0.0, 0.0, 0.0}
@@ -944,7 +939,7 @@ Dimensionality of a texture.
 Corresponds to [WebGPU `GPUTextureDimension`](
 https://gpuweb.github.io/gpuweb/#enumdef-gputexturedimension).
 */
-TextureDimension :: enum i32 {
+Texture_Dimension :: enum i32 {
 	Undefined = 0x00000000,
 	D1        = 0x00000001,
 	D2        = 0x00000002,
@@ -957,14 +952,13 @@ Origin of a copy from a 2D image.
 Corresponds to [WebGPU `GPUOrigin2D`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpuorigin2ddict).
 */
-Origin2D :: struct {
+Origin_2D :: struct {
 	x: u32,
 	y: u32,
 }
-Origin2d :: Origin2D
 
 /* Adds the third dimension to this origin. */
-origin_2d_to_3d :: proc "contextless" (self: Origin2D) -> Origin3D {
+origin_2d_to_3d :: proc "contextless" (self: Origin_2D) -> Origin_3D {
 	return {x = self.x, y = self.y, z = 0}
 }
 
@@ -974,14 +968,13 @@ Origin of a copy to/from a texture.
 Corresponds to [WebGPU `GPUOrigin3D`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpuorigin3ddict).
 */
-Origin3D :: struct {
+Origin_3D :: struct {
 	x: u32,
 	y: u32,
 	z: u32,
 }
-Origin3d :: Origin3D
 
-origin_3d_to_2d :: proc "contextless" (self: Origin3D) -> Origin2D {
+origin_3d_to_2d :: proc "contextless" (self: Origin_3D) -> Origin_2D {
 	return {x = self.x, y = self.y}
 }
 
@@ -991,18 +984,14 @@ Extent of a texture related operation.
 Corresponds to [WebGPU `GPUExtent3D`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpuextent3ddict).
 */
-Extent3D :: struct {
+Extent_3D :: struct {
 	width:                 u32,
 	height:                u32,
 	depth_or_array_layers: u32,
 }
-Extent3d :: Extent3D
 
-default_depth :: proc "contextless" () -> u32 {
-	return 1
-}
-
-DEFAULT_EXTENT_3D :: Extent3D{1, 1, 1}
+DEFAULT_EXTENT_3D :: Extent_3D{1, 1, 1}
+DEFAULT_DEPTH :: 1
 
 /*
 Calculates the [physical size] backing a texture of the given  format and extent.  This
@@ -1014,10 +1003,10 @@ textures.
 [physical size]: https://gpuweb.github.io/gpuweb/#physical-miplevel-specific-texture-extent
 */
 extent_3d_physical_size :: proc "contextless" (
-	self: Extent3D,
-	format: TextureFormat,
+	self: Extent_3D,
+	format: Texture_Format,
 ) -> (
-	extent: Extent3D,
+	extent: Extent_3D,
 ) {
 	block_width, block_height := texture_format_block_dimensions(format)
 
@@ -1035,8 +1024,8 @@ Treats the depth as part of the mipmaps. If calculating
 for a 2DArray texture, which does not mipmap depth, set depth to 1.
 */
 extent_3d_max_mips :: proc "contextless" (
-	self: Extent3D,
-	dimension: TextureDimension,
+	self: Extent_3D,
+	dimension: Texture_Dimension,
 ) -> (
 	max_dim: u32,
 ) {
@@ -1058,11 +1047,11 @@ Does *not* account for memory size being a multiple of block size.
 <https://gpuweb.github.io/gpuweb/#logical-miplevel-specific-texture-extent>
 */
 extent_3d_mip_level_size :: proc "contextless" (
-	self: Extent3D,
+	self: Extent_3D,
 	level: u32,
-	dimension: TextureDimension,
+	dimension: Texture_Dimension,
 ) -> (
-	extent: Extent3D,
+	extent: Extent_3D,
 ) {
 	extent.width = max(1, self.width >> level)
 
@@ -1083,25 +1072,24 @@ extent_3d_mip_level_size :: proc "contextless" (
 }
 
 /*
-Describes a `TextureView`.
+Describes a `Texture_View`.
 
 For use with `texture_create_view`.
 
 Corresponds to [WebGPU `GPUTextureViewDescriptor`](
 https://gpuweb.github.io/gpuweb/#dictdef-gputextureviewdescriptor).
 */
-TextureViewDescriptor :: struct {
+Texture_View_Descriptor :: struct {
 	label:             string,
-	format:            TextureFormat,
-	dimension:         TextureViewDimension,
+	format:            Texture_Format,
+	dimension:         Texture_View_Dimension,
 	base_mip_level:    u32,
 	mip_level_count:   u32,
 	base_array_layer:  u32,
 	array_layer_count: u32,
-	aspect:            TextureAspect,
-	usage:             TextureUsages,
+	aspect:            Texture_Aspect,
+	usage:             Texture_Usages,
 }
-
 
 /*
 Calculates the extent at a given mip level.
@@ -1112,10 +1100,10 @@ Treats the depth as part of the mipmaps. If calculating
 for a 2DArray texture, which does not mipmap depth, set depth to 1.
 */
 texture_descriptor_mip_level_size :: proc "contextless" (
-	self: TextureDescriptor,
+	self: Texture_Descriptor,
 	level: u32,
 ) -> (
-	extent: Extent3D,
+	extent: Extent_3D,
 	ok: bool,
 ) #optional_ok {
 	if level >= self.mip_level_count {
@@ -1131,10 +1119,10 @@ Computes the render extent of this texture.
 <https://gpuweb.github.io/gpuweb/#abstract-opdef-compute-render-extent>
 */
 texture_descriptor_compute_render_extent :: proc "contextless" (
-	self: TextureDescriptor,
+	self: Texture_Descriptor,
 	mip_level: u32,
-) -> Extent3D {
-	return Extent3d {
+) -> Extent_3D {
+	return Extent_3D {
 		width = max(1, self.size.width >> mip_level),
 		height = max(1, self.size.height >> mip_level),
 		depth_or_array_layers = 1,
@@ -1147,7 +1135,7 @@ Returns the number of array layers.
 <https://gpuweb.github.io/gpuweb/#abstract-opdef-array-layer-count>
 */
 texture_descriptor_array_layer_count :: proc "contextless" (
-	self: TextureDescriptor,
+	self: Texture_Descriptor,
 ) -> (
 	count: u32,
 ) {
@@ -1161,8 +1149,8 @@ texture_descriptor_array_layer_count :: proc "contextless" (
 	return
 }
 
-/* Returns `true` if the given `TextureDescriptor` is compatible with cube textures. */
-texture_descriptor_is_cube_compatible :: proc "contextless" (self: TextureDescriptor) -> bool {
+/* Returns `true` if the given `Texture_Descriptor` is compatible with cube textures. */
+texture_descriptor_is_cube_compatible :: proc "contextless" (self: Texture_Descriptor) -> bool {
 	return(
 		self.dimension == .D2 &&
 		self.size.depth_or_array_layers % 6 == 0 &&
@@ -1177,14 +1165,14 @@ Kind of data the texture holds.
 Corresponds to [WebGPU `GPUTextureAspect`](
 https://gpuweb.github.io/gpuweb/#enumdef-gputextureaspect).
 */
-TextureAspect :: enum i32 {
-	Undefined   = 0x00000000,
-	All         = 0x00000001,
-	StencilOnly = 0x00000002,
-	DepthOnly   = 0x00000003,
-	Plane0      = 0x00000004,
-	Plane1      = 0x00000005,
-	Plane2      = 0x00000006,
+Texture_Aspect :: enum i32 {
+	Undefined    = 0x00000000,
+	All          = 0x00000001,
+	Stencil_Only = 0x00000002,
+	Depth_Only   = 0x00000003,
+	Plane0       = 0x00000004,
+	Plane1       = 0x00000005,
+	Plane2       = 0x00000006,
 }
 
 /*
@@ -1193,11 +1181,11 @@ How edges should be handled in texture addressing.
 Corresponds to [WebGPU `GPUAddressMode`](
 https://gpuweb.github.io/gpuweb/#enumdef-gpuaddressmode).
 */
-AddressMode :: enum i32 {
-	Undefined    = 0x00000000,
-	ClampToEdge  = 0x00000001,
-	Repeat       = 0x00000002,
-	MirrorRepeat = 0x00000003,
+Address_Mode :: enum i32 {
+	Undefined     = 0x00000000,
+	Clamp_To_Edge = 0x00000001,
+	Repeat        = 0x00000002,
+	Mirror_Repeat = 0x00000003,
 }
 
 /*
@@ -1206,25 +1194,25 @@ Texel mixing mode when sampling between texels.
 Corresponds to [WebGPU `GPUFilterMode`](
 https://gpuweb.github.io/gpuweb/#enumdef-gpufiltermode).
 */
-FilterMode :: enum i32 {
+Filter_Mode :: enum i32 {
 	Undefined = 0x00000000,
 	Nearest   = 0x00000001,
 	Linear    = 0x00000002,
 }
 
 /* A range of push constant memory to pass to a shader stage. */
-PushConstantRange :: struct {
-	stages: ShaderStages,
+Push_Constant_Range :: struct {
+	stages: Shader_Stages,
 	range:  Range(u32),
 }
 
 /*
-Describes a `CommandBuffer`.
+Describes a `Command_Buffer`.
 
 Corresponds to [WebGPU `GPUCommandBufferDescriptor`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpucommandbufferdescriptor).
 */
-CommandBufferDescriptor :: struct {
+Command_Buffer_Descriptor :: struct {
 	label: string,
 }
 
@@ -1234,7 +1222,7 @@ Layout of a texture in a buffer's memory.
 Corresponds to [WebGPU `GPUTexelCopyBufferLayout`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpuimagedatalayout).
 */
-TexelCopyBufferLayout :: struct {
+Texel_Copy_Buffer_Layout :: struct {
 	offset:         u64,
 	bytes_per_row:  u32,
 	rows_per_image: u32,
@@ -1246,12 +1234,12 @@ Specific type of a buffer binding.
 Corresponds to [WebGPU `GPUBufferBindingType`](
 https://gpuweb.github.io/gpuweb/#enumdef-gpubufferbindingtype).
 */
-BufferBindingType :: enum i32 {
-	BindingNotUsed  = 0x00000000,
-	Undefined       = 0x00000001,
-	Uniform         = 0x00000002,
-	Storage         = 0x00000003,
-	ReadOnlyStorage = 0x00000004,
+Buffer_Binding_Type :: enum i32 {
+	Binding_Not_Used  = 0x00000000,
+	Undefined         = 0x00000001,
+	Uniform           = 0x00000002,
+	Storage           = 0x00000003,
+	Read_Only_Storage = 0x00000004,
 }
 
 /*
@@ -1260,63 +1248,63 @@ Specific type of a sample in a texture binding.
 Corresponds to [WebGPU `GPUTextureSampleType`](
 https://gpuweb.github.io/gpuweb/#enumdef-gputexturesampletype).
 */
-TextureSampleType :: enum i32 {
-	BindingNotUsed    = 0x00000000,
-	Undefined         = 0x00000001,
-	Float             = 0x00000002,
-	UnfilterableFloat = 0x00000003,
-	Depth             = 0x00000004,
-	Sint              = 0x00000005,
-	Uint              = 0x00000006,
+Texture_Sample_Type :: enum i32 {
+	Binding_Not_Used   = 0x00000000,
+	Undefined          = 0x00000001,
+	Float              = 0x00000002,
+	Unfilterable_Float = 0x00000003,
+	Depth              = 0x00000004,
+	Sint               = 0x00000005,
+	Uint               = 0x00000006,
 }
 
-DEFAULT_TEXTURE_SAMPLE_TYPE :: TextureSampleType.Float
+DEFAULT_TEXTURE_SAMPLE_TYPE :: Texture_Sample_Type.Float
 
 /*
 Specific type of a sample in a texture binding.
 
-For use in [`BindingType::StorageTexture`].
+For use in [`Binding_Type::StorageTexture`].
 
 Corresponds to [WebGPU `GPUStorageTextureAccess`](
 https://gpuweb.github.io/gpuweb/#enumdef-gpustoragetextureaccess).
 */
-StorageTextureAccess :: enum i32 {
-	BindingNotUsed = 0x00000000,
-	Undefined      = 0x00000001,
-	WriteOnly      = 0x00000002,
-	ReadOnly       = 0x00000003,
-	ReadWrite      = 0x00000004,
+Storage_Texture_Access :: enum i32 {
+	Binding_Not_Used = 0x00000000,
+	Undefined        = 0x00000001,
+	Write_Only       = 0x00000002,
+	Read_Only        = 0x00000003,
+	Read_Write       = 0x00000004,
 }
 
 /*
 Specific type of a sampler binding.
 
-For use in `BindingType.Sampler`.
+For use in `Binding_Type.Sampler`.
 
 Corresponds to [WebGPU `GPUSamplerBindingType`](
 https://gpuweb.github.io/gpuweb/#enumdef-gpusamplerbindingtype).
 */
-SamplerBindingType :: enum i32 {
-	BindingNotUsed = 0x00000000,
-	Undefined      = 0x00000001,
-	Filtering      = 0x00000002,
-	NonFiltering   = 0x00000003,
-	Comparison     = 0x00000004,
+Sampler_Binding_Type :: enum i32 {
+	Binding_Not_Used = 0x00000000,
+	Undefined        = 0x00000001,
+	Filtering        = 0x00000002,
+	Non_Filtering    = 0x00000003,
+	Comparison       = 0x00000004,
 }
 
 /*
 Specific type of a binding.
 
-For use in `BindGroupLayoutEntry`.
+For use in `Bind_Group_Layout_Entry`.
 
 Corresponds to WebGPU's mutually exclusive fields within [`GPUBindGroupLayoutEntry`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpubindgrouplayoutentry).
 */
-BindingType :: union {
-	BufferBindingLayout,
-	SamplerBindingLayout,
-	TextureBindingLayout,
-	StorageTextureBindingLayout,
+Binding_Type :: union {
+	Buffer_Binding_Layout,
+	Sampler_Binding_Layout,
+	Texture_Binding_Layout,
+	Storage_Texture_Binding_Layout,
 }
 
 /*
@@ -1325,27 +1313,27 @@ Describes a single binding inside a bind group.
 Corresponds to [WebGPU `GPUBindGroupLayoutEntry`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpubindgrouplayoutentry).
 */
-BindGroupLayoutEntry :: struct {
+Bind_Group_Layout_Entry :: struct {
 	binding:    u32,
-	visibility: ShaderStages,
-	type:       BindingType,
+	visibility: Shader_Stages,
+	type:       Binding_Type,
 	count:      u32,
 }
 
 /* Subresource range within an image. */
-ImageSubresourceRange :: struct {
-	aspect:            TextureAspect,
+Image_Subresource_Range :: struct {
+	aspect:            Texture_Aspect,
 	base_mip_level:    u32,
 	mip_level_count:   u32,
 	base_array_layer:  u32,
 	array_layer_count: u32,
 }
 
-/* Color variation to use when sampler addressing mode is `AddressMode.ClampToBorder`. */
-SamplerBorderColor :: enum i32 {
-	TransparentBlack,
-	OpaqueBlack,
-	OpaqueWhite,
+/* Color variation to use when sampler addressing mode is `Address_Mode.ClampToBorder`. */
+Sampler_Border_Color :: enum i32 {
+	Transparent_Black,
+	Opaque_Black,
+	Opaque_White,
 	Zero,
 }
 
@@ -1355,7 +1343,7 @@ Selects which DX12 shader compiler to fuse.
 If the `Dxc` option is selected, but `dxcompiler.dll` and `dxil.dll` files aren't found,
 then this will fall back to the Fxc compiler at runtime and log an error.
 */
-Dx12Compiler :: enum i32 {
+Dx12_Compiler :: enum i32 {
 	Undefined = 0x00000000,
 	Fxc       = 0x00000001,
 	Dxc       = 0x00000002,
@@ -1366,7 +1354,7 @@ Selects which OpenGL ES 3 minor version to request.
 
 When using ANGLE as an OpenGL ES/EGL implementation, explicitly requesting `Version1` can provide a non-conformant ES 3.1 on APIs like D3D11.
 */
-Gles3MinorVersion :: enum i32 {
+Gles3_Minor_Version :: enum i32 {
 	Automatic = 0x00000000,
 	Version0  = 0x00000001,
 	Version1  = 0x00000002,
@@ -1374,17 +1362,17 @@ Gles3MinorVersion :: enum i32 {
 }
 
 /* Options for creating an instance. */
-InstanceDescriptor :: struct {
+Instance_Descriptor :: struct {
 	backends:             Backends,
-	flags:                InstanceFlags,
-	features:             InstanceCapabilities,
-	dx12_shader_compiler: Dx12Compiler,
+	flags:                Instance_Flags,
+	features:             Instance_Capabilities,
+	dx12_shader_compiler: Dx12_Compiler,
 	dxil_path:            string,
 	dxc_path:             string,
-	gles3_minor_version:  Gles3MinorVersion,
+	gles3_minor_version:  Gles3_Minor_Version,
 }
 
-DEFAULT_INSTANCE_DESCRIPTOR :: InstanceDescriptor {
+DEFAULT_INSTANCE_DESCRIPTOR :: Instance_Descriptor {
 	backends = BACKENDS_PRIMARY,
 }
 
@@ -1393,13 +1381,12 @@ Reason for "lose the device".
 
 Corresponds to [WebGPU `GPUDeviceLostReason`](https://gpuweb.github.io/gpuweb/#enumdef-gpudevicelostreason).
 */
-DeviceLostReason :: enum i32 {
-	Unknown         = 0x00000001,
-	Destroyed       = 0x00000002,
-	InstanceDropped = 0x00000003,
-	FailedCreation  = 0x00000004,
+Device_Lost_Reason :: enum i32 {
+	Unknown          = 0x00000001,
+	Destroyed        = 0x00000002,
+	Instance_Dropped = 0x00000003,
+	Failed_Creation  = 0x00000004,
 }
-
 
 /*------------------------------------------------------------------
 Other typs
@@ -1408,134 +1395,134 @@ Other typs
 
 SType :: enum i32 {
 	// WebGPU
-	ShaderSourceSPIRV                = 0x00000001,
-	ShaderSourceWGSL                 = 0x00000002,
-	RenderPassMaxDrawCount           = 0x00000003,
-	SurfaceSourceMetalLayer          = 0x00000004,
-	SurfaceSourceWindowsHWND         = 0x00000005,
-	SurfaceSourceXlibWindow          = 0x00000006,
-	SurfaceSourceWaylandSurface      = 0x00000007,
-	SurfaceSourceAndroidNativeWindow = 0x00000008,
-	SurfaceSourceXCBWindow           = 0x00000009,
+	Shader_Source_SPIRV                  = 0x00000001,
+	Shader_Source_WGSL                   = 0x00000002,
+	Render_Pass_Max_Draw_Count           = 0x00000003,
+	Surface_Source_Metal_Layer           = 0x00000004,
+	Surface_Source_Windows_HWND          = 0x00000005,
+	Surface_Source_Xlib_Window           = 0x00000006,
+	Surface_Source_Wayland_Surface       = 0x00000007,
+	Surface_Source_Android_Native_Window = 0x00000008,
+	Surface_Source_XBC_Window            = 0x00000009,
 
 	// Native
-	DeviceExtras                     = 0x00030001,
-	NativeLimits                     = 0x00030002,
-	PipelineLayoutExtras             = 0x00030003,
-	ShaderModuleGLSLDescriptor       = 0x00030004,
-	InstanceExtras                   = 0x00030006,
-	BindGroupEntryExtras             = 0x00030007,
-	BindGroupLayoutEntryExtras       = 0x00030008,
-	QuerySetDescriptorExtras         = 0x00030009,
-	SurfaceConfigurationExtras       = 0x0003000A,
+	Device_Extras                        = 0x00030001,
+	Native_Limits                        = 0x00030002,
+	Pipeline_Layout_Extras               = 0x00030003,
+	Shader_Module_GLSL_Descriptor        = 0x00030004,
+	Instance_Extras                      = 0x00030006,
+	Bind_Group_Entry_Extras              = 0x00030007,
+	Bind_Group_Layout_Entry_Extras       = 0x00030008,
+	Query_Set_Descriptor_Extras          = 0x00030009,
+	Surface_Configuration_Extras         = 0x0003000A,
 }
 
-ChainedStruct :: struct {
-	next:  ^ChainedStruct,
+Chained_Struct :: struct {
+	next:  ^Chained_Struct,
 	stype: SType,
 }
 
-ChainedStructOut :: struct {
-	next:  ^ChainedStructOut,
+Chained_Struct_Out :: struct {
+	next:  ^Chained_Struct_Out,
 	stype: SType,
 }
 
-NativeQueryType :: enum i32 {
-	PipelineStatistics = 0x00030000,
+Native_Query_Type :: enum i32 {
+	Pipeline_Statistics = 0x00030000,
 }
 
 @(private)
-WGPUNativeLimits :: struct {
-	chain:                    ChainedStructOut,
+WGPU_Native_Limits :: struct {
+	chain:                    Chained_Struct_Out,
 	max_push_constant_size:   u32,
 	max_non_sampler_bindings: u32,
 }
 
-CallbackMode :: enum i32 {
-	WaitAnyOnly        = 0x00000001,
-	AllowProcessEvents = 0x00000002,
-	AllowSpontaneous   = 0x00000003,
+Callback_Mode :: enum i32 {
+	Wait_Any_Only        = 0x00000001,
+	Allow_Process_Events = 0x00000002,
+	Allow_Spontaneous    = 0x00000003,
 }
 
-CompilationInfoRequestStatus :: enum i32 {
-	Success         = 0x00000001,
-	InstanceDropped = 0x00000002,
-	Error           = 0x00000003,
-	Unknown         = 0x00000004,
+Compilation_Info_Request_Status :: enum i32 {
+	Success          = 0x00000001,
+	Instance_Dropped = 0x00000002,
+	Error            = 0x00000003,
+	Unknown          = 0x00000004,
 }
 
-CompilationMessageType :: enum i32 {
+Compilation_Message_Type :: enum i32 {
 	Error   = 0x00000001,
 	Warning = 0x00000002,
 	Info    = 0x00000003,
 }
 
-CreatePipelineAsyncStatus :: enum i32 {
-	Success         = 0x00000001,
-	InstanceDropped = 0x00000002,
-	ValidationError = 0x00000003,
-	InternalError   = 0x00000004,
-	Unknown         = 0x00000005,
+Create_Pipeline_Async_Status :: enum i32 {
+	Success          = 0x00000001,
+	Instance_Dropped = 0x00000002,
+	Validation_Error = 0x00000003,
+	Internal_Error   = 0x00000004,
+	Unknown          = 0x00000005,
 }
 
-ErrorFilter :: enum i32 {
-	Validation  = 0x00000001,
-	OutOfMemory = 0x00000002,
-	Internal    = 0x00000003,
+Error_Filter :: enum i32 {
+	Validation    = 0x00000001,
+	Out_Of_Memory = 0x00000002,
+	Internal      = 0x00000003,
 }
 
-ErrorType :: enum i32 {
-	NoError     = 0x00000001,
-	Validation  = 0x00000002,
-	OutOfMemory = 0x00000003,
-	Internal    = 0x00000004,
-	Unknown     = 0x00000005,
+Error_Type :: enum i32 {
+	NoError       = 0x00000001,
+	Validation    = 0x00000002,
+	Out_Of_Memory = 0x00000003,
+	Internal      = 0x00000004,
+	Unknown       = 0x00000005,
 }
 
-FeatureLevel :: enum i32 {
+Feature_Level :: enum i32 {
 	Compatibility = 0x00000001,
 	Core          = 0x00000002,
 }
 
-MapAsyncStatus :: enum i32 {
-	Success         = 0x00000001,
-	InstanceDropped = 0x00000002,
-	Error           = 0x00000003,
-	Aborted         = 0x00000004,
-	Unknown         = 0x00000005,
+Map_Async_Status :: enum i32 {
+	Success          = 0x00000001,
+	Instance_Dropped = 0x00000002,
+	Error            = 0x00000003,
+	Aborted          = 0x00000004,
+	Unknown          = 0x00000005,
 }
 
-MipmapFilterMode :: enum i32 {
+Mipmap_Filter_Mode :: enum i32 {
 	Undefined = 0x00000000,
 	Nearest   = 0x00000001,
 	Linear    = 0x00000002,
 }
 
-OptionalBool :: enum i32 {
+Optional_Bool :: enum i32 {
 	False     = 0x00000000,
 	True      = 0x00000001,
 	Undefined = 0x00000002,
 }
 
-PopErrorScopeStatus :: enum i32 {
-	Success         = 0x00000001,
-	InstanceDropped = 0x00000002,
-	EmptyStack      = 0x00000003,
+Pop_Error_Scope_Status :: enum i32 {
+	Success          = 0x00000001,
+	Instance_Dropped = 0x00000002,
+	EmptyStack       = 0x00000003,
 }
 
-QueueWorkDoneStatus :: enum i32 {
-	Success         = 0x00000001,
-	InstanceDropped = 0x00000002,
-	Error           = 0x00000003,
-	Unknown         = 0x00000004,
+Queue_Work_Done_Status :: enum i32 {
+	Success          = 0x00000001,
+	Instance_Dropped = 0x00000002,
+	Error            = 0x00000003,
+	Unknown          = 0x00000004,
 }
 
-RequestAdapterStatus :: enum i32 {
-	Success         = 0x00000001,
-	InstanceDropped = 0x00000002,
-	Unavailable     = 0x00000003,
-	Error           = 0x00000004,
-	Unknown         = 0x00000005,
+Request_Adapter_Status :: enum i32 {
+	Success          = 0x00000001,
+	Instance_Dropped = 0x00000002,
+	Unavailable      = 0x00000003,
+	Error            = 0x00000004,
+	Unknown          = 0x00000005,
 }
 
 Status :: enum i32 {
@@ -1543,192 +1530,201 @@ Status :: enum i32 {
 	Error   = 0x00000002,
 }
 
-WGSLLanguageFeatureName :: enum i32 {
-	ReadonlyAndReadwriteStorageTextures = 0x00000001,
-	Packed4x8IntegerDotProduct          = 0x00000002,
-	UnrestrictedPointerParameters       = 0x00000003,
-	PointerCompositeAccess              = 0x00000004,
+WGSL_Language_Feature_Name :: enum i32 {
+	Readonly_And_Readwrite_Storage_Textures = 0x00000001,
+	Packed4x8_Integer_Dot_Product           = 0x00000002,
+	Unrestricted_Pointer_Parameters         = 0x00000003,
+	Pointer_Composite_Access                = 0x00000004,
 }
 
-WaitStatus :: enum i32 {
-	Success                 = 0x00000001,
-	TimedOut                = 0x00000002,
-	UnsupportedTimeout      = 0x00000003,
-	UnsupportedCount        = 0x00000004,
-	UnsupportedMixedSources = 0x00000005,
+Wait_Status :: enum i32 {
+	Success                   = 0x00000001,
+	TimedOut                  = 0x00000002,
+	Unsupported_Timeout       = 0x00000003,
+	Unsupported_Count         = 0x00000004,
+	Unsupported_Mixed_Sources = 0x00000005,
 }
 
 Proc :: #type proc "c" ()
 
-BufferMapCallback :: #type proc "c" (
-	status: MapAsyncStatus,
-	message: StringView,
+Buffer_Map_Callback :: #type proc "c" (
+	status: Map_Async_Status,
+	message: String_View,
 	userdata1: rawptr,
 	userdata2: rawptr,
 )
-CompilationInfoCallback :: #type proc "c" (
-	status: CompilationInfoRequestStatus,
-	compilation_info: ^WGPUCompilationInfo,
+
+Compilation_Info_Callback :: #type proc "c" (
+	status: Compilation_Info_Request_Status,
+	compilation_info: ^WGPU_Compilation_Info,
 	userdata1: rawptr,
 	userdata2: rawptr,
 )
-CreateComputePipelineAsyncCallback :: #type proc "c" (
-	status: CreatePipelineAsyncStatus,
-	pipeline: ComputePipeline,
-	message: StringView,
+
+Create_Compute_Pipeline_Async_Callback :: #type proc "c" (
+	status: Create_Pipeline_Async_Status,
+	pipeline: Compute_Pipeline,
+	message: String_View,
 	userdata1: rawptr,
 	userdata2: rawptr,
 )
-CreateRenderPipelineAsyncCallback :: #type proc "c" (
-	status: CreatePipelineAsyncStatus,
-	pipeline: RenderPipeline,
-	message: StringView,
+
+Create_Render_Pipeline_Async_Callback :: #type proc "c" (
+	status: Create_Pipeline_Async_Status,
+	pipeline: Render_Pipeline,
+	message: String_View,
 	userdata1: rawptr,
 	userdata2: rawptr,
 )
-DeviceLostCallback :: #type proc "c" (
+
+Device_Lost_Callback :: #type proc "c" (
 	device: ^Device,
-	reason: DeviceLostReason,
-	message: StringView,
+	reason: Device_Lost_Reason,
+	message: String_View,
 	userdata1: rawptr,
 	userdata2: rawptr,
 )
-PopErrorScopeCallback :: #type proc "c" (
-	status: PopErrorScopeStatus,
-	type: ErrorType,
-	message: StringView,
+
+Pop_Error_Scope_Callback :: #type proc "c" (
+	status: Pop_Error_Scope_Status,
+	type: Error_Type,
+	message: String_View,
 	userdata1: rawptr,
 	userdata2: rawptr,
 )
-QueueWorkDoneCallback :: #type proc "c" (
-	status: QueueWorkDoneStatus,
+
+Queue_Work_Done_Callback :: #type proc "c" (
+	status: Queue_Work_Done_Status,
 	userdata1: rawptr,
 	userdata2: rawptr,
 )
-RequestAdapterCallback :: #type proc "c" (
-	status: RequestAdapterStatus,
+
+Request_Adapter_Callback :: #type proc "c" (
+	status: Request_Adapter_Status,
 	adapter: Adapter,
-	message: StringView,
+	message: String_View,
 	userdata1: rawptr,
 	userdata2: rawptr,
 )
-RequestDeviceCallback :: #type proc "c" (
-	status: RequestDeviceStatus,
+
+Request_Device_Callback :: #type proc "c" (
+	status: Request_Device_Status,
 	device: Device,
-	message: StringView,
+	message: String_View,
 	userdata1: rawptr,
 	userdata2: rawptr,
 )
-UncapturedErrorCallback :: #type proc "c" (
+
+Uncaptured_Error_Callback :: #type proc "c" (
 	device: ^Device,
-	type: ErrorType,
-	message: StringView,
+	type: Error_Type,
+	message: String_View,
 	userdata1: rawptr,
 	userdata2: rawptr,
 )
 
-BufferMapCallbackInfo :: struct {
-	next_in_chain: ^ChainedStruct,
-	mode:          CallbackMode,
-	callback:      BufferMapCallback,
+Buffer_Map_Callback_Info :: struct {
+	next_in_chain: ^Chained_Struct,
+	mode:          Callback_Mode,
+	callback:      Buffer_Map_Callback,
 	userdata1:     rawptr,
 	userdata2:     rawptr,
 }
 
-CompilationInfoCallbackInfo :: struct {
-	next_in_chain: ^ChainedStruct,
-	mode:          CallbackMode,
-	callback:      CompilationInfoCallback,
+Compilation_Info_Callback_Info :: struct {
+	next_in_chain: ^Chained_Struct,
+	mode:          Callback_Mode,
+	callback:      Compilation_Info_Callback,
 	userdata1:     rawptr,
 	userdata2:     rawptr,
 }
 
-CreateComputePipelineAsyncCallbackInfo :: struct {
-	next_in_chain: ^ChainedStruct,
-	mode:          CallbackMode,
-	callback:      CreateComputePipelineAsyncCallback,
+Create_Compute_Pipeline_Async_Callback_Info :: struct {
+	next_in_chain: ^Chained_Struct,
+	mode:          Callback_Mode,
+	callback:      Create_Compute_Pipeline_Async_Callback,
 	userdata1:     rawptr,
 	userdata2:     rawptr,
 }
 
-CreateRenderPipelineAsyncCallbackInfo :: struct {
-	next_in_chain: ^ChainedStruct,
-	mode:          CallbackMode,
-	callback:      CreateRenderPipelineAsyncCallback,
+Create_Render_Pipeline_Async_Callback_Info :: struct {
+	next_in_chain: ^Chained_Struct,
+	mode:          Callback_Mode,
+	callback:      Create_Render_Pipeline_Async_Callback,
 	userdata1:     rawptr,
 	userdata2:     rawptr,
 }
 
-DeviceLostCallbackInfo :: struct {
-	next_in_chain: ^ChainedStruct,
-	mode:          CallbackMode,
-	callback:      DeviceLostCallback,
+Device_Lost_Callback_Info :: struct {
+	next_in_chain: ^Chained_Struct,
+	mode:          Callback_Mode,
+	callback:      Device_Lost_Callback,
 	userdata1:     rawptr,
 	userdata2:     rawptr,
 }
 
-PopErrorScopeCallbackInfo :: struct {
-	next_in_chain: ^ChainedStruct,
-	mode:          CallbackMode,
-	callback:      PopErrorScopeCallback,
+Pop_Error_Scope_Callback_Info :: struct {
+	next_in_chain: ^Chained_Struct,
+	mode:          Callback_Mode,
+	callback:      Pop_Error_Scope_Callback,
 	userdata1:     rawptr,
 	userdata2:     rawptr,
 }
 
-QueueWorkDoneCallbackInfo :: struct {
-	next_in_chain: ^ChainedStruct,
-	mode:          CallbackMode,
-	callback:      QueueWorkDoneCallback,
+Queue_Work_Done_Callback_Info :: struct {
+	next_in_chain: ^Chained_Struct,
+	mode:          Callback_Mode,
+	callback:      Queue_Work_Done_Callback,
 	userdata1:     rawptr,
 	userdata2:     rawptr,
 }
 
-RequestAdapterCallbackInfo :: struct {
-	next_in_chain: ^ChainedStruct,
-	mode:          CallbackMode,
-	callback:      RequestAdapterCallback,
+Request_Adapter_Callback_Info :: struct {
+	next_in_chain: ^Chained_Struct,
+	mode:          Callback_Mode,
+	callback:      Request_Adapter_Callback,
 	userdata1:     rawptr,
 	userdata2:     rawptr,
 }
 
-RequestDeviceCallbackInfo :: struct {
-	next_in_chain: ^ChainedStruct,
-	mode:          CallbackMode,
-	callback:      RequestDeviceCallback,
+Request_Device_Callback_Info :: struct {
+	next_in_chain: ^Chained_Struct,
+	mode:          Callback_Mode,
+	callback:      Request_Device_Callback,
 	userdata1:     rawptr,
 	userdata2:     rawptr,
 }
 
-UncapturedErrorCallbackInfo :: struct {
-	next_in_chain: ^ChainedStruct,
-	callback:      UncapturedErrorCallback,
+Uncaptured_Error_Callback_Info :: struct {
+	next_in_chain: ^Chained_Struct,
+	callback:      Uncaptured_Error_Callback,
 	userdata1:     rawptr,
 	userdata2:     rawptr,
 }
 
-BufferBindingLayout :: struct {
-	next_in_chain:      ^ChainedStruct,
-	type:               BufferBindingType,
+Buffer_Binding_Layout :: struct {
+	next_in_chain:      ^Chained_Struct,
+	type:               Buffer_Binding_Type,
 	has_dynamic_offset: b32,
 	min_binding_size:   u64,
 }
 
 @(private)
-WGPUCommandBufferDescriptor :: struct {
-	next_in_chain: ^ChainedStruct,
-	label:         StringView,
+WGPU_Command_Buffer_Descriptor :: struct {
+	next_in_chain: ^Chained_Struct,
+	label:         String_View,
 }
 
 @(private)
-WGPUCommandEncoderDescriptor :: struct {
-	next_in_chain: ^ChainedStruct,
-	label:         StringView,
+WGPU_Command_Encoder_Descriptor :: struct {
+	next_in_chain: ^Chained_Struct,
+	label:         String_View,
 }
 
-CompilationMessage :: struct {
-	next_in_chain: ^ChainedStruct,
-	message:       StringView,
-	type:          CompilationMessageType,
+Compilation_Message :: struct {
+	next_in_chain: ^Chained_Struct,
+	message:       String_View,
+	type:          Compilation_Message_Type,
 	line_num:      u64,
 	line_pos:      u64,
 	offset:        u64,
@@ -1736,13 +1732,13 @@ CompilationMessage :: struct {
 }
 
 @(private)
-WGPUConstantEntry :: struct {
-	next_in_chain: ^ChainedStruct,
-	key:           StringView,
+WGPU_Constant_Entry :: struct {
+	next_in_chain: ^Chained_Struct,
+	key:           String_View,
 	value:         f64,
 }
 
-ConstantEntry :: struct {
+Constant_Entry :: struct {
 	key:   string,
 	value: f64,
 }
@@ -1751,21 +1747,21 @@ Future :: struct {
 	id: u64,
 }
 
-InstanceCapabilities :: struct {
-	next_in_chain:            ^ChainedStructOut,
+Instance_Capabilities :: struct {
+	next_in_chain:            ^Chained_Struct_Out,
 	timed_wait_any_enable:    b32,
 	timed_wait_any_max_count: uint,
 }
 
 @(private)
-WGPULimits :: struct {
-	next_in_chain:                                   ^ChainedStructOut,
+WGPU_Limits :: struct {
+	next_in_chain:                                   ^Chained_Struct_Out,
 	max_texture_dimension_1d:                        u32,
 	max_texture_dimension_2d:                        u32,
 	max_texture_dimension_3d:                        u32,
 	max_texture_array_layers:                        u32,
 	max_bind_groups:                                 u32,
-	max_bind_groups_plus_vertex_buffers:             u32,
+	max_bind_groups_plus_vertex_buffers:             u32, // TODO: not used
 	max_bindings_per_bind_group:                     u32,
 	max_dynamic_uniform_buffers_per_pipeline_layout: u32,
 	max_dynamic_storage_buffers_per_pipeline_layout: u32,
@@ -1782,9 +1778,9 @@ WGPULimits :: struct {
 	max_buffer_size:                                 u64,
 	max_vertex_attributes:                           u32,
 	max_vertex_buffer_array_stride:                  u32,
-	max_inter_stage_shader_variables:                u32,
-	max_color_attachments:                           u32,
-	max_color_attachment_bytes_per_sample:           u32,
+	max_inter_stage_shader_variables:                u32, // TODO: not used
+	max_color_attachments:                           u32, // TODO: not used
+	max_color_attachment_bytes_per_sample:           u32, // TODO: not used
 	max_compute_workgroup_storage_size:              u32,
 	max_compute_invocations_per_workgroup:           u32,
 	max_compute_workgroup_size_x:                    u32,
@@ -1794,166 +1790,166 @@ WGPULimits :: struct {
 }
 
 @(private)
-WGPUPipelineLayoutDescriptor :: struct {
-	next_in_chain:           ^ChainedStruct,
-	label:                   StringView,
+WGPU_Pipeline_Layout_Descriptor :: struct {
+	next_in_chain:           ^Chained_Struct,
+	label:                   String_View,
 	bind_group_layout_count: uint,
-	bind_group_layouts:      [^]BindGroupLayout,
+	bind_group_layouts:      [^]Bind_Group_Layout,
 }
 
-QueueDescriptor :: struct {
-	next_in_chain: ^ChainedStruct,
-	label:         StringView,
-}
-
-@(private)
-WGPURenderBundleDescriptor :: struct {
-	next_in_chain: ^ChainedStruct,
-	label:         StringView,
+Queue_Descriptor :: struct {
+	next_in_chain: ^Chained_Struct,
+	label:         String_View,
 }
 
 @(private)
-WGPURenderBundleEncoderDescriptor :: struct {
-	next_in_chain:        ^ChainedStruct,
-	label:                StringView,
+WGPU_Render_Bundle_Descriptor :: struct {
+	next_in_chain: ^Chained_Struct,
+	label:         String_View,
+}
+
+@(private)
+WGPU_Render_Bundle_Encoder_Descriptor :: struct {
+	next_in_chain:        ^Chained_Struct,
+	label:                String_View,
 	color_format_count:   uint,
-	color_formats:        ^TextureFormat,
-	depth_stencil_format: TextureFormat,
+	color_formats:        ^Texture_Format,
+	depth_stencil_format: Texture_Format,
 	sample_count:         u32,
 	depth_read_only:      b32,
 	stencil_read_only:    b32,
 }
 
-RenderPassMaxDrawCount :: struct {
-	chain:          ChainedStruct,
+Render_Pass_Max_Draw_Count :: struct {
+	chain:          Chained_Struct,
 	max_draw_count: u64,
 }
 
 @(private)
-WGPURequestAdapterOptions :: struct {
-	next_in_chain:          ^ChainedStruct,
-	feature_level:          FeatureLevel,
-	power_preference:       PowerPreference,
+WGPU_Request_Adapter_Options :: struct {
+	next_in_chain:          ^Chained_Struct,
+	feature_level:          Feature_Level,
+	power_preference:       Power_Preference,
 	force_fallback_adapter: b32,
 	backend:                Backend,
 	compatible_surface:     Surface,
 }
 
-SamplerBindingLayout :: struct {
-	next_in_chain: ^ChainedStruct,
-	type:          SamplerBindingType,
+Sampler_Binding_Layout :: struct {
+	next_in_chain: ^Chained_Struct,
+	type:          Sampler_Binding_Type,
 }
 
 @(private)
-WGPUSamplerDescriptor :: struct {
-	next_in_chain:  ^ChainedStruct,
-	label:          StringView,
-	address_mode_u: AddressMode,
-	address_mode_v: AddressMode,
-	address_mode_w: AddressMode,
-	mag_filter:     FilterMode,
-	min_filter:     FilterMode,
-	mipmap_filter:  MipmapFilterMode,
+WGPU_Sampler_Descriptor :: struct {
+	next_in_chain:  ^Chained_Struct,
+	label:          String_View,
+	address_mode_u: Address_Mode,
+	address_mode_v: Address_Mode,
+	address_mode_w: Address_Mode,
+	mag_filter:     Filter_Mode,
+	min_filter:     Filter_Mode,
+	mipmap_filter:  Mipmap_Filter_Mode,
 	lod_min_clamp:  f32,
 	lod_max_clamp:  f32,
-	compare:        CompareFunction,
+	compare:        Compare_Function,
 	max_anisotropy: u16,
 }
 
-StorageTextureBindingLayout :: struct {
-	next_in_chain:  ^ChainedStruct,
-	access:         StorageTextureAccess,
-	format:         TextureFormat,
-	view_dimension: TextureViewDimension,
+Storage_Texture_Binding_Layout :: struct {
+	next_in_chain:  ^Chained_Struct,
+	access:         Storage_Texture_Access,
+	format:         Texture_Format,
+	view_dimension: Texture_View_Dimension,
 }
 
-SupportedWGSLLanguageFeatures :: struct {
+Supported_WGSL_Language_Features :: struct {
 	feature_count: uint,
-	features:      [^]WGSLLanguageFeatureName,
+	features:      [^]WGSL_Language_Feature_Name,
 }
 
 @(private)
-WGPUSurfaceCapabilities :: struct {
-	next_in_chain:      ^ChainedStructOut,
-	usages:             TextureUsages,
+WGPU_Surface_Capabilities :: struct {
+	next_in_chain:      ^Chained_Struct_Out,
+	usages:             Texture_Usages,
 	format_count:       uint,
-	formats:            [^]TextureFormat,
+	formats:            [^]Texture_Format,
 	present_mode_count: uint,
-	present_modes:      [^]PresentMode,
+	present_modes:      [^]Present_Mode,
 	alpha_mode_count:   uint,
-	alpha_modes:        [^]CompositeAlphaMode,
+	alpha_modes:        [^]Composite_Alpha_Mode,
 }
 
 @(private)
-WGPUSurfaceConfiguration :: struct {
-	next_in_chain:     ^ChainedStruct,
+WGPU_Surface_Configuration :: struct {
+	next_in_chain:     ^Chained_Struct,
 	device:            Device,
-	format:            TextureFormat,
-	usage:             TextureUsages,
+	format:            Texture_Format,
+	usage:             Texture_Usages,
 	width:             u32,
 	height:            u32,
 	view_format_count: uint,
-	view_formats:      [^]TextureFormat,
-	alpha_mode:        CompositeAlphaMode,
-	present_mode:      PresentMode,
+	view_formats:      [^]Texture_Format,
+	alpha_mode:        Composite_Alpha_Mode,
+	present_mode:      Present_Mode,
 }
 
-TextureBindingLayout :: struct {
-	next_in_chain:  ^ChainedStruct,
-	sample_type:    TextureSampleType,
-	view_dimension: TextureViewDimension,
+Texture_Binding_Layout :: struct {
+	next_in_chain:  ^Chained_Struct,
+	sample_type:    Texture_Sample_Type,
+	view_dimension: Texture_View_Dimension,
 	multisampled:   b32,
 }
 
 @(private)
-WGPUTextureViewDescriptor :: struct {
-	next_in_chain:     ^ChainedStruct,
-	label:             StringView,
-	format:            TextureFormat,
-	dimension:         TextureViewDimension,
+WGPU_Texture_View_Descriptor :: struct {
+	next_in_chain:     ^Chained_Struct,
+	label:             String_View,
+	format:            Texture_Format,
+	dimension:         Texture_View_Dimension,
 	base_mip_level:    u32,
 	mip_level_count:   u32,
 	base_array_layer:  u32,
 	array_layer_count: u32,
-	aspect:            TextureAspect,
-	usage:             TextureUsages,
+	aspect:            Texture_Aspect,
+	usage:             Texture_Usages,
 }
 
 @(private)
-WGPUBindGroupDescriptor :: struct {
-	next_in_chain: ^ChainedStruct,
-	label:         StringView,
-	layout:        BindGroupLayout,
+WGPU_Bind_Group_Descriptor :: struct {
+	next_in_chain: ^Chained_Struct,
+	label:         String_View,
+	layout:        Bind_Group_Layout,
 	entry_count:   uint,
-	entries:       [^]WGPUBindGroupEntry,
+	entries:       [^]WGPU_Bind_Group_Entry,
 }
 
 @(private)
-WGPUBindGroupLayoutEntry :: struct {
-	next_in_chain:   ^ChainedStruct,
+WGPU_Bind_Group_Layout_Entry :: struct {
+	next_in_chain:   ^Chained_Struct,
 	binding:         u32,
-	visibility:      ShaderStages,
-	buffer:          BufferBindingLayout,
-	sampler:         SamplerBindingLayout,
-	texture:         TextureBindingLayout,
-	storage_texture: StorageTextureBindingLayout,
+	visibility:      Shader_Stages,
+	buffer:          Buffer_Binding_Layout,
+	sampler:         Sampler_Binding_Layout,
+	texture:         Texture_Binding_Layout,
+	storage_texture: Storage_Texture_Binding_Layout,
 }
 
 @(private)
-WGPUComputePassDescriptor :: struct {
-	next_in_chain:    ^ChainedStruct,
-	label:            StringView,
-	timestamp_writes: ^ComputePassTimestampWrites,
+WGPU_Compute_Pass_Descriptor :: struct {
+	next_in_chain:    ^Chained_Struct,
+	label:            String_View,
+	timestamp_writes: ^Compute_Pass_Timestamp_Writes,
 }
 
 @(private)
-WGPUDepthStencilState :: struct {
-	next_in_chain:          ^ChainedStruct,
-	format:                 TextureFormat,
-	depth_write_enabled:    OptionalBool,
-	depth_compare:          CompareFunction,
-	stencil_front:          StencilFaceState,
-	stencil_back:           StencilFaceState,
+WGPU_Depth_Stencil_State :: struct {
+	next_in_chain:          ^Chained_Struct,
+	format:                 Texture_Format,
+	depth_write_enabled:    Optional_Bool,
+	depth_compare:          Compare_Function,
+	stencil_front:          Stencil_Face_State,
+	stencil_back:           Stencil_Face_State,
 	stencil_read_mask:      u32,
 	stencil_write_mask:     u32,
 	depth_bias:             i32,
@@ -1961,85 +1957,85 @@ WGPUDepthStencilState :: struct {
 	depth_bias_clamp:       f32,
 }
 
-FutureWaitInfo :: struct {
+Future_Wait_Info :: struct {
 	future:    Future,
 	completed: b32,
 }
 
 @(private)
-WGPUProgrammableStageDescriptor :: struct {
-	next_in_chain:  ^ChainedStruct,
-	module:         ShaderModule,
-	entry_point:    StringView,
+WGPU_Programmable_Stage_Descriptor :: struct {
+	next_in_chain:  ^Chained_Struct,
+	module:         Shader_Module,
+	entry_point:    String_View,
 	constant_count: uint,
-	constants:      [^]WGPUConstantEntry,
+	constants:      [^]WGPU_Constant_Entry,
 }
 
 @(private)
-WGPUVertexBufferLayout :: struct {
-	step_mode:       VertexStepMode,
+WGPU_Vertex_Buffer_Layout :: struct {
+	step_mode:       Vertex_Step_Mode,
 	array_stride:    u64,
 	attribute_count: uint,
-	attributes:      [^]VertexAttribute,
+	attributes:      [^]Vertex_Attribute,
 }
 
 @(private)
-WGPUBindGroupLayoutDescriptor :: struct {
-	next_in_chain: ^ChainedStruct,
-	label:         StringView,
+WGPU_Bind_Group_Layout_Descriptor :: struct {
+	next_in_chain: ^Chained_Struct,
+	label:         String_View,
 	entry_count:   uint,
-	entries:       [^]WGPUBindGroupLayoutEntry,
+	entries:       [^]WGPU_Bind_Group_Layout_Entry,
 }
 
 @(private)
-WGPUComputePipelineDescriptor :: struct {
-	next_in_chain: ^ChainedStruct,
-	label:         StringView,
-	layout:        PipelineLayout,
-	compute:       WGPUProgrammableStageDescriptor,
+WGPU_Compute_Pipeline_Descriptor :: struct {
+	next_in_chain: ^Chained_Struct,
+	label:         String_View,
+	layout:        Pipeline_Layout,
+	compute:       WGPU_Programmable_Stage_Descriptor,
 }
 
 @(private)
-WGPURenderPassDescriptor :: struct {
-	next_in_chain:            ^ChainedStruct,
-	label:                    StringView,
+WGPU_Render_Pass_Descriptor :: struct {
+	next_in_chain:            ^Chained_Struct,
+	label:                    String_View,
 	color_attachment_count:   uint,
-	color_attachments:        [^]WGPURenderPassColorAttachment,
-	depth_stencil_attachment: ^RenderPassDepthStencilAttachment,
-	occlusion_query_set:      QuerySet,
-	timestamp_writes:         ^RenderPassTimestampWrites,
+	color_attachments:        [^]WGPU_Render_Pass_Color_Attachment,
+	depth_stencil_attachment: ^Render_Pass_Depth_Stencil_Attachment,
+	occlusion_query_set:      Query_Set,
+	timestamp_writes:         ^Render_Pass_Timestamp_Writes,
 }
 
 @(private)
-WGPUVertexState :: struct {
-	next_in_chain:  ^ChainedStruct,
-	module:         ShaderModule,
-	entry_point:    StringView,
+WGPU_Vertex_State :: struct {
+	next_in_chain:  ^Chained_Struct,
+	module:         Shader_Module,
+	entry_point:    String_View,
 	constant_count: uint,
-	constants:      [^]WGPUConstantEntry,
+	constants:      [^]WGPU_Constant_Entry,
 	buffer_count:   uint,
-	buffers:        [^]WGPUVertexBufferLayout,
+	buffers:        [^]WGPU_Vertex_Buffer_Layout,
 }
 
 @(private)
-WGPUFragmentState :: struct {
-	next_in_chain:  ^ChainedStruct,
-	module:         ShaderModule,
-	entry_point:    StringView,
+WGPU_Fragment_State :: struct {
+	next_in_chain:  ^Chained_Struct,
+	module:         Shader_Module,
+	entry_point:    String_View,
 	constant_count: uint,
-	constants:      [^]WGPUConstantEntry,
+	constants:      [^]WGPU_Constant_Entry,
 	target_count:   uint,
-	targets:        [^]ColorTargetState,
+	targets:        [^]Color_Target_State,
 }
 
 @(private)
-WGPURenderPipelineDescriptor :: struct {
-	next_in_chain: ^ChainedStruct,
-	label:         StringView,
-	layout:        PipelineLayout,
-	vertex:        WGPUVertexState,
-	primitive:     WGPUPrimitiveState,
-	depth_stencil: ^WGPUDepthStencilState,
-	multisample:   MultisampleState,
-	fragment:      ^WGPUFragmentState,
+WGPU_Render_Pipeline_Descriptor :: struct {
+	next_in_chain: ^Chained_Struct,
+	label:         String_View,
+	layout:        Pipeline_Layout,
+	vertex:        WGPU_Vertex_State,
+	primitive:     WGPU_Primitive_State,
+	depth_stencil: ^WGPU_Depth_Stencil_State,
+	multisample:   Multisample_State,
+	fragment:      ^WGPU_Fragment_State,
 }

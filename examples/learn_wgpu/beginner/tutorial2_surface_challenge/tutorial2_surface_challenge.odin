@@ -10,8 +10,8 @@ import "root:wgpu"
 Example :: struct {
 	clear_value: app.Color,
 	render_pass: struct {
-		color_attachments: [1]wgpu.RenderPassColorAttachment,
-		descriptor:        wgpu.RenderPassDescriptor,
+		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
+		descriptor:        wgpu.Render_Pass_Descriptor,
 	},
 }
 
@@ -20,7 +20,7 @@ Context :: app.Context(Example)
 EXAMPLE_TITLE :: "Tutorial 2 - Surface Challenge"
 
 init :: proc(ctx: ^Context) -> (ok: bool) {
-	ctx.clear_value = app.ColorRoyalBlue
+	ctx.clear_value = app.Color_Royal_Blue
 
 	ctx.render_pass.color_attachments[0] = {
 		view = nil, /* Assigned later */
@@ -43,7 +43,7 @@ calculate_color_from_position :: proc(x, y: f32, w, h: u32) -> (color: app.Color
 	return
 }
 
-mouse_position :: proc(ctx: ^Context, event: app.MouseMovedEvent) {
+mouse_position :: proc(ctx: ^Context, event: app.Mouse_Moved_Event) {
 	ctx.clear_value = calculate_color_from_position(
 		event.x,
 		event.y,

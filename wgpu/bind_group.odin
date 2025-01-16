@@ -3,14 +3,14 @@ package wgpu
 /*
 Handle to a binding group.
 
-A `BindGroup` represents the set of resources bound to the bindings described by a
-`BindGroupLayout`. It can be created with `device_create_bind_group`. A `BindGroup` can
-be bound to a particular `RenderPass` with `render_pass_set_bind_group`, or to a
-`ComputePass` with `compute_pass_set_bind_group`.
+A `Bind_Group` represents the set of resources bound to the bindings described by a
+`Bind_Group_Layout`. It can be created with `device_create_bind_group`. A `Bind_Group` can
+be bound to a particular `Render_Pass` with `render_pass_set_bind_group`, or to a
+`Compute_Pass` with `compute_pass_set_bind_group`.
 
 Corresponds to [WebGPU `GPUBindGroup`](https://gpuweb.github.io/gpuweb/#gpubindgroup).
 */
-BindGroup :: distinct rawptr
+Bind_Group :: distinct rawptr
 
 /*
 Resource that can be bound to a pipeline.
@@ -18,13 +18,13 @@ Resource that can be bound to a pipeline.
 Corresponds to [WebGPU `GPUBindingResource`](
 https://gpuweb.github.io/gpuweb/#typedefdef-gpubindingresource).
 */
-BindingResource :: union {
-	BufferBinding,
+Binding_Resource :: union {
+	Buffer_Binding,
 	Sampler,
-	TextureView,
+	Texture_View,
 	[]Buffer,
 	[]Sampler,
-	[]TextureView,
+	[]Texture_View,
 }
 
 /*
@@ -33,22 +33,22 @@ Describes the segment of a buffer to bind.
 Corresponds to [WebGPU `GPUBufferBinding`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpubufferbinding).
 */
-BufferBinding :: struct {
+Buffer_Binding :: struct {
 	buffer: Buffer,
 	offset: u64,
 	size:   u64,
 }
 
 /*
-An element of a `BindGroupDescriptor`, consisting of a bindable resource
+An element of a `Bind_Group_Descriptor`, consisting of a bindable resource
 and the slot to bind it to.
 
 Corresponds to [WebGPU `GPUBindGroupEntry`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpubindgroupentry).
 */
-BindGroupEntry :: struct {
+Bind_Group_Entry :: struct {
 	binding:  u32,
-	resource: BindingResource,
+	resource: Binding_Resource,
 }
 
 /*
@@ -59,15 +59,15 @@ For use with `device_create_bind_group`.
 Corresponds to [WebGPU `GPUBindGroupDescriptor`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpubindgroupdescriptor).
 */
-BindGroupDescriptor :: struct {
+Bind_Group_Descriptor :: struct {
 	label:   string,
-	layout:  BindGroupLayout,
-	entries: []BindGroupEntry,
+	layout:  Bind_Group_Layout,
+	entries: []Bind_Group_Entry,
 }
 
 @(disabled = !ODIN_DEBUG)
-bind_group_set_label :: proc "contextless" (self: BindGroup, label: string) {
-	c_label: StringViewBuffer
+bind_group_set_label :: proc "contextless" (self: Bind_Group, label: string) {
+	c_label: String_View_Buffer
 	wgpuBindGroupSetLabel(self, init_string_buffer(&c_label, label))
 }
 
@@ -78,12 +78,12 @@ bind_group_add_ref :: wgpuBindGroupAddRef
 bind_group_release :: wgpuBindGroupRelease
 
 /*
-Safely releases the `BindGroup` resources and invalidates the handle.
+Safely releases the `Bind_Group` resources and invalidates the handle.
 The procedure checks both the pointer validity and the Bind group handle before releasing.
 
 Note: After calling this, the Bind group handle will be set to `nil` and should not be used.
 */
-bind_group_release_safe :: #force_inline proc(self: ^BindGroup) {
+bind_group_release_safe :: #force_inline proc(self: ^Bind_Group) {
 	if self != nil && self^ != nil {
 		wgpuBindGroupRelease(self^)
 		self^ = nil
@@ -91,12 +91,12 @@ bind_group_release_safe :: #force_inline proc(self: ^BindGroup) {
 }
 
 @(private)
-WGPUBindGroupEntry :: struct {
-	next_in_chain: ^ChainedStruct,
+WGPU_Bind_Group_Entry :: struct {
+	next_in_chain: ^Chained_Struct,
 	binding:       u32,
 	buffer:        Buffer,
 	offset:        u64,
 	size:          u64,
 	sampler:       Sampler,
-	texture_view:  TextureView,
+	texture_view:  Texture_View,
 }

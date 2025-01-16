@@ -18,38 +18,38 @@ Describes a `Buffer`
 Corresponds to [WebGPU `GPUBufferDescriptor`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpubufferdescriptor).
 */
-BufferDescriptor :: struct {
+Buffer_Descriptor :: struct {
 	label:              string,
-	usage:              BufferUsages,
+	usage:              Buffer_Usages,
 	size:               u64,
 	mapped_at_creation: bool,
 }
 
 /* Return the binding view of the entire buffer. */
-buffer_as_entire_binding :: proc "contextless" (self: Buffer) -> BufferBinding {
+buffer_as_entire_binding :: proc "contextless" (self: Buffer) -> Buffer_Binding {
 	return {buffer = self, offset = 0, size = buffer_size(self)}
 }
 
 /* Defines the range of a `Buffer` contents in bytes. */
-BufferBounds :: Range(u64)
+Buffer_Bounds :: Range(u64)
 
 /*  */
 buffer_get_default_bounds :: #force_inline proc "contextless" (
 	self: Buffer,
-	offset: BufferAddress = 0,
-) -> BufferBounds {
+	offset: Buffer_Address = 0,
+) -> Buffer_Bounds {
 	return {offset, buffer_size(self)}
 }
 
 /*
 Return a slice of a `Buffer`]s bytes.
 
-Return a `BufferSlice` referring to the portion of `self`'s contents
+Return a `Buffer_Slice` referring to the portion of `self`'s contents
 indicated by `bounds`. Regardless of what sort of data `self` stores,
 `bounds` start and end are given in bytes.
 
-A `BufferSlice` can be used to supply vertex and index data, or to map
-buffer contents for access from the CPU. See the `BufferSlice`
+A `Buffer_Slice` can be used to supply vertex and index data, or to map
+buffer contents for access from the CPU. See the `Buffer_Slice`
 documentation for details.
 
 The `range` argument can be half or fully unbounded: for example,
@@ -59,17 +59,17 @@ end of the buffer.
 */
 buffer_slice :: proc "contextless" (
 	self: Buffer,
-	bounds: BufferBounds = {start = 0, end = WHOLE_SIZE},
-) -> BufferSlice {
+	bounds: Buffer_Bounds = {start = 0, end = WHOLE_SIZE},
+) -> Buffer_Slice {
 	offset := bounds.start
-	size: BufferSize
+	size: Buffer_Size
 	if bounds.end == WHOLE_SIZE {
 		size = buffer_size(self) - offset
 	} else {
 		// assert(bounds.end > offset, "Buffer slices cannot be empty")
 		size = bounds.end - offset
 	}
-	return BufferSlice{buffer = self, offset = offset, size = size}
+	return Buffer_Slice{buffer = self, offset = offset, size = size}
 }
 
 /* Flushes any pending write operations and unmaps the buffer from host memory. */
@@ -98,7 +98,7 @@ This is always equal to the `usage` that was specified when creating the buffer.
 */
 buffer_usage :: wgpuBufferGetUsage
 
-BufferMapState :: enum i32 {
+Buffer_Map_State :: enum i32 {
 	Unmapped = 0x00000001,
 	Pending  = 0x00000002,
 	Mapped   = 0x00000003,
@@ -108,21 +108,21 @@ BufferMapState :: enum i32 {
 buffer_map_state :: wgpuBufferGetMapState
 
 /* A slice of a `Buffer`, to be mapped, used for vertex or index data, or the like. */
-BufferSlice :: struct {
+Buffer_Slice :: struct {
 	buffer: Buffer,
-	offset: BufferAddress,
-	size:   BufferSize,
+	offset: Buffer_Address,
+	size:   Buffer_Size,
 }
 
-MapModeBits :: enum u64 {
+Map_Mode :: enum u64 {
 	Read,
 	Write,
 }
 
 /* Type of buffer mapping. */
-MapMode :: distinct bit_set[MapModeBits;u64]
+Map_Modes :: distinct bit_set[Map_Mode;u64]
 
-MAP_MODE_NONE :: MapMode{}
+MAP_MODE_NONE :: Map_Modes{}
 
 /*
 Map the buffer. Buffer is ready to map once the callback is called.
@@ -137,9 +137,9 @@ and used to set flags, send messages, etc.
 */
 buffer_map_async :: proc "contextless" (
 	self: Buffer,
-	mode: MapMode,
-	bounds: BufferBounds,
-	callback_info: BufferMapCallbackInfo,
+	mode: Map_Modes,
+	bounds: Buffer_Bounds,
+	callback_info: Buffer_Map_Callback_Info,
 	loc := #caller_location,
 ) -> (
 	ok: bool,
@@ -156,8 +156,8 @@ buffer_map_async :: proc "contextless" (
 }
 
 /* A view of a mapped buffer's bytes. */
-BufferView :: struct($T: typeid) {
-	slice: BufferSlice,
+Buffer_View :: struct($T: typeid) {
+	slice: Buffer_Slice,
 	data:  T,
 }
 
@@ -165,10 +165,10 @@ BufferView :: struct($T: typeid) {
 buffer_get_mapped_range_sliced :: proc "contextless" (
 	self: Buffer,
 	$T: typeid/[]$U,
-	bounds: BufferBounds = {},
+	bounds: Buffer_Bounds = {},
 	loc := #caller_location,
 ) -> (
-	view: BufferView(T),
+	view: Buffer_View(T),
 	ok: bool,
 ) where intr.type_is_sliceable(T) #optional_ok {
 	bounds := bounds if bounds != {} else buffer_get_default_bounds(self)
@@ -195,10 +195,10 @@ buffer_get_mapped_range_sliced :: proc "contextless" (
 @(require_results)
 buffer_get_mapped_range_bytes :: proc "contextless" (
 	self: Buffer,
-	bounds: BufferBounds = {},
+	bounds: Buffer_Bounds = {},
 	loc := #caller_location,
 ) -> (
-	view: BufferView([]byte),
+	view: Buffer_View([]byte),
 	ok: bool,
 ) #optional_ok {
 	return buffer_get_mapped_range_sliced(self, []byte, bounds, loc)
@@ -208,10 +208,10 @@ buffer_get_mapped_range_bytes :: proc "contextless" (
 buffer_get_mapped_range_typed :: proc "contextless" (
 	self: Buffer,
 	$T: typeid,
-	bounds: BufferBounds = {},
+	bounds: Buffer_Bounds = {},
 	loc := #caller_location,
 ) -> (
-	view: BufferView(T),
+	view: Buffer_View(T),
 	ok: bool,
 ) where !intr.type_is_sliceable(T) #optional_ok {
 	bounds := bounds if bounds != {} else buffer_get_default_bounds(self)
@@ -259,10 +259,10 @@ buffer_get_mapped_range_mut :: proc {
 buffer_get_const_mapped_range_sliced :: proc "contextless" (
 	self: Buffer,
 	$T: typeid/[]$U,
-	bounds: BufferBounds = {},
+	bounds: Buffer_Bounds = {},
 	loc := #caller_location,
 ) -> (
-	view: BufferView(T),
+	view: Buffer_View(T),
 	ok: bool,
 ) where intr.type_is_sliceable(T) #optional_ok {
 	bounds := bounds if bounds != {} else buffer_get_default_bounds(self)
@@ -289,10 +289,10 @@ buffer_get_const_mapped_range_sliced :: proc "contextless" (
 @(require_results)
 buffer_get_const_mapped_range_bytes :: proc "contextless" (
 	self: Buffer,
-	bounds: BufferBounds = {},
+	bounds: Buffer_Bounds = {},
 	loc := #caller_location,
 ) -> (
-	view: BufferView([]byte),
+	view: Buffer_View([]byte),
 	ok: bool,
 ) #optional_ok {
 	return buffer_get_const_mapped_range_sliced(self, []byte, bounds, loc)
@@ -302,10 +302,10 @@ buffer_get_const_mapped_range_bytes :: proc "contextless" (
 buffer_get_const_mapped_range_typed :: proc "contextless" (
 	self: Buffer,
 	$T: typeid,
-	bounds: BufferBounds = {},
+	bounds: Buffer_Bounds = {},
 	loc := #caller_location,
 ) -> (
-	view: BufferView(T),
+	view: Buffer_View(T),
 	ok: bool,
 ) where !intr.type_is_sliceable(T) #optional_ok {
 	bounds := bounds if bounds != {} else buffer_get_default_bounds(self)
@@ -332,8 +332,8 @@ buffer_get_const_mapped_range_typed :: proc "contextless" (
 /*
 Gain read-only access to the bytes of a mapped `Buffer`.
 
-Return a `BufferView` referring to the buffer range represented by
-`self`. See the documentation for `BufferView` for details.
+Return a `Buffer_View` referring to the buffer range represented by
+`self`. See the documentation for `Buffer_View` for details.
 
 **Panics**
 
@@ -352,7 +352,7 @@ buffer_get_mapped_range :: proc {
 /* Sets a debug label for the given `Buffer`. */
 @(disabled = !ODIN_DEBUG)
 buffer_set_label :: proc "contextless" (self: Buffer, label: string) {
-	c_label: StringViewBuffer
+	c_label: String_View_Buffer
 	wgpuBufferSetLabel(self, init_string_buffer(&c_label, label))
 }
 
@@ -376,10 +376,10 @@ buffer_release_safe :: #force_inline proc(self: ^Buffer) {
 }
 
 @(private)
-WGPUBufferDescriptor :: struct {
-	next_in_chain:      ^ChainedStruct,
-	label:              StringView,
-	usage:              BufferUsages,
+WGPU_Buffer_Descriptor :: struct {
+	next_in_chain:      ^Chained_Struct,
+	label:              String_View,
+	usage:              Buffer_Usages,
 	size:               u64,
 	mapped_at_creation: b32,
 }

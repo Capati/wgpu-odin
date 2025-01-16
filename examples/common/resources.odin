@@ -12,10 +12,9 @@ import "root:utils/tobj"
 import "root:wgpu"
 
 load_model :: proc(
+	ctx: ^app.Application,
 	filename: string,
-	device: wgpu.Device,
-	queue: wgpu.Queue,
-	layout: wgpu.BindGroupLayout,
+	layout: wgpu.Bind_Group_Layout,
 	allocator := context.allocator,
 ) -> (
 	model: ^Model,
@@ -34,9 +33,9 @@ load_model :: proc(
 	mtl_dir := filepath.dir(filename, ta)
 	for &m in obj_materials {
 		mtl_filename := filepath.join({mtl_dir, m.diffuse_texture}, allocator = ta)
-		diffuse_texture := app.create_texture_from_file(mtl_filename, device, queue) or_return
+		diffuse_texture := app.create_texture_from_file(ctx, mtl_filename) or_return
 		bind_group := wgpu.device_create_bind_group(
-			device,
+			ctx.gpu.device,
 			{
 				layout = layout,
 				entries = {
@@ -58,7 +57,7 @@ load_model :: proc(
 
 	meshes := make([dynamic]Mesh, allocator)
 	for &m in obj_models {
-		vertices: [dynamic]ModelVertex;vertices.allocator = ta
+		vertices: [dynamic]Model_Vertex;vertices.allocator = ta
 		for i in 0 ..< len(m.mesh.vertices) {
 			pos := m.mesh.vertices[i]
 			texture_coords: la.Vector2f32
@@ -69,16 +68,16 @@ load_model :: proc(
 			if len(m.mesh.normals) > 0 {
 				normals = m.mesh.normals[i]
 			}
-			append(&vertices, ModelVertex{pos, texture_coords, normals})
+			append(&vertices, Model_Vertex{pos, texture_coords, normals})
 		}
 
 		vertex_buffer := wgpu.device_create_buffer_with_data(
-			device,
+			ctx.gpu.device,
 			{contents = wgpu.to_bytes(vertices[:]), usage = {.Vertex}},
 		) or_return
 
 		index_buffer := wgpu.device_create_buffer_with_data(
-			device,
+			ctx.gpu.device,
 			{contents = wgpu.to_bytes(m.mesh.indices), usage = {.Index}},
 		) or_return
 

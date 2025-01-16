@@ -7,14 +7,14 @@ import "core:log"
 import app "root:utils/application"
 import "root:wgpu"
 
-TextureData :: struct {
+Texture_Data :: struct {
 	label: string,
 	tex:   wgpu.Texture,
-	view:  wgpu.TextureView,
+	view:  wgpu.Texture_View,
 	data:  [4]u8,
 }
 
-TextureName :: enum {
+Texture_Name :: enum {
 	RED,
 	GREEN,
 	BLUE,
@@ -59,13 +59,13 @@ Example :: struct {
 	vertex_buffer:                wgpu.Buffer,
 	index_buffer:                 wgpu.Buffer,
 	texture_index_buffer:         wgpu.Buffer,
-	textures:                     [TextureName]TextureData,
+	textures:                     [Texture_Name]Texture_Data,
 	sampler:                      wgpu.Sampler,
-	bind_group:                   wgpu.BindGroup,
-	render_pipeline:              wgpu.RenderPipeline,
+	bind_group:                   wgpu.Bind_Group,
+	render_pipeline:              wgpu.Render_Pipeline,
 	render_pass:                  struct {
-		color_attachments: [1]wgpu.RenderPassColorAttachment,
-		descriptor:        wgpu.RenderPassDescriptor,
+		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
+		descriptor:        wgpu.Render_Pass_Descriptor,
 	},
 }
 
@@ -93,7 +93,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	) or_return
 	defer wgpu.release(base_shader_module)
 
-	fragment_shader_module: wgpu.ShaderModule
+	fragment_shader_module: wgpu.Shader_Module
 	if !ctx.use_uniform_workaround {
 		NON_UNIFORM_INDEXING_WGSL: string : #load("./non_uniform_indexing.wgsl", string)
 		fragment_shader_module = wgpu.device_create_shader_module(
@@ -148,10 +148,10 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		wgpu.release(ctx.texture_index_buffer)
 	}
 
-	extent_3d_default: wgpu.Extent3D = {1, 1, 1}
+	extent_3d_default: wgpu.Extent_3D = {1, 1, 1}
 
-	texture_descriptor_common: wgpu.TextureDescriptor = {
-		usage           = {.TextureBinding, .CopyDst},
+	texture_descriptor_common: wgpu.Texture_Descriptor = {
+		usage           = {.Texture_Binding, .Copy_Dst},
 		dimension       = .D2,
 		size            = extent_3d_default,
 		format          = ctx.gpu.config.format,
@@ -159,7 +159,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		sample_count    = 1,
 	}
 
-	texture_data_layout_common: wgpu.TexelCopyBufferLayout = {
+	texture_data_layout_common: wgpu.Texel_Copy_Buffer_Layout = {
 		offset         = 0,
 		bytes_per_row  = 4,
 		rows_per_image = wgpu.COPY_STRIDE_UNDEFINED,
@@ -177,7 +177,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	defer if !ok {
 		for i in 0 ..< len(ctx.textures) {
-			ref := &ctx.textures[cast(TextureName)i]
+			ref := &ctx.textures[cast(Texture_Name)i]
 			if ref.view != nil {
 				wgpu.release(ref.view)
 				wgpu.release(ref.tex)
@@ -186,7 +186,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	}
 
 	for i in 0 ..< len(ctx.textures) {
-		ref := &ctx.textures[cast(TextureName)i]
+		ref := &ctx.textures[cast(Texture_Name)i]
 
 		texture_descriptor_common.label = ref.label
 
@@ -205,13 +205,13 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	bind_group_layout := wgpu.device_create_bind_group_layout(
 		ctx.gpu.device,
-		wgpu.BindGroupLayoutDescriptor {
+		wgpu.Bind_Group_Layout_Descriptor {
 			label = EXAMPLE_TITLE + " Bind group layout",
 			entries = {
 				{
 					binding = 0,
 					visibility = {.Fragment},
-					type = wgpu.TextureBindingLayout {
+					type = wgpu.Texture_Binding_Layout {
 						multisampled = false,
 						view_dimension = .D2,
 						sample_type = .Float,
@@ -221,7 +221,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				{
 					binding = 1,
 					visibility = {.Fragment},
-					type = wgpu.TextureBindingLayout {
+					type = wgpu.Texture_Binding_Layout {
 						multisampled = false,
 						view_dimension = .D2,
 						sample_type = .Float,
@@ -231,13 +231,13 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				{
 					binding = 2,
 					visibility = {.Fragment},
-					type = wgpu.SamplerBindingLayout{type = .Filtering},
+					type = wgpu.Sampler_Binding_Layout{type = .Filtering},
 					count = 2,
 				},
 				{
 					binding = 3,
 					visibility = {.Fragment},
-					type = wgpu.BufferBindingLayout {
+					type = wgpu.Buffer_Binding_Layout {
 						type = .Uniform,
 						has_dynamic_offset = true,
 						min_binding_size = 4,
@@ -261,14 +261,14 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 			entries = {
 				{
 					binding = 0,
-					resource = []wgpu.TextureView {
+					resource = []wgpu.Texture_View {
 						ctx.textures[.RED].view,
 						ctx.textures[.GREEN].view,
 					},
 				},
 				{
 					binding = 1,
-					resource = []wgpu.TextureView {
+					resource = []wgpu.Texture_View {
 						ctx.textures[.BLUE].view,
 						ctx.textures[.WHITE].view,
 					},
@@ -276,7 +276,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				{binding = 2, resource = []wgpu.Sampler{ctx.sampler, ctx.sampler}},
 				{
 					binding = 3,
-					resource = wgpu.BufferBinding {
+					resource = wgpu.Buffer_Binding {
 						buffer = ctx.texture_index_buffer,
 						offset = 0,
 						size = 4,
@@ -337,7 +337,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.render_pass.color_attachments[0] = {
 		view = nil, /* Assigned later */
-		ops  = {.Clear, .Store, app.ColorBlack},
+		ops  = {.Clear, .Store, app.Color_Black},
 	}
 
 	ctx.render_pass.descriptor = {
@@ -354,7 +354,7 @@ quit :: proc(ctx: ^Context) {
 	wgpu.release(ctx.sampler)
 
 	for i in 0 ..< len(ctx.textures) {
-		ref := &ctx.textures[cast(TextureName)i]
+		ref := &ctx.textures[cast(Texture_Name)i]
 		wgpu.release(ref.view)
 		wgpu.texture_destroy(ref.tex)
 		wgpu.release(ref.tex)
@@ -410,9 +410,9 @@ main :: proc() {
 	settings.title = EXAMPLE_TITLE
 
 	// Set optional features to decide for a workaround or feature based
-	settings.optional_features = {.SampledTextureAndStorageBufferArrayNonUniformIndexing}
+	settings.optional_features = {.Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing}
 	// Set required features to use texture arrays
-	settings.required_features = {.TextureBindingArray}
+	settings.required_features = {.Texture_Binding_Array}
 
 	example, ok := app.create(Context, settings)
 	if !ok {

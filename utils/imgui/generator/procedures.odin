@@ -1,123 +1,84 @@
-package imgui_generator
+package imgui_gen
 
 // Packages
 import "base:runtime"
 import "core:encoding/json"
-import "core:log"
 import "core:mem"
 import "core:os"
+import "core:slice"
 import "core:strconv"
 import "core:strings"
 
 write_procedures :: proc(gen: ^Generator, handle: os.Handle, json_data: ^json.Value) {
 	root := json_data.(json.Object)
 
-	functions, defines_ok := root["functions"]
-	if !defines_ok {
-		log.warn("Missing 'functions' root object! Ignoring...")
-		return
-	}
+	functions, functions_ok := root["functions"]
+	assert(functions_ok, "Missing 'functions' root object! Ignoring...")
 
 	ta := context.temp_allocator
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
-	skip_functions: [dynamic]string;skip_functions.allocator = ta
-	append(&skip_functions, "ImStr_FromCharStr") // where this is defined?
+	// Functions to ignore can be missing definitions or wrapped
+	functions_to_ignore := []string {
+		"ImStr_FromCharStr", // where this is defined?
+	}
+	is_ignored_function :: #force_inline proc(functions: []string, name: string) -> bool {
+		return slice.contains(functions, name)
+	}
 
+	// List of reserved names to replace
 	reserved_name_map: map[string]string;reserved_name_map.allocator = ta
 	reserved_name_map["in"] = "_in"
 
-	skip_function_check :: proc(functions: ^[dynamic]string, name: string) -> bool {
-		for f in functions {
-			if f == name {
-				return true
-			}
-		}
-		return false
-	}
-
-	os.write_string(handle, "foreign lib {\n")
+	// Start foreign block
+	os.write_string(handle, "@(default_calling_convention = \"c\")\nforeign lib {\n")
 
 	loop: for &function_entry in functions.(json.Array) {
+		function_entry_obj := function_entry.(json.Object)
+		assert(function_entry_obj != nil, "Missing function object!")
+
 		// Ignore obsolete names
-		if test_ifndef_condition(
-			&function_entry.(json.Object),
-			"IMGUI_DISABLE_OBSOLETE_FUNCTIONS",
-		) {
+		if test_ifndef_condition(&function_entry_obj, "IMGUI_DISABLE_OBSOLETE_FUNCTIONS") {
 			continue
 		}
 
 		proc_name_raw, proc_name_ok := json_get_string(&function_entry, "name")
 		assert(proc_name_ok, "Function name is missing!")
 
-		if skip_function_check(&skip_functions, proc_name_raw) {
+		if is_ignored_function(functions_to_ignore, proc_name_raw) {
 			continue
-		}
-
-		if strings.starts_with(proc_name_raw, "cI") {
-			proc_name_raw = proc_name_raw[1:]
 		}
 
 		defer free_all(gen.tmp_ally)
 
-		function_entry_obj := function_entry.(json.Object)
-
+		// This is the procedure final string to write
 		b := strings.builder_make(gen.tmp_ally)
 
-		comments_b := strings.builder_make(ta)
-
-		if comments_value, has_comments := function_entry_obj["comments"]; has_comments {
-			comments_obj := comments_value.(json.Object)
-			if comments_preceding_value, has_preceding := comments_obj["preceding"];
-			   has_preceding {
-				comments_preceding := comments_preceding_value.(json.Array)
-				for &c in comments_preceding {
-					comment := c.(json.String)
-					strings.write_string(&comments_b, TAB_SPACE)
-					strings.write_string(&comments_b, comment)
-					strings.write_byte(&comments_b, '\n')
-				}
-			}
+		// Start by writing preceding comments (if any)
+		if preceding_comments, preceding_comments_ok := get_preceding_comments(
+			obj = &function_entry_obj,
+			tab_count = 1,
+			merge_attached = true,
+			allocator = gen.tmp_ally,
+		); preceding_comments_ok {
+			strings.write_string(&b, preceding_comments)
 		}
 
-		comments_preceding := strings.to_string(comments_b)
-		if comments_preceding != "" {
-			strings.write_string(&b, comments_preceding)
-		}
-
-		// Add attached comment if any (aside from the name, after the ---)
-		comment_attached: string
-
-		if comments_value, has_comments := function_entry_obj["comments"]; has_comments {
-			comments_obj := comments_value.(json.Object)
-			if comments_attached_value, has_attached := comments_obj["attached"]; has_attached {
-				comment_attached = strings.clone(comments_attached_value.(json.String), ta)
-			}
-		}
-
-		if comment_attached != "" {
-			strings.write_string(&b, TAB_SPACE)
-			strings.write_string(&b, comment_attached)
-			strings.write_string(&b, "\n")
-		}
-
+		// Write the link name
 		strings.write_string(&b, TAB_SPACE)
 		strings.write_string(&b, "@(link_name = \"")
 		strings.write_string(&b, proc_name_raw)
 		strings.write_string(&b, "\")\n")
-		strings.write_string(&b, TAB_SPACE)
-
-		func_def: ProcDefinition
 
 		// Get the procedure name and clean up
-		proc_name_no_imgui := remove_imgui(proc_name_raw, gen.tmp_ally)
-		proc_name := strings.to_snake_case(proc_name_no_imgui, gen.tmp_ally)
+		proc_name := remove_imgui(proc_name_raw, gen.tmp_ally)
+		proc_name = strings.to_snake_case(proc_name, gen.tmp_ally)
+		strings.write_string(&b, TAB_SPACE)
 		strings.write_string(&b, proc_name)
 		strings.write_string(&b, " :: proc(")
 
 		// Arguments
-		arguments, arguments_ok := function_entry_obj["arguments"].(json.Array)
-		if arguments_ok {
+		if arguments, arguments_ok := function_entry_obj["arguments"].(json.Array); arguments_ok {
 			for &arg, i in arguments {
 				arg_obj := arg.(json.Object)
 
@@ -143,7 +104,7 @@ write_procedures :: proc(gen: ^Generator, handle: os.Handle, json_data: ^json.Va
 					strings.write_string(&b, "#c_vararg args: ..any")
 				} else if details_value_ok {
 					// When there is a type_details field, we assume its a function pointer
-					func_def = get_proc_definition(
+					func_def := get_proc_definition(
 						gen,
 						&arg_obj,
 						&details_value.(json.Object),
@@ -355,15 +316,13 @@ write_procedures :: proc(gen: ^Generator, handle: os.Handle, json_data: ^json.Va
 
 		strings.write_string(&b, " ---\n")
 
-		// fmt.print(strings.to_string(b))
 		os.write_string(handle, strings.to_string(b))
 	}
 
-	os.write_string(handle, "}") // End foreign block
-
+	os.write_string(handle, "}") // End of foreign block
 }
 
-ProcDefinition :: struct {
+Proc_Definition :: struct {
 	comments:   string,
 	name:       string,
 	definition: string,
@@ -374,7 +333,7 @@ get_proc_definition :: proc(
 	type: ^json.Object,
 	details: ^json.Object,
 	allocator: mem.Allocator,
-) -> ProcDefinition {
+) -> Proc_Definition {
 	proc_name, proc_name_ok := json_get_string(type, "name")
 	assert(proc_name_ok, "Procedure name is missing!")
 
@@ -423,13 +382,8 @@ get_proc_definition :: proc(
 		}
 	}
 
-	// comments_preceding := strings.to_string(comments_b)
-	// if comments_preceding != "" {
-	// 	entry.comment = strings.clone(comments_preceding, allocator)
-	// }
-
-	proc_name_out := strings.clone(proc_name, allocator)
+	proc_name_out := pascal_to_ada_case(proc_name, allocator)
 	proc_definition := strings.clone(strings.to_string(b), allocator)
 
-	return ProcDefinition{name = proc_name_out, definition = proc_definition}
+	return Proc_Definition{name = proc_name_out, definition = proc_definition}
 }

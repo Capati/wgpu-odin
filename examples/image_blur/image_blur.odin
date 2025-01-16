@@ -15,27 +15,27 @@ Settings :: struct {
 }
 
 Example :: struct {
-	blur_pipeline:            wgpu.ComputePipeline,
-	fullscreen_quad_pipeline: wgpu.RenderPipeline,
+	blur_pipeline:            wgpu.Compute_Pipeline,
+	fullscreen_quad_pipeline: wgpu.Render_Pipeline,
 	image_texture:            app.Texture,
 	textures:                 [2]struct {
 		texture: wgpu.Texture,
-		view:    wgpu.TextureView,
+		view:    wgpu.Texture_View,
 	},
 	buffer_0:                 wgpu.Buffer,
 	buffer_1:                 wgpu.Buffer,
 	sampler:                  wgpu.Sampler,
 	blur_params_buffer:       wgpu.Buffer,
-	compute_constants:        wgpu.BindGroup,
-	compute_bind_group_0:     wgpu.BindGroup,
-	compute_bind_group_1:     wgpu.BindGroup,
-	compute_bind_group_2:     wgpu.BindGroup,
-	show_result_bind_group:   wgpu.BindGroup,
+	compute_constants:        wgpu.Bind_Group,
+	compute_bind_group_0:     wgpu.Bind_Group,
+	compute_bind_group_1:     wgpu.Bind_Group,
+	compute_bind_group_2:     wgpu.Bind_Group,
+	show_result_bind_group:   wgpu.Bind_Group,
 	block_dim:                i32,
 	blur_settings:            Settings,
 	render_pass:              struct {
-		color_attachments: [1]wgpu.RenderPassColorAttachment,
-		descriptor:        wgpu.RenderPassDescriptor,
+		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
+		descriptor:        wgpu.Render_Pass_Descriptor,
 	},
 }
 
@@ -90,7 +90,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 					},
 				},
 			},
-			primitive = {topology = .TriangleList, front_face = .CCW, cull_mode = .None},
+			primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .None},
 			multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
 		},
 	) or_return
@@ -108,7 +108,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		t.texture = wgpu.device_create_texture(
 			ctx.gpu.device,
 			{
-				usage = {.CopyDst, .StorageBinding, .TextureBinding},
+				usage = {.Copy_Dst, .Storage_Binding, .Texture_Binding},
 				dimension = image_texture_descriptor.dimension,
 				size = image_texture_descriptor.size,
 				format = image_texture_descriptor.format,
@@ -143,7 +143,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.blur_params_buffer = wgpu.device_create_buffer(
 		ctx.gpu.device,
-		{size = size_of(Settings), usage = {.CopyDst, .Uniform}},
+		{size = size_of(Settings), usage = {.Copy_Dst, .Uniform}},
 	) or_return
 	defer if !ok {
 		wgpu.release(ctx.blur_params_buffer)
@@ -171,7 +171,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				{binding = 0, resource = ctx.sampler},
 				{
 					binding = 1,
-					resource = wgpu.BufferBinding {
+					resource = wgpu.Buffer_Binding {
 						buffer = ctx.blur_params_buffer,
 						size = wgpu.buffer_size(ctx.blur_params_buffer),
 					},
@@ -195,7 +195,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				{binding = 2, resource = ctx.textures[0].view},
 				{
 					binding = 3,
-					resource = wgpu.BufferBinding {
+					resource = wgpu.Buffer_Binding {
 						buffer = ctx.buffer_0,
 						size = wgpu.buffer_size(ctx.buffer_0),
 					},
@@ -216,7 +216,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				{binding = 2, resource = ctx.textures[1].view},
 				{
 					binding = 3,
-					resource = wgpu.BufferBinding {
+					resource = wgpu.Buffer_Binding {
 						buffer = ctx.buffer_1,
 						size = wgpu.buffer_size(ctx.buffer_1),
 					},
@@ -237,7 +237,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				{binding = 2, resource = ctx.textures[0].view},
 				{
 					binding = 3,
-					resource = wgpu.BufferBinding {
+					resource = wgpu.Buffer_Binding {
 						buffer = ctx.buffer_0,
 						size = wgpu.buffer_size(ctx.buffer_0),
 					},
@@ -271,7 +271,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.render_pass.color_attachments[0] = {
 		view = nil, /* Assigned later */
-		ops  = {.Clear, .Store, app.ColorBlack},
+		ops  = {.Clear, .Store, app.Color_Black},
 	}
 
 	ctx.render_pass.descriptor = {

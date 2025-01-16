@@ -2,53 +2,53 @@ package wgpu
 
 Feature :: enum Flags {
 	// WebGPU
-	DepthClipControl,
-	Depth32FloatStencil8,
-	TimestampQuery,
-	TextureCompressionBC,
-	TextureCompressionBCSliced3D,
-	TextureCompressionETC2,
-	TextureCompressionASTC,
-	TextureCompressionASTCSliced3D,
-	IndirectFirstInstance,
-	ShaderF16,
-	RG11B10UfloatRenderable,
-	BGRA8UnormStorage,
-	Float32Filterable,
-	Float32Blendable,
-	ClipDistances,
-	DualSourceBlending,
+	Depth_Clip_Control,
+	Depth32_Float_Stencil8,
+	Timestamp_Query,
+	Texture_Compression_BC,
+	Texture_Compression_BC_Sliced3D,
+	Texture_Compression_ETC2,
+	Texture_Compression_ASTC,
+	Texture_Compression_ASTC_Sliced3D,
+	Indirect_First_Instance,
+	Shader_F16,
+	RG11B10_Ufloat_Renderable,
+	BGRA8_Unorm_Storage,
+	Float32_Filterable,
+	Float32_Blendable,
+	Clip_Distances,
+	Dual_Source_Blending,
 
 	// Native
-	PushConstants,
-	TextureAdapterSpecificFormatFeatures,
-	MultiDrawIndirect,
-	MultiDrawIndirectCount,
-	VertexWritableStorage,
-	TextureBindingArray,
-	SampledTextureAndStorageBufferArrayNonUniformIndexing,
-	PipelineStatisticsQuery,
-	StorageResourceBindingArray,
-	PartiallyBoundBindingArray,
-	TextureFormat16bitNorm,
-	TextureCompressionAstcHdr,
-	MappablePrimaryBuffers,
-	BufferBindingArray,
-	UniformBufferAndStorageTextureArrayNonUniformIndexing,
-	SpirvShaderPassthrough,
-	VertexAttribute64bit,
-	TextureFormatNv12,
-	RayTracingAccelerationStructure,
-	RayQuery,
-	ShaderF64,
-	ShaderI16,
-	ShaderPrimitiveIndex,
-	ShaderEarlyDepthTest,
+	Push_Constants,
+	Texture_Adapter_Specific_Format_Features,
+	Multi_Draw_Indirect,
+	Multi_Draw_Indirect_Count,
+	Vertex_Writable_Storage,
+	Texture_Binding_Array,
+	Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing,
+	Pipeline_Statistics_Query,
+	Storage_Resource_Binding_Array,
+	Partially_Bound_Binding_Array,
+	Texture_Format16bit_Norm,
+	Texture_Compression_ASTC_Hdr,
+	Mappable_Primary_Buffers,
+	Buffer_Binding_Array,
+	Uniform_Buffer_And_Storage_Texture_Array_Non_Uniform_Indexing,
+	Spirv_Shader_Passthrough,
+	Vertex_Attribute64bit,
+	Texture_Format_NV12,
+	Ray_Tracing_Acceleration_Structure,
+	Ray_Query,
+	Shader_F64,
+	Shader_I16,
+	Shader_Primitive_Index,
+	Shader_Early_Depth_Test,
 	Subgroup,
-	SubgroupVertex,
-	SubgroupBarrier,
-	TimestampQueryInsideEncoders,
-	TimestampQueryInsidePasses,
+	Subgroup_Vertex,
+	Subgroup_Barrier,
+	Timestamp_Query_Inside_Encoders,
+	Timestamp_Query_Inside_Passes,
 }
 
 MAX_FEATURES :: len(Feature)
@@ -73,22 +73,22 @@ features_all_webgpu_flags :: proc "contextless" (features: Features) -> (ret: Fe
 	// odinfmt: disable
 	for f in features {
 		#partial switch f {
-		case .DepthClipControl: ret += {.DepthClipControl}
-		case .Depth32FloatStencil8: ret += {.Depth32FloatStencil8}
-		case .TimestampQuery: ret += {.TimestampQuery}
-		case .TextureCompressionBC: ret += {.TextureCompressionBC}
-		case .TextureCompressionBCSliced3D: ret += {.TextureCompressionBCSliced3D}
-		case .TextureCompressionETC2: ret += {.TextureCompressionETC2}
-		case .TextureCompressionASTC: ret += {.TextureCompressionASTC}
-		case .TextureCompressionASTCSliced3D: ret += {.TextureCompressionASTCSliced3D}
-		case .IndirectFirstInstance: ret += {.IndirectFirstInstance}
-		case .ShaderF16: ret += {.ShaderF16}
-		case .RG11B10UfloatRenderable: ret += {.RG11B10UfloatRenderable}
-		case .BGRA8UnormStorage: ret += {.BGRA8UnormStorage}
-		case .Float32Filterable: ret += {.Float32Filterable}
-		case .Float32Blendable: ret += {.Float32Blendable}
-		case .ClipDistances: ret += {.ClipDistances}
-		case .DualSourceBlending: ret += {.DualSourceBlending}
+		case .Depth_Clip_Control: ret += {.Depth_Clip_Control}
+		case .Depth32_Float_Stencil8: ret += {.Depth32_Float_Stencil8}
+		case .Timestamp_Query: ret += {.Timestamp_Query}
+		case .Texture_Compression_BC: ret += {.Texture_Compression_BC}
+		case .Texture_Compression_BC_Sliced3D: ret += {.Texture_Compression_BC_Sliced3D}
+		case .Texture_Compression_ETC2: ret += {.Texture_Compression_ETC2}
+		case .Texture_Compression_ASTC: ret += {.Texture_Compression_ASTC}
+		case .Texture_Compression_ASTC_Sliced3D: ret += {.Texture_Compression_ASTC_Sliced3D}
+		case .Indirect_First_Instance: ret += {.Indirect_First_Instance}
+		case .Shader_F16: ret += {.Shader_F16}
+		case .RG11B10_Ufloat_Renderable: ret += {.RG11B10_Ufloat_Renderable}
+		case .BGRA8_Unorm_Storage: ret += {.BGRA8_Unorm_Storage}
+		case .Float32_Filterable: ret += {.Float32_Filterable}
+		case .Float32_Blendable: ret += {.Float32_Blendable}
+		case .Clip_Distances: ret += {.Clip_Distances}
+		case .Dual_Source_Blending: ret += {.Dual_Source_Blending}
 		}
 	}
 	// odinfmt: enable
@@ -100,97 +100,97 @@ features_all_native_flags :: proc "contextless" (features: Features) -> (ret: Fe
 	// odinfmt: disable
 	for f in features {
 		#partial switch f {
-		case .PushConstants: ret += {.PushConstants}
-		case .TextureAdapterSpecificFormatFeatures: ret += {.TextureAdapterSpecificFormatFeatures}
-		case .MultiDrawIndirect: ret += {.MultiDrawIndirect}
-		case .MultiDrawIndirectCount: ret += {.MultiDrawIndirectCount}
-		case .VertexWritableStorage: ret += {.VertexWritableStorage}
-		case .TextureBindingArray: ret += {.TextureBindingArray}
-		case .SampledTextureAndStorageBufferArrayNonUniformIndexing: ret +=
-			{.SampledTextureAndStorageBufferArrayNonUniformIndexing}
-		case .PipelineStatisticsQuery: ret += {.PipelineStatisticsQuery}
-		case .StorageResourceBindingArray: ret += {.StorageResourceBindingArray}
-		case .PartiallyBoundBindingArray: ret += {.PartiallyBoundBindingArray}
-		case .TextureFormat16bitNorm: ret += {.TextureFormat16bitNorm}
-		case .TextureCompressionAstcHdr: ret += {.TextureCompressionAstcHdr}
-		case .MappablePrimaryBuffers: ret += {.MappablePrimaryBuffers}
-		case .BufferBindingArray: ret += {.BufferBindingArray}
-		case .UniformBufferAndStorageTextureArrayNonUniformIndexing: ret +=
-			{.UniformBufferAndStorageTextureArrayNonUniformIndexing}
-		case .SpirvShaderPassthrough: ret += {.SpirvShaderPassthrough}
-		case .VertexAttribute64bit: ret += {.VertexAttribute64bit}
-		case .TextureFormatNv12: ret += {.TextureFormatNv12}
-		case .RayTracingAccelerationStructure: ret += {.RayTracingAccelerationStructure}
-		case .RayQuery: ret += {.RayQuery}
-		case .ShaderF64: ret += {.ShaderF64}
-		case .ShaderI16: ret += {.ShaderI16}
-		case .ShaderPrimitiveIndex: ret += {.ShaderPrimitiveIndex}
-		case .ShaderEarlyDepthTest: ret += {.ShaderEarlyDepthTest}
+		case .Push_Constants: ret += {.Push_Constants}
+		case .Texture_Adapter_Specific_Format_Features: ret += {.Texture_Adapter_Specific_Format_Features}
+		case .Multi_Draw_Indirect: ret += {.Multi_Draw_Indirect}
+		case .Multi_Draw_Indirect_Count: ret += {.Multi_Draw_Indirect_Count}
+		case .Vertex_Writable_Storage: ret += {.Vertex_Writable_Storage}
+		case .Texture_Binding_Array: ret += {.Texture_Binding_Array}
+		case .Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing: ret +=
+			{.Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing}
+		case .Pipeline_Statistics_Query: ret += {.Pipeline_Statistics_Query}
+		case .Storage_Resource_Binding_Array: ret += {.Storage_Resource_Binding_Array}
+		case .Partially_Bound_Binding_Array: ret += {.Partially_Bound_Binding_Array}
+		case .Texture_Format16bit_Norm: ret += {.Texture_Format16bit_Norm}
+		case .Texture_Compression_ASTC_Hdr: ret += {.Texture_Compression_ASTC_Hdr}
+		case .Mappable_Primary_Buffers: ret += {.Mappable_Primary_Buffers}
+		case .Buffer_Binding_Array: ret += {.Buffer_Binding_Array}
+		case .Uniform_Buffer_And_Storage_Texture_Array_Non_Uniform_Indexing: ret +=
+			{.Uniform_Buffer_And_Storage_Texture_Array_Non_Uniform_Indexing}
+		case .Spirv_Shader_Passthrough: ret += {.Spirv_Shader_Passthrough}
+		case .Vertex_Attribute64bit: ret += {.Vertex_Attribute64bit}
+		case .Texture_Format_NV12: ret += {.Texture_Format_NV12}
+		case .Ray_Tracing_Acceleration_Structure: ret += {.Ray_Tracing_Acceleration_Structure}
+		case .Ray_Query: ret += {.Ray_Query}
+		case .Shader_F64: ret += {.Shader_F64}
+		case .Shader_I16: ret += {.Shader_I16}
+		case .Shader_Primitive_Index: ret += {.Shader_Primitive_Index}
+		case .Shader_Early_Depth_Test: ret += {.Shader_Early_Depth_Test}
 		case .Subgroup: ret += {.Subgroup}
-		case .SubgroupVertex: ret += {.SubgroupVertex}
-		case .SubgroupBarrier: ret += {.SubgroupBarrier}
-		case .TimestampQueryInsideEncoders: ret += {.TimestampQueryInsideEncoders}
-		case .TimestampQueryInsidePasses: ret += {.TimestampQueryInsidePasses}
+		case .Subgroup_Vertex: ret += {.Subgroup_Vertex}
+		case .Subgroup_Barrier: ret += {.Subgroup_Barrier}
+		case .Timestamp_Query_Inside_Encoders: ret += {.Timestamp_Query_Inside_Encoders}
+		case .Timestamp_Query_Inside_Passes: ret += {.Timestamp_Query_Inside_Passes}
 		}
 	}
 	// odinfmt: enable
 	return
 }
 
-features_slice_to_flags :: proc "contextless" (features: []FeatureName) -> (ret: Features) {
+features_slice_to_flags :: proc "contextless" (features: []Feature_Name) -> (ret: Features) {
 	// odinfmt: disable
 	for &f in features {
 		#partial switch f {
 		// WebGPU
-		case .DepthClipControl: ret += {.DepthClipControl}
-		case .Depth32FloatStencil8: ret += {.Depth32FloatStencil8}
-		case .TimestampQuery: ret += {.TimestampQuery}
-		case .TextureCompressionBC: ret += {.TextureCompressionBC}
-		case .TextureCompressionBCSliced3D: ret += {.TextureCompressionBCSliced3D}
-		case .TextureCompressionETC2: ret += {.TextureCompressionETC2}
-		case .TextureCompressionASTC: ret += {.TextureCompressionASTC}
-		case .TextureCompressionASTCSliced3D: ret += {.TextureCompressionASTCSliced3D}
-		case .IndirectFirstInstance: ret += {.IndirectFirstInstance}
-		case .ShaderF16: ret += {.ShaderF16}
-		case .RG11B10UfloatRenderable: ret += {.RG11B10UfloatRenderable}
-		case .BGRA8UnormStorage: ret += {.BGRA8UnormStorage}
-		case .Float32Filterable: ret += {.Float32Filterable}
-		case .Float32Blendable: ret += {.Float32Blendable}
-		case .ClipDistances: ret += {.ClipDistances}
-		case .DualSourceBlending: ret += {.DualSourceBlending}
+		case .Depth_Clip_Control: ret += {.Depth_Clip_Control}
+		case .Depth32_Float_Stencil8: ret += {.Depth32_Float_Stencil8}
+		case .Timestamp_Query: ret += {.Timestamp_Query}
+		case .Texture_Compression_BC: ret += {.Texture_Compression_BC}
+		case .Texture_Compression_BC_Sliced3D: ret += {.Texture_Compression_BC_Sliced3D}
+		case .Texture_Compression_ETC2: ret += {.Texture_Compression_ETC2}
+		case .Texture_Compression_ASTC: ret += {.Texture_Compression_ASTC}
+		case .Texture_Compression_ASTC_Sliced3D: ret += {.Texture_Compression_ASTC_Sliced3D}
+		case .Indirect_First_Instance: ret += {.Indirect_First_Instance}
+		case .Shader_F16: ret += {.Shader_F16}
+		case .RG11B10_Ufloat_Renderable: ret += {.RG11B10_Ufloat_Renderable}
+		case .BGRA8_Unorm_Storage: ret += {.BGRA8_Unorm_Storage}
+		case .Float32_Filterable: ret += {.Float32_Filterable}
+		case .Float32_Blendable: ret += {.Float32_Blendable}
+		case .Clip_Distances: ret += {.Clip_Distances}
+		case .Dual_Source_Blending: ret += {.Dual_Source_Blending}
 
 		// Native
-		case .PushConstants: ret += {.PushConstants}
-		case .TextureAdapterSpecificFormatFeatures: ret += {.TextureAdapterSpecificFormatFeatures}
-		case .MultiDrawIndirect: ret += {.MultiDrawIndirect}
-		case .MultiDrawIndirectCount: ret += {.MultiDrawIndirectCount}
-		case .VertexWritableStorage: ret += {.VertexWritableStorage}
-		case .TextureBindingArray: ret += {.TextureBindingArray}
-		case .SampledTextureAndStorageBufferArrayNonUniformIndexing: ret +=
-			{.SampledTextureAndStorageBufferArrayNonUniformIndexing}
-		case .PipelineStatisticsQuery: ret += {.PipelineStatisticsQuery}
-		case .StorageResourceBindingArray: ret += {.StorageResourceBindingArray}
-		case .PartiallyBoundBindingArray: ret += {.PartiallyBoundBindingArray}
-		case .TextureFormat16bitNorm: ret += {.TextureFormat16bitNorm}
-		case .TextureCompressionAstcHdr: ret += {.TextureCompressionAstcHdr}
-		case .MappablePrimaryBuffers: ret += {.MappablePrimaryBuffers}
-		case .BufferBindingArray: ret += {.BufferBindingArray}
-		case .UniformBufferAndStorageTextureArrayNonUniformIndexing: ret +=
-			{.UniformBufferAndStorageTextureArrayNonUniformIndexing}
-		case .SpirvShaderPassthrough: ret += {.SpirvShaderPassthrough}
-		case .VertexAttribute64bit: ret += {.VertexAttribute64bit}
-		case .TextureFormatNv12: ret += {.TextureFormatNv12}
-		case .RayTracingAccelerationStructure: ret += {.RayTracingAccelerationStructure}
-		case .RayQuery: ret += {.RayQuery}
-		case .ShaderF64: ret += {.ShaderF64}
-		case .ShaderI16: ret += {.ShaderI16}
-		case .ShaderPrimitiveIndex: ret += {.ShaderPrimitiveIndex}
-		case .ShaderEarlyDepthTest: ret += {.ShaderEarlyDepthTest}
+		case .Push_Constants: ret += {.Push_Constants}
+		case .Texture_Adapter_Specific_Format_Features: ret += {.Texture_Adapter_Specific_Format_Features}
+		case .Multi_Draw_Indirect: ret += {.Multi_Draw_Indirect}
+		case .Multi_Draw_Indirect_Count: ret += {.Multi_Draw_Indirect_Count}
+		case .Vertex_Writable_Storage: ret += {.Vertex_Writable_Storage}
+		case .Texture_Binding_Array: ret += {.Texture_Binding_Array}
+		case .Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing: ret +=
+			{.Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing}
+		case .Pipeline_Statistics_Query: ret += {.Pipeline_Statistics_Query}
+		case .Storage_Resource_Binding_Array: ret += {.Storage_Resource_Binding_Array}
+		case .Partially_Bound_Binding_Array: ret += {.Partially_Bound_Binding_Array}
+		case .Texture_Format16bit_Norm: ret += {.Texture_Format16bit_Norm}
+		case .Texture_Compression_ASTC_Hdr: ret += {.Texture_Compression_ASTC_Hdr}
+		case .Mappable_Primary_Buffers: ret += {.Mappable_Primary_Buffers}
+		case .Buffer_Binding_Array: ret += {.Buffer_Binding_Array}
+		case .Uniform_Buffer_And_Storage_Texture_Array_Non_Uniform_Indexing: ret +=
+			{.Uniform_Buffer_And_Storage_Texture_Array_Non_Uniform_Indexing}
+		case .Spirv_Shader_Passthrough: ret += {.Spirv_Shader_Passthrough}
+		case .Vertex_Attribute64bit: ret += {.Vertex_Attribute64bit}
+		case .Texture_Format_NV12: ret += {.Texture_Format_NV12}
+		case .Ray_Tracing_Acceleration_Structure: ret += {.Ray_Tracing_Acceleration_Structure}
+		case .Ray_Query: ret += {.Ray_Query}
+		case .Shader_F64: ret += {.Shader_F64}
+		case .Shader_I16: ret += {.Shader_I16}
+		case .Shader_Primitive_Index: ret += {.Shader_Primitive_Index}
+		case .Shader_Early_Depth_Test: ret += {.Shader_Early_Depth_Test}
 		case .Subgroup: ret += {.Subgroup}
-		case .SubgroupVertex: ret += {.SubgroupVertex}
-		case .SubgroupBarrier: ret += {.SubgroupBarrier}
-		case .TimestampQueryInsideEncoders: ret += {.TimestampQueryInsideEncoders}
-		case .TimestampQueryInsidePasses: ret += {.TimestampQueryInsidePasses}
+		case .Subgroup_Vertex: ret += {.Subgroup_Vertex}
+		case .Subgroup_Barrier: ret += {.Subgroup_Barrier}
+		case .Timestamp_Query_Inside_Encoders: ret += {.Timestamp_Query_Inside_Encoders}
+		case .Timestamp_Query_Inside_Passes: ret += {.Timestamp_Query_Inside_Passes}
 		}
 	}
 	// odinfmt: enable
@@ -200,120 +200,120 @@ features_slice_to_flags :: proc "contextless" (features: []FeatureName) -> (ret:
 features_flag_to_raw_feature_name :: proc "contextless" (
 	feature_name: Feature,
 ) -> (
-	feature: FeatureName,
+	feature: Feature_Name,
 ) {
 	// odinfmt: disable
 	#partial switch feature_name {
 	// WebGPU
-	case .DepthClipControl: return .DepthClipControl
-	case .Depth32FloatStencil8: return .Depth32FloatStencil8
-	case .TimestampQuery: return .TimestampQuery
-	case .TextureCompressionBC: return .TextureCompressionBC
-	case .TextureCompressionBCSliced3D: return .TextureCompressionBCSliced3D
-	case .TextureCompressionETC2: return .TextureCompressionETC2
-	case .TextureCompressionASTC: return .TextureCompressionASTC
-	case .TextureCompressionASTCSliced3D: return .TextureCompressionASTCSliced3D
-	case .IndirectFirstInstance: return .IndirectFirstInstance
-	case .ShaderF16: return .ShaderF16
-	case .RG11B10UfloatRenderable: return .RG11B10UfloatRenderable
-	case .BGRA8UnormStorage: return .BGRA8UnormStorage
-	case .Float32Filterable: return .Float32Filterable
-	case .Float32Blendable: return .Float32Blendable
-	case .ClipDistances: return .ClipDistances
-	case .DualSourceBlending: return .DualSourceBlending
+	case .Depth_Clip_Control: return .Depth_Clip_Control
+	case .Depth32_Float_Stencil8: return .Depth32_Float_Stencil8
+	case .Timestamp_Query: return .Timestamp_Query
+	case .Texture_Compression_BC: return .Texture_Compression_BC
+	case .Texture_Compression_BC_Sliced3D: return .Texture_Compression_BC_Sliced3D
+	case .Texture_Compression_ETC2: return .Texture_Compression_ETC2
+	case .Texture_Compression_ASTC: return .Texture_Compression_ASTC
+	case .Texture_Compression_ASTC_Sliced3D: return .Texture_Compression_ASTC_Sliced3D
+	case .Indirect_First_Instance: return .Indirect_First_Instance
+	case .Shader_F16: return .Shader_F16
+	case .RG11B10_Ufloat_Renderable: return .RG11B10_Ufloat_Renderable
+	case .BGRA8_Unorm_Storage: return .BGRA8_Unorm_Storage
+	case .Float32_Filterable: return .Float32_Filterable
+	case .Float32_Blendable: return .Float32_Blendable
+	case .Clip_Distances: return .Clip_Distances
+	case .Dual_Source_Blending: return .Dual_Source_Blending
 
 	// Native
-	case .PushConstants: return .PushConstants
-	case .TextureAdapterSpecificFormatFeatures: return .TextureAdapterSpecificFormatFeatures
-	case .MultiDrawIndirect: return .MultiDrawIndirect
-	case .MultiDrawIndirectCount: return .MultiDrawIndirectCount
-	case .VertexWritableStorage: return .VertexWritableStorage
-	case .TextureBindingArray: return .TextureBindingArray
-	case .SampledTextureAndStorageBufferArrayNonUniformIndexing:
-		return .SampledTextureAndStorageBufferArrayNonUniformIndexing
-	case .PipelineStatisticsQuery: return .PipelineStatisticsQuery
-	case .StorageResourceBindingArray: return .StorageResourceBindingArray
-	case .PartiallyBoundBindingArray: return .PartiallyBoundBindingArray
-	case .TextureFormat16bitNorm: return .TextureFormat16bitNorm
-	case .TextureCompressionAstcHdr: return .TextureCompressionAstcHdr
-	case .MappablePrimaryBuffers: return .MappablePrimaryBuffers
-	case .BufferBindingArray: return .BufferBindingArray
-	case .UniformBufferAndStorageTextureArrayNonUniformIndexing:
-		return .UniformBufferAndStorageTextureArrayNonUniformIndexing
-	case .SpirvShaderPassthrough: return .SpirvShaderPassthrough
-	case .VertexAttribute64bit: return .VertexAttribute64bit
-	case .TextureFormatNv12: return .TextureFormatNv12
-	case .RayTracingAccelerationStructure: return .RayTracingAccelerationStructure
-	case .RayQuery: return .RayQuery
-	case .ShaderF64: return .ShaderF64
-	case .ShaderI16: return .ShaderI16
-	case .ShaderPrimitiveIndex: return .ShaderPrimitiveIndex
-	case .ShaderEarlyDepthTest: return .ShaderEarlyDepthTest
+	case .Push_Constants: return .Push_Constants
+	case .Texture_Adapter_Specific_Format_Features: return .Texture_Adapter_Specific_Format_Features
+	case .Multi_Draw_Indirect: return .Multi_Draw_Indirect
+	case .Multi_Draw_Indirect_Count: return .Multi_Draw_Indirect_Count
+	case .Vertex_Writable_Storage: return .Vertex_Writable_Storage
+	case .Texture_Binding_Array: return .Texture_Binding_Array
+	case .Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing:
+		return .Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing
+	case .Pipeline_Statistics_Query: return .Pipeline_Statistics_Query
+	case .Storage_Resource_Binding_Array: return .Storage_Resource_Binding_Array
+	case .Partially_Bound_Binding_Array: return .Partially_Bound_Binding_Array
+	case .Texture_Format16bit_Norm: return .Texture_Format16bit_Norm
+	case .Texture_Compression_ASTC_Hdr: return .Texture_Compression_ASTC_Hdr
+	case .Mappable_Primary_Buffers: return .Mappable_Primary_Buffers
+	case .Buffer_Binding_Array: return .Buffer_Binding_Array
+	case .Uniform_Buffer_And_Storage_Texture_Array_Non_Uniform_Indexing:
+		return .Uniform_Buffer_And_Storage_Texture_Array_Non_Uniform_Indexing
+	case .Spirv_Shader_Passthrough: return .Spirv_Shader_Passthrough
+	case .Vertex_Attribute64bit: return .Vertex_Attribute64bit
+	case .Texture_Format_NV12: return .Texture_Format_NV12
+	case .Ray_Tracing_Acceleration_Structure: return .Ray_Tracing_Acceleration_Structure
+	case .Ray_Query: return .Ray_Query
+	case .Shader_F64: return .Shader_F64
+	case .Shader_I16: return .Shader_I16
+	case .Shader_Primitive_Index: return .Shader_Primitive_Index
+	case .Shader_Early_Depth_Test: return .Shader_Early_Depth_Test
 	case .Subgroup: return .Subgroup
-	case .SubgroupVertex: return .SubgroupVertex
-	case .SubgroupBarrier: return .SubgroupBarrier
-	case .TimestampQueryInsideEncoders: return .TimestampQueryInsideEncoders
-	case .TimestampQueryInsidePasses: return .TimestampQueryInsidePasses
+	case .Subgroup_Vertex: return .Subgroup_Vertex
+	case .Subgroup_Barrier: return .Subgroup_Barrier
+	case .Timestamp_Query_Inside_Encoders: return .Timestamp_Query_Inside_Encoders
+	case .Timestamp_Query_Inside_Passes: return .Timestamp_Query_Inside_Passes
 	case: return .Undefined
 	}
 	// odinfmt: enable
 }
 
 @(private)
-FeatureName :: enum i32 {
+Feature_Name :: enum i32 {
 	// WebGPU
-	Undefined                                             = 0x00000000,
-	DepthClipControl                                      = 0x00000001,
-	Depth32FloatStencil8                                  = 0x00000002,
-	TimestampQuery                                        = 0x00000003,
-	TextureCompressionBC                                  = 0x00000004,
-	TextureCompressionBCSliced3D                          = 0x00000005,
-	TextureCompressionETC2                                = 0x00000006,
-	TextureCompressionASTC                                = 0x00000007,
-	TextureCompressionASTCSliced3D                        = 0x00000008,
-	IndirectFirstInstance                                 = 0x00000009,
-	ShaderF16                                             = 0x0000000A,
-	RG11B10UfloatRenderable                               = 0x0000000B,
-	BGRA8UnormStorage                                     = 0x0000000C,
-	Float32Filterable                                     = 0x0000000D,
-	Float32Blendable                                      = 0x0000000E,
-	ClipDistances                                         = 0x0000000F,
-	DualSourceBlending                                    = 0x00000010,
+	Undefined                                                     = 0x00000000,
+	Depth_Clip_Control                                            = 0x00000001,
+	Depth32_Float_Stencil8                                        = 0x00000002,
+	Timestamp_Query                                               = 0x00000003,
+	Texture_Compression_BC                                        = 0x00000004,
+	Texture_Compression_BC_Sliced3D                               = 0x00000005,
+	Texture_Compression_ETC2                                      = 0x00000006,
+	Texture_Compression_ASTC                                      = 0x00000007,
+	Texture_Compression_ASTC_Sliced3D                             = 0x00000008,
+	Indirect_First_Instance                                       = 0x00000009,
+	Shader_F16                                                    = 0x0000000A,
+	RG11B10_Ufloat_Renderable                                     = 0x0000000B,
+	BGRA8_Unorm_Storage                                           = 0x0000000C,
+	Float32_Filterable                                            = 0x0000000D,
+	Float32_Blendable                                             = 0x0000000E,
+	Clip_Distances                                                = 0x0000000F,
+	Dual_Source_Blending                                          = 0x00000010,
 
 	// Native
-	PushConstants                                         = 0x00030001,
-	TextureAdapterSpecificFormatFeatures                  = 0x00030002,
-	MultiDrawIndirect                                     = 0x00030003,
-	MultiDrawIndirectCount                                = 0x00030004,
-	VertexWritableStorage                                 = 0x00030005,
-	TextureBindingArray                                   = 0x00030006,
-	SampledTextureAndStorageBufferArrayNonUniformIndexing = 0x00030007,
-	PipelineStatisticsQuery                               = 0x00030008,
-	StorageResourceBindingArray                           = 0x00030009,
-	PartiallyBoundBindingArray                            = 0x0003000A,
-	TextureFormat16bitNorm                                = 0x0003000B,
-	TextureCompressionAstcHdr                             = 0x0003000C,
-	MappablePrimaryBuffers                                = 0x0003000E,
-	BufferBindingArray                                    = 0x0003000F,
-	UniformBufferAndStorageTextureArrayNonUniformIndexing = 0x00030010,
-	SpirvShaderPassthrough                                = 0x00030017,
-	VertexAttribute64bit                                  = 0x00030019,
-	TextureFormatNv12                                     = 0x0003001A,
-	RayTracingAccelerationStructure                       = 0x0003001B,
-	RayQuery                                              = 0x0003001C,
-	ShaderF64                                             = 0x0003001D,
-	ShaderI16                                             = 0x0003001E,
-	ShaderPrimitiveIndex                                  = 0x0003001F,
-	ShaderEarlyDepthTest                                  = 0x00030020,
-	Subgroup                                              = 0x00030021,
-	SubgroupVertex                                        = 0x00030022,
-	SubgroupBarrier                                       = 0x00030023,
-	TimestampQueryInsideEncoders                          = 0x00030024,
-	TimestampQueryInsidePasses                            = 0x00030025,
+	Push_Constants                                                = 0x00030001,
+	Texture_Adapter_Specific_Format_Features                      = 0x00030002,
+	Multi_Draw_Indirect                                           = 0x00030003,
+	Multi_Draw_Indirect_Count                                     = 0x00030004,
+	Vertex_Writable_Storage                                       = 0x00030005,
+	Texture_Binding_Array                                         = 0x00030006,
+	Sampled_Texture_And_Storage_Buffer_Array_Non_Uniform_Indexing = 0x00030007,
+	Pipeline_Statistics_Query                                     = 0x00030008,
+	Storage_Resource_Binding_Array                                = 0x00030009,
+	Partially_Bound_Binding_Array                                 = 0x0003000A,
+	Texture_Format16bit_Norm                                      = 0x0003000B,
+	Texture_Compression_ASTC_Hdr                                  = 0x0003000C,
+	Mappable_Primary_Buffers                                      = 0x0003000E,
+	Buffer_Binding_Array                                          = 0x0003000F,
+	Uniform_Buffer_And_Storage_Texture_Array_Non_Uniform_Indexing = 0x00030010,
+	Spirv_Shader_Passthrough                                      = 0x00030017,
+	Vertex_Attribute64bit                                         = 0x00030019,
+	Texture_Format_NV12                                           = 0x0003001A,
+	Ray_Tracing_Acceleration_Structure                            = 0x0003001B,
+	Ray_Query                                                     = 0x0003001C,
+	Shader_F64                                                    = 0x0003001D,
+	Shader_I16                                                    = 0x0003001E,
+	Shader_Primitive_Index                                        = 0x0003001F,
+	Shader_Early_Depth_Test                                       = 0x00030020,
+	Subgroup                                                      = 0x00030021,
+	Subgroup_Vertex                                               = 0x00030022,
+	Subgroup_Barrier                                              = 0x00030023,
+	Timestamp_Query_Inside_Encoders                               = 0x00030024,
+	Timestamp_Query_Inside_Passes                                 = 0x00030025,
 }
 
 @(private)
-SupportedFeatures :: struct {
+WGPU_Supported_Features :: struct {
 	feature_count: uint,
-	features:      [^]FeatureName,
+	features:      [^]Feature_Name,
 }

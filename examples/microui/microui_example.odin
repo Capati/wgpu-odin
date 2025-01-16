@@ -14,8 +14,8 @@ Example :: struct {
 	log_buf_updated: bool,
 	bg:              mu.Color,
 	render_pass:     struct {
-		color_attachments: [1]wgpu.RenderPassColorAttachment,
-		descriptor:        wgpu.RenderPassDescriptor,
+		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
+		descriptor:        wgpu.Render_Pass_Descriptor,
 	},
 }
 

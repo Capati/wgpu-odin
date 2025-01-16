@@ -5,27 +5,27 @@ Encodes a series of GPU operations into a reusable "render bundle".
 
 It only supports a handful of render commands, but it makes them reusable.
 It can be created with `device_create_render_bundle_encoder`.
-It can be executed onto a `CommandEncoder` using `render_pass_execute_bundles`.
+It can be executed onto a `Command_Encoder` using `render_pass_execute_bundles`.
 
-Executing a `RenderBundle` is often more efficient than issuing the underlying commands manually.
+Executing a `Render_Bundle` is often more efficient than issuing the underlying commands manually.
 
 Corresponds to [WebGPU `GPURenderBundleEncoder`](
 https://gpuweb.github.io/gpuweb/#gpurenderbundleencoder).
 */
-RenderBundleEncoder :: distinct rawptr
+Render_Bundle_Encoder :: distinct rawptr
 
 /*
-Describes a `RenderBundle`.
+Describes a `Render_Bundle`.
 
 For use with `render_bundle_encoder_finish`.
 
 Corresponds to [WebGPU `GPURenderBundleDescriptor`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpurenderbundledescriptor).
 */
-RenderBundleEncoderDescriptor :: struct {
+Render_Bundle_Encoder_Descriptor :: struct {
 	label:                string,
-	color_formats:        []TextureFormat,
-	depth_stencil_format: TextureFormat,
+	color_formats:        []Texture_Format,
+	depth_stencil_format: Texture_Format,
 	sample_count:         u32,
 	depth_read_only:      bool,
 	stencil_read_only:    bool,
@@ -33,7 +33,7 @@ RenderBundleEncoderDescriptor :: struct {
 
 /* Draws primitives from the active vertex buffer(s). */
 render_bundle_encoder_draw :: proc "contextless" (
-	self: RenderBundleEncoder,
+	self: Render_Bundle_Encoder,
 	vertices: Range(u32),
 	instances: Range(u32) = {start = 0, end = 1},
 ) {
@@ -48,7 +48,7 @@ render_bundle_encoder_draw :: proc "contextless" (
 
 /* Draws indexed primitives using the active index buffer and the active vertex buffer(s). */
 render_bundle_encoder_draw_indexed :: proc "contextless" (
-	self: RenderBundleEncoder,
+	self: Render_Bundle_Encoder,
 	indices: Range(u32),
 	base_vertex: i32 = 0,
 	instances: Range(u32) = {start = 0, end = 1},
@@ -68,7 +68,7 @@ Draws indexed primitives using the active index buffer and the active vertex buf
 the contents of the `indirect_buffer`.
 */
 render_bundle_encoder_draw_indexed_indirect :: proc "contextless" (
-	self: RenderBundleEncoder,
+	self: Render_Bundle_Encoder,
 	indirect_buffer: Buffer,
 	indirect_offset: u64 = 0,
 ) {
@@ -79,7 +79,7 @@ render_bundle_encoder_draw_indexed_indirect :: proc "contextless" (
 Draws primitives from the active vertex buffer(s) based on the contents of the `indirect_buffer`.
 */
 render_bundle_encoder_draw_indirect :: proc "contextless" (
-	self: RenderBundleEncoder,
+	self: Render_Bundle_Encoder,
 	indirect_buffer: Buffer,
 	indirect_offset: u64 = 0,
 ) {
@@ -87,23 +87,23 @@ render_bundle_encoder_draw_indirect :: proc "contextless" (
 }
 
 /*
-Finishes recording and returns a `RenderBundle` that can be executed in other render passes.
+Finishes recording and returns a `Render_Bundle` that can be executed in other render passes.
  */
 @(require_results)
 render_bundle_encoder_finish :: proc "contextless" (
-	self: RenderBundleEncoder,
-	descriptor: Maybe(RenderBundleDescriptor) = nil,
+	self: Render_Bundle_Encoder,
+	descriptor: Maybe(Render_Bundle_Descriptor) = nil,
 	loc := #caller_location,
 ) -> (
-	render_bundle: RenderBundle,
+	render_bundle: Render_Bundle,
 	ok: bool,
 ) #optional_ok {
 	error_reset_data(loc)
 
 	if desc, desc_ok := descriptor.?; desc_ok {
-		raw_desc: WGPURenderBundleDescriptor
+		raw_desc: WGPU_Render_Bundle_Descriptor
 		when ODIN_DEBUG {
-			c_label: StringViewBuffer
+			c_label: String_View_Buffer
 			if desc.label != "" {
 				raw_desc.label = init_string_buffer(&c_label, desc.label)
 			}
@@ -121,7 +121,7 @@ render_bundle_encoder_finish :: proc "contextless" (
 	}
 
 	if render_bundle == nil {
-		error_update_data(ErrorType.Unknown, "Failed to acquire 'RenderBundle'")
+		error_update_data(Error_Type.Unknown, "Failed to acquire 'Render_Bundle'")
 		return
 	}
 
@@ -130,7 +130,7 @@ render_bundle_encoder_finish :: proc "contextless" (
 
 /* Inserts debug marker. */
 render_bundle_encoder_insert_debug_marker :: proc(
-	self: RenderBundleEncoder,
+	self: Render_Bundle_Encoder,
 	label: string,
 	loc := #caller_location,
 ) -> (
@@ -138,7 +138,7 @@ render_bundle_encoder_insert_debug_marker :: proc(
 ) {
 	when ODIN_DEBUG {
 		error_reset_data(loc)
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		wgpuRenderBundleEncoderPushDebugGroup(
 			self,
 			init_string_buffer(&c_label, label) if label != "" else {},
@@ -151,7 +151,7 @@ render_bundle_encoder_insert_debug_marker :: proc(
 
 /* Start record commands and group it into debug marker group. */
 render_bundle_encoder_push_debug_group :: proc(
-	self: RenderBundleEncoder,
+	self: Render_Bundle_Encoder,
 	label: string,
 	loc := #caller_location,
 ) -> (
@@ -159,7 +159,7 @@ render_bundle_encoder_push_debug_group :: proc(
 ) {
 	when ODIN_DEBUG {
 		error_reset_data(loc)
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		wgpuRenderBundleEncoderPushDebugGroup(
 			self,
 			init_string_buffer(&c_label, label) if label != "" else {},
@@ -172,7 +172,7 @@ render_bundle_encoder_push_debug_group :: proc(
 
 /* Stops command recording and creates debug group. */
 render_bundle_encoder_pop_debug_group :: proc "contextless" (
-	self: RenderBundleEncoder,
+	self: Render_Bundle_Encoder,
 	loc := #caller_location,
 ) -> (
 	ok: bool,
@@ -193,10 +193,10 @@ pipeline when any `draw` procedure is called must match the layout of this bind 
 If the bind group have dynamic offsets, provide them in the binding order.
 */
 render_bundle_encoder_set_bind_group :: proc "contextless" (
-	self: RenderBundleEncoder,
+	self: Render_Bundle_Encoder,
 	group_index: u32,
-	group: BindGroup,
-	offsets: []DynamicOffset = nil,
+	group: Bind_Group,
+	offsets: []Dynamic_Offset = nil,
 ) {
 	wgpuRenderBundleEncoderSetBindGroup(self, group_index, group, len(offsets), raw_data(offsets))
 }
@@ -204,13 +204,13 @@ render_bundle_encoder_set_bind_group :: proc "contextless" (
 /*
 Sets the active index buffer.
 
-Subsequent calls to draw_indexed on this `RenderBundleEncoder` will use buffer as the source
+Subsequent calls to draw_indexed on this `Render_Bundle_Encoder` will use buffer as the source
 index buffer.
 */
 render_bundle_encoder_set_index_buffer :: proc "contextless" (
-	self: RenderBundleEncoder,
-	buffer_slice: BufferSlice,
-	format: IndexFormat,
+	self: Render_Bundle_Encoder,
+	buffer_slice: Buffer_Slice,
+	format: Index_Format,
 ) {
 	wgpuRenderBundleEncoderSetIndexBuffer(
 		self,
@@ -221,10 +221,10 @@ render_bundle_encoder_set_index_buffer :: proc "contextless" (
 	)
 }
 
-/* Sets a debug label for the given `RenderBundleEncoder`. */
+/* Sets a debug label for the given `Render_Bundle_Encoder`. */
 @(disabled = !ODIN_DEBUG)
-render_bundle_encoder_set_label :: proc(self: RenderBundleEncoder, label: string) {
-	c_label: StringViewBuffer
+render_bundle_encoder_set_label :: proc(self: Render_Bundle_Encoder, label: string) {
+	c_label: String_View_Buffer
 	wgpuRenderBundleEncoderSetLabel(self, init_string_buffer(&c_label, label))
 }
 
@@ -238,15 +238,15 @@ render_bundle_encoder_set_pipeline :: wgpuRenderBundleEncoderSetPipeline
 /*
 Assign a vertex buffer to a slot.
 
-Subsequent calls to `draw` and `draw_indexed` on this `RenderBundleEncoder` will use buffer as
+Subsequent calls to `draw` and `draw_indexed` on this `Render_Bundle_Encoder` will use buffer as
 one of the source vertex buffers.
 
-The slot refers to the index of the matching descriptor in `VertexState.buffers`.
+The slot refers to the index of the matching descriptor in `Vertex_State.buffers`.
 */
 render_bundle_encoder_set_vertex_buffer :: proc "contextless" (
-	self: RenderBundleEncoder,
+	self: Render_Bundle_Encoder,
 	slot: u32,
-	buffer_slice: BufferSlice,
+	buffer_slice: Buffer_Slice,
 ) {
 	wgpuRenderBundleEncoderSetVertexBuffer(
 		self,
@@ -257,19 +257,19 @@ render_bundle_encoder_set_vertex_buffer :: proc "contextless" (
 	)
 }
 
-/* Increase the `RenderBundleEncoder` reference count. */
+/* Increase the `Render_Bundle_Encoder` reference count. */
 render_bundle_encoder_add_ref :: wgpuRenderBundleEncoderAddRef
 
-/* Release the `RenderBundleEncoder` resources, use to decrease the reference count. */
+/* Release the `Render_Bundle_Encoder` resources, use to decrease the reference count. */
 render_bundle_encoder_release :: wgpuRenderBundleEncoderRelease
 
 /*
-Safely releases the `RenderBundleEncoder` resources and invalidates the handle.
+Safely releases the `Render_Bundle_Encoder` resources and invalidates the handle.
 The procedure checks both the pointer and handle before releasing.
 
 Note: After calling this, the handle will be set to `nil` and should not be used.
 */
-render_bundle_encoder_release_safe :: #force_inline proc(self: ^RenderBundleEncoder) {
+render_bundle_encoder_release_safe :: #force_inline proc(self: ^Render_Bundle_Encoder) {
 	if self != nil && self^ != nil {
 		wgpuRenderBundleEncoderRelease(self^)
 		self^ = nil

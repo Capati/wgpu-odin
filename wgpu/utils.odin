@@ -10,13 +10,13 @@ align_size :: #force_inline proc "contextless" (#any_int size, align: u64) -> u6
 }
 
 /* location information for a vertex in a shader. */
-VertexLocation :: struct {
-	location: ShaderLocation,
-	format:   VertexFormat,
+Vertex_Location :: struct {
+	location: Shader_Location,
+	format:   Vertex_Format,
 }
 
 /*
-Create an array of `[N]VertexAttribute`, each element representing a vertex attribute with a
+Create an array of `[N]Vertex_Attribute`, each element representing a vertex attribute with a
 specified shader location and format. The attributes' offsets are calculated automatically based
 on the size of each format.
 
@@ -31,7 +31,7 @@ Example:
 
 Result in:
 
-	attributes := []VertexAttribute {
+	attributes := []Vertex_Attribute {
 		{format = .Float32x4, offset = 0, shader_location = 0},
 		{
 			format = .Float32x2,
@@ -47,9 +47,9 @@ Result in:
 */
 vertex_attr_array :: proc(
 	$N: int,
-	locations: ..VertexLocation,
+	locations: ..Vertex_Location,
 ) -> (
-	attributes: [N]VertexAttribute,
+	attributes: [N]Vertex_Attribute,
 ) {
 	assert(len(locations) == N, "Number of locations must match the generic parameter '$N'")
 
@@ -57,7 +57,7 @@ vertex_attr_array :: proc(
 
 	for v, i in locations {
 		format := v.format
-		attributes[i] = VertexAttribute {
+		attributes[i] = Vertex_Attribute {
 			format          = format,
 			offset          = offset,
 			shader_location = v.location,

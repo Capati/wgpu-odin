@@ -57,6 +57,6 @@ imgui_end_frame :: proc(app: ^Application) {
 }
 
 @(require_results)
-imgui_draw :: proc(app: ^Application, render_pass: wgpu.RenderPass) -> bool {
+imgui_draw :: proc(app: ^Application, render_pass: wgpu.Render_Pass) -> bool {
 	return im.wgpu_render_draw_data(im.get_draw_data(), render_pass)
 }

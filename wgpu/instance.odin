@@ -17,14 +17,14 @@ Corresponds to [WebGPU `GPU`](https://gpuweb.github.io/gpuweb/#gpu-interface).
 Instance :: distinct rawptr
 
 @(private)
-WGPUInstanceExtras :: struct {
-	chain:                ChainedStruct,
+WGPU_Instance_Extras :: struct {
+	chain:                Chained_Struct,
 	backends:             Backends,
-	flags:                InstanceFlags,
-	dx12_shader_compiler: Dx12Compiler,
-	gles3_minor_version:  Gles3MinorVersion,
-	dxil_path:            StringView,
-	dxc_path:             StringView,
+	flags:                Instance_Flags,
+	dx12_shader_compiler: Dx12_Compiler,
+	gles3_minor_version:  Gles3_Minor_Version,
+	dxil_path:            String_View,
+	dxc_path:             String_View,
 }
 
 /*
@@ -36,31 +36,31 @@ If no backend feature for the active target platform is enabled, this procedure 
 */
 @(require_results)
 create_instance :: proc(
-	descriptor: Maybe(InstanceDescriptor) = nil,
+	descriptor: Maybe(Instance_Descriptor) = nil,
 	loc := #caller_location,
 ) -> (
 	instance: Instance,
 	ok: bool,
 ) #optional_ok {
 	if desc, desc_ok := descriptor.?; desc_ok {
-		instance_extras := WGPUInstanceExtras {
-			chain = {stype = .InstanceExtras},
+		instance_extras := WGPU_Instance_Extras {
+			chain = {stype = .Instance_Extras},
 			backends = desc.backends,
 			flags = desc.flags,
 			gles3_minor_version = desc.gles3_minor_version,
 		}
 
-		c_dxil_path: StringViewBuffer
+		c_dxil_path: String_View_Buffer
 		if desc.dxil_path != "" {
 			instance_extras.dxil_path = init_string_buffer(&c_dxil_path, desc.dxil_path)
 		}
 
-		c_dxc_path: StringViewBuffer
+		c_dxc_path: String_View_Buffer
 		if desc.dxc_path != "" {
 			instance_extras.dxc_path = init_string_buffer(&c_dxc_path, desc.dxc_path)
 		}
 
-		raw_desc: WGPUInstanceDescriptor
+		raw_desc: WGPU_Instance_Descriptor
 		raw_desc.features = desc.features
 		raw_desc.next_in_chain = &instance_extras.chain
 
@@ -73,7 +73,7 @@ create_instance :: proc(
 
 	if !ok {
 		error_reset_and_update(
-			ErrorType.Unknown,
+			Error_Type.Unknown,
 			"Failed to acquire an instance, for more information check log callback with " +
 			"'wgpu.set_log_callback'",
 			loc,
@@ -84,8 +84,8 @@ create_instance :: proc(
 }
 
 @(private)
-WGPUInstanceEnumerateAdapterOptions :: struct {
-	next_in_chain: ^ChainedStruct,
+WGPU_Instance_Enumerate_Adapter_Options :: struct {
+	next_in_chain: ^Chained_Struct,
 	backends:      Backends,
 }
 
@@ -106,7 +106,7 @@ instance_enumerate_adapters :: proc(
 	adapters: []Adapter,
 	ok: bool,
 ) #optional_ok {
-	options := WGPUInstanceEnumerateAdapterOptions {
+	options := WGPU_Instance_Enumerate_Adapter_Options {
 		backends = backends,
 	}
 
@@ -128,7 +128,7 @@ instance_enumerate_adapters :: proc(
 }
 
 /*
-Retrieves an `Adapter` which matches the given `RequestAdapterOptions`.
+Retrieves an `Adapter` which matches the given `Request_Adapter_Options`.
 
 Some options are "soft", so treated as non-mandatory. Others are "hard".
 
@@ -139,22 +139,22 @@ A `compatible_surface` is required when targeting WebGL2.
 @(require_results)
 instance_request_adapter :: proc(
 	self: Instance,
-	options: Maybe(RequestAdapterOptions) = nil,
+	options: Maybe(Request_Adapter_Options) = nil,
 	loc := #caller_location,
 ) -> (
 	adapter: Adapter,
 	ok: bool,
 ) #optional_ok {
 	AdapterResponse :: struct {
-		status:  RequestAdapterStatus,
-		message: StringView,
+		status:  Request_Adapter_Status,
+		message: String_View,
 		adapter: Adapter,
 	}
 
 	request_adapter_callback :: proc "c" (
-		status: RequestAdapterStatus,
+		status: Request_Adapter_Status,
 		adapter: Adapter,
-		message: StringView,
+		message: String_View,
 		userdata1: rawptr,
 		userdata2: rawptr,
 	) {
@@ -169,13 +169,13 @@ instance_request_adapter :: proc(
 	}
 
 	res: AdapterResponse
-	callback_info := RequestAdapterCallbackInfo {
+	callback_info := Request_Adapter_Callback_Info {
 		callback  = request_adapter_callback,
 		userdata1 = &res,
 	}
 
 	if opt, opt_ok := options.?; opt_ok {
-		raw_options := WGPURequestAdapterOptions {
+		raw_options := WGPU_Request_Adapter_Options {
 			feature_level          = opt.feature_level,
 			power_preference       = opt.power_preference,
 			force_fallback_adapter = b32(opt.force_fallback_adapter),
@@ -200,39 +200,39 @@ instance_request_adapter :: proc(
 @(require_results)
 instance_create_surface :: proc(
 	self: Instance,
-	descriptor: SurfaceDescriptor,
+	descriptor: Surface_Descriptor,
 	loc := #caller_location,
 ) -> (
 	surface: Surface,
 	ok: bool,
 ) #optional_ok {
-	raw_desc: WGPUSurfaceDescriptor
+	raw_desc: WGPU_Surface_Descriptor
 
 	when ODIN_DEBUG {
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		if descriptor.label != "" {
 			raw_desc.label = init_string_buffer(&c_label, descriptor.label)
 		}
 	}
 
 	switch &t in descriptor.target {
-	case SurfaceSourceWindowsHWND:
-		t.chain.stype = .SurfaceSourceWindowsHWND
+	case Surface_Source_Windows_HWND:
+		t.chain.stype = .Surface_Source_Windows_HWND
 		raw_desc.next_in_chain = &t.chain
-	case SurfaceSourceXCBWindow:
-		t.chain.stype = .SurfaceSourceXCBWindow
+	case Surface_Source_XBC_Window:
+		t.chain.stype = .Surface_Source_XBC_Window
 		raw_desc.next_in_chain = &t.chain
-	case SurfaceSourceXlibWindow:
-		t.chain.stype = .SurfaceSourceXlibWindow
+	case Surface_Source_Xlib_Window:
+		t.chain.stype = .Surface_Source_Xlib_Window
 		raw_desc.next_in_chain = &t.chain
-	case SurfaceSourceMetalLayer:
-		t.chain.stype = .SurfaceSourceMetalLayer
+	case Surface_Source_Metal_Layer:
+		t.chain.stype = .Surface_Source_Metal_Layer
 		raw_desc.next_in_chain = &t.chain
-	case SurfaceSourceWaylandSurface:
-		t.chain.stype = .SurfaceSourceWaylandSurface
+	case Surface_Source_Wayland_Surface:
+		t.chain.stype = .Surface_Source_Wayland_Surface
 		raw_desc.next_in_chain = &t.chain
-	case SurfaceSourceAndroidNativeWindow:
-		t.chain.stype = .SurfaceSourceAndroidNativeWindow
+	case Surface_Source_Android_Native_Window:
+		t.chain.stype = .Surface_Source_Android_Native_Window
 		raw_desc.next_in_chain = &t.chain
 	}
 
@@ -242,7 +242,7 @@ instance_create_surface :: proc(
 
 	if !ok {
 		error_reset_and_update(
-			ErrorType.Unknown,
+			Error_Type.Unknown,
 			"Failed to create surface, for more information check log callback with " +
 			"'wgpu.set_log_callback'",
 			loc,
@@ -255,40 +255,40 @@ instance_create_surface :: proc(
 /* Processes pending WebGPU events on the instance. */
 instance_process_events :: wgpuInstanceProcessEvents
 
-RegistryReport :: struct {
+Registry_Report :: struct {
 	num_allocated:          uint,
 	num_kept_from_user:     uint,
 	num_released_from_user: uint,
 	element_size:           uint,
 }
 
-HubReport :: struct {
-	adapters:           RegistryReport,
-	devices:            RegistryReport,
-	queues:             RegistryReport,
-	pipeline_layouts:   RegistryReport,
-	shader_modules:     RegistryReport,
-	bind_group_layouts: RegistryReport,
-	bind_groups:        RegistryReport,
-	command_buffers:    RegistryReport,
-	render_bundles:     RegistryReport,
-	render_pipelines:   RegistryReport,
-	compute_pipelines:  RegistryReport,
-	pipeline_caches:    RegistryReport,
-	query_sets:         RegistryReport,
-	buffers:            RegistryReport,
-	textures:           RegistryReport,
-	texture_views:      RegistryReport,
-	samplers:           RegistryReport,
+Hub_Report :: struct {
+	adapters:           Registry_Report,
+	devices:            Registry_Report,
+	queues:             Registry_Report,
+	pipeline_layouts:   Registry_Report,
+	shader_modules:     Registry_Report,
+	bind_group_layouts: Registry_Report,
+	bind_groups:        Registry_Report,
+	command_buffers:    Registry_Report,
+	render_bundles:     Registry_Report,
+	render_pipelines:   Registry_Report,
+	compute_pipelines:  Registry_Report,
+	pipeline_caches:    Registry_Report,
+	query_sets:         Registry_Report,
+	buffers:            Registry_Report,
+	textures:           Registry_Report,
+	texture_views:      Registry_Report,
+	samplers:           Registry_Report,
 }
 
-GlobalReport :: struct {
-	surfaces: RegistryReport,
-	hub:      HubReport,
+Global_Report :: struct {
+	surfaces: Registry_Report,
+	hub:      Hub_Report,
 }
 
 /* Generates memory report. */
-generate_report :: proc "contextless" (self: Instance) -> (report: GlobalReport) {
+generate_report :: proc "contextless" (self: Instance) -> (report: Global_Report) {
 	wgpuGenerateReport(self, &report)
 	return
 }
@@ -297,7 +297,7 @@ generate_report :: proc "contextless" (self: Instance) -> (report: GlobalReport)
 print_report :: proc(self: Instance) {
 	report := generate_report(self)
 
-	print_registry_report :: proc(report: RegistryReport, prefix: cstring, separator := true) {
+	print_registry_report :: proc(report: Registry_Report, prefix: cstring, separator := true) {
 		fmt.printf("\t%snum_allocated = %d\n", prefix, report.num_allocated)
 		fmt.printf("\t%snum_kept_from_user = %d\n", prefix, report.num_kept_from_user)
 		fmt.printf("\t%snum_released_from_user = %d\n", prefix, report.num_released_from_user)
@@ -307,7 +307,7 @@ print_report :: proc(self: Instance) {
 		}
 	}
 
-	print_hub_report :: proc(report: HubReport, prefix: cstring) {
+	print_hub_report :: proc(report: Hub_Report, prefix: cstring) {
 		fmt.printf("  %s:\n", prefix)
 		print_registry_report(report.adapters, "adapters.")
 		print_registry_report(report.devices, "devices.")
@@ -325,7 +325,7 @@ print_report :: proc(self: Instance) {
 		print_registry_report(report.samplers, "samplers.", false)
 	}
 
-	fmt.print("GlobalReport {\n")
+	fmt.print("Global_Report {\n")
 
 	fmt.print("  Surfaces:\n")
 	print_registry_report(report.surfaces, "Surfaces:", false)
@@ -356,7 +356,7 @@ instance_release_safe :: #force_inline proc(self: ^Instance) {
 }
 
 @(private)
-WGPUInstanceDescriptor :: struct {
-	next_in_chain: ^ChainedStruct,
-	features:      InstanceCapabilities,
+WGPU_Instance_Descriptor :: struct {
+	next_in_chain: ^Chained_Struct,
+	features:      Instance_Capabilities,
 }

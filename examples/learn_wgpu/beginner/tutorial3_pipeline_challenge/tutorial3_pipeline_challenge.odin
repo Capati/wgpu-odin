@@ -8,11 +8,11 @@ import app "root:utils/application"
 import "root:wgpu"
 
 Example :: struct {
-	render_pipeline:           wgpu.RenderPipeline,
-	challenge_render_pipeline: wgpu.RenderPipeline,
+	render_pipeline:           wgpu.Render_Pipeline,
+	challenge_render_pipeline: wgpu.Render_Pipeline,
 	render_pass:               struct {
-		color_attachments: [1]wgpu.RenderPassColorAttachment,
-		descriptor:        wgpu.RenderPassDescriptor,
+		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
+		descriptor:        wgpu.Render_Pass_Descriptor,
 	},
 }
 
@@ -35,7 +35,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	) or_return
 	defer wgpu.release(render_pipeline_layout)
 
-	render_pipeline_descriptor := wgpu.RenderPipelineDescriptor {
+	render_pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
 		label = EXAMPLE_TITLE + " Render Pipeline",
 		layout = render_pipeline_layout,
 		vertex = {module = shader_module, entry_point = "vs_main"},
@@ -50,7 +50,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				},
 			},
 		},
-		primitive = {topology = .TriangleList, front_face = .CCW, cull_mode = .Back},
+		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
 		multisample = {count = 1, mask = ~u32(0), alpha_to_coverage_enabled = false},
 	}
 
@@ -69,7 +69,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	) or_return
 	defer wgpu.release(challenge_shader_module)
 
-	challenge_render_pipeline_descriptor := wgpu.RenderPipelineDescriptor {
+	challenge_render_pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
 		label = EXAMPLE_TITLE + " Challenge Render Pipeline",
 		layout = render_pipeline_layout,
 		vertex = {module = challenge_shader_module, entry_point = "vs_main"},
@@ -84,7 +84,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				},
 			},
 		},
-		primitive = {topology = .TriangleList, front_face = .CCW, cull_mode = .Back},
+		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
 		multisample = {count = 1, mask = ~u32(0), alpha_to_coverage_enabled = false},
 	}
 

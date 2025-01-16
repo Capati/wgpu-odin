@@ -5,7 +5,7 @@ import "vendor:glfw"
 
 KEY_COUNT :: Key.Last
 
-KeyboardState :: struct {
+Keyboard_State :: struct {
 	current:          [KEY_COUNT]bool,
 	previous:         [KEY_COUNT]bool,
 	last_key_pressed: Key,

@@ -6,31 +6,31 @@ import sa "core:container/small_array"
 /*
 Encodes a series of GPU operations.
 
-A command encoder can record `RenderPass`es, `ComputePass`es,
+A command encoder can record `Render_Pass`es, `Compute_Pass`es,
 and transfer operations between driver-managed resources like `Buffer`s and `Texture`s.
 
-When finished recording, call `command_encoder_finish` to obtain a `CommandBuffer` which may
+When finished recording, call `command_encoder_finish` to obtain a `Command_Buffer` which may
 be submitted for execution.
 
 Corresponds to [WebGPU `GPUCommandEncoder`](https://gpuweb.github.io/gpuweb/#command-encoder).
 */
-CommandEncoder :: distinct rawptr
+Command_Encoder :: distinct rawptr
 
-/* Finishes recording and returns a `CommandBuffer` that can be submitted for execution. */
+/* Finishes recording and returns a `Command_Buffer` that can be submitted for execution. */
 @(require_results)
 command_encoder_finish :: proc "contextless" (
-	self: CommandEncoder,
-	descriptor: Maybe(CommandBufferDescriptor) = nil,
+	self: Command_Encoder,
+	descriptor: Maybe(Command_Buffer_Descriptor) = nil,
 	loc := #caller_location,
 ) -> (
-	command_buffer: CommandBuffer,
+	command_buffer: Command_Buffer,
 	ok: bool,
 ) #optional_ok {
 	error_reset_data(loc)
 
 	if desc, desc_ok := descriptor.?; desc_ok {
-		raw_desc: WGPUCommandBufferDescriptor
-		c_label: StringViewBuffer
+		raw_desc: WGPU_Command_Buffer_Descriptor
+		c_label: String_View_Buffer
 		if desc.label != "" {
 			raw_desc.label = init_string_buffer(&c_label, desc.label)
 		}
@@ -62,45 +62,45 @@ in a render pass.
 MAX_COLOR_ATTACHMENTS :: #config(WGPU_MAX_COLOR_ATTACHMENTS, 8)
 
 @(private)
-RenderPassColorAttachmentRaw :: sa.Small_Array(
+Render_Pass_Color_Attachment_Raw :: sa.Small_Array(
 	MAX_COLOR_ATTACHMENTS,
-	WGPURenderPassColorAttachment,
+	WGPU_Render_Pass_Color_Attachment,
 )
 
 /*
 Begins recording of a render pass.
 
-This procedure returns a `RenderPass` object which records a single render pass.
+This procedure returns a `Render_Pass` object which records a single render pass.
 
-As long as the returned  `RenderPass` has not ended,
+As long as the returned  `Render_Pass` has not ended,
 any mutating operation on this command encoder causes an error and invalidates it.
 */
 @(require_results)
 command_encoder_begin_render_pass :: proc "contextless" (
-	self: CommandEncoder,
-	descriptor: RenderPassDescriptor,
+	self: Command_Encoder,
+	descriptor: Render_Pass_Descriptor,
 ) -> (
-	render_pass: RenderPass,
+	render_pass: Render_Pass,
 ) {
-	raw_desc: WGPURenderPassDescriptor
+	raw_desc: WGPU_Render_Pass_Descriptor
 
 	when ODIN_DEBUG {
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		if descriptor.label != "" {
 			raw_desc.label = init_string_buffer(&c_label, descriptor.label)
 		}
 	}
 
-	color_attachments: RenderPassColorAttachmentRaw
+	color_attachments: Render_Pass_Color_Attachment_Raw
 	if len(descriptor.color_attachments) > 0 {
 		for &attachment in descriptor.color_attachments {
-			attachment_raw := WGPURenderPassColorAttachment {
+			attachment_raw := WGPU_Render_Pass_Color_Attachment {
 				view = attachment.view,
 				resolve_target = attachment.resolve_target,
 				depth_slice = DEPTH_SLICE_UNDEFINED,
 				load_op = attachment.ops.load,
 				store_op = attachment.ops.store,
-				clear_value = WGPUColor {
+				clear_value = WGPU_Color {
 					r = attachment.ops.clear_value.r,
 					g = attachment.ops.clear_value.g,
 					b = attachment.ops.clear_value.b,
@@ -122,10 +122,10 @@ command_encoder_begin_render_pass :: proc "contextless" (
 
 	raw_desc.occlusion_query_set = descriptor.occlusion_query_set
 
-	max_draw_count: RenderPassMaxDrawCount
+	max_draw_count: Render_Pass_Max_Draw_Count
 	if descriptor.max_draw_count > 0 {
 		max_draw_count = {
-			chain = {stype = .RenderPassMaxDrawCount},
+			chain = {stype = .Render_Pass_Max_Draw_Count},
 			max_draw_count = descriptor.max_draw_count,
 		}
 		raw_desc.next_in_chain = &max_draw_count.chain
@@ -139,24 +139,24 @@ command_encoder_begin_render_pass :: proc "contextless" (
 /*
 Begins recording of a compute pass.
 
-This procedure returns a `ComputePass` object which records a single compute pass.
+This procedure returns a `Compute_Pass` object which records a single compute pass.
 
-As long as the returned  `ComputePass` has not ended,
+As long as the returned  `Compute_Pass` has not ended,
 any mutating operation on this command encoder causes an error and invalidates it.
 */
 @(require_results)
 command_encoder_begin_compute_pass :: proc "contextless" (
-	self: CommandEncoder,
-	descriptor: Maybe(ComputePassDescriptor) = nil,
+	self: Command_Encoder,
+	descriptor: Maybe(Compute_Pass_Descriptor) = nil,
 	loc := #caller_location,
 ) -> (
-	compute_pass: ComputePass,
+	compute_pass: Compute_Pass,
 	ok: bool,
 ) #optional_ok {
 	if desc, desc_ok := descriptor.?; desc_ok {
-		raw_desc: WGPUComputePassDescriptor
+		raw_desc: WGPU_Compute_Pass_Descriptor
 		when ODIN_DEBUG {
-			c_label: StringViewBuffer
+			c_label: String_View_Buffer
 			if desc.label != "" {
 				raw_desc.label = init_string_buffer(&c_label, desc.label)
 			}
@@ -168,7 +168,7 @@ command_encoder_begin_compute_pass :: proc "contextless" (
 	}
 
 	if compute_pass == nil {
-		error_reset_and_update(ErrorType.Unknown, "Failed to acquire 'ComputePass'", loc)
+		error_reset_and_update(Error_Type.Unknown, "Failed to acquire 'Compute_Pass'", loc)
 		return
 	}
 
@@ -185,12 +185,12 @@ Copy data from one buffer to another.
 - Copy within the same buffer.
 */
 command_encoder_copy_buffer_to_buffer :: proc "contextless" (
-	self: CommandEncoder,
+	self: Command_Encoder,
 	source: Buffer,
-	source_offset: BufferAddress,
+	source_offset: Buffer_Address,
 	destination: Buffer,
-	destination_offset: BufferAddress,
-	copy_size: BufferAddress,
+	destination_offset: Buffer_Address,
+	copy_size: Buffer_Address,
 	loc := #caller_location,
 ) -> (
 	ok: bool,
@@ -213,8 +213,8 @@ View of a buffer which can be used to copy to/from a texture.
 Corresponds to [WebGPU `GPUImageCopyBuffer`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpuimagecopybuffer).
 */
-TexelCopyBufferInfo :: struct {
-	layout: TexelCopyBufferLayout,
+Texel_Copy_Buffer_Info :: struct {
+	layout: Texel_Copy_Buffer_Layout,
 	buffer: Buffer,
 }
 
@@ -224,19 +224,19 @@ View of a texture which can be used to copy to/from a buffer/texture.
 Corresponds to [WebGPU `GPUImageCopyTexture`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpuimagecopytexture).
 */
-TexelCopyTextureInfo :: struct {
+Texel_Copy_Texture_Info :: struct {
 	texture:   Texture,
 	mip_level: u32,
-	origin:    Origin3D,
-	aspect:    TextureAspect,
+	origin:    Origin_3D,
+	aspect:    Texture_Aspect,
 }
 
 /* Copy data from a buffer to a texture. */
 command_encoder_copy_buffer_to_texture :: proc "contextless" (
-	self: CommandEncoder,
-	source: TexelCopyBufferInfo,
-	destination: TexelCopyTextureInfo,
-	copy_size: Extent3D,
+	self: Command_Encoder,
+	source: Texel_Copy_Buffer_Info,
+	destination: Texel_Copy_Texture_Info,
+	copy_size: Extent_3D,
 	loc := #caller_location,
 ) -> (
 	ok: bool,
@@ -248,10 +248,10 @@ command_encoder_copy_buffer_to_texture :: proc "contextless" (
 
 /* Copy data from a texture to a buffer. */
 command_encoder_copy_texture_to_buffer :: proc "contextless" (
-	self: CommandEncoder,
-	source: TexelCopyTextureInfo,
-	destination: TexelCopyBufferInfo,
-	copy_size: Extent3D,
+	self: Command_Encoder,
+	source: Texel_Copy_Texture_Info,
+	destination: Texel_Copy_Buffer_Info,
+	copy_size: Extent_3D,
 	loc := #caller_location,
 ) -> (
 	ok: bool,
@@ -271,10 +271,10 @@ Copy data from one texture to another.
 - Copy would overrun either texture
 */
 command_encoder_copy_texture_to_texture :: proc "contextless" (
-	self: CommandEncoder,
-	source: TexelCopyTextureInfo,
-	destination: TexelCopyTextureInfo,
-	copy_size: Extent3D,
+	self: Command_Encoder,
+	source: Texel_Copy_Texture_Info,
+	destination: Texel_Copy_Texture_Info,
+	copy_size: Extent_3D,
 	loc := #caller_location,
 ) -> (
 	ok: bool,
@@ -293,10 +293,10 @@ Clears buffer to zero.
 - Range is out of bounds
 */
 command_encoder_clear_buffer :: proc "contextless" (
-	self: CommandEncoder,
+	self: Command_Encoder,
 	buffer: Buffer,
-	offset: BufferAddress,
-	size: BufferAddress = WHOLE_SIZE,
+	offset: Buffer_Address,
+	size: Buffer_Address = WHOLE_SIZE,
 	loc := #caller_location,
 ) -> (
 	ok: bool,
@@ -308,7 +308,7 @@ command_encoder_clear_buffer :: proc "contextless" (
 
 /* Inserts debug marker. */
 command_encoder_insert_debug_marker :: proc "contextless" (
-	self: CommandEncoder,
+	self: Command_Encoder,
 	label: string,
 	loc := #caller_location,
 ) -> (
@@ -316,7 +316,7 @@ command_encoder_insert_debug_marker :: proc "contextless" (
 ) {
 	when ODIN_DEBUG {
 		error_reset_data(loc)
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		wgpuCommandEncoderInsertDebugMarker(
 			self,
 			init_string_buffer(&c_label, label) if label != "" else {},
@@ -329,7 +329,7 @@ command_encoder_insert_debug_marker :: proc "contextless" (
 
 /* Start record commands and group it into debug marker group. */
 command_encoder_push_debug_group :: proc "contextless" (
-	self: CommandEncoder,
+	self: Command_Encoder,
 	label: string,
 	loc := #caller_location,
 ) -> (
@@ -337,7 +337,7 @@ command_encoder_push_debug_group :: proc "contextless" (
 ) {
 	when ODIN_DEBUG {
 		error_reset_data(loc)
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		wgpuCommandEncoderPushDebugGroup(
 			self,
 			init_string_buffer(&c_label, label) if label != "" else {},
@@ -350,7 +350,7 @@ command_encoder_push_debug_group :: proc "contextless" (
 
 /* Stops command recording and creates debug group. */
 command_encoder_pop_debug_group :: proc "contextless" (
-	self: CommandEncoder,
+	self: Command_Encoder,
 	loc := #caller_location,
 ) -> (
 	ok: bool,
@@ -370,11 +370,11 @@ Resolve a query set, writing the results into the supplied destination buffer.
 Queries may be between 8 and 40 bytes each. See `Pipeline_Statistics_Types` for more information.
 */
 command_encoder_resolve_query_set :: proc "contextless" (
-	self: CommandEncoder,
-	query_set: QuerySet,
+	self: Command_Encoder,
+	query_set: Query_Set,
 	query_range: Range(u32),
 	destination: Buffer,
-	destination_offset: BufferAddress,
+	destination_offset: Buffer_Address,
 	loc := #caller_location,
 ) -> (
 	ok: bool,
@@ -401,8 +401,8 @@ recorded so far and all before all commands recorded after.
 This may depend both on the backend and the driver.
 */
 command_encoder_write_timestamp :: proc "contextless" (
-	self: CommandEncoder,
-	query_set: QuerySet,
+	self: Command_Encoder,
+	query_set: Query_Set,
 	query_index: u32,
 	loc := #caller_location,
 ) -> (
@@ -413,26 +413,26 @@ command_encoder_write_timestamp :: proc "contextless" (
 	return has_no_error()
 }
 
-/* Sets a debug label for the given `CommandEncoder`. */
+/* Sets a debug label for the given `Command_Encoder`. */
 @(disabled = !ODIN_DEBUG)
-command_encoder_set_label :: proc "contextless" (self: CommandEncoder, label: string) {
-	c_label: StringViewBuffer
+command_encoder_set_label :: proc "contextless" (self: Command_Encoder, label: string) {
+	c_label: String_View_Buffer
 	wgpuCommandEncoderSetLabel(self, init_string_buffer(&c_label, label))
 }
 
-/* Increase the `CommandEncoder` reference count. */
+/* Increase the `Command_Encoder` reference count. */
 command_encoder_add_ref :: wgpuCommandEncoderAddRef
 
-/* Release the `CommandEncoder` resources, use to decrease the reference count. */
+/* Release the `Command_Encoder` resources, use to decrease the reference count. */
 command_encoder_release :: wgpuCommandEncoderRelease
 
 /*
-Safely releases the `CommandEncoder` resources and invalidates the handle.
+Safely releases the `Command_Encoder` resources and invalidates the handle.
 The procedure checks both the pointer and handle before releasing.
 
 Note: After calling this, the handle will be set to `nil` and should not be used.
 */
-command_encoder_release_safe :: #force_inline proc(self: ^CommandEncoder) {
+command_encoder_release_safe :: #force_inline proc(self: ^Command_Encoder) {
 	if self != nil && self^ != nil {
 		wgpuCommandEncoderRelease(self^)
 		self^ = nil

@@ -19,18 +19,18 @@ Vertex :: struct {
 }
 
 /* Information about the WebGPU context. */
-InitInfo :: struct {
+Init_Info :: struct {
 	num_frames_in_flight:       u32,
-	surface_config:             wgpu.SurfaceConfiguration,
-	depth_stencil_format:       wgpu.TextureFormat,
-	pipeline_multisample_state: wgpu.MultisampleState,
+	surface_config:             wgpu.Surface_Configuration,
+	depth_stencil_format:       wgpu.Texture_Format,
+	pipeline_multisample_state: wgpu.Multisample_State,
 }
 
 /* Global renderer state */
 @(private = "file")
 r := struct {
 	// Settings
-	using init_info:         InitInfo,
+	using init_info:         Init_Info,
 
 	// WGPU Context
 	device:                  wgpu.Device,
@@ -38,10 +38,10 @@ r := struct {
 
 	// Initialization
 	atlas_texture:           wgpu.Texture,
-	atlas_view:              wgpu.TextureView,
+	atlas_view:              wgpu.Texture_View,
 	atlas_sampler:           wgpu.Sampler,
-	bind_group:              wgpu.BindGroup,
-	render_pipeline:         wgpu.RenderPipeline,
+	bind_group:              wgpu.Bind_Group,
+	render_pipeline:         wgpu.Render_Pipeline,
 	vertex_buffer:           wgpu.Buffer,
 	index_buffer:            wgpu.Buffer,
 
@@ -50,7 +50,7 @@ r := struct {
 	indices:                 [dynamic]u32,
 
 	// State
-	current_pass:            wgpu.RenderPass,
+	current_pass:            wgpu.Render_Pass,
 	viewport_rect:           mu.Rect,
 	current_clip_rect:       mu.Rect,
 	quad_count:              u32,
@@ -63,14 +63,14 @@ r := struct {
 
 DEFAULT_MICROUI_FRAMES_IN_FLIGHT :: #config(MICROUI_FRAMES_IN_FLIGHT, 3)
 
-DEFAULT_MICROUI_INIT_INFO :: InitInfo {
+DEFAULT_MICROUI_INIT_INFO :: Init_Info {
 	num_frames_in_flight       = DEFAULT_MICROUI_FRAMES_IN_FLIGHT,
 	depth_stencil_format       = .Undefined,
 	pipeline_multisample_state = wgpu.DEFAULT_MULTISAMPLE_STATE,
 }
 
 /* Initializes the WebGPU renderer for MicroUI. */
-init :: proc(init_info: InitInfo, loc := #caller_location) -> (ok: bool) {
+init :: proc(init_info: Init_Info, loc := #caller_location) -> (ok: bool) {
 	r.init_info = init_info
 
 	r.device = r.surface_config.device
@@ -82,7 +82,7 @@ init :: proc(init_info: InitInfo, loc := #caller_location) -> (ok: bool) {
 		r.device,
 		{
 			label = "MicroUI Atlas",
-			usage = {.TextureBinding, .CopyDst},
+			usage = {.Texture_Binding, .Copy_Dst},
 			dimension = .D2,
 			size = {mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT, 1},
 			format = .Rgba8Unorm,
@@ -138,13 +138,13 @@ init :: proc(init_info: InitInfo, loc := #caller_location) -> (ok: bool) {
 
 	bind_group_layout := wgpu.device_create_bind_group_layout(
 		r.device,
-		wgpu.BindGroupLayoutDescriptor {
+		wgpu.Bind_Group_Layout_Descriptor {
 			label = "MicroUI Bind Group Layout",
 			entries = {
 				{
 					binding = 0,
 					visibility = {.Fragment},
-					type = wgpu.TextureBindingLayout {
+					type = wgpu.Texture_Binding_Layout {
 						multisampled = false,
 						view_dimension = .D2,
 						sample_type = .Float,
@@ -153,7 +153,7 @@ init :: proc(init_info: InitInfo, loc := #caller_location) -> (ok: bool) {
 				{
 					binding = 1,
 					visibility = {.Fragment},
-					type = wgpu.SamplerBindingLayout{type = .Filtering},
+					type = wgpu.Sampler_Binding_Layout{type = .Filtering},
 				},
 			},
 		},
@@ -189,7 +189,7 @@ init :: proc(init_info: InitInfo, loc := #caller_location) -> (ok: bool) {
 	defer wgpu.release(microui_shader_module)
 
 	// Depth-stencil state (if available)
-	depth_stencil_state := wgpu.DepthStencilState {
+	depth_stencil_state := wgpu.Depth_Stencil_State {
 		format = r.depth_stencil_format,
 		depth_write_enabled = false,
 		depth_compare = .Always,
@@ -201,7 +201,7 @@ init :: proc(init_info: InitInfo, loc := #caller_location) -> (ok: bool) {
 
 	r.render_pipeline = wgpu.device_create_render_pipeline(
 		r.device,
-		wgpu.RenderPipelineDescriptor {
+		wgpu.Render_Pipeline_Descriptor {
 			label = "MicroUI Pipeline",
 			layout = pipeline_layout,
 			vertex = {
@@ -227,7 +227,7 @@ init :: proc(init_info: InitInfo, loc := #caller_location) -> (ok: bool) {
 					},
 				},
 			},
-			fragment = &wgpu.FragmentState {
+			fragment = &wgpu.Fragment_State {
 				module = microui_shader_module,
 				entry_point = "fs_main",
 				targets = {
@@ -240,7 +240,7 @@ init :: proc(init_info: InitInfo, loc := #caller_location) -> (ok: bool) {
 			},
 			depth_stencil = depth_stencil_state,
 			primitive = {
-				topology = .TriangleList,
+				topology = .Triangle_List,
 				strip_index_format = .Undefined,
 				front_face = .CCW,
 				cull_mode = .None,
@@ -258,14 +258,14 @@ init :: proc(init_info: InitInfo, loc := #caller_location) -> (ok: bool) {
 		u64(INITIAL_VERTEX_CAPACITY) * u64(size_of(Vertex)) * u64(r.num_frames_in_flight)
 	r.vertex_buffer = wgpu.device_create_buffer(
 		r.device,
-		{label = "MicroUI Vertex Buffer", usage = {.Vertex, .CopyDst}, size = vertex_buffer_size},
+		{label = "MicroUI Vertex Buffer", usage = {.Vertex, .Copy_Dst}, size = vertex_buffer_size},
 	) or_return
 
 	r.index_buffer = wgpu.device_create_buffer(
 		r.device,
 		{
 			label = "MicroUI Index Buffer",
-			usage = {.Index, .CopyDst},
+			usage = {.Index, .Copy_Dst},
 			size = u64(INITIAL_VERTEX_CAPACITY) * 6 * u64(r.num_frames_in_flight),
 		},
 	) or_return
@@ -279,7 +279,7 @@ init :: proc(init_info: InitInfo, loc := #caller_location) -> (ok: bool) {
 }
 
 /* Renders the MicroUI context. */
-render :: proc(ctx: ^mu.Context, pass: wgpu.RenderPass) -> (ok: bool) {
+render :: proc(ctx: ^mu.Context, pass: wgpu.Render_Pass) -> (ok: bool) {
 	r.current_pass = pass
 
 	reset_state()

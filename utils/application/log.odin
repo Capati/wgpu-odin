@@ -6,7 +6,7 @@ import "core:fmt"
 import "core:log"
 import "core:strings"
 
-LogLevel :: enum {
+Log_Level :: enum {
 	Info, // default
 	Debug,
 	Warn,
@@ -16,7 +16,7 @@ LogLevel :: enum {
 
 LOG_BUFFER_SIZE :: #config(APP_LOG_BUFFER_SIZE, 512)
 
-log_loc :: proc(fmt_str: string, args: ..any, level := LogLevel.Info, loc := #caller_location) {
+log_loc :: proc(fmt_str: string, args: ..any, level := Log_Level.Info, loc := #caller_location) {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
 	builder := strings.builder_make(LOG_BUFFER_SIZE, context.temp_allocator)

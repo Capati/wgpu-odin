@@ -24,13 +24,13 @@ For use with `adapter_request_device`.
 Corresponds to [WebGPU `GPUDeviceDescriptor`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpudevicedescriptor).
 */
-DeviceDescriptor :: struct {
+Device_Descriptor :: struct {
 	label:                          string,
 	optional_features:              Features,
 	required_features:              Features,
 	required_limits:                Limits,
-	device_lost_callback_info:      DeviceLostCallbackInfo,
-	uncaptured_error_callback_info: UncapturedErrorCallbackInfo,
+	device_lost_callback_info:      Device_Lost_Callback_Info,
+	uncaptured_error_callback_info: Uncaptured_Error_Callback_Info,
 	trace_path:                     string,
 }
 
@@ -48,7 +48,7 @@ When running on WebGPU, this is a no-op. `Device`s are automatically polled.
 device_poll :: proc "contextless" (
 	self: Device,
 	wait: bool = true,
-	wrapped_submission_index: ^SubmissionIndex = nil,
+	wrapped_submission_index: ^Submission_Index = nil,
 	loc := #caller_location,
 ) -> (
 	result: bool,
@@ -66,7 +66,7 @@ List all features that may be used with this device.
 Functions may panic if you use unsupported features.
 */
 device_features :: proc "contextless" (self: Device) -> (features: Features) #no_bounds_check {
-	supported: SupportedFeatures
+	supported: WGPU_Supported_Features
 	wgpuDeviceGetFeatures(self, &supported)
 	defer wgpuSupportedFeaturesFreeMembers(supported)
 
@@ -105,10 +105,10 @@ device_limits :: proc "contextless" (
 	limits: Limits,
 	ok: bool,
 ) #optional_ok {
-	native := WGPUNativeLimits {
-		chain = {stype = SType.NativeLimits},
+	native := WGPU_Native_Limits {
+		chain = {stype = SType.Native_Limits},
 	}
-	base := WGPULimits {
+	base := WGPU_Limits {
 		next_in_chain = &native.chain,
 	}
 
@@ -118,7 +118,7 @@ device_limits :: proc "contextless" (
 		return
 	}
 	if status != .Success {
-		error_update_data(ErrorType.Unknown, "Failed to fill device limits")
+		error_update_data(Error_Type.Unknown, "Failed to fill device limits")
 		return
 	}
 
@@ -132,38 +132,38 @@ device_limits :: proc "contextless" (
 }
 
 @(private)
-WGPUShaderModuleDescriptor :: struct {
-	next_in_chain: ^ChainedStruct,
-	label:         StringView,
+WGPU_Shader_Module_Descriptor :: struct {
+	next_in_chain: ^Chained_Struct,
+	label:         String_View,
 }
 
 @(private)
-WGPUShaderSourceSPIRV :: struct {
-	chain:     ChainedStruct,
+WGPU_Shader_Source_SPIRV :: struct {
+	chain:     Chained_Struct,
 	code_size: u32,
 	code:      [^]u32,
 }
 
 @(private)
-WGPUShaderSourceWGSL :: struct {
-	chain: ChainedStruct,
-	code:  StringView,
+WGPU_Shader_Source_WGSL :: struct {
+	chain: Chained_Struct,
+	code:  String_View,
 }
 
 /* Creates a shader module from either `WGSL`, `SPIR-V` or `GLSL` source code. */
 @(require_results)
 device_create_shader_module :: proc(
 	self: Device,
-	descriptor: ShaderModuleDescriptor,
+	descriptor: Shader_Module_Descriptor,
 	loc := #caller_location,
 ) -> (
-	shader_module: ShaderModule,
+	shader_module: Shader_Module,
 	ok: bool,
 ) #optional_ok {
-	raw_desc: WGPUShaderModuleDescriptor
+	raw_desc: WGPU_Shader_Module_Descriptor
 
 	when ODIN_DEBUG {
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		if descriptor.label != "" {
 			raw_desc.label = init_string_buffer(&c_label, descriptor.label)
 		}
@@ -174,8 +174,8 @@ device_create_shader_module :: proc(
 	switch &source in descriptor.source {
 	case string:
 		runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-		wgsl := WGPUShaderSourceWGSL {
-			chain = {stype = .ShaderSourceWGSL},
+		wgsl := WGPU_Shader_Source_WGSL {
+			chain = {stype = .Shader_Source_WGSL},
 			code = {
 				data = strings.clone_to_cstring(source, context.temp_allocator),
 				length = STRLEN,
@@ -184,15 +184,15 @@ device_create_shader_module :: proc(
 		raw_desc.next_in_chain = &wgsl.chain
 		shader_module = wgpuDeviceCreateShaderModule(self, raw_desc)
 	case cstring:
-		wgsl := WGPUShaderSourceWGSL {
-			chain = {stype = .ShaderSourceWGSL},
+		wgsl := WGPU_Shader_Source_WGSL {
+			chain = {stype = .Shader_Source_WGSL},
 			code = {data = source, length = STRLEN},
 		}
 		raw_desc.next_in_chain = &wgsl.chain
 		shader_module = wgpuDeviceCreateShaderModule(self, raw_desc)
 	case []u32:
-		spirv := WGPUShaderSourceSPIRV {
-			chain = {stype = .ShaderSourceSPIRV},
+		spirv := WGPU_Shader_Source_SPIRV {
+			chain = {stype = .Shader_Source_SPIRV},
 			code = nil,
 		}
 		if source != nil {
@@ -204,16 +204,16 @@ device_create_shader_module :: proc(
 		}
 		raw_desc.next_in_chain = &spirv.chain
 		shader_module = wgpuDeviceCreateShaderModule(self, raw_desc)
-	case GLSLSource:
+	case GLSL_Source:
 		runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 		ta := context.temp_allocator
-		glsl := WGPUShaderModuleGLSLDescriptor {
-			chain = {stype = .ShaderModuleGLSLDescriptor},
+		glsl := WGPU_Shader_Module_GLSL_Descriptor {
+			chain = {stype = .Shader_Module_GLSL_Descriptor},
 			stage = source.stage,
 			code = {data = strings.clone_to_cstring(source.shader, ta), length = STRLEN},
 		}
 		if len(source.defines) > 0 {
-			defines := make([]WGPUShaderDefine, len(source.defines), ta)
+			defines := make([]WGPU_Shader_Define, len(source.defines), ta)
 			for &d, i in source.defines {
 				defines[i] = {
 					name  = {strings.clone_to_cstring(d.name, ta), STRLEN},
@@ -238,13 +238,13 @@ device_create_shader_module :: proc(
 }
 
 @(private)
-WGPUShaderModuleDescriptorSpirV :: struct {
-	label:       StringView,
+WGPU_Shader_Module_Descriptor_SPIRV :: struct {
+	label:       String_View,
 	source_size: u32,
 	source:      [^]u32,
 }
 
-ShaderModuleDescriptorSpirV :: struct {
+Shader_Module_Descriptor_SPIRV :: struct {
 	label:  string,
 	source: []u32,
 }
@@ -253,18 +253,18 @@ ShaderModuleDescriptorSpirV :: struct {
 @(require_results)
 device_create_shader_module_spirv :: proc(
 	self: Device,
-	descriptor: ShaderModuleDescriptorSpirV,
+	descriptor: Shader_Module_Descriptor_SPIRV,
 	loc := #caller_location,
 ) -> (
-	shader_module: ShaderModule,
+	shader_module: Shader_Module,
 	ok: bool,
 ) #optional_ok {
 	assert(descriptor.source != nil && len(descriptor.source) > 0, "SPIR-V source is required")
 
-	raw_desc: WGPUShaderModuleDescriptorSpirV
+	raw_desc: WGPU_Shader_Module_Descriptor_SPIRV
 
 	when ODIN_DEBUG {
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		if descriptor.label != "" {
 			raw_desc.label = init_string_buffer(&c_label, descriptor.label)
 		}
@@ -286,23 +286,23 @@ device_create_shader_module_spirv :: proc(
 	return shader_module, true
 }
 
-/* Creates an empty `CommandEncoder`. */
+/* Creates an empty `Command_Encoder`. */
 @(require_results)
 device_create_command_encoder :: proc "contextless" (
 	self: Device,
-	descriptor: Maybe(CommandEncoderDescriptor) = nil,
+	descriptor: Maybe(Command_Encoder_Descriptor) = nil,
 	loc := #caller_location,
 ) -> (
-	command_encoder: CommandEncoder,
+	command_encoder: Command_Encoder,
 	ok: bool,
 ) #optional_ok {
 	error_reset_data(loc)
 
 	if desc, desc_ok := descriptor.?; desc_ok {
-		raw_desc := WGPUCommandEncoderDescriptor{}
+		raw_desc := WGPU_Command_Encoder_Descriptor{}
 
 		when ODIN_DEBUG {
-			c_label: StringViewBuffer
+			c_label: String_View_Buffer
 			if desc.label != "" {
 				raw_desc.label = init_string_buffer(&c_label, desc.label)
 			}
@@ -323,20 +323,20 @@ device_create_command_encoder :: proc "contextless" (
 	return command_encoder, true
 }
 
-/* Creates an empty `RenderBundleEncoder`. */
+/* Creates an empty `Render_Bundle_Encoder`. */
 @(require_results)
 device_create_render_bundle_encoder :: proc "contextless" (
 	self: Device,
-	descriptor: RenderBundleEncoderDescriptor,
+	descriptor: Render_Bundle_Encoder_Descriptor,
 	loc := #caller_location,
 ) -> (
-	render_bundle_encoder: RenderBundleEncoder,
+	render_bundle_encoder: Render_Bundle_Encoder,
 	ok: bool,
 ) #optional_ok {
-	desc: WGPURenderBundleEncoderDescriptor
+	desc: WGPU_Render_Bundle_Encoder_Descriptor
 
 	when ODIN_DEBUG {
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		if descriptor.label != "" {
 			desc.label = init_string_buffer(&c_label, descriptor.label)
 		}
@@ -367,30 +367,30 @@ device_create_render_bundle_encoder :: proc "contextless" (
 }
 
 @(private)
-WGPUBindGroupEntryExtras :: struct {
-	chain:              ChainedStruct,
+WGPU_Bind_Group_Entry_Extras :: struct {
+	chain:              Chained_Struct,
 	buffers:            [^]Buffer,
 	buffer_count:       uint,
 	samplers:           [^]Sampler,
 	sampler_count:      uint,
-	texture_views:      [^]TextureView,
+	texture_views:      [^]Texture_View,
 	texture_view_count: uint,
 }
 
-/* Creates a new `BindGroup`. */
+/* Creates a new `Bind_Group`. */
 @(require_results)
 device_create_bind_group :: proc(
 	self: Device,
-	descriptor: BindGroupDescriptor,
+	descriptor: Bind_Group_Descriptor,
 	loc := #caller_location,
 ) -> (
-	bind_group: BindGroup,
+	bind_group: Bind_Group,
 	ok: bool,
 ) #no_bounds_check #optional_ok {
-	desc: WGPUBindGroupDescriptor
+	desc: WGPU_Bind_Group_Descriptor
 
 	when ODIN_DEBUG {
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		if descriptor.label != "" {
 			desc.label = init_string_buffer(&c_label, descriptor.label)
 		}
@@ -401,27 +401,30 @@ device_create_bind_group :: proc(
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 	ta := context.temp_allocator
 
-	extras: [dynamic]WGPUBindGroupEntryExtras
+	extras: [dynamic]WGPU_Bind_Group_Entry_Extras
 	extras.allocator = ta
 
 	entry_count := uint(len(descriptor.entries))
 
 	if entry_count > 0 {
-		entries := make([]WGPUBindGroupEntry, entry_count, ta)
+		entries := make([]WGPU_Bind_Group_Entry, entry_count, ta)
 
 		for &v, i in descriptor.entries {
 			raw_entry := &entries[i]
 			raw_entry.binding = v.binding
-			raw_extra: ^WGPUBindGroupEntryExtras
+			raw_extra: ^WGPU_Bind_Group_Entry_Extras
 
 			#partial switch &res in v.resource {
-			case []Buffer, []Sampler, []TextureView:
-				append(&extras, WGPUBindGroupEntryExtras{chain = {stype = .BindGroupEntryExtras}})
+			case []Buffer, []Sampler, []Texture_View:
+				append(
+					&extras,
+					WGPU_Bind_Group_Entry_Extras{chain = {stype = .Bind_Group_Entry_Extras}},
+				)
 				raw_extra = &extras[len(extras) - 1]
 			}
 
 			switch &res in v.resource {
-			case BufferBinding:
+			case Buffer_Binding:
 				raw_entry.buffer = res.buffer
 				raw_entry.size = res.size
 				raw_entry.offset = res.offset
@@ -433,9 +436,9 @@ device_create_bind_group :: proc(
 			case []Sampler:
 				raw_extra.sampler_count = len(res)
 				raw_extra.samplers = raw_data(res)
-			case TextureView:
+			case Texture_View:
 				raw_entry.texture_view = res
-			case []TextureView:
+			case []Texture_View:
 				raw_extra.texture_view_count = len(res)
 				raw_extra.texture_views = raw_data(res)
 			}
@@ -462,19 +465,19 @@ device_create_bind_group :: proc(
 }
 
 @(private)
-WGPUBindGroupLayoutEntryExtras :: struct {
-	chain: ChainedStruct,
+WGPU_Bind_Group_Layout_Entry_Extras :: struct {
+	chain: Chained_Struct,
 	count: u32,
 }
 
-/* Creates a new `BindGroupLayout`. */
+/* Creates a new `Bind_Group_Layout`. */
 @(require_results)
 device_create_bind_group_layout :: proc(
 	self: Device,
-	descriptor: Maybe(BindGroupLayoutDescriptor) = nil,
+	descriptor: Maybe(Bind_Group_Layout_Descriptor) = nil,
 	loc := #caller_location,
 ) -> (
-	bind_group_layout: BindGroupLayout,
+	bind_group_layout: Bind_Group_Layout,
 	ok: bool,
 ) #no_bounds_check #optional_ok {
 	desc, desc_ok := descriptor.?
@@ -494,10 +497,10 @@ device_create_bind_group_layout :: proc(
 		return bind_group_layout, true
 	}
 
-	raw_desc: WGPUBindGroupLayoutDescriptor
+	raw_desc: WGPU_Bind_Group_Layout_Descriptor
 
 	when ODIN_DEBUG {
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		if desc.label != "" {
 			raw_desc.label = init_string_buffer(&c_label, desc.label)
 		}
@@ -506,13 +509,13 @@ device_create_bind_group_layout :: proc(
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 	ta := context.temp_allocator
 
-	extras: [dynamic]WGPUBindGroupLayoutEntryExtras
+	extras: [dynamic]WGPU_Bind_Group_Layout_Entry_Extras
 	extras.allocator = ta
 
 	entry_count := uint(len(desc.entries))
 
 	if entry_count > 0 {
-		entries := make([]WGPUBindGroupLayoutEntry, entry_count, ta)
+		entries := make([]WGPU_Bind_Group_Layout_Entry, entry_count, ta)
 
 		for &v, i in desc.entries {
 			raw_entry := &entries[i]
@@ -521,21 +524,21 @@ device_create_bind_group_layout :: proc(
 			raw_entry.visibility = v.visibility
 
 			switch e in v.type {
-			case BufferBindingLayout:
+			case Buffer_Binding_Layout:
 				raw_entry.buffer = e
-			case SamplerBindingLayout:
+			case Sampler_Binding_Layout:
 				raw_entry.sampler = e
-			case TextureBindingLayout:
+			case Texture_Binding_Layout:
 				raw_entry.texture = e
-			case StorageTextureBindingLayout:
+			case Storage_Texture_Binding_Layout:
 				raw_entry.storage_texture = e
 			}
 
 			if v.count > 0 {
 				append(
 					&extras,
-					WGPUBindGroupLayoutEntryExtras {
-						chain = {stype = .BindGroupLayoutEntryExtras},
+					WGPU_Bind_Group_Layout_Entry_Extras {
+						chain = {stype = .Bind_Group_Layout_Entry_Extras},
 						count = v.count,
 					},
 				)
@@ -560,33 +563,33 @@ device_create_bind_group_layout :: proc(
 }
 
 @(private)
-WGPUPushConstantRange :: struct {
-	stages: ShaderStages,
+WGPU_Push_Constant_Range :: struct {
+	stages: Shader_Stages,
 	start:  u32,
 	end:    u32,
 }
 
 @(private)
-WGPUPipelineLayoutExtras :: struct {
-	chain:                     ChainedStruct,
+WGPU_Pipeline_Layout_Extras :: struct {
+	chain:                     Chained_Struct,
 	push_constant_range_count: uint,
-	push_constant_ranges:      [^]WGPUPushConstantRange,
+	push_constant_ranges:      [^]WGPU_Push_Constant_Range,
 }
 
-/* Creates a `PipelineLayout`. */
+/* Creates a `Pipeline_Layout`. */
 @(require_results)
 device_create_pipeline_layout :: proc(
 	self: Device,
-	descriptor: PipelineLayoutDescriptor,
+	descriptor: Pipeline_Layout_Descriptor,
 	loc := #caller_location,
 ) -> (
-	pipeline_layout: PipelineLayout,
+	pipeline_layout: Pipeline_Layout,
 	ok: bool,
 ) #optional_ok {
-	desc: WGPUPipelineLayoutDescriptor
+	desc: WGPU_Pipeline_Layout_Descriptor
 
 	when ODIN_DEBUG {
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		if descriptor.label != "" {
 			desc.label = init_string_buffer(&c_label, descriptor.label)
 		}
@@ -597,7 +600,7 @@ device_create_pipeline_layout :: proc(
 		desc.bind_group_layouts = raw_data(descriptor.bind_group_layouts)
 	}
 
-	extras: WGPUPipelineLayoutExtras
+	extras: WGPU_Pipeline_Layout_Extras
 
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
@@ -605,7 +608,7 @@ device_create_pipeline_layout :: proc(
 
 	if push_constant_range_count > 0 {
 		push_constant_ranges := make(
-			[]WGPUPushConstantRange,
+			[]WGPU_Push_Constant_Range,
 			push_constant_range_count,
 			context.temp_allocator,
 		)
@@ -618,7 +621,7 @@ device_create_pipeline_layout :: proc(
 		}
 
 		extras = {
-			chain = {stype = .PipelineLayoutExtras},
+			chain = {stype = .Pipeline_Layout_Extras},
 			push_constant_range_count = uint(push_constant_range_count),
 			push_constant_ranges = raw_data(push_constant_ranges),
 		}
@@ -638,20 +641,20 @@ device_create_pipeline_layout :: proc(
 	return pipeline_layout, true
 }
 
-/* Creates a `RenderPipeline`. */
+/* Creates a `Render_Pipeline`. */
 @(require_results)
 device_create_render_pipeline :: proc(
 	self: Device,
-	descriptor: RenderPipelineDescriptor,
+	descriptor: Render_Pipeline_Descriptor,
 	loc := #caller_location,
 ) -> (
-	render_pipeline: RenderPipeline,
+	render_pipeline: Render_Pipeline,
 	ok: bool,
 ) #optional_ok {
-	raw_desc: WGPURenderPipelineDescriptor
+	raw_desc: WGPU_Render_Pipeline_Descriptor
 
 	when ODIN_DEBUG {
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		if descriptor.label != "" {
 			raw_desc.label = init_string_buffer(&c_label, descriptor.label)
 		}
@@ -661,7 +664,7 @@ device_create_render_pipeline :: proc(
 
 	raw_desc.vertex.module = descriptor.vertex.module
 
-	c_vertex_entry_point: StringViewBuffer
+	c_vertex_entry_point: String_View_Buffer
 	raw_desc.vertex.entry_point = init_string_buffer(
 		&c_vertex_entry_point,
 		descriptor.vertex.entry_point,
@@ -671,7 +674,7 @@ device_create_render_pipeline :: proc(
 
 	if len(descriptor.vertex.constants) > 0 {
 		vertex_constants := make(
-			[]WGPUConstantEntry,
+			[]WGPU_Constant_Entry,
 			len(descriptor.vertex.constants),
 			context.temp_allocator,
 		)
@@ -687,7 +690,7 @@ device_create_render_pipeline :: proc(
 
 	if vertex_buffer_count > 0 {
 		vertex_buffers := make(
-			[]WGPUVertexBufferLayout,
+			[]WGPU_Vertex_Buffer_Layout,
 			vertex_buffer_count,
 			context.temp_allocator,
 		)
@@ -717,23 +720,23 @@ device_create_render_pipeline :: proc(
 		unclipped_depth    = b32(descriptor.primitive.unclipped_depth),
 	}
 
-	// Because everything in Odin by default is set to 0, the default PrimitiveTopology
-	// enum value is `PointList`. We make `TriangleList` default value by creating a
+	// Because everything in Odin by default is set to 0, the default Primitive_Topology
+	// enum value is `Point_List`. We make `Triangle_List` default value by creating a
 	// new enum, but here we set the correct/expected wgpu value:
 	switch descriptor.primitive.topology {
-	case .TriangleList:
-		raw_desc.primitive.topology = WGPUPrimitiveTopology.TriangleList
-	case .PointList:
-		raw_desc.primitive.topology = WGPUPrimitiveTopology.PointList
-	case .LineList:
-		raw_desc.primitive.topology = WGPUPrimitiveTopology.LineList
-	case .LineStrip:
-		raw_desc.primitive.topology = WGPUPrimitiveTopology.LineStrip
-	case .TriangleStrip:
-		raw_desc.primitive.topology = WGPUPrimitiveTopology.TriangleStrip
+	case .Triangle_List:
+		raw_desc.primitive.topology = WGPU_Primitive_Topology.Triangle_List
+	case .Point_List:
+		raw_desc.primitive.topology = WGPU_Primitive_Topology.Point_List
+	case .Line_List:
+		raw_desc.primitive.topology = WGPU_Primitive_Topology.Line_List
+	case .Line_Strip:
+		raw_desc.primitive.topology = WGPU_Primitive_Topology.Line_Strip
+	case .Triangle_Strip:
+		raw_desc.primitive.topology = WGPU_Primitive_Topology.Triangle_Strip
 	}
 
-	depth_stencil: WGPUDepthStencilState
+	depth_stencil: WGPU_Depth_Stencil_State
 	// Only sets up the depth stencil state if a valid format was specified
 	if descriptor.depth_stencil.format != .Undefined {
 		depth_stencil = {
@@ -758,8 +761,8 @@ device_create_render_pipeline :: proc(
 		raw_desc.multisample.count = 1
 	}
 
-	fragment: WGPUFragmentState
-	c_fragment_entry_point: StringViewBuffer
+	fragment: WGPU_Fragment_State
+	c_fragment_entry_point: String_View_Buffer
 
 	if descriptor.fragment != nil {
 		fragment.module = descriptor.fragment.module
@@ -771,7 +774,7 @@ device_create_render_pipeline :: proc(
 
 		if len(descriptor.fragment.constants) > 0 {
 			fragment_constants := make(
-				[]WGPUConstantEntry,
+				[]WGPU_Constant_Entry,
 				len(descriptor.fragment.constants),
 				context.temp_allocator,
 			)
@@ -803,20 +806,20 @@ device_create_render_pipeline :: proc(
 	return render_pipeline, true
 }
 
-/* Creates a new `ComputePipeline`. */
+/* Creates a new `Compute_Pipeline`. */
 @(require_results)
 device_create_compute_pipeline :: proc(
 	self: Device,
-	descriptor: ComputePipelineDescriptor,
+	descriptor: Compute_Pipeline_Descriptor,
 	loc := #caller_location,
 ) -> (
-	compute_pipeline: ComputePipeline,
+	compute_pipeline: Compute_Pipeline,
 	ok: bool,
 ) #optional_ok {
-	desc: WGPUComputePipelineDescriptor
+	desc: WGPU_Compute_Pipeline_Descriptor
 
 	when ODIN_DEBUG {
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		if descriptor.label != "" {
 			desc.label = init_string_buffer(&c_label, descriptor.label)
 		}
@@ -830,13 +833,13 @@ device_create_compute_pipeline :: proc(
 		desc.compute.module = descriptor.module
 	}
 
-	c_entry_point: StringViewBuffer
+	c_entry_point: String_View_Buffer
 	desc.compute.entry_point = init_string_buffer(&c_entry_point, descriptor.entry_point)
 
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 
 	if len(descriptor.constants) > 0 {
-		constants := make([]WGPUConstantEntry, len(descriptor.constants), context.temp_allocator)
+		constants := make([]WGPU_Constant_Entry, len(descriptor.constants), context.temp_allocator)
 		for &c, i in descriptor.constants {
 			constants[i].key = init_string_buffer_owned(c.key, context.temp_allocator)
 			constants[i].value = c.value
@@ -861,20 +864,20 @@ device_create_compute_pipeline :: proc(
 @(require_results)
 device_create_buffer :: proc "contextless" (
 	self: Device,
-	descriptor: BufferDescriptor,
+	descriptor: Buffer_Descriptor,
 	loc := #caller_location,
 ) -> (
 	buffer: Buffer,
 	ok: bool,
 ) #optional_ok {
-	raw_desc := WGPUBufferDescriptor {
+	raw_desc := WGPU_Buffer_Descriptor {
 		usage              = descriptor.usage,
 		size               = descriptor.size,
 		mapped_at_creation = b32(descriptor.mapped_at_creation),
 	}
 
 	when ODIN_DEBUG {
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		if descriptor.label != "" {
 			raw_desc.label = init_string_buffer(&c_label, descriptor.label)
 		}
@@ -893,22 +896,22 @@ device_create_buffer :: proc "contextless" (
 }
 
 /* Describes a `Buffer` when allocating. */
-BufferDataDescriptor :: struct {
+Buffer_Data_Descriptor :: struct {
 	/* Debug label of a buffer. This will show up in graphics debuggers for easy identification. */
 	label:    string,
 	/* Contents of a buffer on creation. */
 	contents: []byte,
 	/* Usages of a buffer. If the buffer is used in any way that isn't specified here,
 	the operation will panic. */
-	usage:    BufferUsages,
+	usage:    Buffer_Usages,
 }
 
-BufferInitDescriptor :: BufferDataDescriptor
+Buffer_Init_Descriptor :: Buffer_Data_Descriptor
 
 @(require_results)
 device_create_buffer_with_data :: proc(
 	self: Device,
-	descriptor: BufferDataDescriptor,
+	descriptor: Buffer_Data_Descriptor,
 	loc := #caller_location,
 ) -> (
 	buffer: Buffer,
@@ -916,7 +919,7 @@ device_create_buffer_with_data :: proc(
 ) #optional_ok {
 	// Skip mapping if the buffer is zero sized
 	if descriptor.contents == nil || len(descriptor.contents) == 0 {
-		buffer_descriptor: BufferDescriptor = {
+		buffer_descriptor: Buffer_Descriptor = {
 			label              = descriptor.label,
 			size               = 0,
 			usage              = descriptor.usage,
@@ -926,7 +929,7 @@ device_create_buffer_with_data :: proc(
 		return device_create_buffer(self, buffer_descriptor, loc)
 	}
 
-	unpadded_size := cast(BufferAddress)len(descriptor.contents)
+	unpadded_size := cast(Buffer_Address)len(descriptor.contents)
 
 	// Valid vulkan usage is
 	// 1. buffer size must be a multiple of COPY_BUFFER_ALIGNMENT.
@@ -937,7 +940,7 @@ device_create_buffer_with_data :: proc(
 	align_mask := COPY_BUFFER_ALIGNMENT_MASK
 	padded_size := max(((unpadded_size + align_mask) & ~align_mask), COPY_BUFFER_ALIGNMENT)
 
-	buffer_descriptor: BufferDescriptor = {
+	buffer_descriptor: Buffer_Descriptor = {
 		label              = descriptor.label,
 		size               = padded_size,
 		usage              = descriptor.usage,
@@ -966,13 +969,13 @@ Creates a new `Texture`.
 @(require_results)
 device_create_texture :: proc "contextless" (
 	self: Device,
-	descriptor: TextureDescriptor,
+	descriptor: Texture_Descriptor,
 	loc := #caller_location,
 ) -> (
 	texture: Texture,
 	ok: bool,
 ) #optional_ok {
-	raw_desc := WGPUTextureDescriptor {
+	raw_desc := WGPU_Texture_Descriptor {
 		usage           = descriptor.usage,
 		dimension       = descriptor.dimension,
 		size            = descriptor.size,
@@ -982,7 +985,7 @@ device_create_texture :: proc "contextless" (
 	}
 
 	when ODIN_DEBUG {
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		if descriptor.label != "" {
 			raw_desc.label = init_string_buffer(&c_label, descriptor.label)
 		}
@@ -1012,7 +1015,7 @@ Upload an entire texture and its mipmaps from a source buffer.
 
 Expects all mipmaps to be tightly packed in the data buffer.
 
-See `TextureDataOrder` for the order in which the data is laid out in memory.
+See `Texture_Data_Order` for the order in which the data is laid out in memory.
 
 Implicitly adds the `COPY_DST` usage if it is not present in the descriptor,
 as it is required to be able to upload the data to the gpu.
@@ -1021,8 +1024,8 @@ as it is required to be able to upload the data to the gpu.
 device_create_texture_with_data :: proc(
 	self: Device,
 	queue: Queue,
-	desc: TextureDescriptor,
-	order: TextureDataOrder,
+	desc: Texture_Descriptor,
+	order: Texture_Data_Order,
 	data: []byte,
 	loc := #caller_location,
 ) -> (
@@ -1031,9 +1034,9 @@ device_create_texture_with_data :: proc(
 ) #optional_ok {
 	desc := desc
 
-	// Implicitly add the .CopyDst usage
-	if .CopyDst not_in desc.usage {
-		desc.usage += {.CopyDst}
+	// Implicitly add the .Copy_Dst usage
+	if .Copy_Dst not_in desc.usage {
+		desc.usage += {.Copy_Dst}
 	}
 
 	texture = device_create_texture(self, desc, loc) or_return
@@ -1054,10 +1057,10 @@ device_create_texture_with_data :: proc(
 	outer_iteration, inner_iteration: u32
 
 	switch order {
-	case .LayerMajor:
+	case .Layer_Major:
 		outer_iteration = layer_iterations
 		inner_iteration = desc.mip_level_count
-	case .MipMajor:
+	case .Mip_Major:
 		outer_iteration = desc.mip_level_count
 		inner_iteration = layer_iterations
 	}
@@ -1067,10 +1070,10 @@ device_create_texture_with_data :: proc(
 		for inner in 0 ..< inner_iteration {
 			layer, mip: u32
 			switch order {
-			case .LayerMajor:
+			case .Layer_Major:
 				layer = outer
 				mip = inner
-			case .MipMajor:
+			case .Mip_Major:
 				layer = inner
 				mip = outer
 			}
@@ -1078,7 +1081,7 @@ device_create_texture_with_data :: proc(
 			mip_size, mip_size_ok := texture_descriptor_mip_level_size(desc, mip)
 			assert(mip_size_ok, "Invalid mip level")
 			// if !mip_size_ok {
-			// 	err = ErrorType.Validation
+			// 	err = Error_Type.Validation
 			// 	set_and_update_err_data(self._err_data, .Assert, err, "Invalid mip level", loc)
 			// 	return
 			// }
@@ -1104,7 +1107,7 @@ device_create_texture_with_data :: proc(
 			end_offset := binary_offset + data_size
 			assert(end_offset <= u32(len(data)), "Buffer too small")
 			// if end_offset > u32(len(data)) {
-			// 	err = ErrorType.Validation
+			// 	err = Error_Type.Validation
 			// 	set_and_update_err_data(self._err_data, .Assert, err, "Buffer too small", loc)
 			// 	return
 			// }
@@ -1133,13 +1136,13 @@ Creates a new `Sampler`.
 @(require_results)
 device_create_sampler :: proc "contextless" (
 	self: Device,
-	descriptor: SamplerDescriptor = DEFAULT_SAMPLER_DESCRIPTOR,
+	descriptor: Sampler_Descriptor = DEFAULT_SAMPLER_DESCRIPTOR,
 	loc := #caller_location,
 ) -> (
 	sampler: Sampler,
 	ok: bool,
 ) #optional_ok {
-	raw_desc := WGPUSamplerDescriptor {
+	raw_desc := WGPU_Sampler_Descriptor {
 		address_mode_u = descriptor.address_mode_u,
 		address_mode_v = descriptor.address_mode_v,
 		address_mode_w = descriptor.address_mode_w,
@@ -1153,7 +1156,7 @@ device_create_sampler :: proc "contextless" (
 	}
 
 	when ODIN_DEBUG {
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		if descriptor.label != "" {
 			raw_desc.label = init_string_buffer(&c_label, descriptor.label)
 		}
@@ -1172,26 +1175,26 @@ device_create_sampler :: proc "contextless" (
 }
 
 @(private)
-WGPUQuerySetDescriptorExtras :: struct {
-	chain:                    ChainedStruct,
-	pipeline_statistics:      [^]PipelineStatisticsTypes,
+WGPU_Query_Set_Descriptor_Extras :: struct {
+	chain:                    Chained_Struct,
+	pipeline_statistics:      [^]Pipeline_Statistics_Types,
 	pipeline_statistic_count: uint,
 }
 
-/* Creates a new `QuerySet`. */
+/* Creates a new `Query_Set`. */
 @(require_results)
 device_create_query_set :: proc "contextless" (
 	self: Device,
-	descriptor: QuerySetDescriptor,
+	descriptor: Query_Set_Descriptor,
 	loc := #caller_location,
 ) -> (
-	query_set: QuerySet,
+	query_set: Query_Set,
 	ok: bool,
 ) #optional_ok {
-	desc: WGPUQuerySetDescriptor
+	desc: WGPU_Query_Set_Descriptor
 
 	when ODIN_DEBUG {
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		if descriptor.label != "" {
 			desc.label = init_string_buffer(&c_label, descriptor.label)
 		}
@@ -1199,17 +1202,17 @@ device_create_query_set :: proc "contextless" (
 
 	desc.count = descriptor.count
 
-	extras: WGPUQuerySetDescriptorExtras
+	extras: WGPU_Query_Set_Descriptor_Extras
 
 	switch descriptor.type {
 	case .Occlusion:
 		desc.type = .Occlusion
 	case .Timestamp:
 		desc.type = .Timestamp
-	case .PipelineStatistics:
-		desc.type = .PipelineStatistics
+	case .Pipeline_Statistics:
+		desc.type = .Pipeline_Statistics
 		extras = {
-			chain = {stype = .QuerySetDescriptorExtras},
+			chain = {stype = .Query_Set_Descriptor_Extras},
 			pipeline_statistic_count = len(descriptor.pipeline_statistics),
 			pipeline_statistics = raw_data(descriptor.pipeline_statistics),
 		}
@@ -1243,7 +1246,7 @@ device_adapter_info :: proc(
 	allocator := context.allocator,
 	loc := #caller_location,
 ) -> (
-	info: AdapterInfo,
+	info: Adapter_Info,
 	ok: bool,
 ) #optional_ok {
 	raw_info := wgpuDeviceGetAdapterInfo(self)
@@ -1258,7 +1261,7 @@ device_get_queue :: wgpuDeviceGetQueue
 /* Sets a debug label for the given `Device`. */
 @(disabled = !ODIN_DEBUG)
 device_set_label :: proc "contextless" (self: Device, label: string) {
-	c_label: StringViewBuffer
+	c_label: String_View_Buffer
 	wgpuDeviceSetLabel(self, init_string_buffer(&c_label, label))
 }
 
@@ -1282,21 +1285,21 @@ device_release_safe :: #force_inline proc(self: ^Device) {
 }
 
 @(private)
-WGPUPrimitiveTopology :: enum i32 {
-	Undefined     = 0x00000000,
-	PointList     = 0x00000001,
-	LineList      = 0x00000002,
-	LineStrip     = 0x00000003,
-	TriangleList  = 0x00000004,
-	TriangleStrip = 0x00000005,
+WGPU_Primitive_Topology :: enum i32 {
+	Undefined      = 0x00000000,
+	Point_List     = 0x00000001,
+	Line_List      = 0x00000002,
+	Line_Strip     = 0x00000003,
+	Triangle_List  = 0x00000004,
+	Triangle_Strip = 0x00000005,
 }
 
 @(private)
-WGPUPrimitiveState :: struct {
-	next_in_chain:      ^ChainedStruct,
-	topology:           WGPUPrimitiveTopology,
-	strip_index_format: IndexFormat,
-	front_face:         FrontFace,
+WGPU_Primitive_State :: struct {
+	next_in_chain:      ^Chained_Struct,
+	topology:           WGPU_Primitive_Topology,
+	strip_index_format: Index_Format,
+	front_face:         Front_Face,
 	cull_mode:          Face,
 	unclipped_depth:    b32,
 }

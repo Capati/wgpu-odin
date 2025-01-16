@@ -3,9 +3,9 @@ package wgpu
 /*
 Handle to a sampler.
 
-A `Sampler` object defines how a pipeline will sample from a `TextureView`. Samplers define
+A `Sampler` object defines how a pipeline will sample from a `Texture_View`. Samplers define
 image filters (including anisotropy) and address (wrapping) modes, among other things. See
-the documentation for `SamplerDescriptor` for more information.
+the documentation for `Sampler_Descriptor` for more information.
 
 It can be created with `device_create_sampler`.
 
@@ -21,24 +21,24 @@ For use with `device_create_sampler`.
 Corresponds to [WebGPU `GPUSamplerDescriptor`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpusamplerdescriptor).
 */
-SamplerDescriptor :: struct {
+Sampler_Descriptor :: struct {
 	label:          string,
-	address_mode_u: AddressMode,
-	address_mode_v: AddressMode,
-	address_mode_w: AddressMode,
-	mag_filter:     FilterMode,
-	min_filter:     FilterMode,
-	mipmap_filter:  MipmapFilterMode,
+	address_mode_u: Address_Mode,
+	address_mode_v: Address_Mode,
+	address_mode_w: Address_Mode,
+	mag_filter:     Filter_Mode,
+	min_filter:     Filter_Mode,
+	mipmap_filter:  Mipmap_Filter_Mode,
 	lod_min_clamp:  f32,
 	lod_max_clamp:  f32,
-	compare:        CompareFunction,
+	compare:        Compare_Function,
 	max_anisotropy: u16,
 }
 
-DEFAULT_SAMPLER_DESCRIPTOR :: SamplerDescriptor {
-	address_mode_u = .ClampToEdge,
-	address_mode_v = .ClampToEdge,
-	address_mode_w = .ClampToEdge,
+DEFAULT_SAMPLER_DESCRIPTOR :: Sampler_Descriptor {
+	address_mode_u = .Clamp_To_Edge,
+	address_mode_v = .Clamp_To_Edge,
+	address_mode_w = .Clamp_To_Edge,
 	mag_filter     = .Nearest,
 	min_filter     = .Nearest,
 	mipmap_filter  = .Nearest,
@@ -51,7 +51,7 @@ DEFAULT_SAMPLER_DESCRIPTOR :: SamplerDescriptor {
 /* Sets a debug label for the given `Sampler`. */
 @(disabled = !ODIN_DEBUG)
 sampler_set_label :: proc "contextless" (self: Sampler, label: string) {
-	c_label: StringViewBuffer
+	c_label: String_View_Buffer
 	wgpuSamplerSetLabel(self, init_string_buffer(&c_label, label))
 }
 

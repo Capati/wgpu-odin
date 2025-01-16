@@ -3,7 +3,7 @@ package wgpu
 /*
 Handle to a command queue on a device.
 
-A `Queue` executes recorded `CommandBuffer` objects and provides convenience methods
+A `Queue` executes recorded `Command_Buffer` objects and provides convenience methods
 for writing to `queue_write_buffer` and `queue_write_texture`.
 
 It can be created by calling `device_get_queue`.
@@ -28,7 +28,7 @@ caller may discard it any time after this call completes.
 queue_write_buffer :: proc "contextless" (
 	self: Queue,
 	buffer: Buffer,
-	offset: BufferAddress,
+	offset: Buffer_Address,
 	data: []byte,
 	loc := #caller_location,
 ) -> (
@@ -64,10 +64,10 @@ This procedure fails if `size` overruns the size of `texture`, or if `data` is t
 */
 queue_write_texture :: proc "contextless" (
 	self: Queue,
-	destination: TexelCopyTextureInfo,
+	destination: Texel_Copy_Texture_Info,
 	data: []byte,
-	data_layout: TexelCopyBufferLayout,
-	size: Extent3D,
+	data_layout: Texel_Copy_Buffer_Layout,
+	size: Extent_3D,
 	loc := #caller_location,
 ) -> (
 	ok: bool,
@@ -94,14 +94,14 @@ callbacks have been invoked.
 
 On WebGPU, this has no effect. Callbacks are invoked from the window event loop.
 */
-SubmissionIndex :: distinct u64
+Submission_Index :: distinct u64
 
 /* Submits a series of finished command buffers for execution. */
 queue_submit :: proc "contextless" (
 	self: Queue,
-	commands: ..CommandBuffer,
+	commands: ..Command_Buffer,
 ) -> (
-	index: SubmissionIndex,
+	index: Submission_Index,
 ) {
 	when ODIN_OS != .JS {
 		index = wgpuQueueSubmitForIndex(self, uint(len(commands)), raw_data(commands))
@@ -126,7 +126,7 @@ keeping callbacks short and used to set flags, send messages, etc.
 */
 queue_on_submitted_work_done :: proc "contextless" (
 	self: Queue,
-	callback_info: QueueWorkDoneCallbackInfo,
+	callback_info: Queue_Work_Done_Callback_Info,
 	loc := #caller_location,
 ) -> (
 	future: Future,
@@ -140,7 +140,7 @@ queue_on_submitted_work_done :: proc "contextless" (
 /* Sets a debug label for the given `Queue`. */
 @(disabled = !ODIN_DEBUG)
 queue_set_label :: proc "contextless" (self: Queue, label: string) {
-	c_label: StringViewBuffer
+	c_label: String_View_Buffer
 	wgpuQueueSetLabel(self, init_string_buffer(&c_label, label))
 }
 

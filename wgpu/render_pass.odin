@@ -1,12 +1,12 @@
 package wgpu
 
 /*
-In-progress recording of a render pass: a list of render commands in a `CommandEncoder`.
+In-progress recording of a render pass: a list of render commands in a `Command_Encoder`.
 
-It can be created with `command_encoder_begin_render_pass`, whose `RenderPassDescriptor`
+It can be created with `command_encoder_begin_render_pass`, whose `Render_Pass_Descriptor`
 specifies the attachments (textures) that will be rendered to.
 
-Most of the procedures for `RenderPass` serve one of two purposes, identifiable by their names:
+Most of the procedures for `Render_Pass` serve one of two purposes, identifiable by their names:
 
 * `draw_*()`: Drawing (that is, encoding a render command, which, when executed by the GPU, will
 rasterize something and execute shaders).
@@ -20,7 +20,7 @@ render state that has been set when the `draw_*()` procedure is called.
 Corresponds to [WebGPU `GPURenderPassEncoder`](
 https://gpuweb.github.io/gpuweb/#render-pass-encoder).
 */
-RenderPass :: distinct rawptr
+Render_Pass :: distinct rawptr
 
 /*
 Operation to perform to the output attachment at the start of a render pass.
@@ -28,7 +28,7 @@ Operation to perform to the output attachment at the start of a render pass.
 Corresponds to [WebGPU `GPULoadOp`](https://gpuweb.github.io/gpuweb/#enumdef-gpuloadop),
 plus the corresponding `clear_value`.
 */
-LoadOp :: enum i32 {
+Load_Op :: enum i32 {
 	Undefined = 0x00000000,
 	Load      = 0x00000001,
 	Clear     = 0x00000002,
@@ -39,7 +39,7 @@ Operation to perform to the output attachment at the end of a render pass.
 
 Corresponds to [WebGPU `GPUStoreOp`](https://gpuweb.github.io/gpuweb/#enumdef-gpustoreop).
 */
-StoreOp :: enum i32 {
+Store_Op :: enum i32 {
 	Undefined = 0x00000000,
 	Store     = 0x00000001,
 	Discard   = 0x00000002,
@@ -52,62 +52,62 @@ This type is unique to the Rust API of `wgpu`. In the WebGPU specification,
 separate `loadOp` and `storeOp` fields are used instead.
 */
 Operations :: struct($T: typeid) {
-	load:        LoadOp,
-	store:       StoreOp,
-	clear_value: T, /* For use with LoadOp.Clear */
+	load:        Load_Op,
+	store:       Store_Op,
+	clear_value: T, /* For use with Load_Op.Clear */
 }
 
 /*
 Describes the timestamp writes of a render pass.
 
-For use with `RenderPassDescriptor`.
+For use with `Render_Pass_Descriptor`.
 At least one of `beginning_of_pass_write_index` and `end_of_pass_write_index` must be valid.
 
 Corresponds to [WebGPU `GPURenderPassTimestampWrite`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpurenderpasstimestampwrites).
 */
-RenderPassTimestampWrites :: struct {
-	query_set:                     QuerySet,
+Render_Pass_Timestamp_Writes :: struct {
+	query_set:                     Query_Set,
 	beginning_of_pass_write_index: u32,
 	end_of_pass_write_index:       u32,
 }
 
 /*
-Describes a color attachment to a `RenderPass`.
+Describes a color attachment to a `Render_Pass`.
 
-For use with `RenderPassDescriptor`.
+For use with `Render_Pass_Descriptor`.
 
 Corresponds to [WebGPU `GPURenderPassColorAttachment`](
 https://gpuweb.github.io/gpuweb/#color-attachments).
 */
-RenderPassColorAttachment :: struct {
-	view:           TextureView,
-	resolve_target: TextureView,
+Render_Pass_Color_Attachment :: struct {
+	view:           Texture_View,
+	resolve_target: Texture_View,
 	ops:            Operations(Color),
 }
 
 /*
-Describes a depth/stencil attachment to a `RenderPass`.
+Describes a depth/stencil attachment to a `Render_Pass`.
 
-For use with `RenderPassDescriptor`.
+For use with `Render_Pass_Descriptor`.
 
 Corresponds to [WebGPU `GPURenderPassDepthStencilAttachment`](
 https://gpuweb.github.io/gpuweb/#depth-stencil-attachments).
 */
-RenderPassDepthStencilAttachment :: struct {
-	view:                TextureView,
-	depth_load_op:       LoadOp,
-	depth_store_op:      StoreOp,
+Render_Pass_Depth_Stencil_Attachment :: struct {
+	view:                Texture_View,
+	depth_load_op:       Load_Op,
+	depth_store_op:      Store_Op,
 	depth_clear_value:   f32,
 	depth_read_only:     b32,
-	stencil_load_op:     LoadOp,
-	stencil_store_op:    StoreOp,
+	stencil_load_op:     Load_Op,
+	stencil_store_op:    Store_Op,
 	stencil_clear_value: u32,
 	stencil_read_only:   b32,
 }
 
-// RenderPassDepthStencilAttachment :: struct {
-// 	view:              TextureView,
+// Render_Pass_Depth_Stencil_Attachment :: struct {
+// 	view:              Texture_View,
 // 	depth_read_only:   bool,
 // 	depth_ops:         Operations(f32),
 // 	stencil_read_only: bool,
@@ -122,12 +122,12 @@ For use with `command_encoder_begin_render_pass`.
 Corresponds to [WebGPU `GPURenderPassDescriptor`](
 https://gpuweb.github.io/gpuweb/#dictdef-gpurenderpassdescriptor).
 */
-RenderPassDescriptor :: struct {
+Render_Pass_Descriptor :: struct {
 	label:                    string,
-	color_attachments:        []RenderPassColorAttachment,
-	depth_stencil_attachment: ^RenderPassDepthStencilAttachment,
-	timestamp_writes:         RenderPassTimestampWrites,
-	occlusion_query_set:      QuerySet,
+	color_attachments:        []Render_Pass_Color_Attachment,
+	depth_stencil_attachment: ^Render_Pass_Depth_Stencil_Attachment,
+	timestamp_writes:         Render_Pass_Timestamp_Writes,
+	occlusion_query_set:      Query_Set,
 	/* Extras */
 	max_draw_count:           u64,
 }
@@ -144,9 +144,9 @@ or `Limits.min_storage_buffer_offset_alignment` appropriately.
 Subsequent draw calls’ shader executions will be able to access data in these bind groups.
 */
 render_pass_set_bind_group :: proc "contextless" (
-	self: RenderPass,
+	self: Render_Pass,
 	index: u32,
-	bind_group: BindGroup,
+	bind_group: Bind_Group,
 	offsets: []u32 = nil,
 ) {
 	wgpuRenderPassEncoderSetBindGroup(self, index, bind_group, len(offsets), raw_data(offsets))
@@ -167,7 +167,7 @@ If this procedure has not been called, the blend constant defaults to `COLOR_TRA
 (all components zero).
 */
 render_pass_set_blend_constant :: proc "contextless" (
-	self: RenderPass,
+	self: Render_Pass,
 	color: Color = COLOR_TRANSPARENT,
 ) {
 	wgpuRenderPassEncoderSetBlendConstant(self, color)
@@ -176,13 +176,13 @@ render_pass_set_blend_constant :: proc "contextless" (
 /*
 Sets the active index buffer.
 
-Subsequent calls to `render_pass_draw_indexed` on this `RenderPass` will
+Subsequent calls to `render_pass_draw_indexed` on this `Render_Pass` will
 use `buffer` as the source index buffer.
 */
 render_pass_set_index_buffer :: proc "contextless" (
-	self: RenderPass,
-	buffer_slice: BufferSlice,
-	index_format: IndexFormat,
+	self: Render_Pass,
+	buffer_slice: Buffer_Slice,
+	index_format: Index_Format,
 ) {
 	wgpuRenderPassEncoderSetIndexBuffer(
 		self,
@@ -197,14 +197,14 @@ render_pass_set_index_buffer :: proc "contextless" (
 Assign a vertex buffer to a slot.
 
 Subsequent calls to `render_pass_draw` and `render_pass_draw_indexed` on this
-`RenderPass` will use `buffer` as one of the source vertex buffers.
+`Render_Pass` will use `buffer` as one of the source vertex buffers.
 
-The `slot` refers to the index of the matching descriptor in `VertexState::buffers`.
+The `slot` refers to the index of the matching descriptor in `Vertex_State::buffers`.
 */
 render_pass_set_vertex_buffer :: proc "contextless" (
-	self: RenderPass,
+	self: Render_Pass,
 	slot: u32,
-	buffer_slice: BufferSlice,
+	buffer_slice: Buffer_Slice,
 ) {
 	wgpuRenderPassEncoderSetVertexBuffer(
 		self,
@@ -244,7 +244,7 @@ render_pass_set_stencil_reference :: wgpuRenderPassEncoderSetStencilReference
 
 /* Inserts debug marker. */
 render_pass_insert_debug_marker :: proc(
-	self: RenderPass,
+	self: Render_Pass,
 	label: string,
 	loc := #caller_location,
 ) -> (
@@ -252,7 +252,7 @@ render_pass_insert_debug_marker :: proc(
 ) {
 	when ODIN_DEBUG {
 		error_reset_data(loc)
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		wgpuRenderPassEncoderInsertDebugMarker(
 			self,
 			init_string_buffer(&c_label, label) if label != "" else {},
@@ -265,7 +265,7 @@ render_pass_insert_debug_marker :: proc(
 
 /* Start record commands and group it into debug marker group. */
 render_pass_push_debug_group :: proc(
-	self: RenderPass,
+	self: Render_Pass,
 	label: string,
 	loc := #caller_location,
 ) -> (
@@ -273,7 +273,7 @@ render_pass_push_debug_group :: proc(
 ) {
 	when ODIN_DEBUG {
 		error_reset_data(loc)
-		c_label: StringViewBuffer
+		c_label: String_View_Buffer
 		wgpuRenderPassEncoderPushDebugGroup(
 			self,
 			init_string_buffer(&c_label, label) if label != "" else {},
@@ -286,7 +286,7 @@ render_pass_push_debug_group :: proc(
 
 /* Stops command recording and creates debug group. */
 render_pass_pop_debug_group :: proc "contextless" (
-	self: RenderPass,
+	self: Render_Pass,
 	loc := #caller_location,
 ) -> (
 	ok: bool,
@@ -312,7 +312,7 @@ This drawing command uses the current render state, as set by preceding `set_*()
 It is not affected by changes to the state that are performed after it is called.
 */
 render_pass_draw :: proc "contextless" (
-	self: RenderPass,
+	self: Render_Pass,
 	vertices: Range(u32),
 	instances: Range(u32) = {start = 0, end = 1},
 ) {
@@ -337,7 +337,7 @@ This drawing command uses the current render state, as set by preceding `set_*()
 It is not affected by changes to the state that are performed after it is called.
 */
 render_pass_draw_indexed :: proc "contextless" (
-	self: RenderPass,
+	self: Render_Pass,
 	indices: Range(u32),
 	base_vertex: i32 = 0,
 	instances: Range(u32) = {start = 0, end = 1},
@@ -358,9 +358,9 @@ Draws primitives from the active vertex buffer(s) based on the contents of the `
 This is like calling `render_pass_draw` but the contents of the call are specified in the `indirect_buffer`.
 */
 render_pass_draw_indirect :: proc "contextless" (
-	self: RenderPass,
+	self: Render_Pass,
 	indirect_buffer: Buffer,
-	indirect_offset: BufferAddress = 0,
+	indirect_offset: Buffer_Address = 0,
 ) {
 	wgpuRenderPassEncoderDrawIndirect(self, indirect_buffer, indirect_offset)
 }
@@ -370,9 +370,9 @@ Draws indexed primitives using the active index buffer and the active vertex buf
 based on the contents of the `indirect_buffer`.
 */
 render_pass_draw_indexed_indirect :: proc "contextless" (
-	self: RenderPass,
+	self: Render_Pass,
 	indirect_buffer: Buffer,
-	indirect_offset: BufferAddress = 0,
+	indirect_offset: Buffer_Address = 0,
 ) {
 	wgpuRenderPassEncoderDrawIndexedIndirect(self, indirect_buffer, indirect_offset)
 }
@@ -383,7 +383,7 @@ Execute a render bundle, which is a set of pre-recorded commands that can be run
 Commands in the bundle do not inherit this render pass's current render state, and after the
 bundle has executed, the state is **cleared** (reset to defaults, not the previous state).
 */
-render_pass_execute_bundles :: proc "contextless" (self: RenderPass, bundles: ..RenderBundle) {
+render_pass_execute_bundles :: proc "contextless" (self: Render_Pass, bundles: ..Render_Bundle) {
 	if len(bundles) == 0 {
 		wgpuRenderPassEncoderExecuteBundles(self, 0, nil)
 		return
@@ -401,9 +401,9 @@ This drawing command uses the current render state, as set by preceding `set_*()
 It is not affected by changes to the state that are performed after it is called.
 */
 render_pass_multi_draw_indirect :: proc "contextless" (
-	self: RenderPass,
+	self: Render_Pass,
 	indirect_buffer: Buffer,
-	indirect_offset: BufferAddress,
+	indirect_offset: Buffer_Address,
 	count: u32,
 ) {
 	wgpuRenderPassEncoderMultiDrawIndirect(self, indirect_buffer, indirect_offset, count)
@@ -420,9 +420,9 @@ This drawing command uses the current render state, as set by preceding `set_*()
 It is not affected by changes to the state that are performed after it is called.
 */
 render_pass_multi_draw_indexed_indirect :: proc "contextless" (
-	self: RenderPass,
+	self: Render_Pass,
 	indirect_buffer: Buffer,
-	indirect_offset: BufferAddress,
+	indirect_offset: Buffer_Address,
 	count: u32,
 ) {
 	wgpuRenderPassEncoderMultiDrawIndexedIndirect(self, indirect_buffer, indirect_offset, count)
@@ -441,11 +441,11 @@ This drawing command uses the current render state, as set by preceding `set_*()
 It is not affected by changes to the state that are performed after it is called.
 */
 render_pass_multi_draw_indirect_count :: proc "contextless" (
-	self: RenderPass,
+	self: Render_Pass,
 	indirect_buffer: Buffer,
-	indirect_offset: BufferAddress,
+	indirect_offset: Buffer_Address,
 	count_buffer: Buffer,
-	count_offset: BufferAddress,
+	count_offset: Buffer_Address,
 	max_count: u32,
 ) {
 	wgpuRenderPassEncoderMultiDrawIndirectCount(
@@ -473,11 +473,11 @@ This drawing command uses the current render state, as set by preceding `set_*()
 It is not affected by changes to the state that are performed after it is called.
 */
 render_pass_multi_draw_indexed_indirect_count :: proc "contextless" (
-	self: RenderPass,
+	self: Render_Pass,
 	indirect_buffer: Buffer,
-	indirect_offset: BufferAddress,
+	indirect_offset: Buffer_Address,
 	count_buffer: Buffer,
-	count_offset: BufferAddress,
+	count_offset: Buffer_Address,
 	max_count: u32,
 ) {
 	wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(
@@ -531,8 +531,8 @@ To write all twelve bytes requires three `set_push_constants` calls, one
 for each range, each passing the matching `stages` mask.
 */
 render_pass_set_push_constants :: proc "contextless" (
-	self: RenderPass,
-	stages: ShaderStages,
+	self: Render_Pass,
+	stages: Shader_Stages,
 	offset: u32,
 	data: []byte,
 ) {
@@ -575,32 +575,32 @@ End the pipeline statistics query on this render pass. It can be started with
 render_pass_end_pipeline_statistics_query :: wgpuRenderPassEncoderEndPipelineStatisticsQuery
 
 /* Record the end of the render pass. */
-render_pass_end :: proc "contextless" (self: RenderPass, loc := #caller_location) -> (ok: bool) {
+render_pass_end :: proc "contextless" (self: Render_Pass, loc := #caller_location) -> (ok: bool) {
 	error_reset_data(loc)
 	wgpuRenderPassEncoderEnd(self)
 	return has_no_error()
 }
 
-/* Sets a debug label for the given `RenderPass`. */
+/* Sets a debug label for the given `Render_Pass`. */
 @(disabled = !ODIN_DEBUG)
-render_pass_set_label :: proc(self: RenderPass, label: string) {
-	c_label: StringViewBuffer
+render_pass_set_label :: proc(self: Render_Pass, label: string) {
+	c_label: String_View_Buffer
 	wgpuRenderPassEncoderSetLabel(self, init_string_buffer(&c_label, label))
 }
 
-/* Increase the `RenderPass `reference count. */
+/* Increase the `Render_Pass `reference count. */
 render_pass_add_ref :: wgpuRenderPassEncoderAddRef
 
-/* Release the `RenderPass`, use to decrease the reference count. */
+/* Release the `Render_Pass`, use to decrease the reference count. */
 render_pass_release :: wgpuRenderPassEncoderRelease
 
 /*
-Safely releases the `RenderPass` resources and invalidates the handle.
+Safely releases the `Render_Pass` resources and invalidates the handle.
 The procedure checks both the pointer and handle before releasing.
 
 Note: After calling this, the handle will be set to `nil` and should not be used.
 */
-render_pass_release_safe :: #force_inline proc(self: ^RenderPass) {
+render_pass_release_safe :: #force_inline proc(self: ^Render_Pass) {
 	if self != nil && self^ != nil {
 		wgpuRenderPassEncoderRelease(self^)
 		self^ = nil
@@ -608,25 +608,25 @@ render_pass_release_safe :: #force_inline proc(self: ^RenderPass) {
 }
 
 @(private)
-WGPURenderPassColorAttachment :: struct {
-	next_in_chain:  ^ChainedStruct,
-	view:           TextureView,
+WGPU_Render_Pass_Color_Attachment :: struct {
+	next_in_chain:  ^Chained_Struct,
+	view:           Texture_View,
 	depth_slice:    u32,
-	resolve_target: TextureView,
-	load_op:        LoadOp,
-	store_op:       StoreOp,
-	clear_value:    WGPUColor,
+	resolve_target: Texture_View,
+	load_op:        Load_Op,
+	store_op:       Store_Op,
+	clear_value:    WGPU_Color,
 }
 
 @(private)
-WGPURenderPassDepthStencilAttachment :: struct {
-	view:                TextureView,
-	depth_load_op:       LoadOp,
-	depth_store_op:      StoreOp,
+WGPU_Render_Pass_Depth_Stencil_Attachment :: struct {
+	view:                Texture_View,
+	depth_load_op:       Load_Op,
+	depth_store_op:      Store_Op,
 	depth_clear_value:   f32,
 	depth_read_only:     b32,
-	stencil_load_op:     LoadOp,
-	stencil_store_op:    StoreOp,
+	stencil_load_op:     Load_Op,
+	stencil_store_op:    Store_Op,
 	stencil_clear_value: u32,
 	stencil_read_only:   b32,
 }

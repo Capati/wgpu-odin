@@ -4,19 +4,17 @@ package triangle
 import "base:runtime"
 import "core:fmt"
 import "core:time"
-
-// Vendor
 import "vendor:glfw"
 
 // Local packages
 import "root:wgpu"
 
-EXAMPLE_TITLE :: "Colored Triangle"
+EXAMPLE_TITLE :: "Colored Triangle (Verbose)"
 
 WIDTH :: 640
 HEIGHT :: 480
 
-FramebufferSize :: struct {
+Framebuffer_Size :: struct {
 	w, h: u32,
 }
 
@@ -25,9 +23,9 @@ Example :: struct {
 	surface:          wgpu.Surface,
 	device:           wgpu.Device,
 	queue:            wgpu.Queue,
-	config:           wgpu.SurfaceConfiguration,
-	render_pipeline:  wgpu.RenderPipeline,
-	framebuffer_size: FramebufferSize,
+	config:           wgpu.Surface_Configuration,
+	render_pipeline:  wgpu.Render_Pipeline,
+	framebuffer_size: Framebuffer_Size,
 	minimized:        bool,
 	should_resize:    bool,
 }
@@ -71,8 +69,8 @@ init :: proc(ctx: ^Example) -> (ok: bool) {
 
 	// The log callback provides information based on a log level
 	gpu_log_callback :: proc "c" (
-		level: wgpu.LogLevel,
-		message: wgpu.StringView,
+		level: wgpu.Log_Level,
+		message: wgpu.String_View,
 		userdata: rawptr,
 	) {
 		if message.length > 0 {
@@ -81,7 +79,7 @@ init :: proc(ctx: ^Example) -> (ok: bool) {
 			message_str := string(message.data)[:message.length]
 			fmt.eprintf("[wgpu] [%v] %s\n\n", level, message_str)
 
-			// Most of theses StringView are wrapped in the string type, but there is no easy way
+			// Most of theses String_View are wrapped in the string type, but there is no easy way
 			// to handle this for the callbacks
 			// But you can use a helper procedure:
 			// message_str := wgpu.string_view_get_string(message)
@@ -95,8 +93,8 @@ init :: proc(ctx: ^Example) -> (ok: bool) {
 	wgpu.set_log_callback(gpu_log_callback, ctx)
 
 	// Options for creating an instance
-	instance_descriptor := wgpu.InstanceDescriptor {
-		// We only want the backends: Vulkan, Metal, DX12 or BrowserWebGPU
+	instance_descriptor := wgpu.Instance_Descriptor {
+		// We only want the backends: Vulkan, Metal, DX12 or Browser_WebGPU
 		backends = wgpu.BACKENDS_PRIMARY,
 		// Allow to show validation errors
 		flags    = {.Validation},
@@ -117,14 +115,14 @@ init :: proc(ctx: ^Example) -> (ok: bool) {
 	}
 
 	// Additional information required when requesting an adapter
-	adapter_options := wgpu.RequestAdapterOptions {
+	adapter_options := wgpu.Request_Adapter_Options {
 		// Ensure our surface can be presentable with the requested adapter
 		compatible_surface = ctx.surface,
 		// Power preference for the adapter
-		power_preference   = .HighPerformance,
+		power_preference   = .High_Performance,
 	}
 
-	// Retrieves an Adapter which matches the given RequestAdapterOptions
+	// Retrieves an Adapter which matches the given Request_Adapter_Options
 	adapter := wgpu.instance_request_adapter(instance, adapter_options) or_return
 	defer wgpu.adapter_release(adapter)
 
@@ -139,7 +137,7 @@ init :: proc(ctx: ^Example) -> (ok: bool) {
 	wgpu.adapter_info_print_info(adapter_info)
 
 	// Describes a Device.
-	device_descriptor := wgpu.DeviceDescriptor {
+	device_descriptor := wgpu.Device_Descriptor {
 		// Labels can be used to identify objects in debug mode
 		label           = adapter_info.device,
 		// This is a set of limits that is guaranteed to work on all primary backends
@@ -173,11 +171,11 @@ init :: proc(ctx: ^Example) -> (ok: bool) {
 	}
 
 	// Describes a Surface.
-	ctx.config = wgpu.SurfaceConfiguration {
+	ctx.config = wgpu.Surface_Configuration {
 		device       = ctx.device,
-		// Describes how the surface textures will be used. RenderAttachment specifies that the
+		// Describes how the surface textures will be used. Render_Attachment specifies that the
 		// textures will be used to write to the surface defined in the window.
-		usage        = {.RenderAttachment},
+		usage        = {.Render_Attachment},
 		// Defines how the surface texture will be stored on the GPU
 		format       = preferred_format,
 		// Define the size of the surface texture,
@@ -218,7 +216,7 @@ init :: proc(ctx: ^Example) -> (ok: bool) {
 				},
 			},
 		},
-		primitive = {topology = .TriangleList, front_face = .CCW, cull_mode = .None},
+		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .None},
 		multisample = {
 			count = 1, // 1 means no sampling (will panic if 0)
 			mask  = max(u32), // 0xFFFFFFFF
@@ -255,7 +253,7 @@ minimize_callback :: proc "c" (window: glfw.WindowHandle, iconified: i32) {
 	ctx.minimized = bool(iconified)
 }
 
-resize_surface :: proc(ctx: ^Example, size: FramebufferSize) -> (ok: bool) {
+resize_surface :: proc(ctx: ^Example, size: Framebuffer_Size) -> (ok: bool) {
 	// WGPU will panic if width or height is zero.
 	if size.w == 0 || size.h == 0 {
 		fmt.printfln("Invalid framebuffer size: %v", size)
@@ -275,7 +273,7 @@ resize_surface :: proc(ctx: ^Example, size: FramebufferSize) -> (ok: bool) {
 	return true
 }
 
-get_framebuffer_size :: proc(ctx: ^Example) -> FramebufferSize {
+get_framebuffer_size :: proc(ctx: ^Example) -> Framebuffer_Size {
 	width, height := glfw.GetFramebufferSize(ctx.window)
 	return {u32(width), u32(height)}
 }
@@ -283,15 +281,15 @@ get_framebuffer_size :: proc(ctx: ^Example) -> FramebufferSize {
 GET_CURRENT_TEXTURE_MAX_ATTEMPTS :: 3
 RENDERER_THROTTLE_DURATION :: 16 * time.Millisecond
 
-get_current_frame :: proc(ctx: ^Example) -> (frame: wgpu.SurfaceTexture, ok: bool) {
+get_current_frame :: proc(ctx: ^Example) -> (frame: wgpu.Surface_Texture, ok: bool) {
 	loop: for attempt in 0 ..< GET_CURRENT_TEXTURE_MAX_ATTEMPTS {
 		// Returns the next texture to be presented by the swapchain for drawing
 		frame = wgpu.surface_get_current_texture(ctx.surface) or_return
 
 		switch frame.status {
-		case .SuccessOptimal:
+		case .Success_Optimal:
 			return frame, true
-		case .SuccessSuboptimal:
+		case .Success_Suboptimal:
 			fmt.println("Surface suboptimal. Resizing and retrying...")
 			if frame.texture != nil {
 				wgpu.texture_release(frame.texture)
@@ -312,7 +310,7 @@ get_current_frame :: proc(ctx: ^Example) -> (frame: wgpu.SurfaceTexture, ok: boo
 				continue // Try again
 			}
 			break loop
-		case .OutOfMemory, .DeviceLost, .Error:
+		case .Out_Of_Memory, .Device_Lost, .Error:
 			break loop
 		}
 	}
@@ -329,12 +327,12 @@ render :: proc(ctx: ^Example) -> (ok: bool) {
 	frame_view := wgpu.texture_create_view(frame.texture)
 	defer wgpu.texture_view_release(frame_view)
 
-	// Creates an empty CommandEncoder
+	// Creates an empty Command_Encoder
 	encoder := wgpu.device_create_command_encoder(ctx.device) or_return
 	defer wgpu.command_encoder_release(encoder)
 
 	// Describes the attachments of a render pass
-	render_pass_descriptor := wgpu.RenderPassDescriptor {
+	render_pass_descriptor := wgpu.Render_Pass_Descriptor {
 		label             = "Render pass descriptor",
 		color_attachments = {{view = frame_view, ops = {.Clear, .Store, {0.0, 0.0, 0.0, 1.0}}}},
 	}
@@ -350,7 +348,7 @@ render :: proc(ctx: ^Example) -> (ok: bool) {
 	// Record the end of the render pass
 	wgpu.render_pass_end(render_pass) or_return
 
-	// Finishes recording and returns a CommandBuffer that can be submitted for execution
+	// Finishes recording and returns a Command_Buffer that can be submitted for execution
 	cmdbuf := wgpu.command_encoder_finish(encoder) or_return
 	defer wgpu.command_buffer_release(cmdbuf)
 

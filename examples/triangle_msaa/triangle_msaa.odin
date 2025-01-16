@@ -5,15 +5,15 @@ package triangle_msaa
 import "core:log"
 
 // Local packages
-import app "./../../utils/application"
-import "./../../wgpu"
+import app "root:utils/application"
+import "root:wgpu"
 
 Example :: struct {
-	render_pipeline: wgpu.RenderPipeline,
-	msaa_view:       wgpu.TextureView,
+	render_pipeline: wgpu.Render_Pipeline,
+	msaa_view:       wgpu.Texture_View,
 	render_pass:     struct {
-		color_attachments: [1]wgpu.RenderPassColorAttachment,
-		descriptor:        wgpu.RenderPassDescriptor,
+		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
+		descriptor:        wgpu.Render_Pass_Descriptor,
 	},
 }
 
@@ -56,7 +56,7 @@ init :: proc(ctx: ^Context) -> bool {
 	ctx.render_pass.color_attachments[0] = {
 		view = nil, /* Assigned later */
 		resolve_target = nil, /* Assigned later */
-		ops = {load = .Clear, store = .Store, clear_value = app.ColorBlack},
+		ops = {load = .Clear, store = .Store, clear_value = app.Color_Black},
 	}
 
 	ctx.render_pass.descriptor = {
@@ -75,7 +75,7 @@ create_msaa_framebuffer :: proc(ctx: ^Context) -> (ok: bool) {
 
 	size := ctx.framebuffer_size
 
-	texture_descriptor := wgpu.TextureDescriptor {
+	texture_descriptor := wgpu.Texture_Descriptor {
 		size            = {size.w, size.h, 1},
 		mip_level_count = 1,
 		sample_count    = SAMPLE_COUNT,
@@ -97,7 +97,7 @@ quit :: proc(ctx: ^Context) {
 	wgpu.render_pipeline_release(ctx.render_pipeline)
 }
 
-resize :: proc(ctx: ^Context, size: app.ResizeEvent) -> (ok: bool) {
+resize :: proc(ctx: ^Context, size: app.Resize_Event) -> (ok: bool) {
 	wgpu.release(ctx.msaa_view)
 	create_msaa_framebuffer(ctx) or_return
 	return true

@@ -7,7 +7,7 @@ import glfw_raw "vendor:glfw/bindings"
 
 _ :: win32
 
-GLFWData :: struct {
+GLFW_Data :: struct {
 	window:                          glfw.WindowHandle,
 	time:                            f64,
 	mouse_window:                    glfw.WindowHandle,
@@ -30,11 +30,11 @@ GLFWData :: struct {
 	// }
 }
 
-/* Retrieves a pointer to the `GLFWData` structure. */
+/* Retrieves a pointer to the `GLFW_Data` structure. */
 @(require_results)
-glfw_get_backend_data :: proc "contextless" () -> ^GLFWData {
+glfw_get_backend_data :: proc "contextless" () -> ^GLFW_Data {
 	if ctx := get_current_context(); ctx != nil {
-		return cast(^GLFWData)(get_io().backend_platform_user_data)
+		return cast(^GLFW_Data)(get_io().backend_platform_user_data)
 	}
 	return nil
 }
@@ -44,13 +44,13 @@ glfw_init :: proc(window: glfw.WindowHandle, install_callbacks: bool) -> (ok: bo
 	io := get_io()
 	assert(io.backend_platform_user_data == nil, "Already initialized a platform backend!")
 
-	bd := new(GLFWData)
+	bd := new(GLFW_Data)
 	defer if !ok {
 		free(bd)
 	}
 	io.backend_platform_user_data = bd
 	io.backend_platform_name = "imgui_impl_glfw"
-	io.backend_flags += {.HasMouseCursors, .HasSetMousePos}
+	io.backend_flags += {.Has_Mouse_Cursors, .Has_Set_Mouse_Pos}
 
 	bd.window = window
 
@@ -65,21 +65,21 @@ glfw_init :: proc(window: glfw.WindowHandle, install_callbacks: bool) -> (ok: bo
 	// _UpdateMouseCursor() function will use the Arrow cursor instead.)
 	prev_error_callback := glfw.SetErrorCallback(nil)
 
-	bd.mouse_cursors[MouseCursor.Arrow] = glfw.CreateStandardCursor(glfw.ARROW_CURSOR)
-	bd.mouse_cursors[MouseCursor.TextInput] = glfw.CreateStandardCursor(glfw.IBEAM_CURSOR)
-	bd.mouse_cursors[MouseCursor.ResizeNS] = glfw.CreateStandardCursor(glfw.VRESIZE_CURSOR)
-	bd.mouse_cursors[MouseCursor.ResizeEW] = glfw.CreateStandardCursor(glfw.HRESIZE_CURSOR)
-	bd.mouse_cursors[MouseCursor.Hand] = glfw.CreateStandardCursor(glfw.HAND_CURSOR)
+	bd.mouse_cursors[Mouse_Cursor.Arrow] = glfw.CreateStandardCursor(glfw.ARROW_CURSOR)
+	bd.mouse_cursors[Mouse_Cursor.Text_Input] = glfw.CreateStandardCursor(glfw.IBEAM_CURSOR)
+	bd.mouse_cursors[Mouse_Cursor.Resize_NS] = glfw.CreateStandardCursor(glfw.VRESIZE_CURSOR)
+	bd.mouse_cursors[Mouse_Cursor.Resize_EW] = glfw.CreateStandardCursor(glfw.HRESIZE_CURSOR)
+	bd.mouse_cursors[Mouse_Cursor.Hand] = glfw.CreateStandardCursor(glfw.HAND_CURSOR)
 
-	bd.mouse_cursors[MouseCursor.ResizeAll] = glfw.CreateStandardCursor(glfw.RESIZE_ALL_CURSOR)
-	bd.mouse_cursors[MouseCursor.ResizeNESW] = glfw.CreateStandardCursor(glfw.RESIZE_NESW_CURSOR)
-	bd.mouse_cursors[MouseCursor.ResizeNWSE] = glfw.CreateStandardCursor(glfw.RESIZE_NWSE_CURSOR)
-	bd.mouse_cursors[MouseCursor.NotAllowed] = glfw.CreateStandardCursor(glfw.NOT_ALLOWED_CURSOR)
+	bd.mouse_cursors[Mouse_Cursor.Resize_All] = glfw.CreateStandardCursor(glfw.RESIZE_ALL_CURSOR)
+	bd.mouse_cursors[Mouse_Cursor.Resize_NESW] = glfw.CreateStandardCursor(glfw.RESIZE_NESW_CURSOR)
+	bd.mouse_cursors[Mouse_Cursor.Resize_NWSE] = glfw.CreateStandardCursor(glfw.RESIZE_NWSE_CURSOR)
+	bd.mouse_cursors[Mouse_Cursor.Not_Allowed] = glfw.CreateStandardCursor(glfw.NOT_ALLOWED_CURSOR)
 
-	bd.mouse_cursors[MouseCursor.ResizeAll] = glfw.CreateStandardCursor(glfw.ARROW_CURSOR)
-	bd.mouse_cursors[MouseCursor.ResizeNESW] = glfw.CreateStandardCursor(glfw.ARROW_CURSOR)
-	bd.mouse_cursors[MouseCursor.ResizeNWSE] = glfw.CreateStandardCursor(glfw.ARROW_CURSOR)
-	bd.mouse_cursors[MouseCursor.NotAllowed] = glfw.CreateStandardCursor(glfw.ARROW_CURSOR)
+	bd.mouse_cursors[Mouse_Cursor.Resize_All] = glfw.CreateStandardCursor(glfw.ARROW_CURSOR)
+	bd.mouse_cursors[Mouse_Cursor.Resize_NESW] = glfw.CreateStandardCursor(glfw.ARROW_CURSOR)
+	bd.mouse_cursors[Mouse_Cursor.Resize_NWSE] = glfw.CreateStandardCursor(glfw.ARROW_CURSOR)
+	bd.mouse_cursors[Mouse_Cursor.Not_Allowed] = glfw.CreateStandardCursor(glfw.ARROW_CURSOR)
 
 	glfw.SetErrorCallback(prev_error_callback)
 	glfw_raw.GetError(nil) // Eat errors (see https://github.com/ocornut/imgui/issues/5908)
@@ -134,13 +134,13 @@ when ODIN_OS == .Windows {
 		GetMessageExtraInfo :: proc() -> win32.LPARAM ---
 	}
 
-	get_mouse_source_from_message_extra_info :: proc "contextless" () -> MouseSource {
+	get_mouse_source_from_message_extra_info :: proc "contextless" () -> Mouse_Source {
 		extra_info := GetMessageExtraInfo()
 		if (extra_info & 0xFFFFFF80) == 0xFF515700 {
 			return .Pen
 		}
 		if (extra_info & 0xFFFFFF80) == 0xFF515780 {
-			return .TouchScreen
+			return .Touch_Screen
 		}
 		return .Mouse
 	}
@@ -286,12 +286,12 @@ glfw_key_to_imgui_key :: proc "contextless" (keycode, scancode: i32) -> Key {
 	// odinfmt: disable
 	switch keycode {
 	case glfw.KEY_TAB:           return .Tab
-	case glfw.KEY_LEFT:          return .LeftArrow
-	case glfw.KEY_RIGHT:         return .RightArrow
-	case glfw.KEY_UP:            return .UpArrow
-	case glfw.KEY_DOWN:          return .DownArrow
-	case glfw.KEY_PAGE_UP:       return .PageUp
-	case glfw.KEY_PAGE_DOWN:     return .PageDown
+	case glfw.KEY_LEFT:          return .Left_Arrow
+	case glfw.KEY_RIGHT:         return .Right_Arrow
+	case glfw.KEY_UP:            return .Up_Arrow
+	case glfw.KEY_DOWN:          return .Down_Arrow
+	case glfw.KEY_PAGE_UP:       return .Page_Up
+	case glfw.KEY_PAGE_DOWN:     return .Page_Down
 	case glfw.KEY_HOME:          return .Home
 	case glfw.KEY_END:           return .End
 	case glfw.KEY_INSERT:        return .Insert
@@ -307,14 +307,14 @@ glfw_key_to_imgui_key :: proc "contextless" (keycode, scancode: i32) -> Key {
 	case glfw.KEY_SLASH:         return .Slash
 	case glfw.KEY_SEMICOLON:     return .Semicolon
 	case glfw.KEY_EQUAL:         return .Equal
-	case glfw.KEY_LEFT_BRACKET:  return .LeftBracket
+	case glfw.KEY_LEFT_BRACKET:  return .Left_Bracket
 	case glfw.KEY_BACKSLASH:     return .Backslash
-	case glfw.KEY_RIGHT_BRACKET: return .RightBracket
-	case glfw.KEY_GRAVE_ACCENT:  return .GraveAccent
-	case glfw.KEY_CAPS_LOCK:     return .CapsLock
-	case glfw.KEY_SCROLL_LOCK:   return .ScrollLock
-	case glfw.KEY_NUM_LOCK:      return .NumLock
-	case glfw.KEY_PRINT_SCREEN:  return .PrintScreen
+	case glfw.KEY_RIGHT_BRACKET: return .Right_Bracket
+	case glfw.KEY_GRAVE_ACCENT:  return .Grave_Accent
+	case glfw.KEY_CAPS_LOCK:     return .Caps_Lock
+	case glfw.KEY_SCROLL_LOCK:   return .Scroll_Lock
+	case glfw.KEY_NUM_LOCK:      return .Num_Lock
+	case glfw.KEY_PRINT_SCREEN:  return .Print_Screen
 	case glfw.KEY_PAUSE:         return .Pause
 	case glfw.KEY_KP_0:          return .Keypad0
 	case glfw.KEY_KP_1:          return .Keypad1
@@ -326,21 +326,21 @@ glfw_key_to_imgui_key :: proc "contextless" (keycode, scancode: i32) -> Key {
 	case glfw.KEY_KP_7:          return .Keypad7
 	case glfw.KEY_KP_8:          return .Keypad8
 	case glfw.KEY_KP_9:          return .Keypad9
-	case glfw.KEY_KP_DECIMAL:    return .KeypadDecimal
-	case glfw.KEY_KP_DIVIDE:     return .KeypadDivide
-	case glfw.KEY_KP_MULTIPLY:   return .KeypadMultiply
-	case glfw.KEY_KP_SUBTRACT:   return .KeypadSubtract
-	case glfw.KEY_KP_ADD:        return .KeypadAdd
-	case glfw.KEY_KP_ENTER:      return .KeypadEnter
-	case glfw.KEY_KP_EQUAL:      return .KeypadEqual
-	case glfw.KEY_LEFT_SHIFT:    return .LeftShift
-	case glfw.KEY_LEFT_CONTROL:  return .LeftCtrl
-	case glfw.KEY_LEFT_ALT:      return .LeftAlt
-	case glfw.KEY_LEFT_SUPER:    return .LeftSuper
-	case glfw.KEY_RIGHT_SHIFT:   return .RightShift
-	case glfw.KEY_RIGHT_CONTROL: return .RightCtrl
-	case glfw.KEY_RIGHT_ALT:     return .RightAlt
-	case glfw.KEY_RIGHT_SUPER:   return .RightSuper
+	case glfw.KEY_KP_DECIMAL:    return .Keypad_Decimal
+	case glfw.KEY_KP_DIVIDE:     return .Keypad_Divide
+	case glfw.KEY_KP_MULTIPLY:   return .Keypad_Multiply
+	case glfw.KEY_KP_SUBTRACT:   return .Keypad_Subtract
+	case glfw.KEY_KP_ADD:        return .Keypad_Add
+	case glfw.KEY_KP_ENTER:      return .Keypad_Enter
+	case glfw.KEY_KP_EQUAL:      return .Keypad_Equal
+	case glfw.KEY_LEFT_SHIFT:    return .Left_Shift
+	case glfw.KEY_LEFT_CONTROL:  return .Left_Ctrl
+	case glfw.KEY_LEFT_ALT:      return .Left_Alt
+	case glfw.KEY_LEFT_SUPER:    return .Left_Super
+	case glfw.KEY_RIGHT_SHIFT:   return .Right_Shift
+	case glfw.KEY_RIGHT_CONTROL: return .Right_Ctrl
+	case glfw.KEY_RIGHT_ALT:     return .Right_Alt
+	case glfw.KEY_RIGHT_SUPER:   return .Right_Super
 	case glfw.KEY_MENU:          return .Menu
 	case glfw.KEY_0:             return ._0
 	case glfw.KEY_1:             return ._1
@@ -505,7 +505,7 @@ glfw_update_mouse_cursor :: proc "contextless" () {
 	bd := glfw_get_backend_data()
 	io := get_io()
 
-	if .NoMouseCursorChange in io.config_flags ||
+	if .No_Mouse_Cursor_Change in io.config_flags ||
 	   glfw.GetInputMode(bd.window, glfw.CURSOR) == glfw.CURSOR_DISABLED {
 		return
 	}
@@ -520,7 +520,7 @@ glfw_update_mouse_cursor :: proc "contextless" () {
 		mouse_cursor := bd.mouse_cursors[imgui_cursor]
 		glfw.SetCursor(
 			bd.window,
-			mouse_cursor if mouse_cursor != nil else bd.mouse_cursors[MouseCursor.Arrow],
+			mouse_cursor if mouse_cursor != nil else bd.mouse_cursors[Mouse_Cursor.Arrow],
 		)
 		glfw.SetInputMode(bd.window, glfw.CURSOR, glfw.CURSOR_NORMAL)
 	}
@@ -585,7 +585,7 @@ glfw_shutdown :: proc() {
 
 	io.backend_platform_name = nil
 	io.backend_platform_user_data = nil
-	io.backend_flags -= {.HasMouseCursors, .HasSetMousePos, .HasGamepad}
+	io.backend_flags -= {.Has_Mouse_Cursors, .Has_Set_Mouse_Pos, .Has_Gamepad}
 
 	free(bd)
 }

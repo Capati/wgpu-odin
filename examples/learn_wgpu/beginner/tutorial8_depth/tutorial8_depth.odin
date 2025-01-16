@@ -26,7 +26,7 @@ Instance :: struct {
 	rotation: la.Quaternionf32,
 }
 
-InstanceRaw :: struct {
+Instance_Raw :: struct {
 	model: la.Matrix4f32,
 }
 
@@ -40,11 +40,11 @@ Camera :: struct {
 	zfar:    f32,
 }
 
-CameraUniform :: struct {
+Camera_Uniform :: struct {
 	view_proj: la.Matrix4f32,
 }
 
-CameraController :: struct {
+Camera_Controller :: struct {
 	speed:               f32,
 	is_up_pressed:       bool,
 	is_down_pressed:     bool,
@@ -54,31 +54,31 @@ CameraController :: struct {
 	is_right_pressed:    bool,
 }
 
-DepthTexture :: struct {
+Depth_Texture :: struct {
 	created: bool,
 	texture: wgpu.Texture,
-	view:    wgpu.TextureView,
+	view:    wgpu.Texture_View,
 	sampler: wgpu.Sampler,
 }
 
 Example :: struct {
-	diffuse_bind_group: wgpu.BindGroup,
+	diffuse_bind_group: wgpu.Bind_Group,
 	camera:             Camera,
-	camera_controller:  CameraController,
-	camera_uniform:     CameraUniform,
+	camera_controller:  Camera_Controller,
+	camera_uniform:     Camera_Uniform,
 	camera_buffer:      wgpu.Buffer,
-	camera_bind_group:  wgpu.BindGroup,
-	render_pipeline:    wgpu.RenderPipeline,
+	camera_bind_group:  wgpu.Bind_Group,
+	render_pipeline:    wgpu.Render_Pipeline,
 	num_indices:        u32,
 	vertex_buffer:      wgpu.Buffer,
 	index_buffer:       wgpu.Buffer,
 	instance_buffer:    wgpu.Buffer,
 	instances:          [NUM_INSTANCES_PER_ROW * NUM_INSTANCES_PER_ROW]Instance,
-	depth_texture:      DepthTexture,
+	depth_texture:      Depth_Texture,
 	render_pass:        struct {
-		color_attachments:        [1]wgpu.RenderPassColorAttachment,
-		depth_stencil_attachment: wgpu.RenderPassDepthStencilAttachment,
-		descriptor:               wgpu.RenderPassDescriptor,
+		color_attachments:        [1]wgpu.Render_Pass_Color_Attachment,
+		depth_stencil_attachment: wgpu.Render_Pass_Depth_Stencil_Attachment,
+		descriptor:               wgpu.Render_Pass_Descriptor,
 	},
 }
 
@@ -86,26 +86,25 @@ Context :: app.Context(Example)
 
 EXAMPLE_TITLE :: "Tutorial 8 - Depth"
 
-DEPTH_FORMAT :: wgpu.TextureFormat.Depth32Float
+DEPTH_FORMAT :: wgpu.Texture_Format.Depth32Float
 
 init :: proc(ctx: ^Context) -> (ok: bool) {
 	// Load our tree image to texture
 	diffuse_texture := app.create_texture_from_file(
+		ctx,
 		"assets/textures/happy-tree.png",
-		ctx.gpu.device,
-		ctx.gpu.queue,
 	) or_return
 	defer app.release(diffuse_texture)
 
 	texture_bind_group_layout := wgpu.device_create_bind_group_layout(
 		ctx.gpu.device,
-		wgpu.BindGroupLayoutDescriptor {
+		wgpu.Bind_Group_Layout_Descriptor {
 			label = "TextureBindGroupLayout",
 			entries = {
 				{
 					binding = 0,
 					visibility = {.Fragment},
-					type = wgpu.TextureBindingLayout {
+					type = wgpu.Texture_Binding_Layout {
 						multisampled = false,
 						view_dimension = .D2,
 						sample_type = .Float,
@@ -114,7 +113,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				{
 					binding = 1,
 					visibility = {.Fragment},
-					type = wgpu.SamplerBindingLayout{type = .Filtering},
+					type = wgpu.Sampler_Binding_Layout{type = .Filtering},
 				},
 			},
 		},
@@ -123,7 +122,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.diffuse_bind_group = wgpu.device_create_bind_group(
 		ctx.gpu.device,
-		wgpu.BindGroupDescriptor {
+		wgpu.Bind_Group_Descriptor {
 			label = "diffuse_bind_group",
 			layout = texture_bind_group_layout,
 			entries = {
@@ -154,10 +153,10 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.camera_buffer = wgpu.device_create_buffer_with_data(
 		ctx.gpu.device,
-		wgpu.BufferDataDescriptor {
+		wgpu.Buffer_Data_Descriptor {
 			label = "Camera Buffer",
 			contents = wgpu.to_bytes(ctx.camera_uniform.view_proj),
-			usage = {.Uniform, .CopyDst},
+			usage = {.Uniform, .Copy_Dst},
 		},
 	) or_return
 	defer if !ok {
@@ -187,17 +186,17 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		}
 	}
 
-	instance_data: [NUM_INSTANCES_PER_ROW * NUM_INSTANCES_PER_ROW]InstanceRaw
+	instance_data: [NUM_INSTANCES_PER_ROW * NUM_INSTANCES_PER_ROW]Instance_Raw
 	for v, i in ctx.instances {
 		instance_data[i] = instance_to_raw(v)
 	}
 
 	ctx.instance_buffer = wgpu.device_create_buffer_with_data(
 		ctx.gpu.device,
-		wgpu.BufferDataDescriptor {
+		wgpu.Buffer_Data_Descriptor {
 			label = "Instance Buffer",
 			contents = wgpu.to_bytes(instance_data[:]),
-			usage = {.Vertex, .CopyDst},
+			usage = {.Vertex, .Copy_Dst},
 		},
 	) or_return
 	defer if !ok {
@@ -206,13 +205,13 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	camera_bind_group_layout := wgpu.device_create_bind_group_layout(
 		ctx.gpu.device,
-		wgpu.BindGroupLayoutDescriptor {
+		wgpu.Bind_Group_Layout_Descriptor {
 			label = "camera_bind_group_layout",
 			entries = {
 				{
 					binding = 0,
 					visibility = {.Vertex},
-					type = wgpu.BufferBindingLayout{type = .Uniform, has_dynamic_offset = false},
+					type = wgpu.Buffer_Binding_Layout{type = .Uniform, has_dynamic_offset = false},
 				},
 			},
 		},
@@ -221,13 +220,13 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.camera_bind_group = wgpu.device_create_bind_group(
 		ctx.gpu.device,
-		wgpu.BindGroupDescriptor {
+		wgpu.Bind_Group_Descriptor {
 			label = "camera_bind_group",
 			layout = camera_bind_group_layout,
 			entries = {
 				{
 					binding = 0,
-					resource = wgpu.BufferBinding {
+					resource = wgpu.Buffer_Binding {
 						buffer = ctx.camera_buffer,
 						size = wgpu.WHOLE_SIZE,
 					},
@@ -248,7 +247,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	) or_return
 	defer wgpu.release(render_pipeline_layout)
 
-	vertex_buffer_layout := wgpu.VertexBufferLayout {
+	vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
 		array_stride = size_of(Vertex),
 		step_mode    = .Vertex,
 		attributes   = {
@@ -261,8 +260,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		},
 	}
 
-	instance_buffer_layout := wgpu.VertexBufferLayout {
-		array_stride = size_of(InstanceRaw),
+	instance_buffer_layout := wgpu.Vertex_Buffer_Layout {
+		array_stride = size_of(Instance_Raw),
 		// We need to switch from using a step mode of Vertex to Instance
 		// This means that our shaders will only change to use the next
 		// instance when the shader starts processing a new instance
@@ -286,7 +285,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	) or_return
 	defer wgpu.release(shader_module)
 
-	render_pipeline_descriptor := wgpu.RenderPipelineDescriptor {
+	render_pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
 		label = "Render Pipeline",
 		layout = render_pipeline_layout,
 		vertex = {
@@ -305,7 +304,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				},
 			},
 		},
-		primitive = {topology = .TriangleList, front_face = .CCW, cull_mode = .Back},
+		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
 		depth_stencil = {
 			format = DEPTH_FORMAT,
 			depth_write_enabled = true,
@@ -337,7 +336,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.vertex_buffer = wgpu.device_create_buffer_with_data(
 		ctx.gpu.device,
-		wgpu.BufferDataDescriptor {
+		wgpu.Buffer_Data_Descriptor {
 			label = "Vertex Buffer",
 			contents = wgpu.to_bytes(vertices),
 			usage = {.Vertex},
@@ -349,7 +348,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.index_buffer = wgpu.device_create_buffer_with_data(
 		ctx.gpu.device,
-		wgpu.BufferDataDescriptor {
+		wgpu.Buffer_Data_Descriptor {
 			label = "Index Buffer",
 			contents = wgpu.to_bytes(indices),
 			usage = {.Index},
@@ -379,8 +378,8 @@ create_depth_texture :: proc(ctx: ^Context) -> (ok: bool) {
 		wgpu.release(ctx.depth_texture.texture)
 	}
 
-	texture_descriptor := wgpu.TextureDescriptor {
-		usage = {.RenderAttachment, .CopyDst},
+	texture_descriptor := wgpu.Texture_Descriptor {
+		usage = {.Render_Attachment, .Copy_Dst},
 		format = DEPTH_FORMAT,
 		dimension = .D2,
 		mip_level_count = 1,
@@ -400,7 +399,7 @@ create_depth_texture :: proc(ctx: ^Context) -> (ok: bool) {
 		wgpu.release(ctx.depth_texture.texture)
 	}
 
-	texture_view_descriptor := wgpu.TextureViewDescriptor {
+	texture_view_descriptor := wgpu.Texture_View_Descriptor {
 		format            = texture_descriptor.format,
 		dimension         = .D2,
 		base_mip_level    = 0,
@@ -418,16 +417,16 @@ create_depth_texture :: proc(ctx: ^Context) -> (ok: bool) {
 		wgpu.release(ctx.depth_texture.view)
 	}
 
-	sampler_descriptor := wgpu.SamplerDescriptor {
-		address_mode_u = .ClampToEdge,
-		address_mode_v = .ClampToEdge,
-		address_mode_w = .ClampToEdge,
+	sampler_descriptor := wgpu.Sampler_Descriptor {
+		address_mode_u = .Clamp_To_Edge,
+		address_mode_v = .Clamp_To_Edge,
+		address_mode_w = .Clamp_To_Edge,
 		mag_filter     = .Linear,
 		min_filter     = .Linear,
 		mipmap_filter  = .Nearest,
 		lod_min_clamp  = 0.0,
 		lod_max_clamp  = 100.0,
-		compare        = .LessEqual,
+		compare        = .Less_Equal,
 		max_anisotropy = 1,
 	}
 
@@ -462,7 +461,7 @@ quit :: proc(ctx: ^Context) {
 	wgpu.release(ctx.instance_buffer)
 }
 
-resize :: proc(ctx: ^Context, size: app.ResizeEvent) -> bool {
+resize :: proc(ctx: ^Context, size: app.Resize_Event) -> bool {
 	create_depth_texture(ctx) or_return
 
 	ctx.camera.aspect = cast(f32)size.w / cast(f32)size.h
@@ -493,7 +492,7 @@ update :: proc(ctx: ^Context, dt: f64) -> bool {
 	// Create rotation quaternion using dt
 	rotation_amount := la.quaternion_angle_axis_f32(ROTATION_SPEED_RAD * f32(dt), {0, 0, 1})
 
-	instance_data: [NUM_INSTANCES_PER_ROW * NUM_INSTANCES_PER_ROW]InstanceRaw
+	instance_data: [NUM_INSTANCES_PER_ROW * NUM_INSTANCES_PER_ROW]Instance_Raw
 	for &v, i in ctx.instances {
 		v.rotation = la.mul(rotation_amount, v.rotation)
 		ctx.instances[i] = v
@@ -547,7 +546,7 @@ draw :: proc(ctx: ^Context) -> bool {
 
 handle_event :: proc(ctx: ^Context, event: app.Event) {
 	#partial switch ev in event {
-	case app.KeyEvent:
+	case app.Key_Event:
 		controller := &ctx.camera_controller
 		pressed := ev.action == .Pressed
 		#partial switch ev.key {
@@ -609,19 +608,19 @@ build_view_projection_matrix :: proc(camera: ^Camera) -> la.Matrix4f32 {
 	return app.OPEN_GL_TO_WGPU_MATRIX * projection * view
 }
 
-new_camera_uniform :: proc() -> CameraUniform {
+new_camera_uniform :: proc() -> Camera_Uniform {
 	return {la.MATRIX4F32_IDENTITY}
 }
 
-update_view_proj :: proc(self: ^CameraUniform, camera: ^Camera) {
+update_view_proj :: proc(self: ^Camera_Uniform, camera: ^Camera) {
 	self.view_proj = build_view_projection_matrix(camera)
 }
 
-new_camera_controller :: proc(speed: f32) -> CameraController {
+new_camera_controller :: proc(speed: f32) -> Camera_Controller {
 	return {speed = speed}
 }
 
-update_camera_controller :: proc(self: ^CameraController, camera: ^Camera, dt: f64) {
+update_camera_controller :: proc(self: ^Camera_Controller, camera: ^Camera, dt: f64) {
 	// Calculate frame-independent movement speed
 	frame_speed := self.speed * f32(dt)
 
@@ -653,6 +652,6 @@ update_camera_controller :: proc(self: ^CameraController, camera: ^Camera, dt: f
 	}
 }
 
-instance_to_raw :: proc(i: Instance) -> InstanceRaw {
+instance_to_raw :: proc(i: Instance) -> Instance_Raw {
 	return {model = la.matrix4_from_trs_f32(i.position, i.rotation, {1, 1, 1})}
 }

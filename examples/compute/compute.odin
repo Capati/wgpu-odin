@@ -7,7 +7,7 @@ import "core:fmt"
 // Local packages
 import "root:wgpu"
 
-_log_callback :: proc "c" (level: wgpu.LogLevel, message: wgpu.StringView, user_data: rawptr) {
+_log_callback :: proc "c" (level: wgpu.Log_Level, message: wgpu.String_View, user_data: rawptr) {
 	if message.length > 0 {
 		context = runtime.default_context()
 		temp := string(message.data)[:message.length]
@@ -25,14 +25,14 @@ run :: proc() -> (ok: bool) {
 
 	// Instantiates instance of WebGPU
 	instance := wgpu.create_instance(
-		wgpu.InstanceDescriptor{backends = wgpu.BACKENDS_PRIMARY},
+		wgpu.Instance_Descriptor{backends = wgpu.BACKENDS_PRIMARY},
 	) or_return
 	defer wgpu.instance_release(instance)
 
 	// Instantiates the general connection to the GPU
 	adapter := wgpu.instance_request_adapter(
 		instance,
-		wgpu.RequestAdapterOptions{power_preference = .HighPerformance},
+		wgpu.Request_Adapter_Options{power_preference = .High_Performance},
 	) or_return
 	defer wgpu.adapter_release(adapter)
 
@@ -43,7 +43,7 @@ run :: proc() -> (ok: bool) {
 	// `features` being the available features.
 	device := wgpu.adapter_request_device(
 		adapter,
-		wgpu.DeviceDescriptor{label = adapter_info.description},
+		wgpu.Device_Descriptor{label = adapter_info.description},
 	) or_return
 	defer wgpu.device_release(device)
 
@@ -61,10 +61,10 @@ run :: proc() -> (ok: bool) {
 	// Instantiates buffer without data.
 	// `usage` of buffer specifies how it can be used:
 	//   `Map_Read` allows it to be read (outside the shader).
-	//   `CopyDst` allows it to be the destination of the copy.
+	//   `Copy_Dst` allows it to be the destination of the copy.
 	staging_buffer := wgpu.device_create_buffer(
 		device,
-		{label = "staging_buffer", size = cast(u64)numbers_size, usage = {.MapRead, .CopyDst}},
+		{label = "staging_buffer", size = cast(u64)numbers_size, usage = {.Map_Read, .Copy_Dst}},
 	) or_return
 	defer wgpu.buffer_release(staging_buffer)
 
@@ -79,7 +79,7 @@ run :: proc() -> (ok: bool) {
 		{
 			label = "storage_buffer",
 			contents = wgpu.to_bytes(numbers),
-			usage = {.Storage, .CopySrc, .CopyDst},
+			usage = {.Storage, .Copy_Src, .Copy_Dst},
 		},
 	) or_return
 	defer wgpu.buffer_release(storage_buffer)
@@ -94,7 +94,7 @@ run :: proc() -> (ok: bool) {
 	// Instantiates the pipeline.
 	compute_pipeline := wgpu.device_create_compute_pipeline(
 		device,
-		wgpu.ComputePipelineDescriptor {
+		wgpu.Compute_Pipeline_Descriptor {
 			label = "compute_pipeline",
 			module = shader_module,
 			entry_point = "main",
@@ -122,22 +122,22 @@ run :: proc() -> (ok: bool) {
 	// It is to WebGPU what a command buffer is to Vulkan.
 	encoder := wgpu.device_create_command_encoder(
 		device,
-		wgpu.CommandEncoderDescriptor{label = "command_encoder"},
+		wgpu.Command_Encoder_Descriptor{label = "command_encoder"},
 	) or_return
 	defer wgpu.command_encoder_release(encoder)
 
 	compute_pass := wgpu.command_encoder_begin_compute_pass(
 		encoder,
-		wgpu.ComputePassDescriptor{label = "compute_pass"},
+		wgpu.Compute_Pass_Descriptor{label = "compute_pass"},
 	) or_return
 
 	wgpu.compute_pass_set_pipeline(compute_pass, compute_pipeline)
 	wgpu.compute_pass_set_bind_group(compute_pass, 0, bind_group)
-	wgpu.compute_pass_dispatch_workgroups(compute_pass, numbers_length)
+	wgpu.compute_pass_dispatch_workgroups(compute_pass, numbers_length, 1, 1)
 	wgpu.compute_pass_end(compute_pass) or_return
 
 	// Release the compute_pass before we submit or we get the error:
-	// CommandBuffer cannot be destroyed because is still in use
+	// Command_Buffer cannot be destroyed because is still in use
 	wgpu.compute_pass_release(compute_pass)
 
 	// Sets adds copy operation to command encoder.
@@ -157,15 +157,15 @@ run :: proc() -> (ok: bool) {
 
 	wgpu.queue_submit(queue, command_buffer)
 
-	result: wgpu.MapAsyncStatus
+	result: wgpu.Map_Async_Status
 
 	handle_buffer_map := proc "c" (
-		status: wgpu.MapAsyncStatus,
-		message: wgpu.StringView,
+		status: wgpu.Map_Async_Status,
+		message: wgpu.String_View,
 		userdata1: rawptr,
 		userdata2: rawptr,
 	) {
-		result := cast(^wgpu.MapAsyncStatus)userdata1
+		result := cast(^wgpu.Map_Async_Status)userdata1
 		result^ = status
 	}
 	wgpu.buffer_map_async(

@@ -11,21 +11,21 @@ import "./../../wgpu"
 /* WGPU render-specific resources required for ImGui integration with WGPU backend. */
 WGPURenderResources :: struct {
 	font_texture:            wgpu.Texture, /* Font texture */
-	font_texture_view:       wgpu.TextureView, /* Texture view for font texture */
+	font_texture_view:       wgpu.Texture_View, /* Texture view for font texture */
 	sampler:                 wgpu.Sampler, /* Sampler for the font texture */
 	uniforms:                wgpu.Buffer, /* Shader uniforms */
-	common_bind_group:       wgpu.BindGroup, /* Resources bind-group to bind the common resources to pipeline */
-	image_bind_groups:       map[TextureID]wgpu.BindGroup, /* Resources bind-group to bind the font/image resources to pipeline */
-	image_bind_group:        wgpu.BindGroup, /* Default font-resource of Dear ImGui */
-	image_bind_group_layout: wgpu.BindGroupLayout, /* Cache layout used for the image bind group. Avoids allocating unnecessary JS objects when working with WebASM */
+	common_bind_group:       wgpu.Bind_Group, /* Resources bind-group to bind the common resources to pipeline */
+	image_bind_groups:       map[Texture_ID]wgpu.Bind_Group, /* Resources bind-group to bind the font/image resources to pipeline */
+	image_bind_group:        wgpu.Bind_Group, /* Default font-resource of Dear ImGui */
+	image_bind_group_layout: wgpu.Bind_Group_Layout, /* Cache layout used for the image bind group. Avoids allocating unnecessary JS objects when working with WebASM */
 }
 
 /* GPU and host resources required for rendering ImGui frames. */
 WGPUFrameResources :: struct {
 	index_buffer:       wgpu.Buffer, /* WebGPU buffer containing indices for rendering */
 	vertex_buffer:      wgpu.Buffer, /* WebGPU buffer containing vertices for rendering */
-	index_buffer_host:  []DrawIdx, /* Host-side array of draw indices */
-	vertex_buffer_host: []DrawVert, /* Host-side array of draw vertices */
+	index_buffer_host:  []Draw_Idx, /* Host-side array of draw indices */
+	vertex_buffer_host: []Draw_Vert, /* Host-side array of draw vertices */
 	index_buffer_size:  i32, /* Size of the index buffer in bytes */
 	vertex_buffer_size: i32, /* Size of the vertex buffer in bytes */
 }
@@ -38,9 +38,9 @@ WGPUUniforms :: struct {
 WGPUInitInfo :: struct {
 	device:                     wgpu.Device,
 	num_frames_in_flight:       u32,
-	render_target_format:       wgpu.TextureFormat,
-	depth_stencil_format:       wgpu.TextureFormat,
-	pipeline_multisample_state: wgpu.MultisampleState,
+	render_target_format:       wgpu.Texture_Format,
+	depth_stencil_format:       wgpu.Texture_Format,
+	pipeline_multisample_state: wgpu.Multisample_State,
 }
 
 DEFAULT_WGPU_FRAMES_IN_FLIGHT :: #config(IMGUI_WGPU_FRAMES_IN_FLIGHT, 3)
@@ -57,9 +57,9 @@ WGPUData :: struct {
 	init_info:            WGPUInitInfo,
 	device:               wgpu.Device,
 	default_queue:        wgpu.Queue,
-	render_target_format: wgpu.TextureFormat,
-	depth_stencil_format: wgpu.TextureFormat,
-	pipeline_state:       wgpu.RenderPipeline,
+	render_target_format: wgpu.Texture_Format,
+	depth_stencil_format: wgpu.Texture_Format,
+	pipeline_state:       wgpu.Render_Pipeline,
 	render_resources:     WGPURenderResources,
 	frame_resources:      [dynamic]WGPUFrameResources,
 	num_frames_in_flight: u32,
@@ -89,9 +89,9 @@ wgpu_create_device_objects :: proc() -> (ok: bool) {
 	}
 
 	// Create render pipeline
-	graphics_pipeline_desc: wgpu.RenderPipelineDescriptor
+	graphics_pipeline_desc: wgpu.Render_Pipeline_Descriptor
 	graphics_pipeline_desc.primitive = {
-		topology           = .TriangleList,
+		topology           = .Triangle_List,
 		strip_index_format = .Undefined,
 		front_face         = .CW,
 		cull_mode          = .None,
@@ -99,24 +99,24 @@ wgpu_create_device_objects :: proc() -> (ok: bool) {
 	graphics_pipeline_desc.multisample = bd.init_info.pipeline_multisample_state
 
 	// Bind group layouts
-	common_bg_layout_entries := [2]wgpu.BindGroupLayoutEntry {
+	common_bg_layout_entries := [2]wgpu.Bind_Group_Layout_Entry {
 		{
 			binding = 0,
 			visibility = {.Vertex, .Fragment},
-			type = wgpu.BufferBindingLayout{type = .Uniform},
+			type = wgpu.Buffer_Binding_Layout{type = .Uniform},
 		},
 		{
 			binding = 1,
 			visibility = {.Fragment},
-			type = wgpu.SamplerBindingLayout{type = .Filtering},
+			type = wgpu.Sampler_Binding_Layout{type = .Filtering},
 		},
 	}
 
-	image_bg_layout_entries := [1]wgpu.BindGroupLayoutEntry {
+	image_bg_layout_entries := [1]wgpu.Bind_Group_Layout_Entry {
 		{
 			binding = 0,
 			visibility = {.Fragment},
-			type = wgpu.TextureBindingLayout {
+			type = wgpu.Texture_Binding_Layout {
 				sample_type = .Float,
 				view_dimension = .D2,
 				multisampled = false,
@@ -124,15 +124,15 @@ wgpu_create_device_objects :: proc() -> (ok: bool) {
 		},
 	}
 
-	common_bg_layout_desc := wgpu.BindGroupLayoutDescriptor {
+	common_bg_layout_desc := wgpu.Bind_Group_Layout_Descriptor {
 		entries = common_bg_layout_entries[:],
 	}
 
-	image_bg_layout_desc := wgpu.BindGroupLayoutDescriptor {
+	image_bg_layout_desc := wgpu.Bind_Group_Layout_Descriptor {
 		entries = image_bg_layout_entries[:],
 	}
 
-	bg_layouts := [2]wgpu.BindGroupLayout {
+	bg_layouts := [2]wgpu.Bind_Group_Layout {
 		wgpu.device_create_bind_group_layout(bd.device, common_bg_layout_desc) or_return,
 		wgpu.device_create_bind_group_layout(bd.device, image_bg_layout_desc) or_return,
 	}
@@ -141,7 +141,7 @@ wgpu_create_device_objects :: proc() -> (ok: bool) {
 		// wgpu.bind_group_layout_release(bg_layouts[1])
 	}
 
-	layout_desc := wgpu.PipelineLayoutDescriptor {
+	layout_desc := wgpu.Pipeline_Layout_Descriptor {
 		bind_group_layouts = bg_layouts[:],
 	}
 
@@ -162,40 +162,40 @@ wgpu_create_device_objects :: proc() -> (ok: bool) {
 	graphics_pipeline_desc.vertex.entry_point = "vs_main"
 
 	// Vertex input configuration
-	attribute_desc := [3]wgpu.VertexAttribute {
-		{format = .Float32x2, offset = u64(offset_of(DrawVert, pos)), shader_location = 0},
-		{format = .Float32x2, offset = u64(offset_of(DrawVert, uv)), shader_location = 1},
-		{format = .Unorm8x4, offset = u64(offset_of(DrawVert, col)), shader_location = 2},
+	attribute_desc := [3]wgpu.Vertex_Attribute {
+		{format = .Float32x2, offset = u64(offset_of(Draw_Vert, pos)), shader_location = 0},
+		{format = .Float32x2, offset = u64(offset_of(Draw_Vert, uv)), shader_location = 1},
+		{format = .Unorm8x4, offset = u64(offset_of(Draw_Vert, col)), shader_location = 2},
 	}
 
-	buffer_layouts := [1]wgpu.VertexBufferLayout {
-		{array_stride = size_of(DrawVert), step_mode = .Vertex, attributes = attribute_desc[:]},
+	buffer_layouts := [1]wgpu.Vertex_Buffer_Layout {
+		{array_stride = size_of(Draw_Vert), step_mode = .Vertex, attributes = attribute_desc[:]},
 	}
 
 	graphics_pipeline_desc.vertex.buffers = buffer_layouts[:]
 
 	// Setup blending
-	blend_state := wgpu.BlendState {
-		alpha = {operation = .Add, src_factor = .One, dst_factor = .OneMinusSrcAlpha},
-		color = {operation = .Add, src_factor = .SrcAlpha, dst_factor = .OneMinusSrcAlpha},
+	blend_state := wgpu.Blend_State {
+		alpha = {operation = .Add, src_factor = .One, dst_factor = .One_Minus_Src_Alpha},
+		color = {operation = .Add, src_factor = .Src_Alpha, dst_factor = .One_Minus_Src_Alpha},
 	}
 
-	color_state := wgpu.ColorTargetState {
+	color_state := wgpu.Color_Target_State {
 		format     = bd.render_target_format,
 		blend      = &blend_state,
 		write_mask = wgpu.COLOR_WRITES_ALL,
 	}
 
-	fragment_state := wgpu.FragmentState {
+	fragment_state := wgpu.Fragment_State {
 		module      = shader_module,
 		entry_point = "fs_main",
-		targets     = []wgpu.ColorTargetState{color_state},
+		targets     = []wgpu.Color_Target_State{color_state},
 	}
 
 	graphics_pipeline_desc.fragment = &fragment_state
 
 	// Depth-stencil state
-	depth_stencil_state := wgpu.DepthStencilState {
+	depth_stencil_state := wgpu.Depth_Stencil_State {
 		format = bd.depth_stencil_format,
 		depth_write_enabled = false,
 		depth_compare = .Always,
@@ -217,10 +217,10 @@ wgpu_create_device_objects :: proc() -> (ok: bool) {
 	wgpu_create_uniform_buffer() or_return
 
 	// Create resource bind group
-	common_bg_entries := [2]wgpu.BindGroupEntry {
+	common_bg_entries := [2]wgpu.Bind_Group_Entry {
 		{
 			binding = 0,
-			resource = wgpu.BufferBinding {
+			resource = wgpu.Buffer_Binding {
 				buffer = bd.render_resources.uniforms,
 				size = wgpu.align_size(size_of(WGPUUniforms), 16),
 			},
@@ -228,7 +228,7 @@ wgpu_create_device_objects :: proc() -> (ok: bool) {
 		{binding = 1, resource = bd.render_resources.sampler},
 	}
 
-	common_bg_descriptor := wgpu.BindGroupDescriptor {
+	common_bg_descriptor := wgpu.Bind_Group_Descriptor {
 		layout  = bg_layouts[0],
 		entries = common_bg_entries[:],
 	}
@@ -245,7 +245,7 @@ wgpu_create_device_objects :: proc() -> (ok: bool) {
 
 	bd.render_resources.image_bind_group = image_bind_group
 	bd.render_resources.image_bind_group_layout = bg_layouts[1]
-	image_bind_group_id := TextureID(uintptr(bd.render_resources.font_texture_view))
+	image_bind_group_id := Texture_ID(uintptr(bd.render_resources.font_texture_view))
 	bd.render_resources.image_bind_groups[image_bind_group_id] = image_bind_group
 
 	return true
@@ -264,18 +264,18 @@ wgpu_create_fonts_texture :: proc() -> (ok: bool) {
 	pixel_slice := slice.bytes_from_ptr(pixels, int(width * height * size_pp))
 
 	// Upload texture to graphics system
-	tex_desc := wgpu.TextureDescriptor {
+	tex_desc := wgpu.Texture_Descriptor {
 		label = "Dear ImGui Font Texture",
 		dimension = .D2,
 		size = {width = u32(width), height = u32(height), depth_or_array_layers = 1},
 		sample_count = 1,
 		format = .Rgba8Unorm,
 		mip_level_count = 1,
-		usage = {.CopyDst, .TextureBinding},
+		usage = {.Copy_Dst, .Texture_Binding},
 	}
 	bd.render_resources.font_texture = wgpu.device_create_texture(bd.device, tex_desc) or_return
 
-	tex_view_desc := wgpu.TextureViewDescriptor {
+	tex_view_desc := wgpu.Texture_View_Descriptor {
 		format            = tex_desc.format,
 		dimension         = .D2,
 		base_mip_level    = 0,
@@ -290,23 +290,23 @@ wgpu_create_fonts_texture :: proc() -> (ok: bool) {
 	) or_return
 
 	// Upload texture data
-	dst_view := wgpu.TexelCopyTextureInfo {
+	dst_view := wgpu.Texel_Copy_Texture_Info {
 		texture   = bd.render_resources.font_texture,
 		mip_level = 0,
 		origin    = {0, 0, 0},
 		aspect    = .All,
 	}
-	layout := wgpu.TexelCopyBufferLayout {
+	layout := wgpu.Texel_Copy_Buffer_Layout {
 		offset         = 0,
 		bytes_per_row  = u32(width * size_pp),
 		rows_per_image = u32(height),
 	}
-	size := wgpu.Extent3D{u32(width), u32(height), 1}
+	size := wgpu.Extent_3D{u32(width), u32(height), 1}
 
 	wgpu.queue_write_texture(bd.default_queue, dst_view, pixel_slice, layout, size) or_return
 
 	// Create the associated sampler
-	sampler_desc := wgpu.SamplerDescriptor {
+	sampler_desc := wgpu.Sampler_Descriptor {
 		min_filter     = .Linear,
 		mag_filter     = .Linear,
 		mipmap_filter  = .Linear,
@@ -318,11 +318,11 @@ wgpu_create_fonts_texture :: proc() -> (ok: bool) {
 	bd.render_resources.sampler = wgpu.device_create_sampler(bd.device, sampler_desc) or_return
 
 	#assert(
-		size_of(TextureID) >= size_of(bd.render_resources.font_texture),
+		size_of(Texture_ID) >= size_of(bd.render_resources.font_texture),
 		"Can't pack descriptor handle into TexID, 32-bit not supported yet.",
 	)
 
-	font_atlas_set_tex_id(io.fonts, TextureID(uintptr(bd.render_resources.font_texture_view)))
+	font_atlas_set_tex_id(io.fonts, Texture_ID(uintptr(bd.render_resources.font_texture_view)))
 
 	return true
 }
@@ -331,9 +331,9 @@ wgpu_create_fonts_texture :: proc() -> (ok: bool) {
 wgpu_create_uniform_buffer :: proc() -> (ok: bool) {
 	bd := wgpu_get_backend_data()
 
-	ub_dec := wgpu.BufferDescriptor {
+	ub_dec := wgpu.Buffer_Descriptor {
 		label              = "Dear ImGui Uniform buffer",
-		usage              = {.CopyDst, .Uniform},
+		usage              = {.Copy_Dst, .Uniform},
 		size               = wgpu.align_size(size_of(WGPUUniforms), 16),
 		mapped_at_creation = false,
 	}
@@ -344,17 +344,17 @@ wgpu_create_uniform_buffer :: proc() -> (ok: bool) {
 
 @(require_results)
 wgpu_create_image_bind_group :: proc(
-	layout: wgpu.BindGroupLayout,
-	texture: wgpu.TextureView,
+	layout: wgpu.Bind_Group_Layout,
+	texture: wgpu.Texture_View,
 ) -> (
-	bind_group: wgpu.BindGroup,
+	bind_group: wgpu.Bind_Group,
 	ok: bool,
 ) {
 	bd := wgpu_get_backend_data()
 
-	image_bg_entries := [1]wgpu.BindGroupEntry{{binding = 0, resource = texture}}
+	image_bg_entries := [1]wgpu.Bind_Group_Entry{{binding = 0, resource = texture}}
 
-	image_bg_descriptor := wgpu.BindGroupDescriptor {
+	image_bg_descriptor := wgpu.Bind_Group_Descriptor {
 		layout  = layout,
 		entries = image_bg_entries[:],
 	}
@@ -366,8 +366,8 @@ wgpu_create_image_bind_group :: proc(
 
 @(require_results)
 wgpu_setup_render_state :: proc(
-	draw_data: ^DrawData,
-	encoder: wgpu.RenderPass,
+	draw_data: ^Draw_Data,
+	encoder: wgpu.Render_Pass,
 	fr: ^WGPUFrameResources,
 ) -> (
 	ok: bool,
@@ -420,11 +420,11 @@ wgpu_setup_render_state :: proc(
 	wgpu.render_pass_set_vertex_buffer(
 		encoder,
 		0,
-		{buffer = fr.vertex_buffer, size = u64(fr.vertex_buffer_size * size_of(DrawVert))},
+		{buffer = fr.vertex_buffer, size = u64(fr.vertex_buffer_size * size_of(Draw_Vert))},
 	)
 	wgpu.render_pass_set_index_buffer(
 		encoder,
-		{buffer = fr.index_buffer, size = u64(fr.index_buffer_size * size_of(DrawIdx))},
+		{buffer = fr.index_buffer, size = u64(fr.index_buffer_size * size_of(Draw_Idx))},
 		.Uint16,
 	)
 
@@ -441,8 +441,8 @@ wgpu_setup_render_state :: proc(
 
 @(require_results)
 wgpu_render_draw_data :: proc(
-	draw_data: ^DrawData,
-	pass_encoder: wgpu.RenderPass,
+	draw_data: ^Draw_Data,
+	pass_encoder: wgpu.Render_Pass,
 ) -> (
 	ok: bool,
 ) #no_bounds_check {
@@ -469,18 +469,18 @@ wgpu_render_draw_data :: proc(
 		}
 		fr.vertex_buffer_size = draw_data.total_vtx_count + WGPU_VERTEX_BUFFER_SIZE
 
-		vb_desc := wgpu.BufferDescriptor {
+		vb_desc := wgpu.Buffer_Descriptor {
 			label              = "Dear ImGui Vertex buffer",
-			usage              = {.CopyDst, .Vertex},
+			usage              = {.Copy_Dst, .Vertex},
 			size               = wgpu.align_size(
-				u64(fr.vertex_buffer_size * size_of(DrawVert)),
+				u64(fr.vertex_buffer_size * size_of(Draw_Vert)),
 				4,
 			),
 			mapped_at_creation = false,
 		}
 		fr.vertex_buffer = wgpu.device_create_buffer(bd.device, vb_desc) or_return
 
-		fr.vertex_buffer_host = make([]DrawVert, fr.vertex_buffer_size)
+		fr.vertex_buffer_host = make([]Draw_Vert, fr.vertex_buffer_size)
 	}
 
 	if fr.index_buffer == nil || fr.index_buffer_size < draw_data.total_idx_count {
@@ -493,15 +493,15 @@ wgpu_render_draw_data :: proc(
 		}
 		fr.index_buffer_size = draw_data.total_idx_count + WGPU_INDEX_BUFFER_SIZE
 
-		ib_desc := wgpu.BufferDescriptor {
+		ib_desc := wgpu.Buffer_Descriptor {
 			label              = "Dear ImGui Index buffer",
-			usage              = {.CopyDst, .Index},
-			size               = wgpu.align_size(u64(fr.index_buffer_size * size_of(DrawVert)), 4),
+			usage              = {.Copy_Dst, .Index},
+			size               = wgpu.align_size(u64(fr.index_buffer_size * size_of(Draw_Vert)), 4),
 			mapped_at_creation = false,
 		}
 		fr.index_buffer = wgpu.device_create_buffer(bd.device, ib_desc) or_return
 
-		fr.index_buffer_host = make([]DrawIdx, fr.index_buffer_size)
+		fr.index_buffer_host = make([]Draw_Idx, fr.index_buffer_size)
 	}
 
 	// Upload vertex/index data into a single contiguous GPU buffer
@@ -510,18 +510,18 @@ wgpu_render_draw_data :: proc(
 
 	for i in 0 ..< draw_data.cmd_lists_count {
 		vector := draw_data.cmd_lists
-		draw_lists := ([^]^DrawList)(vector.data)[:vector.size]
+		draw_lists := ([^]^Draw_List)(vector.data)[:vector.size]
 		cmd_list := draw_lists[i]
 
 		intr.mem_copy(
 			raw_data(fr.vertex_buffer_host[vtx_write_offset:]),
 			cmd_list.vtx_buffer.data,
-			cmd_list.vtx_buffer.size * size_of(DrawVert),
+			cmd_list.vtx_buffer.size * size_of(Draw_Vert),
 		)
 		intr.mem_copy(
 			raw_data(fr.index_buffer_host[idx_write_offset:]),
 			cmd_list.idx_buffer.data,
-			cmd_list.idx_buffer.size * size_of(DrawIdx),
+			cmd_list.idx_buffer.size * size_of(Draw_Idx),
 		)
 
 		vtx_write_offset += cmd_list.vtx_buffer.size
@@ -552,12 +552,12 @@ wgpu_render_draw_data :: proc(
 
 	for i in 0 ..< draw_data.cmd_lists_count {
 		vector := draw_data.cmd_lists
-		draw_lists := ([^]^DrawList)(vector.data)[:vector.size]
+		draw_lists := ([^]^Draw_List)(vector.data)[:vector.size]
 		cmd_list := draw_lists[i]
 
 		for cmd_i in 0 ..< cmd_list.cmd_buffer.size {
 			cmd_buffer_vector := cmd_list.cmd_buffer
-			cmd_buffer_lists := ([^]DrawCmd)(cmd_buffer_vector.data)[:cmd_buffer_vector.size]
+			cmd_buffer_lists := ([^]Draw_Cmd)(cmd_buffer_vector.data)[:cmd_buffer_vector.size]
 			pcmd := &cmd_buffer_lists[cmd_i]
 
 			if pcmd.user_callback != nil {
@@ -570,7 +570,7 @@ wgpu_render_draw_data :: proc(
 					// Bind custom texture
 					image_bind_group := wgpu_create_image_bind_group(
 						bd.render_resources.image_bind_group_layout,
-						(wgpu.TextureView)(uintptr(tex_id)),
+						(wgpu.Texture_View)(uintptr(tex_id)),
 					) or_return
 					bd.render_resources.image_bind_groups[tex_id] = image_bind_group
 					wgpu.render_pass_set_bind_group(pass_encoder, 1, image_bind_group)
@@ -655,7 +655,7 @@ wgpu_init :: proc(init_info: WGPUInitInfo, loc := #caller_location) -> (ok: bool
 	ensure(bd != nil, "Failed to allocate WGPUData")
 	io.backend_renderer_user_data = bd
 	io.backend_renderer_name = "imgui_impl_webgpu"
-	io.backend_flags += {.RendererHasVtxOffset}
+	io.backend_flags += {.Renderer_Has_Vtx_Offset}
 
 	bd.init_info = init_info
 	bd.device = init_info.device
@@ -666,7 +666,7 @@ wgpu_init :: proc(init_info: WGPUInitInfo, loc := #caller_location) -> (ok: bool
 	bd.num_frames_in_flight = init_info.num_frames_in_flight
 	bd.frame_index = max(u32)
 
-	bd.render_resources.image_bind_groups = make(map[TextureID]wgpu.BindGroup, 100)
+	bd.render_resources.image_bind_groups = make(map[Texture_ID]wgpu.Bind_Group, 100)
 
 	bd.frame_resources = make([dynamic]WGPUFrameResources, bd.num_frames_in_flight)
 	for &fr in bd.frame_resources {
@@ -737,7 +737,7 @@ wgpu_shutdown :: proc() {
 
 	io.backend_renderer_name = nil
 	io.backend_renderer_user_data = nil
-	io.backend_flags -= {.RendererHasVtxOffset}
+	io.backend_flags -= {.Renderer_Has_Vtx_Offset}
 
 	wgpu_delete_frame_resources(&bd.frame_resources)
 	wgpu_delete_render_resources(&bd.render_resources)

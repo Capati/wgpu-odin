@@ -11,13 +11,13 @@ import "./../../wgpu"
 get_surface_descriptor :: proc(
 	window: glfw.WindowHandle,
 ) -> (
-	descriptor: wgpu.SurfaceDescriptor,
+	descriptor: wgpu.Surface_Descriptor,
 	ok: bool,
 ) {
 	instance := win.GetModuleHandleW(nil)
 
 	// Setup surface information
-	descriptor.target = wgpu.SurfaceSourceWindowsHWND {
+	descriptor.target = wgpu.Surface_Source_Windows_HWND {
 		hinstance = instance,
 		hwnd      = glfw.GetWin32Window(window),
 	}

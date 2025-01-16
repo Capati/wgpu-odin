@@ -57,8 +57,8 @@ texture_format_feature_flags_supported_sample_counts :: proc(
 supported_sample_counts :: texture_format_feature_flags_supported_sample_counts
 
 /* Features supported by a given texture format */
-TextureFormatFeatures :: struct {
-	allowed_usages: TextureUsages,
+Texture_Format_Features :: struct {
+	allowed_usages: Texture_Usages,
 	flags:          TextureFormatFeatureFlags,
 }
 
@@ -96,7 +96,7 @@ loading from texture in a shader.When writing to the texture, the opposite conve
 Corresponds to [WebGPU `GPUTextureFormat`](
 https://gpuweb.github.io/gpuweb/#enumdef-gputextureformat).
 */
-TextureFormat :: enum i32 {
+Texture_Format :: enum i32 {
 	// WebGPU
 	Undefined            = 0x00000000,
 	R8Unorm              = 0x00000001,
@@ -141,7 +141,7 @@ TextureFormat :: enum i32 {
 	Depth24Plus          = 0x00000028,
 	Depth24PlusStencil8  = 0x00000029,
 	Depth32Float         = 0x0000002A,
-	Depth32FloatStencil8 = 0x0000002B,
+	Depth32_Float_Stencil8 = 0x0000002B,
 	Bc1RgbaUnorm         = 0x0000002C,
 	Bc1RgbaUnormSrgb     = 0x0000002D,
 	Bc2RgbaUnorm         = 0x0000002E,
@@ -211,30 +211,30 @@ Returns the aspect-specific format of the original format
 see <https://gpuweb.github.io/gpuweb/#abstract-opdef-resolving-gputextureaspect>
 */
 texture_format_aspect_specific_format :: proc(
-	self: TextureFormat,
-	aspect: TextureAspect,
-) -> Maybe(TextureFormat) {
+	self: Texture_Format,
+	aspect: Texture_Aspect,
+) -> Maybe(Texture_Format) {
 	#partial switch self {
 	case .Stencil8:
-		if aspect == .StencilOnly {
+		if aspect == .Stencil_Only {
 			return self
 		}
 	case .Depth16Unorm, .Depth24Plus, .Depth32Float:
-		if aspect == .DepthOnly {
+		if aspect == .Depth_Only {
 			return self
 		}
 	case .Depth24PlusStencil8:
 		#partial switch aspect {
-		case .StencilOnly:
+		case .Stencil_Only:
 			return .Stencil8
-		case .DepthOnly:
+		case .Depth_Only:
 			return .Depth24Plus
 		}
-	case .Depth32FloatStencil8:
+	case .Depth32_Float_Stencil8:
 		#partial switch aspect {
-		case .StencilOnly:
+		case .Stencil_Only:
 			return .Stencil8
-		case .DepthOnly:
+		case .Depth_Only:
 			return .Depth32Float
 		}
 	case .NV12:
@@ -258,11 +258,11 @@ texture_format_aspect_specific_format :: proc(
 Check if the format is a depth or stencil component of the given combined depth-stencil format.
 */
 texture_format_is_depth_stencil_component :: proc "contextless" (
-	self, combined_format: TextureFormat,
+	self, combined_format: Texture_Format,
 ) -> bool {
 	return(
 		combined_format == .Depth24PlusStencil8 && (self == .Depth24Plus || self == .Stencil8) ||
-		combined_format == .Depth32FloatStencil8 && (self == .Depth32Float || self == .Stencil8) \
+		combined_format == .Depth32_Float_Stencil8 && (self == .Depth32Float || self == .Stencil8) \
 	)
 }
 
@@ -271,14 +271,14 @@ Check if the format is a depth and/or stencil format.
 
 see <https://gpuweb.github.io/gpuweb/#depth-formats>
 */
-texture_format_is_depth_stencil_format :: proc "contextless" (self: TextureFormat) -> bool {
+texture_format_is_depth_stencil_format :: proc "contextless" (self: Texture_Format) -> bool {
 	#partial switch self {
 	case .Stencil8,
 	     .Depth16Unorm,
 	     .Depth24Plus,
 	     .Depth24PlusStencil8,
 	     .Depth32Float,
-	     .Depth32FloatStencil8:
+	     .Depth32_Float_Stencil8:
 		return true
 	}
 
@@ -291,10 +291,10 @@ Returns `true` if the format is a combined depth-stencil format
 see <https://gpuweb.github.io/gpuweb/#combined-depth-stencil-format>
 */
 texture_format_is_combined_depth_stencil_format :: proc "contextless" (
-	self: TextureFormat,
+	self: Texture_Format,
 ) -> bool {
 	#partial switch self {
-	case .Depth24PlusStencil8, .Depth32FloatStencil8:
+	case .Depth24PlusStencil8, .Depth32_Float_Stencil8:
 		return true
 	}
 
@@ -303,12 +303,12 @@ texture_format_is_combined_depth_stencil_format :: proc "contextless" (
 
 
 /* Returns `true` if the format is a multi-planar format.*/
-texture_format_is_multi_planar_format :: proc "contextless" (self: TextureFormat) -> bool {
+texture_format_is_multi_planar_format :: proc "contextless" (self: Texture_Format) -> bool {
 	return texture_format_planes(self) > 1
 }
 
 /* Returns the number of planes a multi-planar format has.*/
-texture_format_planes :: proc "contextless" (self: TextureFormat) -> u32 {
+texture_format_planes :: proc "contextless" (self: Texture_Format) -> u32 {
 	#partial switch self {
 	case .NV12:
 		return 2
@@ -317,30 +317,30 @@ texture_format_planes :: proc "contextless" (self: TextureFormat) -> u32 {
 }
 
 /* Returns `true` if the format has a color aspect.*/
-texture_format_has_color_aspect :: proc "contextless" (self: TextureFormat) -> bool {
+texture_format_has_color_aspect :: proc "contextless" (self: Texture_Format) -> bool {
 	return !texture_format_is_depth_stencil_format(self)
 }
 
 /* Returns `true` if the format has a depth aspect.*/
-texture_format_has_depth_aspect :: proc "contextless" (self: TextureFormat) -> bool {
+texture_format_has_depth_aspect :: proc "contextless" (self: Texture_Format) -> bool {
 	#partial switch self {
-	case .Depth16Unorm, .Depth24Plus, .Depth24PlusStencil8, .Depth32Float, .Depth32FloatStencil8:
+	case .Depth16Unorm, .Depth24Plus, .Depth24PlusStencil8, .Depth32Float, .Depth32_Float_Stencil8:
 		return true
 	}
 	return false
 }
 
 /* Returns `true` if the format has a stencil aspect.*/
-texture_format_has_stencil_aspect :: proc "contextless" (self: TextureFormat) -> bool {
+texture_format_has_stencil_aspect :: proc "contextless" (self: Texture_Format) -> bool {
 	#partial switch self {
-	case .Stencil8, .Depth24PlusStencil8, .Depth32FloatStencil8:
+	case .Stencil8, .Depth24PlusStencil8, .Depth32_Float_Stencil8:
 		return true
 	}
 	return false
 }
 
 /* Returns the size multiple requirement for a texture using this format.*/
-texture_format_size_multiple_requirement :: proc(self: TextureFormat) -> (u32, u32) {
+texture_format_size_multiple_requirement :: proc(self: Texture_Format) -> (u32, u32) {
 	#partial switch self {
 	case .NV12:
 		return 2, 2
@@ -353,7 +353,7 @@ Returns the dimension of a [block](https://gpuweb.github.io/gpuweb/#texel-block)
 
 Uncompressed formats have a block dimension of `(1, 1)`.
 */
-texture_format_block_dimensions :: proc "contextless" (self: TextureFormat) -> (w, h: u32) {
+texture_format_block_dimensions :: proc "contextless" (self: Texture_Format) -> (w, h: u32) {
 	// odinfmt: disable
 	switch self {
 	case .R8Unorm, .R8Snorm, .R8Uint, .R8Sint, .R16Uint, .R16Sint, .R16Unorm, .R16Snorm,
@@ -363,7 +363,7 @@ texture_format_block_dimensions :: proc "contextless" (self: TextureFormat) -> (
 	     .Rgb10a2Uint, .Rgb10a2Unorm, .Rg11b10Ufloat, .Rg32Uint, .Rg32Sint, .Rg32Float, .Rgba16Uint,
 	     .Rgba16Sint, .Rgba16Unorm, .Rgba16Snorm, .Rgba16Float, .Rgba32Uint, .Rgba32Sint,
 	     .Rgba32Float, .Stencil8, .Depth16Unorm, .Depth24Plus, .Depth24PlusStencil8,
-	     .Depth32Float, .Depth32FloatStencil8, .NV12:
+	     .Depth32Float, .Depth32_Float_Stencil8, .NV12:
 		return 1, 1
 
 	case .Bc1RgbaUnorm, .Bc1RgbaUnormSrgb, .Bc2RgbaUnorm, .Bc2RgbaUnormSrgb, .Bc3RgbaUnorm,
@@ -395,19 +395,19 @@ texture_format_block_dimensions :: proc "contextless" (self: TextureFormat) -> (
 }
 
 /* Returns `true` for compressed formats.*/
-texture_format_is_compressed :: proc "contextless" (self: TextureFormat) -> bool {
+texture_format_is_compressed :: proc "contextless" (self: Texture_Format) -> bool {
 	w, h := texture_format_block_dimensions(self)
 	return w != 1 && h != 1
 }
 
 /* Returns `true` for BCn compressed formats.*/
-texture_format_is_bcn :: proc "contextless" (self: TextureFormat) -> bool {
+texture_format_is_bcn :: proc "contextless" (self: Texture_Format) -> bool {
 	features := texture_format_required_features(self)
-	return .TextureCompressionBC in features
+	return .Texture_Compression_BC in features
 }
 
 /* Returns the required features (if any) in order to use the texture.*/
-texture_format_required_features :: proc "contextless" (self: TextureFormat) -> Features {
+texture_format_required_features :: proc "contextless" (self: Texture_Format) -> Features {
 	// odinfmt: disable
 	switch self {
 	case .R8Unorm, .R8Snorm, .R8Uint, .R8Sint, .R16Uint, .R16Sint, .R16Float, .Rg8Unorm,
@@ -419,24 +419,24 @@ texture_format_required_features :: proc "contextless" (self: TextureFormat) -> 
 	     .Depth32Float:
 		return {} // empty, no features need
 
-	case .Depth32FloatStencil8:
-		return {.Depth32FloatStencil8}
+	case .Depth32_Float_Stencil8:
+		return {.Depth32_Float_Stencil8}
 
 	case .NV12:
-		return {.TextureFormatNv12}
+		return {.Texture_Format_NV12}
 
 	case .R16Unorm, .R16Snorm, .Rg16Unorm, .Rg16Snorm, .Rgba16Unorm, .Rgba16Snorm:
-		return {.TextureFormat16bitNorm}
+		return {.Texture_Format16bit_Norm}
 
 	case .Bc1RgbaUnorm, .Bc1RgbaUnormSrgb, .Bc2RgbaUnorm, .Bc2RgbaUnormSrgb, .Bc3RgbaUnorm,
 	     .Bc3RgbaUnormSrgb, .Bc4RUnorm, .Bc4RSnorm, .Bc5RgUnorm, .Bc5RgSnorm, .Bc6hRgbUfloat,
 	     .Bc6hRgbFloat, .Bc7RgbaUnorm, .Bc7RgbaUnormSrgb:
-		return {.TextureCompressionBC}
+		return {.Texture_Compression_BC}
 
 	case .Etc2Rgb8Unorm, .Etc2Rgb8UnormSrgb, .Etc2Rgb8A1Unorm, .Etc2Rgb8A1UnormSrgb,
 		 .Etc2Rgba8Unorm, .Etc2Rgba8UnormSrgb, .EacR11Unorm, .EacR11Snorm, .EacRg11Unorm,
 	     .EacRg11Snorm:
-		return {.TextureCompressionETC2}
+		return {.Texture_Compression_ETC2}
 
 	case .Astc4x4Unorm, .Astc4x4UnormSrgb, .Astc5x4Unorm, .Astc5x4UnormSrgb, .Astc5x5Unorm,
 		 .Astc5x5UnormSrgb, .Astc6x5Unorm, .Astc6x5UnormSrgb, .Astc6x6Unorm, .Astc6x6UnormSrgb,
@@ -444,7 +444,7 @@ texture_format_required_features :: proc "contextless" (self: TextureFormat) -> 
 	     .Astc8x8UnormSrgb, .Astc10x5Unorm, .Astc10x5UnormSrgb, .Astc10x6Unorm, .Astc10x6UnormSrgb,
 	     .Astc10x8Unorm, .Astc10x8UnormSrgb, .Astc10x10Unorm, .Astc10x10UnormSrgb,
 	     .Astc12x10Unorm, .Astc12x10UnormSrgb, .Astc12x12Unorm, .Astc12x12UnormSrgb:
-		return {.TextureCompressionASTC}
+		return {.Texture_Compression_ASTC}
 	case .Undefined:
 		return {}
 	}
@@ -455,13 +455,13 @@ texture_format_required_features :: proc "contextless" (self: TextureFormat) -> 
 /*
 Returns the format features guaranteed by the WebGPU spec.
 
-Additional features are available if `Features.TextureAdapterSpecificFormatFeatures` is enabled.
+Additional features are available if `Features.Texture_Adapter_Specific_Format_Features` is enabled.
 */
 texture_format_guaranteed_format_features :: proc "contextless" (
-	self: TextureFormat,
+	self: Texture_Format,
 	device_features: Features,
 ) -> (
-	features: TextureFormatFeatures,
+	features: Texture_Format_Features,
 ) {
 	// Multisampling
 	noaa: TextureFormatFeatureFlags
@@ -469,16 +469,16 @@ texture_format_guaranteed_format_features :: proc "contextless" (
 	msaa_resolve: TextureFormatFeatureFlags = msaa + {.MultisampleResolve}
 
 	// Flags
-	basic: TextureUsages = {.CopySrc, .CopyDst, .TextureBinding}
-	attachment: TextureUsages = basic + {.RenderAttachment}
-	storage: TextureUsages = basic + {.StorageBinding}
-	binding: TextureUsages = {.TextureBinding}
+	basic: Texture_Usages = {.Copy_Src, .Copy_Dst, .Texture_Binding}
+	attachment: Texture_Usages = basic + {.Render_Attachment}
+	storage: Texture_Usages = basic + {.Storage_Binding}
+	binding: Texture_Usages = {.Texture_Binding}
 	all_flags := TEXTURE_USAGES_ALL
-	rg11b10f := attachment if .RG11B10UfloatRenderable in device_features else basic
-	bgra8unorm := attachment + storage if .BGRA8UnormStorage in device_features else attachment
+	rg11b10f := attachment if .RG11B10_Ufloat_Renderable in device_features else basic
+	bgra8unorm := attachment + storage if .BGRA8_Unorm_Storage in device_features else attachment
 
 	flags: TextureFormatFeatureFlags
-	allowed_usages: TextureUsages
+	allowed_usages: Texture_Usages
 
 	// odinfmt: disable
 	switch self {
@@ -523,7 +523,7 @@ texture_format_guaranteed_format_features :: proc "contextless" (
 	case .Depth24Plus: flags = msaa; allowed_usages = attachment
 	case .Depth24PlusStencil8: flags = msaa; allowed_usages = attachment
 	case .Depth32Float: flags = msaa; allowed_usages = attachment
-	case .Depth32FloatStencil8: flags = msaa; allowed_usages = attachment
+	case .Depth32_Float_Stencil8: flags = msaa; allowed_usages = attachment
 	case .NV12: flags = noaa; allowed_usages = binding
 	case .R16Unorm: flags = msaa; allowed_usages = storage
 	case .R16Snorm: flags = msaa; allowed_usages = storage
@@ -593,22 +593,22 @@ texture_format_guaranteed_format_features :: proc "contextless" (
 Returns the sample type compatible with this format and aspect.
 
 Returns `Undefined` only if this is a combined depth-stencil format or a multi-planar format
-and `TextureAspect.All`.
+and `Texture_Aspect.All`.
 */
 texture_format_sample_type :: proc "contextless" (
-	self: TextureFormat,
-	aspect: Maybe(TextureAspect) = nil,
+	self: Texture_Format,
+	aspect: Maybe(Texture_Aspect) = nil,
 	device_features: Features = {},
-) -> TextureSampleType {
-	float_filterable := TextureSampleType.Float
-	unfilterable_float := TextureSampleType.UnfilterableFloat
-	float32_sample_type := TextureSampleType.UnfilterableFloat
-	if .Float32Filterable in device_features {
+) -> Texture_Sample_Type {
+	float_filterable := Texture_Sample_Type.Float
+	unfilterable_float := Texture_Sample_Type.Unfilterable_Float
+	float32_sample_type := Texture_Sample_Type.Unfilterable_Float
+	if .Float32_Filterable in device_features {
 		float32_sample_type = .Float
 	}
-	depth := TextureSampleType.Depth
-	_uint := TextureSampleType.Uint
-	sint := TextureSampleType.Sint
+	depth := Texture_Sample_Type.Depth
+	_uint := Texture_Sample_Type.Uint
+	sint := Texture_Sample_Type.Sint
 
 	_aspect, aspect_ok := aspect.?
 
@@ -636,12 +636,12 @@ texture_format_sample_type :: proc "contextless" (
 	case .Depth16Unorm, .Depth24Plus, .Depth32Float:
 		return depth
 
-	case .Depth24PlusStencil8, .Depth32FloatStencil8:
+	case .Depth24PlusStencil8, .Depth32_Float_Stencil8:
 		if aspect_ok {
-			if _aspect == .DepthOnly {
+			if _aspect == .Depth_Only {
 				return depth
 			}
-			if _aspect == .StencilOnly {
+			if _aspect == .Stencil_Only {
 				return _uint
 			}
 		}
@@ -693,8 +693,8 @@ Returns `0` if any of the following are true:
  - the format is `Depth24PlusStencil8` and `aspect` is depth.
 */
 texture_format_block_size :: proc "contextless" (
-	self: TextureFormat,
-	aspect: Maybe(TextureAspect) = nil,
+	self: Texture_Format,
+	aspect: Maybe(Texture_Aspect) = nil,
 ) -> u32 {
 	_aspect, aspect_ok := aspect.?
 
@@ -724,16 +724,16 @@ texture_format_block_size :: proc "contextless" (
 	case .Depth24PlusStencil8:
 		if aspect_ok {
 			#partial switch _aspect {
-			case .StencilOnly: return 1
+			case .Stencil_Only: return 1
 			}
 		}
 		return 0
 
-	case .Depth32FloatStencil8:
+	case .Depth32_Float_Stencil8:
 		if aspect_ok {
 			#partial switch _aspect {
-			case .DepthOnly: return 4
-			case .StencilOnly: return 1
+			case .Depth_Only: return 4
+			case .Stencil_Only: return 1
 			}
 		}
 		return 0
@@ -774,7 +774,7 @@ texture_format_block_size :: proc "contextless" (
 The number of bytes occupied per pixel in a color attachment
 <https://gpuweb.github.io/gpuweb/#render-target-pixel-byte-cost>
 */
-texture_format_target_pixel_byte_cost :: proc "contextless" (self: TextureFormat) -> u32 {
+texture_format_target_pixel_byte_cost :: proc "contextless" (self: Texture_Format) -> u32 {
 	// odinfmt: disable
 	switch self {
 	case .R8Unorm, .R8Snorm, .R8Uint, .R8Sint: return 1
@@ -794,7 +794,7 @@ texture_format_target_pixel_byte_cost :: proc "contextless" (self: TextureFormat
 		return 16
 
 	case .Stencil8, .Depth16Unorm, .Depth24Plus, .Depth24PlusStencil8, .Depth32Float,
-		 .Depth32FloatStencil8, .NV12, .Rgb9e5Ufloat, .Bc1RgbaUnorm, .Bc1RgbaUnormSrgb,
+		 .Depth32_Float_Stencil8, .NV12, .Rgb9e5Ufloat, .Bc1RgbaUnorm, .Bc1RgbaUnormSrgb,
 		 .Bc2RgbaUnorm, .Bc2RgbaUnormSrgb, .Bc3RgbaUnorm, .Bc3RgbaUnormSrgb, .Bc4RUnorm,
 		 .Bc4RSnorm, .Bc5RgUnorm, .Bc5RgSnorm, .Bc6hRgbUfloat, .Bc6hRgbFloat, .Bc7RgbaUnorm,
 		 .Bc7RgbaUnormSrgb, .Etc2Rgb8Unorm, .Etc2Rgb8UnormSrgb, .Etc2Rgb8A1Unorm,
@@ -815,7 +815,7 @@ texture_format_target_pixel_byte_cost :: proc "contextless" (self: TextureFormat
 }
 
 /* See <https://gpuweb.github.io/gpuweb/#render-target-component-alignment> */
-texture_format_target_component_alignment :: proc "contextless" (self: TextureFormat) -> u32 {
+texture_format_target_component_alignment :: proc "contextless" (self: Texture_Format) -> u32 {
 	// odinfmt: disable
 	switch self {
 	case .R8Unorm, .R8Snorm, .R8Uint, .R8Sint, .Rg8Unorm, .Rg8Snorm, .Rg8Uint, .Rg8Sint,
@@ -830,7 +830,7 @@ texture_format_target_component_alignment :: proc "contextless" (self: TextureFo
 		 .Rgba32Sint, .Rgba32Float, .Rgb10a2Uint, .Rgb10a2Unorm, .Rg11b10Ufloat: return 4
 
 	case .Stencil8, .Depth16Unorm, .Depth24Plus, .Depth24PlusStencil8, .Depth32Float,
-		 .Depth32FloatStencil8, .NV12, .Rgb9e5Ufloat, .Bc1RgbaUnorm, .Bc1RgbaUnormSrgb,
+		 .Depth32_Float_Stencil8, .NV12, .Rgb9e5Ufloat, .Bc1RgbaUnorm, .Bc1RgbaUnormSrgb,
 		 .Bc2RgbaUnorm, .Bc2RgbaUnormSrgb, .Bc3RgbaUnorm, .Bc3RgbaUnormSrgb, .Bc4RUnorm,
 		 .Bc4RSnorm, .Bc5RgUnorm, .Bc5RgSnorm, .Bc6hRgbUfloat, .Bc6hRgbFloat, .Bc7RgbaUnorm,
 		 .Bc7RgbaUnormSrgb, .Etc2Rgb8Unorm, .Etc2Rgb8UnormSrgb, .Etc2Rgb8A1Unorm,
@@ -851,7 +851,7 @@ texture_format_target_component_alignment :: proc "contextless" (self: TextureFo
 }
 
 /* Returns the number of components this format has. */
-texture_format_components :: proc "contextless" (self: TextureFormat) -> u8 {
+texture_format_components :: proc "contextless" (self: Texture_Format) -> u8 {
 	return texture_format_components_with_aspect(self, .All)
 }
 
@@ -861,8 +861,8 @@ Returns the number of components this format has taking into account the `aspect
 The `aspect` is only relevant for combined depth-stencil formats and multi-planar formats.
 */
 texture_format_components_with_aspect :: proc "contextless" (
-	self: TextureFormat,
-	aspect: TextureAspect,
+	self: Texture_Format,
+	aspect: Texture_Aspect,
 ) -> u8 {
 	// odinfmt: disable
 	switch self {
@@ -882,10 +882,10 @@ texture_format_components_with_aspect :: proc "contextless" (
 	case .Stencil8, .Depth16Unorm, .Depth24Plus, .Depth32Float:
 		return 1
 
-	case .Depth24PlusStencil8, .Depth32FloatStencil8:
+	case .Depth24PlusStencil8, .Depth32_Float_Stencil8:
 		#partial switch aspect {
 		case .Undefined: return 0
-		case .DepthOnly, .StencilOnly: return 1
+		case .Depth_Only, .Stencil_Only: return 1
 		}
 		return 2
 
@@ -927,9 +927,9 @@ texture_format_components_with_aspect :: proc "contextless" (
 
 /* Strips the `Srgb` suffix from the given texture format. */
 texture_format_remove_srgb_suffix :: proc "contextless" (
-	self: TextureFormat,
+	self: Texture_Format,
 ) -> (
-	ret: TextureFormat,
+	ret: Texture_Format,
 ) {
 	ret = self
 	// odinfmt: disable
@@ -964,9 +964,9 @@ texture_format_remove_srgb_suffix :: proc "contextless" (
 
 /* Adds an `Srgb` suffix to the given texture format, if the format supports it. */
 texture_format_add_srgb_suffix :: proc "contextless" (
-	self: TextureFormat,
+	self: Texture_Format,
 ) -> (
-	ret: TextureFormat,
+	ret: Texture_Format,
 ) {
 	ret = self
 	// odinfmt: disable
@@ -1000,13 +1000,13 @@ texture_format_add_srgb_suffix :: proc "contextless" (
 }
 
 /* Returns `true` for srgb formats. */
-texture_format_is_srgb :: proc "contextless" (self: TextureFormat) -> bool {
+texture_format_is_srgb :: proc "contextless" (self: Texture_Format) -> bool {
 	return self != texture_format_remove_srgb_suffix(self)
 }
 
 /* Calculate bytes per row from the given row width. */
 texture_format_bytes_per_row :: proc "contextless" (
-	format: TextureFormat,
+	format: Texture_Format,
 	width: u32,
 ) -> (
 	bytes_per_row: u32,

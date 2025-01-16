@@ -1,4 +1,4 @@
-package imgui_generator
+package imgui_gen
 
 // Packages
 import "core:encoding/json"
@@ -15,7 +15,7 @@ Generator :: struct {
 	tmp_ally:       mem.Allocator,
 
 	// Containers
-	flags:          [dynamic]EnumDefinition,
+	flags:          [dynamic]Enum_Definition,
 
 	// Maps
 	type_map:       map[string]string,
@@ -51,6 +51,7 @@ when ODIN_OS == .Windows {
 
 `
 
+
 main :: proc() {
 	arena: virtual.Arena
 	if arena_err := virtual.arena_init_growing(&arena); arena_err != nil {
@@ -73,10 +74,12 @@ main :: proc() {
 	gen.type_map["ImGuiID*"] = "^ID"
 	gen.type_map["ImGuiIO"] = "IO"
 	gen.type_map["ImGuiIO*"] = "^IO"
+	gen.type_map["unsigned_int"] = "u32"
 	gen.type_map["unsigned int"] = "u32"
 	gen.type_map["unsigned int*"] = "^u32"
 	gen.type_map["signed char"] = "i8"
 	gen.type_map["const char*"] = "cstring"
+	gen.type_map["unsigned_char"] = "u8"
 	gen.type_map["unsigned char"] = "u8"
 	gen.type_map["unsigned char*"] = "^u8"
 	gen.type_map["unsigned char**"] = "^^u8"
@@ -84,6 +87,7 @@ main :: proc() {
 	gen.type_map["sizeT*"] = "^uint"
 	gen.type_map["size_t*"] = "^uint"
 	gen.type_map["signed short"] = "i16"
+	gen.type_map["unsigned_short"] = "u16"
 	gen.type_map["unsigned short"] = "u16"
 	gen.type_map["signed long long"] = "i64"
 	gen.type_map["unsigned long long"] = "u64"

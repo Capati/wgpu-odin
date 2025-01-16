@@ -16,50 +16,50 @@ serves a similar role.
 */
 Surface :: distinct rawptr
 
-SurfaceSourceAndroidNativeWindow :: struct {
-	chain:  ChainedStruct,
+Surface_Source_Android_Native_Window :: struct {
+	chain:  Chained_Struct,
 	window: rawptr,
 }
 
-SurfaceSourceMetalLayer :: struct {
-	chain: ChainedStruct,
+Surface_Source_Metal_Layer :: struct {
+	chain: Chained_Struct,
 	layer: rawptr,
 }
 
-SurfaceSourceWaylandSurface :: struct {
-	chain:   ChainedStruct,
+Surface_Source_Wayland_Surface :: struct {
+	chain:   Chained_Struct,
 	display: rawptr,
 	surface: rawptr,
 }
 
-SurfaceSourceWindowsHWND :: struct {
-	chain:     ChainedStruct,
+Surface_Source_Windows_HWND :: struct {
+	chain:     Chained_Struct,
 	hinstance: rawptr,
 	hwnd:      rawptr,
 }
 
-SurfaceSourceXCBWindow :: struct {
-	chain:      ChainedStruct,
+Surface_Source_XBC_Window :: struct {
+	chain:      Chained_Struct,
 	connection: rawptr,
 	window:     u32,
 }
 
-SurfaceSourceXlibWindow :: struct {
-	chain:   ChainedStruct,
+Surface_Source_Xlib_Window :: struct {
+	chain:   Chained_Struct,
 	display: rawptr,
 	window:  u64,
 }
 
 /* Describes a surface target. */
-SurfaceDescriptor :: struct {
+Surface_Descriptor :: struct {
 	label:  string,
 	target: union {
-		SurfaceSourceAndroidNativeWindow,
-		SurfaceSourceMetalLayer,
-		SurfaceSourceWaylandSurface,
-		SurfaceSourceWindowsHWND,
-		SurfaceSourceXCBWindow,
-		SurfaceSourceXlibWindow,
+		Surface_Source_Android_Native_Window,
+		Surface_Source_Metal_Layer,
+		Surface_Source_Wayland_Surface,
+		Surface_Source_Windows_HWND,
+		Surface_Source_XBC_Window,
+		Surface_Source_Xlib_Window,
 	},
 }
 
@@ -75,10 +75,10 @@ surface_get_capabilities :: proc(
 	allocator := context.allocator,
 	loc := #caller_location,
 ) -> (
-	caps: SurfaceCapabilities,
+	caps: Surface_Capabilities,
 	ok: bool,
 ) #optional_ok {
-	raw_caps: WGPUSurfaceCapabilities
+	raw_caps: WGPU_Surface_Capabilities
 
 	error_reset_data(loc)
 	status := wgpuSurfaceGetCapabilities(self, adapter, &raw_caps)
@@ -88,7 +88,7 @@ surface_get_capabilities :: proc(
 	defer wgpuSurfaceCapabilitiesFreeMembers(raw_caps)
 
 	if status != .Success {
-		error_reset_and_update(ErrorType.Unknown, "Failed to get surface capabilities", loc)
+		error_reset_and_update(Error_Type.Unknown, "Failed to get surface capabilities", loc)
 		return
 	}
 
@@ -98,14 +98,18 @@ surface_get_capabilities :: proc(
 	alloc_err: runtime.Allocator_Error
 
 	if raw_caps.format_count > 0 {
-		caps.formats, alloc_err = make([]TextureFormat, raw_caps.format_count, allocator)
+		caps.formats, alloc_err = make([]Texture_Format, raw_caps.format_count, allocator)
 		assert(alloc_err == nil, "Failed to allocate formats capabilities")
 		temp := slice.from_ptr(raw_caps.formats, int(raw_caps.format_count))
 		copy(caps.formats, temp)
 	}
 
 	if raw_caps.present_mode_count > 0 {
-		caps.present_modes, alloc_err = make([]PresentMode, raw_caps.present_mode_count, allocator)
+		caps.present_modes, alloc_err = make(
+			[]Present_Mode,
+			raw_caps.present_mode_count,
+			allocator,
+		)
 		assert(alloc_err == nil, "Failed to allocate present modes capabilities")
 		temp := slice.from_ptr(raw_caps.present_modes, int(raw_caps.present_mode_count))
 		copy(caps.present_modes, temp)
@@ -113,7 +117,7 @@ surface_get_capabilities :: proc(
 
 	if raw_caps.alpha_mode_count > 0 {
 		caps.alpha_modes, alloc_err = make(
-			[]CompositeAlphaMode,
+			[]Composite_Alpha_Mode,
 			raw_caps.alpha_mode_count,
 			allocator,
 		)
@@ -126,8 +130,8 @@ surface_get_capabilities :: proc(
 }
 
 @(private)
-WGPUSurfaceConfigurationExtras :: struct {
-	chain:                         ChainedStruct,
+WGPU_Surface_Configuration_Extras :: struct {
+	chain:                         Chained_Struct,
 	desired_maximum_frame_latency: u32,
 }
 
@@ -139,21 +143,21 @@ For use with `surface_configure`.
 Corresponds to [WebGPU `GPUCanvasConfiguration`](
 https://gpuweb.github.io/gpuweb/#canvas-configuration).
 */
-SurfaceConfiguration :: struct {
+Surface_Configuration :: struct {
 	device:                        Device,
-	format:                        TextureFormat,
-	usage:                         TextureUsages,
+	format:                        Texture_Format,
+	usage:                         Texture_Usages,
 	width:                         u32,
 	height:                        u32,
-	view_formats:                  []TextureFormat,
-	alpha_mode:                    CompositeAlphaMode,
-	present_mode:                  PresentMode,
+	view_formats:                  []Texture_Format,
+	alpha_mode:                    Composite_Alpha_Mode,
+	present_mode:                  Present_Mode,
 	// Extras
 	desired_maximum_frame_latency: u32,
 }
 
 /*
-Return a default `SurfaceConfiguration` from `width` and `height` to use for the `Surface` with
+Return a default `Surface_Configuration` from `width` and `height` to use for the `Surface` with
 this adapter.
 
 Returns `false` if the surface isn't supported by this adapter.
@@ -164,14 +168,14 @@ surface_get_default_config :: proc(
 	width, height: u32,
 	loc := #caller_location,
 ) -> (
-	config: SurfaceConfiguration,
+	config: Surface_Configuration,
 	ok: bool,
 ) #optional_ok {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 	caps := surface_get_capabilities(self, adapter, context.temp_allocator, loc) or_return
 
 	config = {
-		usage        = {.RenderAttachment},
+		usage        = {.Render_Attachment},
 		format       = caps.formats[0],
 		width        = width,
 		height       = height,
@@ -186,18 +190,18 @@ surface_get_default_config :: proc(
 Initializes `Surface` for presentation.
 
 **Panics**
-- A old `SurfaceTexture` is still alive referencing an old surface.
+- A old `Surface_Texture` is still alive referencing an old surface.
 - Texture format requested is unsupported on the surface.
 - `config.width` or `config.height` is zero.
 */
 surface_configure :: proc "contextless" (
 	self: Surface,
-	config: SurfaceConfiguration,
+	config: Surface_Configuration,
 	loc := #caller_location,
 ) -> (
 	ok: bool,
 ) {
-	raw_config := WGPUSurfaceConfiguration {
+	raw_config := WGPU_Surface_Configuration {
 		device       = config.device,
 		format       = config.format,
 		usage        = config.usage,
@@ -212,10 +216,10 @@ surface_configure :: proc "contextless" (
 		raw_config.view_formats = raw_data(config.view_formats)
 	}
 
-	extras: WGPUSurfaceConfigurationExtras
+	extras: WGPU_Surface_Configuration_Extras
 	if config.desired_maximum_frame_latency > 0 {
 		extras = {
-			chain = {stype = .SurfaceConfigurationExtras},
+			chain = {stype = .Surface_Configuration_Extras},
 			desired_maximum_frame_latency = config.desired_maximum_frame_latency,
 		}
 		raw_config.next_in_chain = &extras.chain
@@ -230,10 +234,10 @@ surface_configure :: proc "contextless" (
 surface_unconfigure :: wgpuSurfaceUnconfigure
 
 @(private)
-WGPUSurfaceTexture :: struct {
-	next_in_chain: ^ChainedStructOut,
+WGPU_Surface_Texture :: struct {
+	next_in_chain: ^Chained_Struct_Out,
 	texture:       Texture,
-	status:        SurfaceStatus,
+	status:        Surface_Status,
 }
 
 /*
@@ -244,20 +248,20 @@ This type is unique to the `wgpu-native`. In the WebGPU specification,
 the [`GPUCanvasContext`](https://gpuweb.github.io/gpuweb/#canvas-context) provides
 a texture without any additional information.
 */
-SurfaceTexture :: struct {
+Surface_Texture :: struct {
 	surface: Surface,
 	texture: Texture,
-	status:  SurfaceStatus,
+	status:  Surface_Status,
 }
 
 /*
 Returns the next texture to be presented by the swapchain for drawing.
 
-In order to present the `SurfaceTexture` returned by this method,
+In order to present the `Surface_Texture` returned by this method,
 first a `queue_submit` needs to be done with some work rendering to this texture.
 Then `surface_present` needs to be called.
 
-If a `SurfaceTexture` referencing this surface is alive when the swapchain is recreated,
+If a `Surface_Texture` referencing this surface is alive when the swapchain is recreated,
 recreating the swapchain will panic.
 */
 @(require_results)
@@ -265,10 +269,10 @@ surface_get_current_texture :: proc "contextless" (
 	self: Surface,
 	loc := #caller_location,
 ) -> (
-	surface_texture: SurfaceTexture,
+	surface_texture: Surface_Texture,
 	ok: bool,
 ) #optional_ok {
-	surface_texture_raw: WGPUSurfaceTexture
+	surface_texture_raw: WGPU_Surface_Texture
 
 	error_reset_data(loc)
 	wgpuSurfaceGetCurrentTexture(self, &surface_texture_raw)
@@ -307,7 +311,7 @@ surface_present :: proc "contextless" (self: Surface, loc := #caller_location) -
 		return
 	}
 	if status == .Error {
-		error_reset_and_update(ErrorType.Unknown, "Failed to present", loc)
+		error_reset_and_update(Error_Type.Unknown, "Failed to present", loc)
 		return
 	}
 	return true
@@ -325,24 +329,24 @@ surface state. If it is desired to do things such as request a frame callback, s
 using the viewporter or synchronize other double buffered state, then these operations should be
 done before the call to `present`.
 */
-surface_texture_present :: proc "contextless" (self: SurfaceTexture) {
+surface_texture_present :: proc "contextless" (self: Surface_Texture) {
 	surface_present(self.surface)
 }
 
 /*
-Release the `Texture` resources from this `SurfaceTexture`, use to decrease the reference count.
+Release the `Texture` resources from this `Surface_Texture`, use to decrease the reference count.
 */
-surface_texture_release :: proc "contextless" (self: SurfaceTexture) {
+surface_texture_release :: proc "contextless" (self: Surface_Texture) {
 	wgpuTextureRelease(self.texture)
 }
 
 /*
-Safely releases the `SurfaceTexture` resources and invalidates the handle.
+Safely releases the `Surface_Texture` resources and invalidates the handle.
 The procedure checks both the pointer and handle before releasing.
 
 Note: After calling this, the handle will be set to `nil` and should not be used.
 */
-surface_texture_release_safe :: #force_inline proc(self: ^SurfaceTexture) {
+surface_texture_release_safe :: #force_inline proc(self: ^Surface_Texture) {
 	if self != nil && self.texture != nil {
 		wgpuTextureRelease(self.texture)
 		self.texture = nil
@@ -352,7 +356,7 @@ surface_texture_release_safe :: #force_inline proc(self: ^SurfaceTexture) {
 /* Sets a debug label for the given `Surface`. */
 @(disabled = !ODIN_DEBUG)
 surface_set_label :: proc "contextless" (self: Surface, label: string) {
-	c_label: StringViewBuffer
+	c_label: String_View_Buffer
 	wgpuSurfaceSetLabel(self, init_string_buffer(&c_label, label))
 }
 
@@ -376,7 +380,7 @@ surface_release_safe :: #force_inline proc(self: ^Surface) {
 }
 
 @(private)
-WGPUSurfaceDescriptor :: struct {
-	next_in_chain: ^ChainedStruct,
-	label:         StringView,
+WGPU_Surface_Descriptor :: struct {
+	next_in_chain: ^Chained_Struct,
+	label:         String_View,
 }

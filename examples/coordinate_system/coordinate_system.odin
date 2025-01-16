@@ -2,8 +2,6 @@ package coordinate_system
 
 // Packages
 import "core:log"
-
-// Vendor
 import mu "vendor:microui"
 
 // Local packages
@@ -20,21 +18,21 @@ Example :: struct {
 	texture_ccw:        app.Texture,
 	buffer_indices_ccw: wgpu.Buffer,
 	buffer_indices_cw:  wgpu.Buffer,
-	bind_group_ccw:     wgpu.BindGroup,
-	bind_group_cw:      wgpu.BindGroup,
-	pipeline_layout:    wgpu.PipelineLayout,
-	shader_module:      wgpu.ShaderModule,
-	render_pipeline:    wgpu.RenderPipeline,
+	bind_group_ccw:     wgpu.Bind_Group,
+	bind_group_cw:      wgpu.Bind_Group,
+	pipeline_layout:    wgpu.Pipeline_Layout,
+	shader_module:      wgpu.Shader_Module,
+	render_pipeline:    wgpu.Render_Pipeline,
 	render_pass:        struct {
-		color_attachments: [1]wgpu.RenderPassColorAttachment,
-		descriptor:        wgpu.RenderPassDescriptor,
+		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
+		descriptor:        wgpu.Render_Pass_Descriptor,
 	},
 
 	// Settings
 	quad:               [2]wgpu.Buffer,
 	quad_str:           [2]string,
 	selected_quad:      u32,
-	order:              [2]wgpu.FrontFace,
+	order:              [2]wgpu.Front_Face,
 	order_str:          [2]string,
 	selected_order:     u32,
 	face:               [3]wgpu.Face,
@@ -90,7 +88,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		{
 			label = "Vertices buffer - Y up",
 			contents = wgpu.to_bytes(vertices_y_pos[:]),
-			usage = {.CopyDst, .Vertex},
+			usage = {.Copy_Dst, .Vertex},
 		},
 	) or_return
 	defer if !ok {
@@ -114,7 +112,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		{
 			label = "Vertices buffer - Y down",
 			contents = wgpu.to_bytes(vertices_y_neg[:]),
-			usage = {.CopyDst, .Vertex},
+			usage = {.Copy_Dst, .Vertex},
 		},
 	) or_return
 	defer if !ok {
@@ -133,7 +131,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		{
 			label = "Indices buffer - CCW",
 			contents = wgpu.to_bytes(indices_ccw[:]),
-			usage = {.CopyDst, .Index},
+			usage = {.Copy_Dst, .Index},
 		},
 	) or_return
 	defer if !ok {
@@ -152,7 +150,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		{
 			label = "Indices buffer - CW",
 			contents = wgpu.to_bytes(indices_cw[:]),
-			usage = {.CopyDst, .Index},
+			usage = {.Copy_Dst, .Index},
 		},
 	) or_return
 	defer if !ok {
@@ -161,13 +159,13 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	bind_group_layout := wgpu.device_create_bind_group_layout(
 		ctx.gpu.device,
-		wgpu.BindGroupLayoutDescriptor {
+		wgpu.Bind_Group_Layout_Descriptor {
 			label = "Bind group layout",
 			entries = {
 				{
 					binding = 0,
 					visibility = {.Fragment},
-					type = wgpu.TextureBindingLayout {
+					type = wgpu.Texture_Binding_Layout {
 						sample_type = .Float,
 						view_dimension = .D2,
 						multisampled = false,
@@ -176,7 +174,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 				{
 					binding = 1,
 					visibility = {.Fragment},
-					type = wgpu.SamplerBindingLayout{type = .Filtering},
+					type = wgpu.Sampler_Binding_Layout{type = .Filtering},
 				},
 			},
 		},
@@ -295,7 +293,7 @@ prepare_pipelines :: proc(ctx: ^Context) -> (ok: bool) {
 			},
 			depth_stencil = app.create_depth_stencil_state(ctx),
 			primitive = {
-				topology = .TriangleList,
+				topology = .Triangle_List,
 				front_face = ctx.order[ctx.selected_order],
 				cull_mode = ctx.face[ctx.selected_face],
 			},

@@ -13,30 +13,33 @@ import im "./../imgui"
 
 WINDOW_TITLE_BUFFER_LEN :: #config(WINDOW_TITLE_BUFFER_LEN, 256)
 
+Window :: glfw.WindowHandle
+Monitor :: glfw.MonitorHandle
+
 Application :: struct {
 	// Settings
 	settings:          Settings,
 
 	// Platform
-	monitor:           glfw.MonitorHandle,
-	window:            glfw.WindowHandle,
+	monitor:           Monitor,
+	window:            Window,
 	aspect:            f32,
 
 	// Renderer
-	gpu:               GraphicsContext,
+	gpu:               Graphics_Context,
 	should_resize:     bool,
-	framebuffer_size:  FramebufferSize,
-	frame:             FrameTexture,
-	cmd:               wgpu.CommandEncoder,
-	rpass:             wgpu.RenderPass,
-	cpass:             wgpu.ComputePass,
-	cmdbuf:            wgpu.CommandBuffer,
+	framebuffer_size:  Framebuffer_Size,
+	frame:             Frame_Texture,
+	cmd:               wgpu.Command_Encoder,
+	rpass:             wgpu.Render_Pass,
+	cpass:             wgpu.Compute_Pass,
+	cmdbuf:            wgpu.Command_Buffer,
 	depth_stencil:     struct {
 		enabled:    bool,
-		format:     wgpu.TextureFormat,
+		format:     wgpu.Texture_Format,
 		texture:    wgpu.Texture,
-		view:       wgpu.TextureView,
-		descriptor: wgpu.RenderPassDepthStencilAttachment,
+		view:       wgpu.Texture_View,
+		descriptor: wgpu.Render_Pass_Depth_Stencil_Attachment,
 	},
 
 	// UI
@@ -46,13 +49,13 @@ Application :: struct {
 	// State
 	title_buffer:      [WINDOW_TITLE_BUFFER_LEN]byte,
 	timer:             Timer,
-	keyboard:          KeyboardState,
+	keyboard:          Keyboard_State,
 	exit_key:          Key,
 	target_frame_time: time.Duration,
 	prepared:          bool,
 
 	// Events
-	events:            EventState,
+	events:            Event_State,
 	minimized:         bool,
 
 	// Debug
@@ -62,11 +65,11 @@ Application :: struct {
 Context :: struct($T: typeid) where intr.type_is_struct(T) {
 	using app:   Application,
 	using state: T,
-	callbacks:   CallbackList(T),
+	callbacks:   Callback_List(T),
 }
 
-DepthStencilTextureCreationOptions :: struct {
-	format:       wgpu.TextureFormat,
+Depth_Stencil_Texture_Creation_Options :: struct {
+	format:       wgpu.Texture_Format,
 	sample_count: u32,
 }
 
@@ -82,7 +85,7 @@ set_aspect_from_value :: proc(app: ^Application, aspect: f32) {
 	app.aspect = aspect
 }
 
-set_aspect_from_size :: proc(app: ^Application, size: WindowSize) {
+set_aspect_from_size :: proc(app: ^Application, size: Window_Size) {
 	app.aspect = f32(size.w) / f32(size.h)
 }
 
@@ -96,16 +99,16 @@ quit :: proc(app: ^Application) {
 	glfw.SetWindowShouldClose(app.window, true)
 }
 
-DepthStencilStateDescriptor :: struct {
-	format:              wgpu.TextureFormat,
+Depth_Stencil_State_Descriptor :: struct {
+	format:              wgpu.Texture_Format,
 	depth_write_enabled: bool,
 }
 
 create_depth_stencil_state :: proc(
 	app: ^Application,
-	descriptor: DepthStencilStateDescriptor = {.Depth24PlusStencil8, true},
-) -> wgpu.DepthStencilState {
-	stencil_state_face_descriptor := wgpu.StencilFaceState {
+	descriptor: Depth_Stencil_State_Descriptor = {.Depth24PlusStencil8, true},
+) -> wgpu.Depth_Stencil_State {
+	stencil_state_face_descriptor := wgpu.Stencil_Face_State {
 		compare       = .Always,
 		fail_op       = .Keep,
 		depth_fail_op = .Keep,
@@ -131,7 +134,7 @@ create_depth_stencil_state :: proc(
 
 setup_depth_stencil :: proc(
 	app: ^Application,
-	options: DepthStencilTextureCreationOptions = {},
+	options: Depth_Stencil_Texture_Creation_Options = {},
 ) -> (
 	ok: bool,
 ) {
@@ -151,8 +154,8 @@ setup_depth_stencil :: proc(
 		sample_count = 1
 	}
 
-	texture_descriptor := wgpu.TextureDescriptor {
-		usage = {.RenderAttachment, .CopyDst},
+	texture_descriptor := wgpu.Texture_Descriptor {
+		usage = {.Render_Attachment, .Copy_Dst},
 		format = format,
 		dimension = .D2,
 		mip_level_count = 1,
@@ -172,7 +175,7 @@ setup_depth_stencil :: proc(
 		wgpu.release(app.depth_stencil.texture)
 	}
 
-	texture_view_descriptor := wgpu.TextureViewDescriptor {
+	texture_view_descriptor := wgpu.Texture_View_Descriptor {
 		format            = texture_descriptor.format,
 		dimension         = .D2,
 		base_mip_level    = 0,

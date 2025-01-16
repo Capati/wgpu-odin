@@ -17,18 +17,18 @@ For use with `device_create_texture`.
 Corresponds to [WebGPU `GPUTextureDescriptor`](
 https://gpuweb.github.io/gpuweb/#dictdef-gputexturedescriptor).
 */
-TextureDescriptor :: struct {
+Texture_Descriptor :: struct {
 	label:           string,
-	usage:           TextureUsages,
-	dimension:       TextureDimension,
-	size:            Extent3D,
-	format:          TextureFormat,
+	usage:           Texture_Usages,
+	dimension:       Texture_Dimension,
+	size:            Extent_3D,
+	format:          Texture_Format,
 	mip_level_count: u32,
 	sample_count:    u32,
-	view_formats:    []TextureFormat,
+	view_formats:    []Texture_Format,
 }
 
-DEFAULT_TEXTURE_DESCRIPTOR :: TextureDescriptor {
+DEFAULT_TEXTURE_DESCRIPTOR :: Texture_Descriptor {
 	mip_level_count = 1,
 	sample_count    = 1,
 	dimension       = .D2,
@@ -38,16 +38,16 @@ DEFAULT_TEXTURE_DESCRIPTOR :: TextureDescriptor {
 @(require_results)
 texture_create_view :: proc "contextless" (
 	self: Texture,
-	descriptor: Maybe(TextureViewDescriptor) = nil,
+	descriptor: Maybe(Texture_View_Descriptor) = nil,
 	loc := #caller_location,
 ) -> (
-	texture_view: TextureView,
+	texture_view: Texture_View,
 	ok: bool,
 ) #optional_ok {
 	error_reset_data(loc)
 
 	if desc, desc_ok := descriptor.?; desc_ok {
-		raw_desc := WGPUTextureViewDescriptor {
+		raw_desc := WGPU_Texture_View_Descriptor {
 			format            = desc.format,
 			dimension         = desc.dimension,
 			base_mip_level    = desc.base_mip_level,
@@ -59,7 +59,7 @@ texture_create_view :: proc "contextless" (
 		}
 
 		when ODIN_DEBUG {
-			c_label: StringViewBuffer
+			c_label: String_View_Buffer
 			if desc.label != "" {
 				raw_desc.label = init_string_buffer(&c_label, desc.label)
 			}
@@ -83,11 +83,11 @@ texture_create_view :: proc "contextless" (
 /* Destroy the associated native resources as soon as possible. */
 texture_destroy :: wgpuTextureDestroy
 
-/* Make an `TexelCopyTextureInfo` representing the whole texture with the given origin. */
+/* Make an `Texel_Copy_Texture_Info` representing the whole texture with the given origin. */
 texture_as_image_copy :: proc "contextless" (
 	self: Texture,
-	origin: Origin3D = {},
-) -> TexelCopyTextureInfo {
+	origin: Origin_3D = {},
+) -> Texel_Copy_Texture_Info {
 	return {texture = self, mip_level = 0, origin = origin, aspect = .All}
 }
 
@@ -96,7 +96,7 @@ Returns the size of this `Texture`.
 
 This is always equal to the `size` that was specified when creating the texture.
 */
-texture_size :: proc "contextless" (self: Texture) -> Extent3D {
+texture_size :: proc "contextless" (self: Texture) -> Extent_3D {
 	return {
 		width = texture_width(self),
 		height = texture_height(self),
@@ -159,7 +159,7 @@ Returns the allowed usages of this `Texture`.
 
 This is always equal to the `usage` that was specified when creating the texture.
 */
-texture_usage :: proc "contextless" (self: Texture) -> TextureUsages {
+texture_usage :: proc "contextless" (self: Texture) -> Texture_Usages {
 	return wgpuTextureGetUsage(self)
 }
 
@@ -168,7 +168,7 @@ Returns a descriptor for this `Texture`.
 
 This is always equal to the values that was specified when creating the texture.
 */
-texture_descriptor :: proc "contextless" (self: Texture) -> (desc: TextureDescriptor) {
+texture_descriptor :: proc "contextless" (self: Texture) -> (desc: Texture_Descriptor) {
 	desc.usage = texture_usage(self)
 	desc.dimension = texture_dimension(self)
 	desc.size = texture_size(self)
@@ -181,7 +181,7 @@ texture_descriptor :: proc "contextless" (self: Texture) -> (desc: TextureDescri
 /* Set a debug label for the given `Texture`. */
 @(disabled = !ODIN_DEBUG)
 texture_set_label :: proc "contextless" (self: Texture, label: string) {
-	c_label: StringViewBuffer
+	c_label: String_View_Buffer
 	wgpuTextureSetLabel(self, init_string_buffer(&c_label, label))
 }
 
@@ -205,15 +205,15 @@ texture_release_safe :: #force_inline proc(self: ^Texture) {
 }
 
 @(private)
-WGPUTextureDescriptor :: struct {
-	next_in_chain:     ^ChainedStruct,
-	label:             StringView,
-	usage:             TextureUsages,
-	dimension:         TextureDimension,
-	size:              Extent3D,
-	format:            TextureFormat,
+WGPU_Texture_Descriptor :: struct {
+	next_in_chain:     ^Chained_Struct,
+	label:             String_View,
+	usage:             Texture_Usages,
+	dimension:         Texture_Dimension,
+	size:              Extent_3D,
+	format:            Texture_Format,
 	mip_level_count:   u32,
 	sample_count:      u32,
 	view_format_count: uint,
-	view_formats:      [^]TextureFormat,
+	view_formats:      [^]Texture_Format,
 }

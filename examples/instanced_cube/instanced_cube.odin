@@ -24,14 +24,14 @@ UNIFORM_BUFFER_SIZE :: MAX_INSTANCES * MATRIX_SIZE
 Example :: struct {
 	vertex_buffer:     wgpu.Buffer,
 	index_buffer:      wgpu.Buffer,
-	render_pipeline:   wgpu.RenderPipeline,
+	render_pipeline:   wgpu.Render_Pipeline,
 	instance_buffer:   wgpu.Buffer,
 	projection_matrix: la.Matrix4f32,
 	model_matrices:    [MAX_INSTANCES]la.Matrix4f32, // Store original model matrices
 	instances:         [MAX_INSTANCES]la.Matrix4f32, // Store MVP matrices
 	render_pass:       struct {
-		color_attachments: [1]wgpu.RenderPassColorAttachment,
-		descriptor:        wgpu.RenderPassDescriptor,
+		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
+		descriptor:        wgpu.Render_Pass_Descriptor,
 	},
 }
 
@@ -64,7 +64,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		wgpu.release(ctx.index_buffer)
 	}
 
-	vertex_buffer_layout := wgpu.VertexBufferLayout {
+	vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
 		array_stride = size_of(Vertex),
 		step_mode    = .Vertex,
 		attributes   = {
@@ -78,7 +78,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		},
 	}
 
-	instance_buffer_layout := wgpu.VertexBufferLayout {
+	instance_buffer_layout := wgpu.Vertex_Buffer_Layout {
 		array_stride = size_of(la.Matrix4f32),
 		step_mode    = .Instance,
 		attributes   = {
@@ -117,7 +117,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 			},
 		},
 		primitive = {
-			topology   = .TriangleList,
+			topology   = .Triangle_List,
 			front_face = .CCW,
 			// Backface culling since the cube is solid piece of geometry.
 			// Faces pointing away from the camera will be occluded by faces
@@ -140,7 +140,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		{
 			label = EXAMPLE_TITLE + " Instance Buffer",
 			size = UNIFORM_BUFFER_SIZE,
-			usage = {.Vertex, .CopyDst},
+			usage = {.Vertex, .Copy_Dst},
 		},
 	) or_return
 	defer if !ok {
@@ -162,7 +162,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 	ctx.render_pass.color_attachments[0] = {
 		view = nil, /* Assigned later */
-		ops  = {.Clear, .Store, app.ColorDarkGray},
+		ops  = {.Clear, .Store, app.Color_Dark_Gray},
 	}
 
 	app.setup_depth_stencil(ctx) or_return
@@ -185,7 +185,7 @@ quit :: proc(ctx: ^Context) {
 	wgpu.release(ctx.vertex_buffer)
 }
 
-set_projection_matrix :: proc(ctx: ^Context, size: app.ResizeEvent) {
+set_projection_matrix :: proc(ctx: ^Context, size: app.Resize_Event) {
 	ctx.aspect = f32(size.w) / f32(size.h)
 	ctx.projection_matrix = la.matrix4_perspective(2 * math.PI / 5, ctx.aspect, 1, 100.0)
 }
@@ -219,7 +219,7 @@ update_transformation_matrices :: proc(ctx: ^Context) {
 	}
 }
 
-resize :: proc(ctx: ^Context, event: app.ResizeEvent) -> bool {
+resize :: proc(ctx: ^Context, event: app.Resize_Event) -> bool {
 	set_projection_matrix(ctx, {event.w, event.h})
 	return true
 }

@@ -1,4 +1,4 @@
-package imgui_generator
+package imgui_gen
 
 // Packages
 import "base:runtime"
@@ -54,6 +54,8 @@ write_typedefs :: proc(gen: ^Generator, handle: os.Handle, json_data: ^json.Valu
 		} else {
 			typedef_name = remove_imgui(typedef_name_raw, gen.tmp_ally)
 		}
+
+		typedef_name = pascal_to_ada_case(typedef_name, gen.tmp_ally)
 
 		// Only use typedef that is not in the identifiers map
 		if _, typedef_exists := gen.identifier_map[typedef_name]; typedef_exists {
