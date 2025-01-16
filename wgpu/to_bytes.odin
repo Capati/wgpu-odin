@@ -84,7 +84,6 @@ when ODIN_DEBUG {
 }
 
 /* Compile time panic stub. */
-@(private = "file")
 map_to_bytes :: proc(m: $T/map[$K]$V) -> []u8 {
 	#panic("Cannot fully convert map to bytes")
 }
