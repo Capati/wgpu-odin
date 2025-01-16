@@ -1263,7 +1263,7 @@ DEFAULT_TEXTURE_SAMPLE_TYPE :: Texture_Sample_Type.Float
 /*
 Specific type of a sample in a texture binding.
 
-For use in [`Binding_Type::StorageTexture`].
+For use in [`Binding_Type.StorageTexture`].
 
 Corresponds to [WebGPU `GPUStorageTextureAccess`](
 https://gpuweb.github.io/gpuweb/#enumdef-gpustoragetextureaccess).
