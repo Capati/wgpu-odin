@@ -14,8 +14,8 @@
 *.manifest
 
 build
-examples/build/imgui.ini
-!examples/build
+examples/build
+!examples/build/assets
 
 # Keep obj models in this folder
 !/utils/tobj/**/*.obj
