@@ -27,9 +27,9 @@ This project requires building from source, as pre-built binaries are not provid
 
 Before building, ensure you have the following tools installed:
 
-- `CMake` (version 3.11 or higher, tested with 3.29.3)
-- `Git` (accessible from your system PATH)
-- `Python` (version 3.10 or higher)
+- `cmake` (version 3.11 or higher, tested with 3.29.3)
+- `git` (accessible from your system PATH)
+- `python3` (version 3.10 or higher, also `python3-venv` for Unix systems)
 
 ### Build Instructions
 
