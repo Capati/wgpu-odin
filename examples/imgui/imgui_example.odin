@@ -31,6 +31,13 @@ Context :: app.Context(Example)
 EXAMPLE_TITLE :: "ImGui"
 
 init :: proc(ctx: ^Context) -> (ok: bool) {
+	when !#config(APP_ENABLE_IMGUI, false) {
+		log.warn(
+			"When using ImGui with the application, you need to set the config: " +
+			"-define:APP_ENABLE_IMGUI=true",
+		)
+	}
+
 	// Create ImGui context with default settings and initialize platform/renderer backends
 	app.imgui_init(ctx) or_return
 

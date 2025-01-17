@@ -211,8 +211,10 @@ release :: proc {
 }
 
 destroy :: proc(self: ^Application) {
-	if imgui_is_initialized(self) {
-		imgui_destroy(self)
+	when ENABLE_IMGUI {
+		if imgui_is_initialized(self) {
+			imgui_destroy(self)
+		}
 	}
 
 	if microui_is_initialized(self) {

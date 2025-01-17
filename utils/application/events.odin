@@ -267,8 +267,10 @@ process_events :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization
 				if app.depth_stencil.enabled {
 					setup_depth_stencil(app, {format = app.depth_stencil.format}) or_return
 				}
-				if imgui_is_initialized(app) {
-					im.wgpu_recreate_device_objects() or_return
+				when ENABLE_IMGUI {
+					if imgui_is_initialized(app) {
+						im.wgpu_recreate_device_objects() or_return
+					}
 				}
 				if microui_is_initialized(app) {
 					wmu.resize(i32(app.framebuffer_size.w), i32(app.framebuffer_size.h))
