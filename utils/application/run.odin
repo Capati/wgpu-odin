@@ -123,7 +123,7 @@ update_ui :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T
 	when ENABLE_IMGUI {
 		if imgui_is_initialized(app) {
 			imgui_new_frame(app) or_return
-			if app.callbacks.imgui_update != nil && !app.callbacks.imgui_update(app, app.im_ctx) {
+			if app.callbacks.imgui_update != nil && !app.callbacks.imgui_update(app, app._im_ctx) {
 				log.error("Error in 'imgui_update' procedure!")
 				return
 			}
@@ -133,7 +133,7 @@ update_ui :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T
 
 	if microui_is_initialized(app) {
 		microui_new_frame(app)
-		if app.callbacks.microui_update != nil && !app.callbacks.microui_update(app, app.mu_ctx) {
+		if app.callbacks.microui_update != nil && !app.callbacks.microui_update(app, app._mu_ctx) {
 			log.error("Error in 'microui_update' procedure!")
 			return
 		}

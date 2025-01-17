@@ -33,14 +33,14 @@ microui_init :: proc(
 ) -> (
 	ok: bool,
 ) {
-	app.mu_ctx = new(mu.Context, loc = loc)
-	ensure(app.mu_ctx != nil, "Failed to allocate MicroUI context")
+	app._mu_ctx = new(mu.Context, loc = loc)
+	ensure(app._mu_ctx != nil, "Failed to allocate MicroUI context")
 	defer if !ok {
-		free(app.mu_ctx)
+		free(app._mu_ctx)
 	}
-	mu.init(app.mu_ctx)
-	app.mu_ctx.text_width = init_info.atlas_text_width
-	app.mu_ctx.text_height = init_info.atlas_text_height
+	mu.init(app._mu_ctx)
+	app._mu_ctx.text_width = init_info.atlas_text_width
+	app._mu_ctx.text_height = init_info.atlas_text_height
 
 	microui_init_info := wmu.Init_Info {
 		num_frames_in_flight       = init_info.num_frames_in_flight,
@@ -56,26 +56,26 @@ microui_init :: proc(
 microui_destroy :: proc(app: ^Application) {
 	if microui_is_initialized(app) {
 		wmu.destroy()
-		free(app.mu_ctx)
+		free(app._mu_ctx)
 	}
 }
 
 @(require_results)
 microui_is_initialized :: #force_inline proc(app: ^Application) -> bool {
-	return app.mu_ctx != nil
+	return app._mu_ctx != nil
 }
 
 microui_new_frame :: proc(app: ^Application) {
-	mu.begin(app.mu_ctx)
+	mu.begin(app._mu_ctx)
 }
 
 microui_end_frame :: proc(app: ^Application) {
-	mu.end(app.mu_ctx)
+	mu.end(app._mu_ctx)
 }
 
 @(require_results)
 microui_draw :: proc(app: ^Application, pass: wgpu.Render_Pass) -> (ok: bool) {
-	return wmu.render(app.mu_ctx, pass)
+	return wmu.render(app._mu_ctx, pass)
 }
 
 @(require_results)
@@ -112,30 +112,30 @@ microui_handle_events :: proc(app: ^Application, event: Event) {
 	// 	mu.input_text(mu_ctx, string(cstring(&ev.buf[0])))
 	case Key_Event:
 		if ev.action == .Pressed {
-			mu.input_key_down(app.mu_ctx, microui_key(ev.key))
+			mu.input_key_down(app._mu_ctx, microui_key(ev.key))
 		} else {
-			mu.input_key_up(app.mu_ctx, microui_key(ev.key))
+			mu.input_key_up(app._mu_ctx, microui_key(ev.key))
 		}
 	case Mouse_Button_Event:
 		if ev.action == .Pressed {
 			mu.input_mouse_down(
-				app.mu_ctx,
+				app._mu_ctx,
 				i32(ev.pos.x),
 				i32(ev.pos.y),
 				microui_mouse_button(ev.button),
 			)
 		} else {
 			mu.input_mouse_up(
-				app.mu_ctx,
+				app._mu_ctx,
 				i32(ev.pos.x),
 				i32(ev.pos.y),
 				microui_mouse_button(ev.button),
 			)
 		}
 	case Mouse_Wheel_Event:
-		mu.input_scroll(app.mu_ctx, i32(ev.x * -25), i32(ev.y * -25))
+		mu.input_scroll(app._mu_ctx, i32(ev.x * -25), i32(ev.y * -25))
 	case Mouse_Moved_Event:
-		mu.input_mouse_move(app.mu_ctx, i32(ev.x), i32(ev.y))
+		mu.input_mouse_move(app._mu_ctx, i32(ev.x), i32(ev.y))
 	}
 }
 

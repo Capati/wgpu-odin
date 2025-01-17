@@ -12,9 +12,9 @@ ENABLE_IMGUI :: #config(APP_ENABLE_IMGUI, false)
 when ENABLE_IMGUI {
 	@(require_results)
 	imgui_init :: proc(app: ^Application) -> (ok: bool) {
-		app.im_ctx = im.create_context()
+		app._im_ctx = im.create_context()
 		defer if !ok {
-			im.destroy_context(app.im_ctx)
+			im.destroy_context(app._im_ctx)
 		}
 
 		im.style_colors_dark()
@@ -39,12 +39,12 @@ when ENABLE_IMGUI {
 	imgui_destroy :: proc(app: ^Application) {
 		im.wgpu_shutdown()
 		im.glfw_shutdown()
-		im.destroy_context(app.im_ctx)
+		im.destroy_context(app._im_ctx)
 	}
 
 	@(require_results)
 	imgui_is_initialized :: #force_inline proc(app: ^Application) -> bool {
-		return app.im_ctx != nil
+		return app._im_ctx != nil
 	}
 
 	@(require_results)
