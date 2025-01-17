@@ -19,6 +19,7 @@ Example :: struct {
 	clear_color:         [3]f32,
 	show_demo_window:    bool,
 	show_another_window: bool,
+	im_ctx:              ^im.Context,
 	im_io:               ^im.IO,
 	render_pass:         struct {
 		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
@@ -31,15 +32,29 @@ Context :: app.Context(Example)
 EXAMPLE_TITLE :: "ImGui"
 
 init :: proc(ctx: ^Context) -> (ok: bool) {
-	when !#config(APP_ENABLE_IMGUI, false) {
-		log.warn(
-			"When using ImGui with the application, you need to set the config: " +
-			"-define:APP_ENABLE_IMGUI=true",
-		)
+	ctx.im_ctx = im.create_context()
+	ensure(ctx.im_ctx != nil, "Failed to create Imgui context")
+	defer if !ok {
+		im.destroy_context(ctx.im_ctx)
 	}
 
-	// Create ImGui context with default settings and initialize platform/renderer backends
-	app.imgui_init(ctx) or_return
+	im.style_colors_dark()
+
+	// Initialize the platform, application also uses GLFW
+	ensure(im.glfw_init(ctx.window, true))
+	defer if !ok {
+		im.glfw_shutdown()
+	}
+
+	init_info := im.DEFAULT_WGPU_INIT_INFO
+	init_info.device = ctx.gpu.device
+	init_info.render_target_format = ctx.gpu.config.format
+
+	// Initialize the WGPU renderer
+	ensure(im.wgpu_init(init_info))
+	defer if !ok {
+		im.wgpu_shutdown()
+	}
 
 	// Create the texture
 	ctx.texture = app.create_texture_from_file(ctx, "assets/textures/MyImage01.jpg") or_return
@@ -67,6 +82,15 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 
 quit :: proc(ctx: ^Context) {
 	app.release(ctx.texture)
+
+	im.wgpu_shutdown()
+	im.glfw_shutdown()
+	im.destroy_context(ctx.im_ctx)
+}
+
+resize :: proc(ctx: ^Context, size: app.Window_Size) -> (ok: bool) {
+	im.wgpu_recreate_device_objects() or_return
+	return true
 }
 
 set_clear_value :: proc(ctx: ^Context, clear_color: [3]f32) #no_bounds_check {
@@ -74,7 +98,13 @@ set_clear_value :: proc(ctx: ^Context, clear_color: [3]f32) #no_bounds_check {
 	ctx.render_pass.color_attachments[0].ops.clear_value = {f64(r), f64(g), f64(b), 1.0}
 }
 
-imgui_update :: proc(ctx: ^Context, im_ctx: ^im.Context) -> (ok: bool) {
+imgui_update :: proc(ctx: ^Context) -> (ok: bool) {
+	im.wgpu_new_frame() or_return
+	im.glfw_new_frame()
+
+	// Start a new Dear ImGui frame, you can submit any command from this point
+	im.new_frame()
+
 	// Display an image
 	if im.begin("WebGPU Texture Test") {
 		im.text("Pointer = = %p", ctx.texture.view)
@@ -140,10 +170,16 @@ imgui_update :: proc(ctx: ^Context, im_ctx: ^im.Context) -> (ok: bool) {
 		im.end()
 	}
 
+	// Ends the Dear ImGui frame, finalize the draw data
+	im.render()
+
 	return true
 }
 
 draw :: proc(ctx: ^Context) -> bool {
+	// Update ImGui frame data
+	imgui_update(ctx) or_return
+
 	ctx.cmd = wgpu.device_create_command_encoder(ctx.gpu.device) or_return
 	defer wgpu.release(ctx.cmd)
 
@@ -152,7 +188,7 @@ draw :: proc(ctx: ^Context) -> bool {
 	defer wgpu.release(render_pass)
 
 	// Render elements using the given pass
-	app.imgui_draw(ctx, render_pass) or_return
+	im.wgpu_render_draw_data(im.get_draw_data(), render_pass) or_return
 
 	wgpu.render_pass_end(render_pass) or_return
 
@@ -182,10 +218,10 @@ main :: proc() {
 	defer app.destroy(example)
 
 	example.callbacks = {
-		init         = init,
-		quit         = quit,
-		imgui_update = imgui_update, // Set the callback to update ui
-		draw         = draw,
+		init   = init,
+		quit   = quit,
+		resize = resize,
+		draw   = draw,
 	}
 
 	app.run(example) // Start the main loop
