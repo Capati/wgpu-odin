@@ -116,7 +116,12 @@ Available script commands:
 + `release`: Build optimized for release mode
 + `clean`: Removes artifacts (.exe, .pdb, .a, etc) before build
 
-Any other argument is passed to the `odin` command.
+Any other argument is passed to the `odin` command, on Windows, wrap any additional arguments in
+double quotes:
+
+```shell
+build.bat imgui run "-define:APP_ENABLE_IMGUI=true" "-use-separate-modules"
+```
 
 ## Examples
 
