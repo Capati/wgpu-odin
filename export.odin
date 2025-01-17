@@ -48,6 +48,10 @@ BLEND_COMPONENT_OVER :: wgpu.BLEND_COMPONENT_OVER
 DEFAULT_BLEND_COMPONENT :: wgpu.DEFAULT_BLEND_COMPONENT
 blend_component_uses_constant :: wgpu.blend_component_uses_constant
 Blend_State :: wgpu.Blend_State
+BLEND_STATE_NORMAL := wgpu.BLEND_STATE_NORMAL
+BLEND_STATE_REPLACE := wgpu.BLEND_STATE_REPLACE
+BLEND_STATE_ALPHA_BLENDING := wgpu.BLEND_STATE_ALPHA_BLENDING
+BLEND_STATE_PREMULTIPLIED_ALPHA_BLENDING := wgpu.BLEND_STATE_PREMULTIPLIED_ALPHA_BLENDING
 Color_Target_State :: wgpu.Color_Target_State
 color_target_state_from_texture_format :: wgpu.color_target_state_from_texture_format
 Primitive_Topology :: wgpu.Primitive_Topology
