@@ -4,7 +4,7 @@
 set -e
 
 # Set default values
-ARGS="-debug"
+ARGS="-debug -collection:root=./../"
 RELEASE_MODE=false
 BUILD_TARGET="$1"
 ERROR_OCCURRED=false
@@ -49,7 +49,8 @@ if [ "$RELEASE_MODE" = true ]; then
 	ARGS="-o:speed \
         -disable-assert \
         -no-bounds-check \
-        -define:WGPU_ENABLE_ERROR_HANDLING=false"
+        -define:WGPU_ENABLE_ERROR_HANDLING=false \
+		-collection:root=./../"
 fi
 
 OUT="-out:./build"
