@@ -1,6 +1,6 @@
 # Odin ImGui
 
-[Odin Language][] bindings for **[Dear ImGui][imgui] 1.91.6 (docking branch)** with native backends implementations written in Odin.
+[Odin Language][] bindings for **[Dear ImGui][imgui] 1.91.7 (docking branch)** with native backends implementations written in Odin.
 
 ## Introduction
 

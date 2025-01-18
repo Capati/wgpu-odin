@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # option(IMGUI_ENABLE_FREETYPE "ImGui: Enable FreeType font rasterizer" OFF)
 
 # Versions
-set(IMGUI_VERSION "v1.91.6")
+set(IMGUI_VERSION "v1.91.7")
 set(DEAR_BINDINGS_VERSION "139b5b8")
 
 # Ensures everything uses the same static runtime

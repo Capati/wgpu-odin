@@ -24,8 +24,8 @@ when ODIN_OS == .Windows {
 	}
 }
 
-VERSION :: "1.91.6"
-VERSION_NUM :: 19160
+VERSION :: "1.91.7"
+VERSION_NUM :: 19170
 PAYLOAD_TYPE_COLOR_3F :: "_COL3F" // float[3]: Standard type for colors, without alpha. User code may use this type.
 PAYLOAD_TYPE_COLOR_4F :: "_COL4F" // float[4]: Standard type for colors. User code may use this type.
 UNICODE_CODEPOINT_INVALID :: 0xFFFD // Invalid Unicode code point (standard value).
@@ -127,7 +127,7 @@ Input_Text_Flag :: enum i32 {
 	Callback_Always         = 20, // Callback on each iteration. User code may query cursor position, modify text buffer.
 	Callback_Char_Filter    = 21, // Callback on character inputs to replace or discard them. Modify 'EventChar' to replace or discard, or return 1 in callback to discard.
 	Callback_Resize         = 22, // Callback on buffer capacity changes request (beyond 'buf_size' parameter value), allowing the string to grow. Notify when the string wants to be resized (for string types which hold a cache of their Size). You will be provided a new BufSize in the callback and NEED to honor it. (see misc/cpp/imgui_stdlib.h for an example of using this)
-	Callback_Edit           = 23, // Callback on any edit (note that InputText() already returns true on edit, the callback is useful mainly to manipulate the underlying buffer while focus is active)
+	Callback_Edit           = 23, // Callback on any edit. Note that InputText() already returns true on edit + you can always use IsItemEdited(). The callback is useful to manipulate the underlying buffer while focus is active.
 }
 
 // Flags for ImGui::TreeNodeEx(), ImGui::CollapsingHeader*()
@@ -146,9 +146,10 @@ Tree_Node_Flag :: enum i32 {
 	Frame_Padding            = 10, // Use FramePadding (even for an unframed text node) to vertically align text baseline to regular widget height. Equivalent to calling AlignTextToFramePadding() before the node.
 	Span_Avail_Width         = 11, // Extend hit box to the right-most edge, even if not framed. This is not the default in order to allow adding other items on the same line without using AllowOverlap mode.
 	Span_Full_Width          = 12, // Extend hit box to the left-most and right-most edges (cover the indent area).
-	Span_Text_Width          = 13, // Narrow hit box + narrow hovering highlight, will only cover the label text.
-	Span_All_Columns         = 14, // Frame will span all columns of its container table (text will still fit in current column)
-	Nav_Left_Jumps_Back_Here = 15, // (WIP) Nav: left direction may move to this TreeNode() from any of its child (items submitted between TreeNode and TreePop)
+	Span_Label_Width         = 13, // Narrow hit box + narrow hovering highlight, will only cover the label text.
+	Span_All_Columns         = 14, // Frame will span all columns of its container table (label will still fit in current column)
+	Label_Span_All_Columns   = 15, // Label will span all columns of its container table
+	Nav_Left_Jumps_Back_Here = 17, // (WIP) Nav: left direction may move to this TreeNode() from any of its child (items submitted between TreeNode and TreePop)
 }
 
 TREE_NODE_FLAGS_COLLAPSING_HEADER :: Tree_Node_Flags {
@@ -311,9 +312,10 @@ Data_Type :: enum i32 {
 	Float  = 8, // float
 	Double = 9, // double
 	Bool   = 10, // bool (provided for user convenience, not supported by scalar widgets)
+	String = 11, // char* (provided for user convenience, not supported by scalar widgets)
 }
 
-DATA_TYPE_COUNT :: 11
+DATA_TYPE_COUNT :: 12
 
 // A cardinal direction
 Dir :: enum i32 {
@@ -701,6 +703,7 @@ Slider_Flag :: enum i32 {
 	Wrap_Around        = 8, // Enable wrapping around from max to min and from min to max. Only supported by DragXXX() functions for now.
 	Clamp_On_Input     = 9, // Clamp value to min/max bounds when input manually with CTRL+Click. By default CTRL+Click allows going out of bounds.
 	Clamp_Zero_Range   = 10, // Clamp even if min==max==0.0f. Otherwise due to legacy reason DragXXX functions don't clamp with those values. When your clamping limits are dynamic you almost always want to use it.
+	No_Speed_Tweaks    = 11, // Disable keyboard modifiers altering tweak speed. Useful if you want to alter tweak speed yourself based on your own logic.
 }
 
 SLIDER_FLAGS_ALWAYS_CLAMP :: Slider_Flags{.Clamp_On_Input, .Clamp_Zero_Range}
@@ -1294,7 +1297,7 @@ IO :: struct {
 // Shared state of InputText(), passed as an argument to your callback when a ImGuiInputTextFlags_Callback* flag is used.
 // The callback function should return 0 by default.
 // Callbacks (follow a flag name and see comments in ImGuiInputTextFlags_ declarations for more details)
-// - ImGuiInputTextFlags_CallbackEdit:        Callback on buffer edit (note that InputText() already returns true on edit, the callback is useful mainly to manipulate the underlying buffer while focus is active)
+// - ImGuiInputTextFlags_CallbackEdit:        Callback on buffer edit. Note that InputText() already returns true on edit + you can always use IsItemEdited(). The callback is useful to manipulate the underlying buffer while focus is active.
 // - ImGuiInputTextFlags_CallbackAlways:      Callback on each iteration
 // - ImGuiInputTextFlags_CallbackCompletion:  Callback on pressing TAB
 // - ImGuiInputTextFlags_CallbackHistory:     Callback on pressing Up/Down arrows
@@ -1579,7 +1582,7 @@ Font_Config :: struct {
 	font_builder_flags:       u32, // 0        // Settings for custom font builder. THIS IS BUILDER IMPLEMENTATION DEPENDENT. Leave as zero if unsure.
 	rasterizer_multiply:      f32, // 1.0f     // Linearly brighten (>1.0f) or darken (<1.0f) font output. Brightening small fonts may be a good workaround to make them more readable. This is a silly thing we may remove in the future.
 	rasterizer_density:       f32, // 1.0f     // DPI scale for rasterization, not altering other font metrics: make it easy to swap between e.g. a 100% and a 400% fonts for a zooming display. IMPORTANT: If you increase this it is expected that you increase font scale accordingly, otherwise quality may look lowered.
-	ellipsis_char:            Wchar, // -1       // Explicitly specify unicode codepoint of ellipsis character. When fonts are being merged first specified ellipsis will be used.
+	ellipsis_char:            Wchar, // 0        // Explicitly specify unicode codepoint of ellipsis character. When fonts are being merged first specified ellipsis will be used.
 	name:                     [40]cstring, // Name (strictly to ease debugging)
 	dst_font:                 ^Font,
 }
@@ -2425,6 +2428,7 @@ foreign lib {
 	is_item_toggled_selection :: proc() -> bool ---
 	// Widgets: List Boxes
 	// - This is essentially a thin wrapper to using BeginChild/EndChild with the ImGuiChildFlags_FrameStyle flag for stylistic changes + displaying a label.
+	// - If you don't need a label you can probably simply use BeginChild() with the ImGuiChildFlags_FrameStyle flag for the same result.
 	// - You can submit contents and manage your selection state however you want it, by creating e.g. Selectable() or any other items.
 	// - The simplified/old ListBox() api are helpers over BeginListBox()/EndListBox() which are kept available for convenience purpose. This is analoguous to how Combos are created.
 	// - Choose frame width:   size.x > 0.0f: custom  /  size.x < 0.0f or -FLT_MIN: right-align   /  size.x = 0.0f (default): use current ItemWidth
@@ -3214,7 +3218,7 @@ foreign lib {
 	// Add/remove an item from selection (generally done by ApplyRequests() function)
 	@(link_name = "ImGuiSelectionBasicStorage_SetItemSelected")
 	selection_basic_storage_set_item_selected :: proc(self: ^Selection_Basic_Storage, id: ID, selected: bool) ---
-	// Iterate selection with 'void* it = NULL; ImGuiId id; while (selection.GetNextSelectedItem(&it, &id)) { ... }'
+	// Iterate selection with 'void* it = NULL; ImGuiID id; while (selection.GetNextSelectedItem(&it, &id)) { ... }'
 	@(link_name = "ImGuiSelectionBasicStorage_GetNextSelectedItem")
 	selection_basic_storage_get_next_selected_item :: proc(self: ^Selection_Basic_Storage, opaque_it: ^rawptr, out_id: ^ID) -> bool ---
 	// Convert index to item id based on provided adapter.
