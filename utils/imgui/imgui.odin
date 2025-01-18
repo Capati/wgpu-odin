@@ -1942,10 +1942,10 @@ foreign lib {
 	// set scrolling amount [0 .. GetScrollMaxY()]
 	@(link_name = "ImGui_SetScrollY")
 	set_scroll_y :: proc(scroll_y: f32) ---
-	// get maximum scrolling amount ~~ ContentSize.x - Window_Size.x - DecorationsSize.x
+	// get maximum scrolling amount ~~ ContentSize.x - WindowSize.x - DecorationsSize.x
 	@(link_name = "ImGui_GetScrollMaxX")
 	get_scroll_max_x :: proc() -> f32 ---
-	// get maximum scrolling amount ~~ ContentSize.y - Window_Size.y - DecorationsSize.y
+	// get maximum scrolling amount ~~ ContentSize.y - WindowSize.y - DecorationsSize.y
 	@(link_name = "ImGui_GetScrollMaxY")
 	get_scroll_max_y :: proc() -> f32 ---
 	// adjust scrolling amount to make current cursor position visible. center_x_ratio=0.0: left, 0.5: center, 1.0: right. When using to make a "default/current item" visible, consider using SetItemDefaultFocus() instead.

@@ -24,6 +24,8 @@ Generator :: struct {
 
 FLAGS :: "i32"
 TAB_SPACE :: "    "
+
+// odinfmt: disable
 FOREIGN_IMPORT :: `
 when ODIN_OS == .Linux || ODIN_OS == .Darwin {
 	@(require) foreign import stdcpp "system:c++"
@@ -50,7 +52,7 @@ when ODIN_OS == .Windows {
 }
 
 `
-
+// odinfmt: enable
 
 main :: proc() {
 	arena: virtual.Arena
