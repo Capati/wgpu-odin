@@ -41,6 +41,11 @@ run :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Cont
 	log.info("Entering main loop...")
 
 	loop: for !glfw.WindowShouldClose(app.window) {
+		// Reset state each frame
+		defer {
+			app.mouse.scroll = {}
+		}
+
 		dt = timer_step(&app.timer)
 
 		if !process_events(app) {

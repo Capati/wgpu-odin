@@ -50,6 +50,7 @@ Application :: struct {
 	title_buffer:      [WINDOW_TITLE_BUFFER_LEN]byte,
 	timer:             Timer,
 	keyboard:          Keyboard_State,
+	mouse:             Mouse_State,
 	exit_key:          Key,
 	target_frame_time: time.Duration,
 	prepared:          bool,

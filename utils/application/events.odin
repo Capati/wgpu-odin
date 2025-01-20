@@ -31,7 +31,11 @@ Mouse_Position :: struct {
 	x, y: f32,
 }
 
-Mouse_Moved_Event :: distinct Mouse_Position
+Mouse_Moved_Event :: struct {
+	using pos: Mouse_Position,
+	button:    Mouse_Button,
+	action:    Input_Action,
+}
 
 Mouse_Button :: enum i32 {
 	Unknown = -1,
@@ -187,7 +191,34 @@ key_callback :: proc "c" (window: Window, key, scancode, action, mods: i32) {
 cursor_position_callback :: proc "c" (window: Window, xpos, ypos: f64) {
 	context = runtime.default_context()
 	app := cast(^Application)glfw.GetWindowUserPointer(window)
-	event_push(&app.events, Mouse_Moved_Event{x = f32(xpos), y = f32(ypos)})
+
+	action: Input_Action
+	button: Mouse_Button
+
+	if glfw.GetMouseButton(window, glfw.MOUSE_BUTTON_LEFT) == glfw.PRESS {
+		button = .Left
+		action = .Pressed
+	} else if glfw.GetMouseButton(window, glfw.MOUSE_BUTTON_MIDDLE) == glfw.PRESS {
+		button = .Middle
+		action = .Pressed
+	} else if glfw.GetMouseButton(window, glfw.MOUSE_BUTTON_RIGHT) == glfw.PRESS {
+		button = .Right
+		action = .Pressed
+	} else if glfw.GetMouseButton(window, glfw.MOUSE_BUTTON_4) == glfw.PRESS {
+		button = .Four
+		action = .Pressed
+	} else if glfw.GetMouseButton(window, glfw.MOUSE_BUTTON_5) == glfw.PRESS {
+		button = .Five
+		action = .Pressed
+	}
+
+	event := Mouse_Moved_Event {
+		pos = {x = f32(xpos), y = f32(ypos)},
+		button = button,
+		action = action,
+	}
+
+	event_push(&app.events, event)
 }
 
 mouse_button_callback :: proc "c" (window: Window, button, action, mods: i32) {
@@ -204,16 +235,21 @@ mouse_button_callback :: proc "c" (window: Window, button, action, mods: i32) {
 	)
 }
 
+// Callback for scroll input
 scroll_callback :: proc "c" (window: Window, xoffset, yoffset: f64) {
 	context = runtime.default_context()
 	app := cast(^Application)glfw.GetWindowUserPointer(window)
+	app.mouse.scroll = {xoffset, yoffset}
 	event_push(&app.events, Mouse_Wheel_Event{f32(xoffset), f32(yoffset)})
 }
 
 @(require_results)
 process_events :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Context) {
 	glfw.PollEvents()
+
+	// Update input state
 	keyboard_update(app)
+	mouse_update(app)
 
 	event: Event = ---
 	for event_poll(&app.events, &event) {
