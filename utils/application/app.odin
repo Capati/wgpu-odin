@@ -43,8 +43,8 @@ Application :: struct {
 	},
 
 	// UI
-	_mu_ctx:            ^mu.Context,
-	_im_ctx:            ^im.Context,
+	_mu_ctx:           ^mu.Context,
+	_im_ctx:           ^im.Context,
 
 	// State
 	title_buffer:      [WINDOW_TITLE_BUFFER_LEN]byte,
