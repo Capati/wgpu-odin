@@ -597,8 +597,8 @@ surface_add_ref :: wgpu.surface_add_ref
 surface_release :: wgpu.surface_release
 surface_release_safe :: wgpu.surface_release_safe
 
-TextureUsageFeature :: wgpu.TextureUsageFeature
-TextureFormatFeatureFlags :: wgpu.TextureFormatFeatureFlags
+Texture_Usage_Feature :: wgpu.Texture_Usage_Feature
+Texture_Format_Feature_Flags :: wgpu.Texture_Format_Feature_Flags
 texture_format_feature_flags_sample_count_supported ::
 	wgpu.texture_format_feature_flags_sample_count_supported
 sample_count_supported :: wgpu.sample_count_supported
@@ -606,8 +606,8 @@ texture_format_feature_flags_supported_sample_counts ::
 	wgpu.texture_format_feature_flags_supported_sample_counts
 supported_sample_counts :: wgpu.supported_sample_counts
 Texture_Format_Features :: wgpu.Texture_Format_Features
-AstcBlock :: wgpu.AstcBlock
-AstcChannel :: wgpu.AstcChannel
+Astc_Block :: wgpu.Astc_Block
+Astc_Channel :: wgpu.Astc_Channel
 Texture_Format :: wgpu.Texture_Format
 texture_format_aspect_specific_format :: wgpu.texture_format_aspect_specific_format
 texture_format_is_depth_stencil_component :: wgpu.texture_format_is_depth_stencil_component

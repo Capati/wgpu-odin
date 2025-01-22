@@ -85,7 +85,7 @@ init :: proc(init_info: Init_Info, loc := #caller_location) -> (ok: bool) {
 			usage = {.Texture_Binding, .Copy_Dst},
 			dimension = .D2,
 			size = {mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT, 1},
-			format = .Rgba8Unorm,
+			format = .Rgba8_Unorm,
 			mip_level_count = 1,
 			sample_count = 1,
 		},

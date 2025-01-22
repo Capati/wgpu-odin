@@ -99,7 +99,7 @@ run :: proc() -> (ok: bool) {
 			mip_level_count = 1,
 			sample_count = 1,
 			dimension = .D2,
-			format = .Rgba8UnormSrgb,
+			format = .Rgba8_Unorm_Srgb,
 			usage = {.Render_Attachment, .Copy_Src},
 		},
 	) or_return

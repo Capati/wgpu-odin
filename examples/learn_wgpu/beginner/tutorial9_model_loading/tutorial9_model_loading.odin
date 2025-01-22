@@ -79,7 +79,7 @@ Context :: app.Context(Example)
 
 EXAMPLE_TITLE :: "Tutorial 9 - Model Loading"
 
-DEPTH_FORMAT :: wgpu.Texture_Format.Depth32Float
+DEPTH_FORMAT :: wgpu.Texture_Format.Depth32_Float
 
 init :: proc(ctx: ^Context) -> (ok: bool) {
 	texture_bind_group_layout := wgpu.device_create_bind_group_layout(

@@ -269,7 +269,7 @@ wgpu_create_fonts_texture :: proc() -> (ok: bool) {
 		dimension = .D2,
 		size = {width = u32(width), height = u32(height), depth_or_array_layers = 1},
 		sample_count = 1,
-		format = .Rgba8Unorm,
+		format = .Rgba8_Unorm,
 		mip_level_count = 1,
 		usage = {.Copy_Dst, .Texture_Binding},
 	}

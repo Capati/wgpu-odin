@@ -1,54 +1,57 @@
 package wgpu
 
-TextureUsageFeature :: enum Flags {
+/* Represents various usage features for a texture. */
+Texture_Usage_Feature :: enum Flags {
 	Filterable,
-	MultisampleX2,
-	MultisampleX4,
-	MultisampleX8,
-	MultisampleX16,
-	MultisampleResolve,
-	StorageReadOnly,
-	StorageWriteOnly,
-	StorageReadWrite,
+	Multisample_X2,
+	Multisample_X4,
+	Multisample_X8,
+	Multisample_X16,
+	Multisample_Resolve,
+	Storage_Read_Only,
+	Storage_Write_Only,
+	Storage_Read_Write,
 	Blendable,
 }
 
-/* Feature flags for a texture format.*/
-TextureFormatFeatureFlags :: bit_set[TextureUsageFeature;Flags]
+/* Feature flags for a texture format. */
+Texture_Format_Feature_Flags :: bit_set[Texture_Usage_Feature;Flags]
 
+/* Checks if the given texture format supports the specified sample count. */
 texture_format_feature_flags_sample_count_supported :: proc "contextless" (
-	self: TextureFormatFeatureFlags,
+	self: Texture_Format_Feature_Flags,
 	count: u32,
 ) -> bool {
 	// odinfmt: disable
 	switch count {
-	case 1  : return true
-	case 2  : return .MultisampleX2 in self
-	case 4  : return .MultisampleX4 in self
-	case 8  : return .MultisampleX8 in self
-	case 16 : return .MultisampleX16 in self
+	case 1 : return true
+	case 2 : return .Multisample_X2 in self
+	case 4 : return .Multisample_X4 in self
+	case 8 : return .Multisample_X8 in self
+	case 16: return .Multisample_X16 in self
 	}
 	// odinfmt: enable
 	return false
 }
 
+/* Checks if the given texture format supports the specified sample count. */
 sample_count_supported :: texture_format_feature_flags_sample_count_supported
 
 texture_format_feature_flags_supported_sample_counts :: proc(
-	self: TextureFormatFeatureFlags,
+	self: Texture_Format_Feature_Flags,
 ) -> (
 	flags: MultisampleFlags,
 ) {
-	if .MultisampleX2 in self {
+	if .Multisample_X2 in self {
 		flags += {.X2}
 	}
-	if .MultisampleX4 in self {
+	if .Multisample_X4 in self {
 		flags += {.X4}
 	}
-	if .MultisampleX8 in self {
+	if .Multisample_X8 in self {
 		flags += {.X8}
 	}
-	if .MultisampleX16 in self {
+	if .Multisample_X16 in self {
 		flags += {.X16}
 	}
 	return flags
@@ -59,11 +62,11 @@ supported_sample_counts :: texture_format_feature_flags_supported_sample_counts
 /* Features supported by a given texture format */
 Texture_Format_Features :: struct {
 	allowed_usages: Texture_Usages,
-	flags:          TextureFormatFeatureFlags,
+	flags:          Texture_Format_Feature_Flags,
 }
 
 /* ASTC block dimensions */
-AstcBlock :: enum i32 {
+Astc_Block :: enum i32 {
 	B4x4,
 	B5x4,
 	B5x5,
@@ -81,9 +84,9 @@ AstcBlock :: enum i32 {
 }
 
 /* ASTC RGBA channel */
-AstcChannel :: enum i32 {
+Astc_Channel :: enum i32 {
 	Unorm,
-	UnormSrgb,
+	Unorm_Srgb,
 	Hdr,
 }
 
@@ -97,112 +100,113 @@ Corresponds to [WebGPU `GPUTextureFormat`](
 https://gpuweb.github.io/gpuweb/#enumdef-gputextureformat).
 */
 Texture_Format :: enum i32 {
+	Undefined               = 0x00000000,
+
 	// WebGPU
-	Undefined            = 0x00000000,
-	R8Unorm              = 0x00000001,
-	R8Snorm              = 0x00000002,
-	R8Uint               = 0x00000003,
-	R8Sint               = 0x00000004,
-	R16Uint              = 0x00000005,
-	R16Sint              = 0x00000006,
-	R16Float             = 0x00000007,
-	Rg8Unorm             = 0x00000008,
-	Rg8Snorm             = 0x00000009,
-	Rg8Uint              = 0x0000000A,
-	Rg8Sint              = 0x0000000B,
-	R32Float             = 0x0000000C,
-	R32Uint              = 0x0000000D,
-	R32Sint              = 0x0000000E,
-	Rg16Uint             = 0x0000000F,
-	Rg16Sint             = 0x00000010,
-	Rg16Float            = 0x00000011,
-	Rgba8Unorm           = 0x00000012,
-	Rgba8UnormSrgb       = 0x00000013,
-	Rgba8Snorm           = 0x00000014,
-	Rgba8Uint            = 0x00000015,
-	Rgba8Sint            = 0x00000016,
-	Bgra8Unorm           = 0x00000017,
-	Bgra8UnormSrgb       = 0x00000018,
-	Rgb10a2Uint          = 0x00000019,
-	Rgb10a2Unorm         = 0x0000001A,
-	Rg11b10Ufloat        = 0x0000001B,
-	Rgb9e5Ufloat         = 0x0000001C,
-	Rg32Float            = 0x0000001D,
-	Rg32Uint             = 0x0000001E,
-	Rg32Sint             = 0x0000001F,
-	Rgba16Uint           = 0x00000020,
-	Rgba16Sint           = 0x00000021,
-	Rgba16Float          = 0x00000022,
-	Rgba32Float          = 0x00000023,
-	Rgba32Uint           = 0x00000024,
-	Rgba32Sint           = 0x00000025,
-	Stencil8             = 0x00000026,
-	Depth16Unorm         = 0x00000027,
-	Depth24Plus          = 0x00000028,
-	Depth24PlusStencil8  = 0x00000029,
-	Depth32Float         = 0x0000002A,
-	Depth32_Float_Stencil8 = 0x0000002B,
-	Bc1RgbaUnorm         = 0x0000002C,
-	Bc1RgbaUnormSrgb     = 0x0000002D,
-	Bc2RgbaUnorm         = 0x0000002E,
-	Bc2RgbaUnormSrgb     = 0x0000002F,
-	Bc3RgbaUnorm         = 0x00000030,
-	Bc3RgbaUnormSrgb     = 0x00000031,
-	Bc4RUnorm            = 0x00000032,
-	Bc4RSnorm            = 0x00000033,
-	Bc5RgUnorm           = 0x00000034,
-	Bc5RgSnorm           = 0x00000035,
-	Bc6hRgbUfloat        = 0x00000036,
-	Bc6hRgbFloat         = 0x00000037,
-	Bc7RgbaUnorm         = 0x00000038,
-	Bc7RgbaUnormSrgb     = 0x00000039,
-	Etc2Rgb8Unorm        = 0x0000003A,
-	Etc2Rgb8UnormSrgb    = 0x0000003B,
-	Etc2Rgb8A1Unorm      = 0x0000003C,
-	Etc2Rgb8A1UnormSrgb  = 0x0000003D,
-	Etc2Rgba8Unorm       = 0x0000003E,
-	Etc2Rgba8UnormSrgb   = 0x0000003F,
-	EacR11Unorm          = 0x00000040,
-	EacR11Snorm          = 0x00000041,
-	EacRg11Unorm         = 0x00000042,
-	EacRg11Snorm         = 0x00000043,
-	Astc4x4Unorm         = 0x00000044,
-	Astc4x4UnormSrgb     = 0x00000045,
-	Astc5x4Unorm         = 0x00000046,
-	Astc5x4UnormSrgb     = 0x00000047,
-	Astc5x5Unorm         = 0x00000048,
-	Astc5x5UnormSrgb     = 0x00000049,
-	Astc6x5Unorm         = 0x0000004A,
-	Astc6x5UnormSrgb     = 0x0000004B,
-	Astc6x6Unorm         = 0x0000004C,
-	Astc6x6UnormSrgb     = 0x0000004D,
-	Astc8x5Unorm         = 0x0000004E,
-	Astc8x5UnormSrgb     = 0x0000004F,
-	Astc8x6Unorm         = 0x00000050,
-	Astc8x6UnormSrgb     = 0x00000051,
-	Astc8x8Unorm         = 0x00000052,
-	Astc8x8UnormSrgb     = 0x00000053,
-	Astc10x5Unorm        = 0x00000054,
-	Astc10x5UnormSrgb    = 0x00000055,
-	Astc10x6Unorm        = 0x00000056,
-	Astc10x6UnormSrgb    = 0x00000057,
-	Astc10x8Unorm        = 0x00000058,
-	Astc10x8UnormSrgb    = 0x00000059,
-	Astc10x10Unorm       = 0x0000005A,
-	Astc10x10UnormSrgb   = 0x0000005B,
-	Astc12x10Unorm       = 0x0000005C,
-	Astc12x10UnormSrgb   = 0x0000005D,
-	Astc12x12Unorm       = 0x0000005E,
-	Astc12x12UnormSrgb   = 0x0000005F,
+	R8_Unorm                = 0x00000001,
+	R8_Snorm                = 0x00000002,
+	R8_Uint                 = 0x00000003,
+	R8_Sint                 = 0x00000004,
+	R16_Uint                = 0x00000005,
+	R16_Sint                = 0x00000006,
+	R16_Float               = 0x00000007,
+	Rg8_Unorm               = 0x00000008,
+	Rg8_Snorm               = 0x00000009,
+	Rg8_Uint                = 0x0000000A,
+	Rg8_Sint                = 0x0000000B,
+	R32_Float               = 0x0000000C,
+	R32_Uint                = 0x0000000D,
+	R32_Sint                = 0x0000000E,
+	Rg16_Uint               = 0x0000000F,
+	Rg16_Sint               = 0x00000010,
+	Rg16_Float              = 0x00000011,
+	Rgba8_Unorm             = 0x00000012,
+	Rgba8_Unorm_Srgb        = 0x00000013,
+	Rgba8_Snorm             = 0x00000014,
+	Rgba8_Uint              = 0x00000015,
+	Rgba8_Sint              = 0x00000016,
+	Bgra8_Unorm             = 0x00000017,
+	Bgra8_Unorm_Srgb        = 0x00000018,
+	Rgb10a2_Uint            = 0x00000019,
+	Rgb10a2_Unorm           = 0x0000001A,
+	Rg11b10_Ufloat          = 0x0000001B,
+	Rgb9e5_Ufloat           = 0x0000001C,
+	Rg32_Float              = 0x0000001D,
+	Rg32_Uint               = 0x0000001E,
+	Rg32_Sint               = 0x0000001F,
+	Rgba16_Uint             = 0x00000020,
+	Rgba16_Sint             = 0x00000021,
+	Rgba16_Float            = 0x00000022,
+	Rgba32_Float            = 0x00000023,
+	Rgba32_Uint             = 0x00000024,
+	Rgba32_Sint             = 0x00000025,
+	Stencil8                = 0x00000026,
+	Depth16_Unorm           = 0x00000027,
+	Depth24_Plus            = 0x00000028,
+	Depth24_Plus_Stencil8   = 0x00000029,
+	Depth32_Float           = 0x0000002A,
+	Depth32_Float_Stencil8  = 0x0000002B,
+	Bc1_Rgba_Unorm          = 0x0000002C,
+	Bc1_Rgba_Unorm_Srgb     = 0x0000002D,
+	Bc2_Rgba_Unorm          = 0x0000002E,
+	Bc2_Rgba_Unorm_Srgb     = 0x0000002F,
+	Bc3_Rgba_Unorm          = 0x00000030,
+	Bc3_Rgba_Unorm_Srgb     = 0x00000031,
+	Bc4_R_Unorm             = 0x00000032,
+	Bc4_R_Snorm             = 0x00000033,
+	Bc5_Rg_Unorm            = 0x00000034,
+	Bc5_Rg_Snorm            = 0x00000035,
+	Bc6h_Rgb_Ufloat         = 0x00000036,
+	Bc6h_Rgb_Float          = 0x00000037,
+	Bc7_Rgba_Unorm          = 0x00000038,
+	Bc7_Rgba_Unorm_Srgb     = 0x00000039,
+	Etc2_Rgb8_Unorm         = 0x0000003A,
+	Etc2_Rgb8_Unorm_Srgb    = 0x0000003B,
+	Etc2_Rgb8_A1_Unorm      = 0x0000003C,
+	Etc2_Rgb8_A1_Unorm_Srgb = 0x0000003D,
+	Etc2_Rgba8_Unorm        = 0x0000003E,
+	Etc2_Rgba8_Unorm_Srgb   = 0x0000003F,
+	Eac_R11_Unorm           = 0x00000040,
+	Eac_R11_Snorm           = 0x00000041,
+	Eac_Rg11_Unorm          = 0x00000042,
+	Eac_Rg11_Snorm          = 0x00000043,
+	Astc4x4_Unorm           = 0x00000044,
+	Astc4x4_Unorm_Srgb      = 0x00000045,
+	Astc5x4_Unorm           = 0x00000046,
+	Astc5x4_Unorm_Srgb      = 0x00000047,
+	Astc5x5_Unorm           = 0x00000048,
+	Astc5x5_Unorm_Srgb      = 0x00000049,
+	Astc6x5_Unorm           = 0x0000004A,
+	Astc6x5_Unorm_Srgb      = 0x0000004B,
+	Astc6x6_Unorm           = 0x0000004C,
+	Astc6x6_Unorm_Srgb      = 0x0000004D,
+	Astc8x5_Unorm           = 0x0000004E,
+	Astc8x5_Unorm_Srgb      = 0x0000004F,
+	Astc8x6_Unorm           = 0x00000050,
+	Astc8x6_Unorm_Srgb      = 0x00000051,
+	Astc8x8_Unorm           = 0x00000052,
+	Astc8x8_Unorm_Srgb      = 0x00000053,
+	Astc10x5_Unorm          = 0x00000054,
+	Astc10x5_Unorm_Srgb     = 0x00000055,
+	Astc10x6_Unorm          = 0x00000056,
+	Astc10x6_Unorm_Srgb     = 0x00000057,
+	Astc10x8_Unorm          = 0x00000058,
+	Astc10x8_Unorm_Srgb     = 0x00000059,
+	Astc10x10_Unorm         = 0x0000005A,
+	Astc10x10_Unorm_Srgb    = 0x0000005B,
+	Astc12x10_Unorm         = 0x0000005C,
+	Astc12x10_Unorm_Srgb    = 0x0000005D,
+	Astc12x12_Unorm         = 0x0000005E,
+	Astc12x12_Unorm_Srgb    = 0x0000005F,
 
 	// Native
-	R16Unorm             = 0x00030001,
-	R16Snorm             = 0x00030002,
-	Rg16Unorm            = 0x00030003,
-	Rg16Snorm            = 0x00030004,
-	Rgba16Unorm          = 0x00030005,
-	Rgba16Snorm          = 0x00030006,
-	NV12                 = 0x00030007,
+	R16_Unorm               = 0x00030001,
+	R16_Snorm               = 0x00030002,
+	Rg16_Unorm              = 0x00030003,
+	Rg16_Snorm              = 0x00030004,
+	Rgba16_Unorm            = 0x00030005,
+	Rgba16_Snorm            = 0x00030006,
+	NV12                    = 0x00030007,
 }
 
 /*
@@ -219,30 +223,30 @@ texture_format_aspect_specific_format :: proc(
 		if aspect == .Stencil_Only {
 			return self
 		}
-	case .Depth16Unorm, .Depth24Plus, .Depth32Float:
+	case .Depth16_Unorm, .Depth24_Plus, .Depth32_Float:
 		if aspect == .Depth_Only {
 			return self
 		}
-	case .Depth24PlusStencil8:
+	case .Depth24_Plus_Stencil8:
 		#partial switch aspect {
 		case .Stencil_Only:
 			return .Stencil8
 		case .Depth_Only:
-			return .Depth24Plus
+			return .Depth24_Plus
 		}
 	case .Depth32_Float_Stencil8:
 		#partial switch aspect {
 		case .Stencil_Only:
 			return .Stencil8
 		case .Depth_Only:
-			return .Depth32Float
+			return .Depth32_Float
 		}
 	case .NV12:
 		#partial switch aspect {
 		case .Plane0:
-			return .R8Unorm
+			return .R8_Unorm
 		case .Plane1:
-			return .Rg8Unorm
+			return .Rg8_Unorm
 		}
 	}
 
@@ -261,8 +265,10 @@ texture_format_is_depth_stencil_component :: proc "contextless" (
 	self, combined_format: Texture_Format,
 ) -> bool {
 	return(
-		combined_format == .Depth24PlusStencil8 && (self == .Depth24Plus || self == .Stencil8) ||
-		combined_format == .Depth32_Float_Stencil8 && (self == .Depth32Float || self == .Stencil8) \
+		combined_format == .Depth24_Plus_Stencil8 &&
+			(self == .Depth24_Plus || self == .Stencil8) ||
+		combined_format == .Depth32_Float_Stencil8 &&
+			(self == .Depth32_Float || self == .Stencil8) \
 	)
 }
 
@@ -274,10 +280,10 @@ see <https://gpuweb.github.io/gpuweb/#depth-formats>
 texture_format_is_depth_stencil_format :: proc "contextless" (self: Texture_Format) -> bool {
 	#partial switch self {
 	case .Stencil8,
-	     .Depth16Unorm,
-	     .Depth24Plus,
-	     .Depth24PlusStencil8,
-	     .Depth32Float,
+	     .Depth16_Unorm,
+	     .Depth24_Plus,
+	     .Depth24_Plus_Stencil8,
+	     .Depth32_Float,
 	     .Depth32_Float_Stencil8:
 		return true
 	}
@@ -294,7 +300,7 @@ texture_format_is_combined_depth_stencil_format :: proc "contextless" (
 	self: Texture_Format,
 ) -> bool {
 	#partial switch self {
-	case .Depth24PlusStencil8, .Depth32_Float_Stencil8:
+	case .Depth24_Plus_Stencil8, .Depth32_Float_Stencil8:
 		return true
 	}
 
@@ -324,7 +330,11 @@ texture_format_has_color_aspect :: proc "contextless" (self: Texture_Format) -> 
 /* Returns `true` if the format has a depth aspect.*/
 texture_format_has_depth_aspect :: proc "contextless" (self: Texture_Format) -> bool {
 	#partial switch self {
-	case .Depth16Unorm, .Depth24Plus, .Depth24PlusStencil8, .Depth32Float, .Depth32_Float_Stencil8:
+	case .Depth16_Unorm,
+	     .Depth24_Plus,
+	     .Depth24_Plus_Stencil8,
+	     .Depth32_Float,
+	     .Depth32_Float_Stencil8:
 		return true
 	}
 	return false
@@ -333,7 +343,7 @@ texture_format_has_depth_aspect :: proc "contextless" (self: Texture_Format) -> 
 /* Returns `true` if the format has a stencil aspect.*/
 texture_format_has_stencil_aspect :: proc "contextless" (self: Texture_Format) -> bool {
 	#partial switch self {
-	case .Stencil8, .Depth24PlusStencil8, .Depth32_Float_Stencil8:
+	case .Stencil8, .Depth24_Plus_Stencil8, .Depth32_Float_Stencil8:
 		return true
 	}
 	return false
@@ -356,37 +366,40 @@ Uncompressed formats have a block dimension of `(1, 1)`.
 texture_format_block_dimensions :: proc "contextless" (self: Texture_Format) -> (w, h: u32) {
 	// odinfmt: disable
 	switch self {
-	case .R8Unorm, .R8Snorm, .R8Uint, .R8Sint, .R16Uint, .R16Sint, .R16Unorm, .R16Snorm,
-	     .R16Float, .Rg8Unorm, .Rg8Snorm, .Rg8Uint, .Rg8Sint, .R32Uint, .R32Sint, .R32Float,
-	     .Rg16Uint, .Rg16Sint, .Rg16Unorm, .Rg16Snorm, .Rg16Float, .Rgba8Unorm, .Rgba8UnormSrgb,
-	     .Rgba8Snorm, .Rgba8Uint, .Rgba8Sint, .Bgra8Unorm, .Bgra8UnormSrgb, .Rgb9e5Ufloat,
-	     .Rgb10a2Uint, .Rgb10a2Unorm, .Rg11b10Ufloat, .Rg32Uint, .Rg32Sint, .Rg32Float, .Rgba16Uint,
-	     .Rgba16Sint, .Rgba16Unorm, .Rgba16Snorm, .Rgba16Float, .Rgba32Uint, .Rgba32Sint,
-	     .Rgba32Float, .Stencil8, .Depth16Unorm, .Depth24Plus, .Depth24PlusStencil8,
-	     .Depth32Float, .Depth32_Float_Stencil8, .NV12:
+	case .R8_Unorm, .R8_Snorm, .R8_Uint, .R8_Sint, .R16_Uint, .R16_Sint, .R16_Unorm, .R16_Snorm,
+		 .R16_Float, .Rg8_Unorm, .Rg8_Snorm, .Rg8_Uint, .Rg8_Sint, .R32_Uint, .R32_Sint,
+		 .R32_Float, .Rg16_Uint, .Rg16_Sint, .Rg16_Unorm, .Rg16_Snorm, .Rg16_Float, .Rgba8_Unorm,
+		 .Rgba8_Unorm_Srgb, .Rgba8_Snorm, .Rgba8_Uint, .Rgba8_Sint, .Bgra8_Unorm,
+		 .Bgra8_Unorm_Srgb, .Rgb9e5_Ufloat, .Rgb10a2_Uint, .Rgb10a2_Unorm, .Rg11b10_Ufloat,
+		 .Rg32_Uint, .Rg32_Sint, .Rg32_Float, .Rgba16_Uint, .Rgba16_Sint, .Rgba16_Unorm,
+		 .Rgba16_Snorm, .Rgba16_Float, .Rgba32_Uint, .Rgba32_Sint, .Rgba32_Float, .Stencil8,
+		 .Depth16_Unorm, .Depth24_Plus, .Depth24_Plus_Stencil8, .Depth32_Float,
+		 .Depth32_Float_Stencil8, .NV12:
 		return 1, 1
 
-	case .Bc1RgbaUnorm, .Bc1RgbaUnormSrgb, .Bc2RgbaUnorm, .Bc2RgbaUnormSrgb, .Bc3RgbaUnorm,
-		 .Bc3RgbaUnormSrgb, .Bc4RUnorm, .Bc4RSnorm, .Bc5RgUnorm, .Bc5RgSnorm, .Bc6hRgbUfloat,
-	     .Bc6hRgbFloat, .Bc7RgbaUnorm, .Bc7RgbaUnormSrgb, .Etc2Rgb8Unorm, .Etc2Rgb8UnormSrgb,
-		 .Etc2Rgb8A1Unorm, .Etc2Rgb8A1UnormSrgb, .Etc2Rgba8Unorm, .Etc2Rgba8UnormSrgb,
-	     .EacR11Unorm, .EacR11Snorm, .EacRg11Unorm, .EacRg11Snorm:
+	case .Bc1_Rgba_Unorm, .Bc1_Rgba_Unorm_Srgb, .Bc2_Rgba_Unorm, .Bc2_Rgba_Unorm_Srgb,
+		 .Bc3_Rgba_Unorm, .Bc3_Rgba_Unorm_Srgb, .Bc4_R_Unorm, .Bc4_R_Snorm, .Bc5_Rg_Unorm,
+		 .Bc5_Rg_Snorm, .Bc6h_Rgb_Ufloat, .Bc6h_Rgb_Float, .Bc7_Rgba_Unorm, .Bc7_Rgba_Unorm_Srgb,
+		 .Etc2_Rgb8_Unorm, .Etc2_Rgb8_Unorm_Srgb, .Etc2_Rgb8_A1_Unorm, .Etc2_Rgb8_A1_Unorm_Srgb,
+		 .Etc2_Rgba8_Unorm, .Etc2_Rgba8_Unorm_Srgb, .Eac_R11_Unorm, .Eac_R11_Snorm,
+		 .Eac_Rg11_Unorm, .Eac_Rg11_Snorm:
 		return 4, 4
 
-	case .Astc4x4Unorm, .Astc4x4UnormSrgb: return 4, 4
-	case .Astc5x4Unorm, .Astc5x4UnormSrgb: return 5, 5
-	case .Astc5x5Unorm, .Astc5x5UnormSrgb: return 5, 5
-	case .Astc6x5Unorm, .Astc6x5UnormSrgb: return 6, 5
-	case .Astc6x6Unorm, .Astc6x6UnormSrgb: return 6, 6
-	case .Astc8x5Unorm, .Astc8x5UnormSrgb: return 8, 5
-	case .Astc8x6Unorm, .Astc8x6UnormSrgb: return 8, 6
-	case .Astc8x8Unorm, .Astc8x8UnormSrgb: return 8, 8
-	case .Astc10x5Unorm, .Astc10x5UnormSrgb: return 10, 5
-	case .Astc10x6Unorm, .Astc10x6UnormSrgb: return 10, 6
-	case .Astc10x8Unorm, .Astc10x8UnormSrgb: return 10, 8
-	case .Astc10x10Unorm, .Astc10x10UnormSrgb: return 10, 10
-	case .Astc12x10Unorm, .Astc12x10UnormSrgb: return 12, 10
-	case .Astc12x12Unorm, .Astc12x12UnormSrgb: return 12, 12
+	case .Astc4x4_Unorm, .Astc4x4_Unorm_Srgb: return 4, 4
+	case .Astc5x4_Unorm, .Astc5x4_Unorm_Srgb: return 5, 5
+	case .Astc5x5_Unorm, .Astc5x5_Unorm_Srgb: return 5, 5
+	case .Astc6x5_Unorm, .Astc6x5_Unorm_Srgb: return 6, 5
+	case .Astc6x6_Unorm, .Astc6x6_Unorm_Srgb: return 6, 6
+	case .Astc8x5_Unorm, .Astc8x5_Unorm_Srgb: return 8, 5
+	case .Astc8x6_Unorm, .Astc8x6_Unorm_Srgb: return 8, 6
+	case .Astc8x8_Unorm, .Astc8x8_Unorm_Srgb: return 8, 8
+	case .Astc10x5_Unorm, .Astc10x5_Unorm_Srgb: return 10, 5
+	case .Astc10x6_Unorm, .Astc10x6_Unorm_Srgb: return 10, 6
+	case .Astc10x8_Unorm, .Astc10x8_Unorm_Srgb: return 10, 8
+	case .Astc10x10_Unorm, .Astc10x10_Unorm_Srgb: return 10, 10
+	case .Astc12x10_Unorm, .Astc12x10_Unorm_Srgb: return 12, 10
+	case .Astc12x12_Unorm, .Astc12x12_Unorm_Srgb: return 12, 12
+
 	case .Undefined:
 		return 1, 1
 	}
@@ -410,13 +423,13 @@ texture_format_is_bcn :: proc "contextless" (self: Texture_Format) -> bool {
 texture_format_required_features :: proc "contextless" (self: Texture_Format) -> Features {
 	// odinfmt: disable
 	switch self {
-	case .R8Unorm, .R8Snorm, .R8Uint, .R8Sint, .R16Uint, .R16Sint, .R16Float, .Rg8Unorm,
-	     .Rg8Snorm, .Rg8Uint, .Rg8Sint, .R32Float, .R32Uint, .R32Sint, .Rg16Uint,
-	     .Rg16Sint, .Rg16Float, .Rgba8Unorm, .Rgba8UnormSrgb, .Rgba8Snorm, .Rgba8Uint, .Rgba8Sint,
-	     .Bgra8Unorm, .Bgra8UnormSrgb, .Rgb10a2Uint, .Rgb10a2Unorm, .Rg11b10Ufloat, .Rgb9e5Ufloat,
-	     .Rg32Float, .Rg32Uint, .Rg32Sint, .Rgba16Uint, .Rgba16Sint, .Rgba16Float, .Rgba32Float,
-	     .Rgba32Uint, .Rgba32Sint, .Stencil8, .Depth16Unorm, .Depth24Plus, .Depth24PlusStencil8,
-	     .Depth32Float:
+	case .R8_Unorm, .R8_Snorm, .R8_Uint, .R8_Sint, .R16_Uint, .R16_Sint, .R16_Float, .Rg8_Unorm,
+		 .Rg8_Snorm, .Rg8_Uint, .Rg8_Sint, .R32_Float, .R32_Uint, .R32_Sint, .Rg16_Uint, .Rg16_Sint,
+		 .Rg16_Float, .Rgba8_Unorm, .Rgba8_Unorm_Srgb, .Rgba8_Snorm, .Rgba8_Uint, .Rgba8_Sint,
+		 .Bgra8_Unorm, .Bgra8_Unorm_Srgb, .Rgb10a2_Uint, .Rgb10a2_Unorm, .Rg11b10_Ufloat,
+		 .Rgb9e5_Ufloat, .Rg32_Float, .Rg32_Uint, .Rg32_Sint, .Rgba16_Uint, .Rgba16_Sint,
+		 .Rgba16_Float, .Rgba32_Float, .Rgba32_Uint, .Rgba32_Sint, .Stencil8, .Depth16_Unorm,
+		 .Depth24_Plus, .Depth24_Plus_Stencil8, .Depth32_Float:
 		return {} // empty, no features need
 
 	case .Depth32_Float_Stencil8:
@@ -425,26 +438,28 @@ texture_format_required_features :: proc "contextless" (self: Texture_Format) ->
 	case .NV12:
 		return {.Texture_Format_NV12}
 
-	case .R16Unorm, .R16Snorm, .Rg16Unorm, .Rg16Snorm, .Rgba16Unorm, .Rgba16Snorm:
+	case .R16_Unorm, .R16_Snorm, .Rg16_Unorm, .Rg16_Snorm, .Rgba16_Unorm, .Rgba16_Snorm:
 		return {.Texture_Format16bit_Norm}
 
-	case .Bc1RgbaUnorm, .Bc1RgbaUnormSrgb, .Bc2RgbaUnorm, .Bc2RgbaUnormSrgb, .Bc3RgbaUnorm,
-	     .Bc3RgbaUnormSrgb, .Bc4RUnorm, .Bc4RSnorm, .Bc5RgUnorm, .Bc5RgSnorm, .Bc6hRgbUfloat,
-	     .Bc6hRgbFloat, .Bc7RgbaUnorm, .Bc7RgbaUnormSrgb:
+	case .Bc1_Rgba_Unorm, .Bc1_Rgba_Unorm_Srgb, .Bc2_Rgba_Unorm, .Bc2_Rgba_Unorm_Srgb,
+		 .Bc3_Rgba_Unorm, .Bc3_Rgba_Unorm_Srgb, .Bc4_R_Unorm, .Bc4_R_Snorm, .Bc5_Rg_Unorm,
+		 .Bc5_Rg_Snorm, .Bc6h_Rgb_Ufloat, .Bc6h_Rgb_Float, .Bc7_Rgba_Unorm, .Bc7_Rgba_Unorm_Srgb:
 		return {.Texture_Compression_BC}
 
-	case .Etc2Rgb8Unorm, .Etc2Rgb8UnormSrgb, .Etc2Rgb8A1Unorm, .Etc2Rgb8A1UnormSrgb,
-		 .Etc2Rgba8Unorm, .Etc2Rgba8UnormSrgb, .EacR11Unorm, .EacR11Snorm, .EacRg11Unorm,
-	     .EacRg11Snorm:
+	case .Etc2_Rgb8_Unorm, .Etc2_Rgb8_Unorm_Srgb, .Etc2_Rgb8_A1_Unorm, .Etc2_Rgb8_A1_Unorm_Srgb,
+		 .Etc2_Rgba8_Unorm, .Etc2_Rgba8_Unorm_Srgb, .Eac_R11_Unorm, .Eac_R11_Snorm, .Eac_Rg11_Unorm,
+	     .Eac_Rg11_Snorm:
 		return {.Texture_Compression_ETC2}
 
-	case .Astc4x4Unorm, .Astc4x4UnormSrgb, .Astc5x4Unorm, .Astc5x4UnormSrgb, .Astc5x5Unorm,
-		 .Astc5x5UnormSrgb, .Astc6x5Unorm, .Astc6x5UnormSrgb, .Astc6x6Unorm, .Astc6x6UnormSrgb,
-		 .Astc8x5Unorm, .Astc8x5UnormSrgb, .Astc8x6Unorm, .Astc8x6UnormSrgb, .Astc8x8Unorm,
-	     .Astc8x8UnormSrgb, .Astc10x5Unorm, .Astc10x5UnormSrgb, .Astc10x6Unorm, .Astc10x6UnormSrgb,
-	     .Astc10x8Unorm, .Astc10x8UnormSrgb, .Astc10x10Unorm, .Astc10x10UnormSrgb,
-	     .Astc12x10Unorm, .Astc12x10UnormSrgb, .Astc12x12Unorm, .Astc12x12UnormSrgb:
+	case .Astc4x4_Unorm, .Astc4x4_Unorm_Srgb, .Astc5x4_Unorm, .Astc5x4_Unorm_Srgb,
+		 .Astc5x5_Unorm, .Astc5x5_Unorm_Srgb, .Astc6x5_Unorm, .Astc6x5_Unorm_Srgb, .Astc6x6_Unorm,
+		 .Astc6x6_Unorm_Srgb, .Astc8x5_Unorm, .Astc8x5_Unorm_Srgb, .Astc8x6_Unorm,
+		 .Astc8x6_Unorm_Srgb, .Astc8x8_Unorm, .Astc8x8_Unorm_Srgb, .Astc10x5_Unorm,
+		 .Astc10x5_Unorm_Srgb, .Astc10x6_Unorm, .Astc10x6_Unorm_Srgb, .Astc10x8_Unorm,
+		 .Astc10x8_Unorm_Srgb, .Astc10x10_Unorm, .Astc10x10_Unorm_Srgb, .Astc12x10_Unorm,
+		 .Astc12x10_Unorm_Srgb, .Astc12x12_Unorm, .Astc12x12_Unorm_Srgb:
 		return {.Texture_Compression_ASTC}
+
 	case .Undefined:
 		return {}
 	}
@@ -464,9 +479,9 @@ texture_format_guaranteed_format_features :: proc "contextless" (
 	features: Texture_Format_Features,
 ) {
 	// Multisampling
-	noaa: TextureFormatFeatureFlags
-	msaa: TextureFormatFeatureFlags = {.MultisampleX4}
-	msaa_resolve: TextureFormatFeatureFlags = msaa + {.MultisampleResolve}
+	noaa: Texture_Format_Feature_Flags
+	msaa: Texture_Format_Feature_Flags = {.Multisample_X4}
+	msaa_resolve: Texture_Format_Feature_Flags = msaa + {.Multisample_Resolve}
 
 	// Flags
 	basic: Texture_Usages = {.Copy_Src, .Copy_Dst, .Texture_Binding}
@@ -477,91 +492,93 @@ texture_format_guaranteed_format_features :: proc "contextless" (
 	rg11b10f := attachment if .RG11B10_Ufloat_Renderable in device_features else basic
 	bgra8unorm := attachment + storage if .BGRA8_Unorm_Storage in device_features else attachment
 
-	flags: TextureFormatFeatureFlags
+	flags: Texture_Format_Feature_Flags
 	allowed_usages: Texture_Usages
 
 	// odinfmt: disable
 	switch self {
-	case .R8Unorm: flags = msaa_resolve; allowed_usages = attachment
-	case .R8Snorm: flags = noaa; allowed_usages = basic
-	case .R8Uint: flags = msaa; allowed_usages = attachment
-	case .R8Sint: flags = msaa; allowed_usages = attachment
-	case .R16Uint: flags = msaa; allowed_usages = attachment
-	case .R16Sint: flags = msaa; allowed_usages = attachment
-	case .R16Float: flags = msaa_resolve; allowed_usages = attachment
-	case .Rg8Unorm: flags = msaa_resolve; allowed_usages = attachment
-	case .Rg8Snorm: flags = noaa; allowed_usages = basic
-	case .Rg8Uint: flags = msaa; allowed_usages = attachment
-	case .Rg8Sint: flags = msaa; allowed_usages = attachment
-	case .R32Uint: flags = noaa; allowed_usages = all_flags
-	case .R32Sint: flags = noaa; allowed_usages = all_flags
-	case .R32Float: flags = msaa; allowed_usages = all_flags
-	case .Rg16Uint: flags = msaa; allowed_usages = attachment
-	case .Rg16Sint: flags = msaa; allowed_usages = attachment
-	case .Rg16Float: flags = msaa_resolve; allowed_usages = attachment
-	case .Rgba8Unorm: flags = msaa_resolve; allowed_usages = all_flags
-	case .Rgba8UnormSrgb: flags = msaa_resolve; allowed_usages = attachment
-	case .Rgba8Snorm: flags = noaa; allowed_usages = storage
-	case .Rgba8Uint: flags = msaa; allowed_usages = all_flags
-	case .Rgba8Sint: flags = msaa; allowed_usages = all_flags
-	case .Bgra8Unorm: flags = msaa_resolve; allowed_usages = bgra8unorm
-	case .Bgra8UnormSrgb: flags = msaa_resolve; allowed_usages = attachment
-	case .Rgb10a2Uint: flags = msaa; allowed_usages = attachment
-	case .Rgb10a2Unorm: flags = msaa_resolve; allowed_usages = attachment
-	case .Rg11b10Ufloat: flags = msaa; allowed_usages = rg11b10f
-	case .Rg32Uint: flags = noaa; allowed_usages = all_flags
-	case .Rg32Sint: flags = noaa; allowed_usages = all_flags
-	case .Rg32Float: flags = noaa; allowed_usages = all_flags
-	case .Rgba16Uint: flags = msaa; allowed_usages = all_flags
-	case .Rgba16Sint: flags = msaa; allowed_usages = all_flags
-	case .Rgba16Float: flags = msaa_resolve; allowed_usages = all_flags
-	case .Rgba32Uint: flags = noaa; allowed_usages = all_flags
-	case .Rgba32Sint: flags = noaa; allowed_usages = all_flags
-	case .Rgba32Float: flags = noaa; allowed_usages = all_flags
+	case .R8_Unorm: flags = msaa_resolve; allowed_usages = attachment
+	case .R8_Snorm: flags = noaa; allowed_usages = basic
+	case .R8_Uint: flags = msaa; allowed_usages = attachment
+	case .R8_Sint: flags = msaa; allowed_usages = attachment
+	case .R16_Uint: flags = msaa; allowed_usages = attachment
+	case .R16_Sint: flags = msaa; allowed_usages = attachment
+	case .R16_Float: flags = msaa_resolve; allowed_usages = attachment
+	case .Rg8_Unorm: flags = msaa_resolve; allowed_usages = attachment
+	case .Rg8_Snorm: flags = noaa; allowed_usages = basic
+	case .Rg8_Uint: flags = msaa; allowed_usages = attachment
+	case .Rg8_Sint: flags = msaa; allowed_usages = attachment
+	case .R32_Uint: flags = noaa; allowed_usages = all_flags
+	case .R32_Sint: flags = noaa; allowed_usages = all_flags
+	case .R32_Float: flags = msaa; allowed_usages = all_flags
+	case .Rg16_Uint: flags = msaa; allowed_usages = attachment
+	case .Rg16_Sint: flags = msaa; allowed_usages = attachment
+	case .Rg16_Float: flags = msaa_resolve; allowed_usages = attachment
+	case .Rgba8_Unorm: flags = msaa_resolve; allowed_usages = all_flags
+	case .Rgba8_Unorm_Srgb: flags = msaa_resolve; allowed_usages = attachment
+	case .Rgba8_Snorm: flags = noaa; allowed_usages = storage
+	case .Rgba8_Uint: flags = msaa; allowed_usages = all_flags
+	case .Rgba8_Sint: flags = msaa; allowed_usages = all_flags
+	case .Bgra8_Unorm: flags = msaa_resolve; allowed_usages = bgra8unorm
+	case .Bgra8_Unorm_Srgb: flags = msaa_resolve; allowed_usages = attachment
+	case .Rgb10a2_Uint: flags = msaa; allowed_usages = attachment
+	case .Rgb10a2_Unorm: flags = msaa_resolve; allowed_usages = attachment
+	case .Rg11b10_Ufloat: flags = msaa; allowed_usages = rg11b10f
+	case .Rg32_Uint: flags = noaa; allowed_usages = all_flags
+	case .Rg32_Sint: flags = noaa; allowed_usages = all_flags
+	case .Rg32_Float: flags = noaa; allowed_usages = all_flags
+	case .Rgba16_Uint: flags = msaa; allowed_usages = all_flags
+	case .Rgba16_Sint: flags = msaa; allowed_usages = all_flags
+	case .Rgba16_Float: flags = msaa_resolve; allowed_usages = all_flags
+	case .Rgba32_Uint: flags = noaa; allowed_usages = all_flags
+	case .Rgba32_Sint: flags = noaa; allowed_usages = all_flags
+	case .Rgba32_Float: flags = noaa; allowed_usages = all_flags
 	case .Stencil8: flags = msaa; allowed_usages = attachment
-	case .Depth16Unorm: flags = msaa; allowed_usages = attachment
-	case .Depth24Plus: flags = msaa; allowed_usages = attachment
-	case .Depth24PlusStencil8: flags = msaa; allowed_usages = attachment
-	case .Depth32Float: flags = msaa; allowed_usages = attachment
+	case .Depth16_Unorm: flags = msaa; allowed_usages = attachment
+	case .Depth24_Plus: flags = msaa; allowed_usages = attachment
+	case .Depth24_Plus_Stencil8: flags = msaa; allowed_usages = attachment
+	case .Depth32_Float: flags = msaa; allowed_usages = attachment
 	case .Depth32_Float_Stencil8: flags = msaa; allowed_usages = attachment
 	case .NV12: flags = noaa; allowed_usages = binding
-	case .R16Unorm: flags = msaa; allowed_usages = storage
-	case .R16Snorm: flags = msaa; allowed_usages = storage
-	case .Rg16Unorm: flags = msaa; allowed_usages = storage
-	case .Rg16Snorm: flags = msaa; allowed_usages = storage
-	case .Rgba16Unorm: flags = msaa; allowed_usages = storage
-	case .Rgba16Snorm: flags = msaa; allowed_usages = storage
-	case .Rgb9e5Ufloat: flags = noaa; allowed_usages = basic
-	case .Bc1RgbaUnorm: flags = noaa; allowed_usages = basic
-	case .Bc1RgbaUnormSrgb: flags = noaa; allowed_usages = basic
-	case .Bc2RgbaUnorm: flags = noaa; allowed_usages = basic
-	case .Bc2RgbaUnormSrgb: flags = noaa; allowed_usages = basic
-	case .Bc3RgbaUnorm: flags = noaa; allowed_usages = basic
-	case .Bc3RgbaUnormSrgb: flags = noaa; allowed_usages = basic
-	case .Bc4RUnorm: flags = noaa; allowed_usages = basic
-	case .Bc4RSnorm: flags = noaa; allowed_usages = basic
-	case .Bc5RgUnorm: flags = noaa; allowed_usages = basic
-	case .Bc5RgSnorm: flags = noaa; allowed_usages = basic
-	case .Bc6hRgbUfloat: flags = noaa; allowed_usages = basic
-	case .Bc6hRgbFloat: flags = noaa; allowed_usages = basic
-	case .Bc7RgbaUnorm: flags = noaa; allowed_usages = basic
-	case .Bc7RgbaUnormSrgb: flags = noaa; allowed_usages = basic
-	case .Etc2Rgb8Unorm: flags = noaa; allowed_usages = basic
-	case .Etc2Rgb8UnormSrgb: flags = noaa; allowed_usages = basic
-	case .Etc2Rgb8A1Unorm: flags = noaa; allowed_usages = basic
-	case .Etc2Rgb8A1UnormSrgb: flags = noaa; allowed_usages = basic
-	case .Etc2Rgba8Unorm: flags = noaa; allowed_usages = basic
-	case .Etc2Rgba8UnormSrgb: flags = noaa; allowed_usages = basic
-	case .EacR11Unorm: flags = noaa; allowed_usages = basic
-	case .EacR11Snorm: flags = noaa; allowed_usages = basic
-	case .EacRg11Unorm: flags = noaa; allowed_usages = basic
-	case .EacRg11Snorm: flags = noaa; allowed_usages = basic
-	case .Astc4x4Unorm, .Astc4x4UnormSrgb, .Astc5x4Unorm, .Astc5x4UnormSrgb, .Astc5x5Unorm,
-		 .Astc5x5UnormSrgb, .Astc6x5Unorm, .Astc6x5UnormSrgb, .Astc6x6Unorm, .Astc6x6UnormSrgb,
-		 .Astc8x5Unorm, .Astc8x5UnormSrgb, .Astc8x6Unorm, .Astc8x6UnormSrgb, .Astc8x8Unorm,
-	     .Astc8x8UnormSrgb, .Astc10x5Unorm, .Astc10x5UnormSrgb, .Astc10x6Unorm, .Astc10x6UnormSrgb,
-	     .Astc10x8Unorm, .Astc10x8UnormSrgb, .Astc10x10Unorm, .Astc10x10UnormSrgb,
-	     .Astc12x10Unorm, .Astc12x10UnormSrgb, .Astc12x12Unorm, .Astc12x12UnormSrgb:
+	case .R16_Unorm: flags = msaa; allowed_usages = storage
+	case .R16_Snorm: flags = msaa; allowed_usages = storage
+	case .Rg16_Unorm: flags = msaa; allowed_usages = storage
+	case .Rg16_Snorm: flags = msaa; allowed_usages = storage
+	case .Rgba16_Unorm: flags = msaa; allowed_usages = storage
+	case .Rgba16_Snorm: flags = msaa; allowed_usages = storage
+	case .Rgb9e5_Ufloat: flags = noaa; allowed_usages = basic
+	case .Bc1_Rgba_Unorm: flags = noaa; allowed_usages = basic
+	case .Bc1_Rgba_Unorm_Srgb: flags = noaa; allowed_usages = basic
+	case .Bc2_Rgba_Unorm: flags = noaa; allowed_usages = basic
+	case .Bc2_Rgba_Unorm_Srgb: flags = noaa; allowed_usages = basic
+	case .Bc3_Rgba_Unorm: flags = noaa; allowed_usages = basic
+	case .Bc3_Rgba_Unorm_Srgb: flags = noaa; allowed_usages = basic
+	case .Bc4_R_Unorm: flags = noaa; allowed_usages = basic
+	case .Bc4_R_Snorm: flags = noaa; allowed_usages = basic
+	case .Bc5_Rg_Unorm: flags = noaa; allowed_usages = basic
+	case .Bc5_Rg_Snorm: flags = noaa; allowed_usages = basic
+	case .Bc6h_Rgb_Ufloat: flags = noaa; allowed_usages = basic
+	case .Bc6h_Rgb_Float: flags = noaa; allowed_usages = basic
+	case .Bc7_Rgba_Unorm: flags = noaa; allowed_usages = basic
+	case .Bc7_Rgba_Unorm_Srgb: flags = noaa; allowed_usages = basic
+	case .Etc2_Rgb8_Unorm: flags = noaa; allowed_usages = basic
+	case .Etc2_Rgb8_Unorm_Srgb: flags = noaa; allowed_usages = basic
+	case .Etc2_Rgb8_A1_Unorm: flags = noaa; allowed_usages = basic
+	case .Etc2_Rgb8_A1_Unorm_Srgb: flags = noaa; allowed_usages = basic
+	case .Etc2_Rgba8_Unorm: flags = noaa; allowed_usages = basic
+	case .Etc2_Rgba8_Unorm_Srgb: flags = noaa; allowed_usages = basic
+	case .Eac_R11_Unorm: flags = noaa; allowed_usages = basic
+	case .Eac_R11_Snorm: flags = noaa; allowed_usages = basic
+	case .Eac_Rg11_Unorm: flags = noaa; allowed_usages = basic
+	case .Eac_Rg11_Snorm: flags = noaa; allowed_usages = basic
+	case .Astc4x4_Unorm, .Astc4x4_Unorm_Srgb, .Astc5x4_Unorm, .Astc5x4_Unorm_Srgb,
+		 .Astc5x5_Unorm,.Astc5x5_Unorm_Srgb, .Astc6x5_Unorm, .Astc6x5_Unorm_Srgb, .Astc6x6_Unorm,
+		 .Astc6x6_Unorm_Srgb,.Astc8x5_Unorm, .Astc8x5_Unorm_Srgb, .Astc8x6_Unorm,
+		 .Astc8x6_Unorm_Srgb, .Astc8x8_Unorm,.Astc8x8_Unorm_Srgb, .Astc10x5_Unorm,
+		 .Astc10x5_Unorm_Srgb, .Astc10x6_Unorm, .Astc10x6_Unorm_Srgb,.Astc10x8_Unorm,
+		 .Astc10x8_Unorm_Srgb, .Astc10x10_Unorm, .Astc10x10_Unorm_Srgb,.Astc12x10_Unorm,
+		 .Astc12x10_Unorm_Srgb, .Astc12x12_Unorm,
+		 .Astc12x12_Unorm_Srgb:
 		flags = noaa; allowed_usages = basic
 	case .Undefined:
 		unreachable()
@@ -614,29 +631,29 @@ texture_format_sample_type :: proc "contextless" (
 
 	// odinfmt: disable
 	switch self {
-	case .R8Unorm, .R8Snorm, .Rg8Unorm, .Rg8Snorm, .Rgba8Unorm, .Rgba8UnormSrgb, .Rgba8Snorm,
-	     .Bgra8Unorm, .Bgra8UnormSrgb, .R16Float, .Rg16Float, .Rgba16Float, .Rgb10a2Unorm,
-	     .Rg11b10Ufloat:
+	case .R8_Unorm, .R8_Snorm, .Rg8_Unorm, .Rg8_Snorm, .Rgba8_Unorm, .Rgba8_Unorm_Srgb,
+		 .Rgba8_Snorm, .Bgra8_Unorm, .Bgra8_Unorm_Srgb, .R16_Float, .Rg16_Float, .Rgba16_Float,
+		 .Rgb10a2_Unorm, .Rg11b10_Ufloat:
 		return float_filterable
 
-	case .R32Float, .Rg32Float, .Rgba32Float:
+	case .R32_Float, .Rg32_Float, .Rgba32_Float:
 		return float32_sample_type
 
-	case .R8Uint, .Rg8Uint, .Rgba8Uint, .R16Uint, .Rg16Uint, .Rgba16Uint, .R32Uint,
-	     .Rg32Uint, .Rgba32Uint, .Rgb10a2Uint:
+	case .R8_Uint, .Rg8_Uint, .Rgba8_Uint, .R16_Uint, .Rg16_Uint, .Rgba16_Uint, .R32_Uint,
+	     .Rg32_Uint, .Rgba32_Uint, .Rgb10a2_Uint:
 		return _uint
 
-	case .R8Sint, .Rg8Sint, .Rgba8Sint, .R16Sint, .Rg16Sint, .Rgba16Sint, .R32Sint,
-	     .Rg32Sint, .Rgba32Sint:
+	case .R8_Sint, .Rg8_Sint, .Rgba8_Sint, .R16_Sint, .Rg16_Sint, .Rgba16_Sint, .R32_Sint,
+	     .Rg32_Sint, .Rgba32_Sint:
 		return sint
 
 	case .Stencil8:
 		return _uint
 
-	case .Depth16Unorm, .Depth24Plus, .Depth32Float:
+	case .Depth16_Unorm, .Depth24_Plus, .Depth32_Float:
 		return depth
 
-	case .Depth24PlusStencil8, .Depth32_Float_Stencil8:
+	case .Depth24_Plus_Stencil8, .Depth32_Float_Stencil8:
 		if aspect_ok {
 			if _aspect == .Depth_Only {
 				return depth
@@ -655,21 +672,24 @@ texture_format_sample_type :: proc "contextless" (
 		}
 		return .Undefined
 
-	case .R16Unorm, .R16Snorm, .Rg16Unorm, .Rg16Snorm, .Rgba16Unorm, .Rgba16Snorm:
+	case .R16_Unorm, .R16_Snorm, .Rg16_Unorm, .Rg16_Snorm, .Rgba16_Unorm, .Rgba16_Snorm:
 		return float_filterable
 
-	case .Rgb9e5Ufloat, .Bc1RgbaUnorm, .Bc1RgbaUnormSrgb, .Bc2RgbaUnorm, .Bc2RgbaUnormSrgb,
-		 .Bc3RgbaUnorm, .Bc3RgbaUnormSrgb, .Bc4RUnorm, .Bc4RSnorm, .Bc5RgUnorm, .Bc5RgSnorm,
-	     .Bc6hRgbUfloat, .Bc6hRgbFloat, .Bc7RgbaUnorm, .Bc7RgbaUnormSrgb, .Etc2Rgb8Unorm,
-		 .Etc2Rgb8UnormSrgb, .Etc2Rgb8A1Unorm, .Etc2Rgb8A1UnormSrgb, .Etc2Rgba8Unorm,
-		 .Etc2Rgba8UnormSrgb, .EacR11Unorm, .EacR11Snorm, .EacRg11Unorm, .EacRg11Snorm,
-	     .Astc4x4Unorm, .Astc4x4UnormSrgb, .Astc5x4Unorm, .Astc5x4UnormSrgb, .Astc5x5Unorm,
-	     .Astc5x5UnormSrgb, .Astc6x5Unorm, .Astc6x5UnormSrgb, .Astc6x6Unorm, .Astc6x6UnormSrgb,
-	     .Astc8x5Unorm, .Astc8x5UnormSrgb, .Astc8x6Unorm, .Astc8x6UnormSrgb, .Astc8x8Unorm,
-	     .Astc8x8UnormSrgb, .Astc10x5Unorm, .Astc10x5UnormSrgb, .Astc10x6Unorm, .Astc10x6UnormSrgb,
-	     .Astc10x8Unorm, .Astc10x8UnormSrgb, .Astc10x10Unorm, .Astc10x10UnormSrgb, .Astc12x10Unorm,
-	     .Astc12x10UnormSrgb, .Astc12x12Unorm, .Astc12x12UnormSrgb:
+	case .Rgb9e5_Ufloat, .Bc1_Rgba_Unorm, .Bc1_Rgba_Unorm_Srgb, .Bc2_Rgba_Unorm,
+		 .Bc2_Rgba_Unorm_Srgb, .Bc3_Rgba_Unorm, .Bc3_Rgba_Unorm_Srgb, .Bc4_R_Unorm, .Bc4_R_Snorm,
+		 .Bc5_Rg_Unorm, .Bc5_Rg_Snorm, .Bc6h_Rgb_Ufloat, .Bc6h_Rgb_Float, .Bc7_Rgba_Unorm,
+		 .Bc7_Rgba_Unorm_Srgb, .Etc2_Rgb8_Unorm, .Etc2_Rgb8_Unorm_Srgb, .Etc2_Rgb8_A1_Unorm,
+		 .Etc2_Rgb8_A1_Unorm_Srgb, .Etc2_Rgba8_Unorm, .Etc2_Rgba8_Unorm_Srgb, .Eac_R11_Unorm,
+		 .Eac_R11_Snorm, .Eac_Rg11_Unorm, .Eac_Rg11_Snorm, .Astc4x4_Unorm, .Astc4x4_Unorm_Srgb,
+		 .Astc5x4_Unorm, .Astc5x4_Unorm_Srgb, .Astc5x5_Unorm, .Astc5x5_Unorm_Srgb, .Astc6x5_Unorm,
+		 .Astc6x5_Unorm_Srgb, .Astc6x6_Unorm, .Astc6x6_Unorm_Srgb, .Astc8x5_Unorm,
+		 .Astc8x5_Unorm_Srgb, .Astc8x6_Unorm, .Astc8x6_Unorm_Srgb, .Astc8x8_Unorm,
+		 .Astc8x8_Unorm_Srgb, .Astc10x5_Unorm, .Astc10x5_Unorm_Srgb, .Astc10x6_Unorm,
+		 .Astc10x6_Unorm_Srgb, .Astc10x8_Unorm, .Astc10x8_Unorm_Srgb, .Astc10x10_Unorm,
+		 .Astc10x10_Unorm_Srgb, .Astc12x10_Unorm, .Astc12x10_Unorm_Srgb, .Astc12x12_Unorm,
+		 .Astc12x12_Unorm_Srgb:
 		return float_filterable
+
 	case .Undefined:
 		return .Undefined
 	}
@@ -689,8 +709,8 @@ since uncompressed formats have a block size of 1x1.
 Returns `0` if any of the following are true:
  - the format is a combined depth-stencil and no `aspect` was provided
  - the format is a multi-planar format and no `aspect` was provided
- - the format is `Depth24Plus`
- - the format is `Depth24PlusStencil8` and `aspect` is depth.
+ - the format is `Depth24_Plus`
+ - the format is `Depth24_Plus_Stencil8` and `aspect` is depth.
 */
 texture_format_block_size :: proc "contextless" (
 	self: Texture_Format,
@@ -700,28 +720,29 @@ texture_format_block_size :: proc "contextless" (
 
 	// odinfmt: disable
 	switch self {
-	case .R8Unorm, .R8Snorm, .R8Uint, .R8Sint: return 1
+	case .R8_Unorm, .R8_Snorm, .R8_Uint, .R8_Sint: return 1
 
-	case .Rg8Unorm, .Rg8Snorm, .Rg8Uint, .Rg8Sint: return 2
-	case .R16Unorm, .R16Snorm, .R16Uint, .R16Sint, .R16Float: return 2
+	case .Rg8_Unorm, .Rg8_Snorm, .Rg8_Uint, .Rg8_Sint: return 2
+	case .R16_Unorm, .R16_Snorm, .R16_Uint, .R16_Sint, .R16_Float: return 2
 
-	case .Rgba8Unorm,.Rgba8UnormSrgb,.Rgba8Snorm,.Rgba8Uint,.Rgba8Sint,.Bgra8Unorm,.Bgra8UnormSrgb:
-		return 4
-	case .Rg16Unorm, .Rg16Snorm, .Rg16Uint, .Rg16Sint, .Rg16Float: return 4
-	case .R32Uint, .R32Sint, .R32Float: return 4
-	case .Rgb9e5Ufloat, .Rgb10a2Uint, .Rgb10a2Unorm, .Rg11b10Ufloat: return 4
+	case .Rgba8_Unorm,.Rgba8_Unorm_Srgb,.Rgba8_Snorm,.Rgba8_Uint,.Rgba8_Sint,.Bgra8_Unorm,
+		 .Bgra8_Unorm_Srgb: return 4
 
-	case .Rgba16Unorm, .Rgba16Snorm, .Rgba16Uint, .Rgba16Sint, .Rgba16Float: return 8
-	case .Rg32Uint, .Rg32Sint, .Rg32Float: return 8
+	case .Rg16_Unorm, .Rg16_Snorm, .Rg16_Uint, .Rg16_Sint, .Rg16_Float: return 4
+	case .R32_Uint, .R32_Sint, .R32_Float: return 4
+	case .Rgb9e5_Ufloat, .Rgb10a2_Uint, .Rgb10a2_Unorm, .Rg11b10_Ufloat: return 4
 
-	case .Rgba32Uint, .Rgba32Sint, .Rgba32Float: return 16
+	case .Rgba16_Unorm, .Rgba16_Snorm, .Rgba16_Uint, .Rgba16_Sint, .Rgba16_Float: return 8
+	case .Rg32_Uint, .Rg32_Sint, .Rg32_Float: return 8
+
+	case .Rgba32_Uint, .Rgba32_Sint, .Rgba32_Float: return 16
 
 	case .Stencil8: return 1
-	case .Depth16Unorm: return 2
-	case .Depth32Float: return 4
-	case .Depth24Plus: return 0
+	case .Depth16_Unorm: return 2
+	case .Depth32_Float: return 4
+	case .Depth24_Plus: return 0
 
-	case .Depth24PlusStencil8:
+	case .Depth24_Plus_Stencil8:
 		if aspect_ok {
 			#partial switch _aspect {
 			case .Stencil_Only: return 1
@@ -747,22 +768,25 @@ texture_format_block_size :: proc "contextless" (
 		}
 		return 0
 
-	case .Bc1RgbaUnorm, .Bc1RgbaUnormSrgb, .Bc4RUnorm, .Bc4RSnorm: return 8
+	case .Bc1_Rgba_Unorm, .Bc1_Rgba_Unorm_Srgb, .Bc4_R_Unorm, .Bc4_R_Snorm: return 8
 
-	case .Bc2RgbaUnorm, .Bc2RgbaUnormSrgb, .Bc3RgbaUnorm, .Bc3RgbaUnormSrgb, .Bc5RgUnorm,
-		 .Bc5RgSnorm, .Bc6hRgbUfloat, .Bc6hRgbFloat, .Bc7RgbaUnorm, .Bc7RgbaUnormSrgb: return 16
+	case .Bc2_Rgba_Unorm, .Bc2_Rgba_Unorm_Srgb, .Bc3_Rgba_Unorm, .Bc3_Rgba_Unorm_Srgb,
+		 .Bc5_Rg_Unorm, .Bc5_Rg_Snorm, .Bc6h_Rgb_Ufloat, .Bc6h_Rgb_Float, .Bc7_Rgba_Unorm,
+		 .Bc7_Rgba_Unorm_Srgb: return 16
 
-	case .Etc2Rgb8Unorm, .Etc2Rgb8UnormSrgb, .Etc2Rgb8A1Unorm, .Etc2Rgb8A1UnormSrgb, .EacR11Unorm,
-		 .EacR11Snorm: return 8
-	case .Etc2Rgba8Unorm, .Etc2Rgba8UnormSrgb, .EacRg11Unorm, .EacRg11Snorm: return 16
+	case .Etc2_Rgb8_Unorm, .Etc2_Rgb8_Unorm_Srgb, .Etc2_Rgb8_A1_Unorm, .Etc2_Rgb8_A1_Unorm_Srgb,
+		 .Eac_R11_Unorm, .Eac_R11_Snorm: return 8
 
-	case .Astc4x4Unorm, .Astc4x4UnormSrgb, .Astc5x4Unorm, .Astc5x4UnormSrgb, .Astc5x5Unorm,
-	     .Astc5x5UnormSrgb, .Astc6x5Unorm, .Astc6x5UnormSrgb, .Astc6x6Unorm, .Astc6x6UnormSrgb,
-	     .Astc8x5Unorm, .Astc8x5UnormSrgb, .Astc8x6Unorm, .Astc8x6UnormSrgb, .Astc8x8Unorm,
-	     .Astc8x8UnormSrgb, .Astc10x5Unorm, .Astc10x5UnormSrgb, .Astc10x6Unorm, .Astc10x6UnormSrgb,
-	     .Astc10x8Unorm, .Astc10x8UnormSrgb, .Astc10x10Unorm, .Astc10x10UnormSrgb, .Astc12x10Unorm,
-	     .Astc12x10UnormSrgb, .Astc12x12Unorm, .Astc12x12UnormSrgb:
-		return 16
+	case .Etc2_Rgba8_Unorm, .Etc2_Rgba8_Unorm_Srgb, .Eac_Rg11_Unorm, .Eac_Rg11_Snorm: return 16
+
+	case .Astc4x4_Unorm, .Astc4x4_Unorm_Srgb, .Astc5x4_Unorm, .Astc5x4_Unorm_Srgb, .Astc5x5_Unorm,
+	     .Astc5x5_Unorm_Srgb, .Astc6x5_Unorm, .Astc6x5_Unorm_Srgb, .Astc6x6_Unorm,
+		 .Astc6x6_Unorm_Srgb, .Astc8x5_Unorm, .Astc8x5_Unorm_Srgb, .Astc8x6_Unorm,
+		 .Astc8x6_Unorm_Srgb, .Astc8x8_Unorm, .Astc8x8_Unorm_Srgb, .Astc10x5_Unorm,
+		 .Astc10x5_Unorm_Srgb, .Astc10x6_Unorm, .Astc10x6_Unorm_Srgb, .Astc10x8_Unorm,
+		 .Astc10x8_Unorm_Srgb, .Astc10x10_Unorm, .Astc10x10_Unorm_Srgb, .Astc12x10_Unorm,
+		 .Astc12x10_Unorm_Srgb, .Astc12x12_Unorm, .Astc12x12_Unorm_Srgb: return 16
+
 	case .Undefined:
 		return 0
 	}
@@ -777,35 +801,37 @@ The number of bytes occupied per pixel in a color attachment
 texture_format_target_pixel_byte_cost :: proc "contextless" (self: Texture_Format) -> u32 {
 	// odinfmt: disable
 	switch self {
-	case .R8Unorm, .R8Snorm, .R8Uint, .R8Sint: return 1
+	case .R8_Unorm, .R8_Snorm, .R8_Uint, .R8_Sint: return 1
 
-	case .Rg8Unorm,.Rg8Snorm,.Rg8Uint,.Rg8Sint,.R16Uint,.R16Sint,.R16Unorm,.R16Snorm,.R16Float:
+	case .Rg8_Unorm,.Rg8_Snorm,.Rg8_Uint,.Rg8_Sint,.R16_Uint,.R16_Sint,.R16_Unorm,.R16_Snorm,
+		 .R16_Float:
 		return 2
 
-	case .Rgba8Uint, .Rgba8Sint, .Rg16Uint, .Rg16Sint, .Rg16Unorm, .Rg16Snorm, .Rg16Float,
-		 .R32Uint, .R32Sint, .R32Float: return 4
+	case .Rgba8_Uint, .Rgba8_Sint, .Rg16_Uint, .Rg16_Sint, .Rg16_Unorm, .Rg16_Snorm, .Rg16_Float,
+		 .R32_Uint, .R32_Sint, .R32_Float: return 4
 
-	case .Rgba8Unorm, .Rgba8UnormSrgb, .Rgba8Snorm, .Bgra8Unorm, .Bgra8UnormSrgb, .Rgba16Uint,
-	     .Rgba16Sint, .Rgba16Unorm, .Rgba16Snorm, .Rgba16Float, .Rg32Uint, .Rg32Sint, .Rg32Float,
-		 .Rgb10a2Uint, .Rgb10a2Unorm, .Rg11b10Ufloat:
+	case .Rgba8_Unorm, .Rgba8_Unorm_Srgb, .Rgba8_Snorm, .Bgra8_Unorm, .Bgra8_Unorm_Srgb,
+		 .Rgba16_Uint, .Rgba16_Sint, .Rgba16_Unorm, .Rgba16_Snorm, .Rgba16_Float, .Rg32_Uint,
+		 .Rg32_Sint, .Rg32_Float, .Rgb10a2_Uint, .Rgb10a2_Unorm, .Rg11b10_Ufloat:
 		return 8
 
-	case .Rgba32Uint, .Rgba32Sint, .Rgba32Float:
+	case .Rgba32_Uint, .Rgba32_Sint, .Rgba32_Float:
 		return 16
 
-	case .Stencil8, .Depth16Unorm, .Depth24Plus, .Depth24PlusStencil8, .Depth32Float,
-		 .Depth32_Float_Stencil8, .NV12, .Rgb9e5Ufloat, .Bc1RgbaUnorm, .Bc1RgbaUnormSrgb,
-		 .Bc2RgbaUnorm, .Bc2RgbaUnormSrgb, .Bc3RgbaUnorm, .Bc3RgbaUnormSrgb, .Bc4RUnorm,
-		 .Bc4RSnorm, .Bc5RgUnorm, .Bc5RgSnorm, .Bc6hRgbUfloat, .Bc6hRgbFloat, .Bc7RgbaUnorm,
-		 .Bc7RgbaUnormSrgb, .Etc2Rgb8Unorm, .Etc2Rgb8UnormSrgb, .Etc2Rgb8A1Unorm,
-		 .Etc2Rgb8A1UnormSrgb, .Etc2Rgba8Unorm, .Etc2Rgba8UnormSrgb, .EacR11Unorm, .EacR11Snorm,
-		 .EacRg11Unorm, .EacRg11Snorm, .Astc4x4Unorm, .Astc4x4UnormSrgb, .Astc5x4Unorm,
-		 .Astc5x4UnormSrgb, .Astc5x5Unorm, .Astc5x5UnormSrgb, .Astc6x5Unorm, .Astc6x5UnormSrgb,
-		 .Astc6x6Unorm, .Astc6x6UnormSrgb, .Astc8x5Unorm, .Astc8x5UnormSrgb, .Astc8x6Unorm,
-		 .Astc8x6UnormSrgb, .Astc8x8Unorm, .Astc8x8UnormSrgb, .Astc10x5Unorm, .Astc10x5UnormSrgb,
-		 .Astc10x6Unorm, .Astc10x6UnormSrgb, .Astc10x8Unorm, .Astc10x8UnormSrgb, .Astc10x10Unorm,
-		 .Astc10x10UnormSrgb, .Astc12x10Unorm, .Astc12x10UnormSrgb, .Astc12x12Unorm,
-		 .Astc12x12UnormSrgb:
+	case .Stencil8, .Depth16_Unorm, .Depth24_Plus, .Depth24_Plus_Stencil8, .Depth32_Float,
+		 .Depth32_Float_Stencil8, .NV12, .Rgb9e5_Ufloat, .Bc1_Rgba_Unorm, .Bc1_Rgba_Unorm_Srgb,
+		 .Bc2_Rgba_Unorm, .Bc2_Rgba_Unorm_Srgb, .Bc3_Rgba_Unorm, .Bc3_Rgba_Unorm_Srgb, .Bc4_R_Unorm,
+		 .Bc4_R_Snorm, .Bc5_Rg_Unorm, .Bc5_Rg_Snorm, .Bc6h_Rgb_Ufloat, .Bc6h_Rgb_Float,
+		 .Bc7_Rgba_Unorm, .Bc7_Rgba_Unorm_Srgb, .Etc2_Rgb8_Unorm, .Etc2_Rgb8_Unorm_Srgb,
+		 .Etc2_Rgb8_A1_Unorm, .Etc2_Rgb8_A1_Unorm_Srgb, .Etc2_Rgba8_Unorm, .Etc2_Rgba8_Unorm_Srgb,
+		 .Eac_R11_Unorm, .Eac_R11_Snorm, .Eac_Rg11_Unorm, .Eac_Rg11_Snorm, .Astc4x4_Unorm,
+		 .Astc4x4_Unorm_Srgb, .Astc5x4_Unorm, .Astc5x4_Unorm_Srgb, .Astc5x5_Unorm,
+		 .Astc5x5_Unorm_Srgb, .Astc6x5_Unorm, .Astc6x5_Unorm_Srgb, .Astc6x6_Unorm,
+		 .Astc6x6_Unorm_Srgb, .Astc8x5_Unorm, .Astc8x5_Unorm_Srgb, .Astc8x6_Unorm,
+		 .Astc8x6_Unorm_Srgb, .Astc8x8_Unorm, .Astc8x8_Unorm_Srgb, .Astc10x5_Unorm,
+		 .Astc10x5_Unorm_Srgb, .Astc10x6_Unorm, .Astc10x6_Unorm_Srgb, .Astc10x8_Unorm,
+		 .Astc10x8_Unorm_Srgb, .Astc10x10_Unorm, .Astc10x10_Unorm_Srgb, .Astc12x10_Unorm,
+		 .Astc12x10_Unorm_Srgb, .Astc12x12_Unorm, .Astc12x12_Unorm_Srgb:
 		return 0
 
 	case .Undefined: return 0
@@ -818,30 +844,31 @@ texture_format_target_pixel_byte_cost :: proc "contextless" (self: Texture_Forma
 texture_format_target_component_alignment :: proc "contextless" (self: Texture_Format) -> u32 {
 	// odinfmt: disable
 	switch self {
-	case .R8Unorm, .R8Snorm, .R8Uint, .R8Sint, .Rg8Unorm, .Rg8Snorm, .Rg8Uint, .Rg8Sint,
-	  	 .Rgba8Unorm, .Rgba8UnormSrgb, .
-		 Rgba8Snorm, .Rgba8Uint, .Rgba8Sint, .Bgra8Unorm,
-		 .Bgra8UnormSrgb: return 1
-	case .R16Uint, .R16Sint, .R16Unorm, .R16Snorm, .R16Float, .Rg16Uint, .Rg16Sint,
-		 .Rg16Unorm, .Rg16Snorm, .Rg16Float, .Rgba16Uint, .Rgba16Sint, .Rgba16Unorm,
-	 	 .Rgba16Snorm, .Rgba16Float: return 2
+	case .R8_Unorm, .R8_Snorm, .R8_Uint, .R8_Sint, .Rg8_Unorm, .Rg8_Snorm, .Rg8_Uint, .Rg8_Sint,
+	  	 .Rgba8_Unorm, .Rgba8_Unorm_Srgb, .
+		 Rgba8_Snorm, .Rgba8_Uint, .Rgba8_Sint, .Bgra8_Unorm,
+		 .Bgra8_Unorm_Srgb: return 1
+	case .R16_Uint, .R16_Sint, .R16_Unorm, .R16_Snorm, .R16_Float, .Rg16_Uint, .Rg16_Sint,
+		 .Rg16_Unorm, .Rg16_Snorm, .Rg16_Float, .Rgba16_Uint, .Rgba16_Sint, .Rgba16_Unorm,
+	 	 .Rgba16_Snorm, .Rgba16_Float: return 2
 
-	case .R32Uint, .R32Sint, .R32Float, .Rg32Uint, .Rg32Sint, .Rg32Float, .Rgba32Uint,
-		 .Rgba32Sint, .Rgba32Float, .Rgb10a2Uint, .Rgb10a2Unorm, .Rg11b10Ufloat: return 4
+	case .R32_Uint, .R32_Sint, .R32_Float, .Rg32_Uint, .Rg32_Sint, .Rg32_Float, .Rgba32_Uint,
+		 .Rgba32_Sint, .Rgba32_Float, .Rgb10a2_Uint, .Rgb10a2_Unorm, .Rg11b10_Ufloat: return 4
 
-	case .Stencil8, .Depth16Unorm, .Depth24Plus, .Depth24PlusStencil8, .Depth32Float,
-		 .Depth32_Float_Stencil8, .NV12, .Rgb9e5Ufloat, .Bc1RgbaUnorm, .Bc1RgbaUnormSrgb,
-		 .Bc2RgbaUnorm, .Bc2RgbaUnormSrgb, .Bc3RgbaUnorm, .Bc3RgbaUnormSrgb, .Bc4RUnorm,
-		 .Bc4RSnorm, .Bc5RgUnorm, .Bc5RgSnorm, .Bc6hRgbUfloat, .Bc6hRgbFloat, .Bc7RgbaUnorm,
-		 .Bc7RgbaUnormSrgb, .Etc2Rgb8Unorm, .Etc2Rgb8UnormSrgb, .Etc2Rgb8A1Unorm,
-		 .Etc2Rgb8A1UnormSrgb, .Etc2Rgba8Unorm, .Etc2Rgba8UnormSrgb, .EacR11Unorm, .EacR11Snorm,
-		 .EacRg11Unorm, .EacRg11Snorm, .Astc4x4Unorm, .Astc4x4UnormSrgb, .Astc5x4Unorm,
-		 .Astc5x4UnormSrgb, .Astc5x5Unorm, .Astc5x5UnormSrgb, .Astc6x5Unorm, .Astc6x5UnormSrgb,
-		 .Astc6x6Unorm, .Astc6x6UnormSrgb, .Astc8x5Unorm, .Astc8x5UnormSrgb, .Astc8x6Unorm,
-		 .Astc8x6UnormSrgb, .Astc8x8Unorm, .Astc8x8UnormSrgb, .Astc10x5Unorm, .Astc10x5UnormSrgb,
-		 .Astc10x6Unorm, .Astc10x6UnormSrgb, .Astc10x8Unorm, .Astc10x8UnormSrgb, .Astc10x10Unorm,
-		 .Astc10x10UnormSrgb, .Astc12x10Unorm, .Astc12x10UnormSrgb, .Astc12x12Unorm,
-		 .Astc12x12UnormSrgb:
+	case .Stencil8, .Depth16_Unorm, .Depth24_Plus, .Depth24_Plus_Stencil8, .Depth32_Float,
+		 .Depth32_Float_Stencil8, .NV12, .Rgb9e5_Ufloat, .Bc1_Rgba_Unorm, .Bc1_Rgba_Unorm_Srgb,
+		 .Bc2_Rgba_Unorm, .Bc2_Rgba_Unorm_Srgb, .Bc3_Rgba_Unorm, .Bc3_Rgba_Unorm_Srgb, .Bc4_R_Unorm,
+		 .Bc4_R_Snorm, .Bc5_Rg_Unorm, .Bc5_Rg_Snorm, .Bc6h_Rgb_Ufloat, .Bc6h_Rgb_Float,
+		 .Bc7_Rgba_Unorm, .Bc7_Rgba_Unorm_Srgb, .Etc2_Rgb8_Unorm, .Etc2_Rgb8_Unorm_Srgb,
+		 .Etc2_Rgb8_A1_Unorm, .Etc2_Rgb8_A1_Unorm_Srgb, .Etc2_Rgba8_Unorm, .Etc2_Rgba8_Unorm_Srgb,
+		 .Eac_R11_Unorm, .Eac_R11_Snorm, .Eac_Rg11_Unorm, .Eac_Rg11_Snorm, .Astc4x4_Unorm,
+		 .Astc4x4_Unorm_Srgb, .Astc5x4_Unorm, .Astc5x4_Unorm_Srgb, .Astc5x5_Unorm,
+		 .Astc5x5_Unorm_Srgb, .Astc6x5_Unorm, .Astc6x5_Unorm_Srgb, .Astc6x6_Unorm,
+		 .Astc6x6_Unorm_Srgb, .Astc8x5_Unorm, .Astc8x5_Unorm_Srgb, .Astc8x6_Unorm,
+		 .Astc8x6_Unorm_Srgb, .Astc8x8_Unorm, .Astc8x8_Unorm_Srgb, .Astc10x5_Unorm,
+		 .Astc10x5_Unorm_Srgb, .Astc10x6_Unorm, .Astc10x6_Unorm_Srgb, .Astc10x8_Unorm,
+		 .Astc10x8_Unorm_Srgb, .Astc10x10_Unorm, .Astc10x10_Unorm_Srgb, .Astc12x10_Unorm,
+		 .Astc12x10_Unorm_Srgb, .Astc12x12_Unorm, .Astc12x12_Unorm_Srgb:
 		return 0
 
 	case .Undefined: return 0
@@ -866,23 +893,23 @@ texture_format_components_with_aspect :: proc "contextless" (
 ) -> u8 {
 	// odinfmt: disable
 	switch self {
-	case .R8Unorm, .R8Snorm, .R8Uint, .R8Sint, .R16Unorm, .R16Snorm, .R16Uint, .R16Sint,
-		 .R16Float, .R32Uint, .R32Sint, .R32Float: return 1
+	case .R8_Unorm, .R8_Snorm, .R8_Uint, .R8_Sint, .R16_Unorm, .R16_Snorm, .R16_Uint, .R16_Sint,
+		 .R16_Float, .R32_Uint, .R32_Sint, .R32_Float: return 1
 
-	case .Rg8Unorm, .Rg8Snorm, .Rg8Uint, .Rg8Sint, .Rg16Unorm, .Rg16Snorm, .Rg16Uint, .Rg16Sint,
-		 .Rg16Float, .Rg32Uint, .Rg32Sint, .Rg32Float: return 2
+	case .Rg8_Unorm, .Rg8_Snorm, .Rg8_Uint, .Rg8_Sint, .Rg16_Unorm, .Rg16_Snorm, .Rg16_Uint,
+		 .Rg16_Sint, .Rg16_Float, .Rg32_Uint, .Rg32_Sint, .Rg32_Float:
+		return 2
 
-	case .Rgba8Unorm, .Rgba8UnormSrgb, .Rgba8Snorm, .Rgba8Uint, .Rgba8Sint, .Bgra8Unorm,
-		 .Bgra8UnormSrgb, .Rgba16Unorm, .Rgba16Snorm, .Rgba16Uint, .Rgba16Sint, .Rgba16Float,
-		 .Rgba32Uint, .Rgba32Sint, .Rgba32Float: return 4
+	case .Rgba8_Unorm, .Rgba8_Unorm_Srgb, .Rgba8_Snorm, .Rgba8_Uint, .Rgba8_Sint, .Bgra8_Unorm,
+		 .Bgra8_Unorm_Srgb, .Rgba16_Unorm, .Rgba16_Snorm, .Rgba16_Uint, .Rgba16_Sint, .Rgba16_Float,
+		 .Rgba32_Uint, .Rgba32_Sint, .Rgba32_Float: return 4
 
-	case .Rgb9e5Ufloat, .Rg11b10Ufloat: return 3
-	case .Rgb10a2Uint, .Rgb10a2Unorm: return 4
+	case .Rgb9e5_Ufloat, .Rg11b10_Ufloat: return 3
+	case .Rgb10a2_Uint, .Rgb10a2_Unorm: return 4
 
-	case .Stencil8, .Depth16Unorm, .Depth24Plus, .Depth32Float:
-		return 1
+	case .Stencil8, .Depth16_Unorm, .Depth24_Plus, .Depth32_Float: return 1
 
-	case .Depth24PlusStencil8, .Depth32_Float_Stencil8:
+	case .Depth24_Plus_Stencil8, .Depth32_Float_Stencil8:
 		#partial switch aspect {
 		case .Undefined: return 0
 		case .Depth_Only, .Stencil_Only: return 1
@@ -897,25 +924,29 @@ texture_format_components_with_aspect :: proc "contextless" (
 		}
 		return 3
 
-	case .Bc4RUnorm, .Bc4RSnorm: return 1
-	case .Bc5RgUnorm, .Bc5RgSnorm: return 2
-	case .Bc6hRgbUfloat, .Bc6hRgbFloat: return 3
+	case .Bc4_R_Unorm, .Bc4_R_Snorm: return 1
+	case .Bc5_Rg_Unorm, .Bc5_Rg_Snorm: return 2
+	case .Bc6h_Rgb_Ufloat, .Bc6h_Rgb_Float: return 3
 
-	case .Bc1RgbaUnorm, .Bc1RgbaUnormSrgb, .Bc2RgbaUnorm, .Bc2RgbaUnormSrgb, .Bc3RgbaUnorm,
-		 .Bc3RgbaUnormSrgb, .Bc7RgbaUnorm, .Bc7RgbaUnormSrgb: return 4
+	case .Bc1_Rgba_Unorm, .Bc1_Rgba_Unorm_Srgb, .Bc2_Rgba_Unorm, .Bc2_Rgba_Unorm_Srgb,
+		 .Bc3_Rgba_Unorm, .Bc3_Rgba_Unorm_Srgb, .Bc7_Rgba_Unorm, .Bc7_Rgba_Unorm_Srgb:
+		return 4
 
-	case .EacR11Unorm, .EacR11Snorm: return 1
-	case .EacRg11Unorm, .EacRg11Snorm: return 2
-	case .Etc2Rgb8Unorm, .Etc2Rgb8UnormSrgb: return 3
+	case .Eac_R11_Unorm, .Eac_R11_Snorm: return 1
+	case .Eac_Rg11_Unorm, .Eac_Rg11_Snorm: return 2
+	case .Etc2_Rgb8_Unorm, .Etc2_Rgb8_Unorm_Srgb: return 3
 
-	case .Etc2Rgb8A1Unorm, .Etc2Rgb8A1UnormSrgb, .Etc2Rgba8Unorm, .Etc2Rgba8UnormSrgb: return 4
+	case .Etc2_Rgb8_A1_Unorm, .Etc2_Rgb8_A1_Unorm_Srgb, .Etc2_Rgba8_Unorm,
+		 .Etc2_Rgba8_Unorm_Srgb:
+		return 4
 
-	case .Astc4x4Unorm, .Astc4x4UnormSrgb, .Astc5x4Unorm, .Astc5x4UnormSrgb, .Astc5x5Unorm,
-		 .Astc5x5UnormSrgb, .Astc6x5Unorm, .Astc6x5UnormSrgb, .Astc6x6Unorm, .Astc6x6UnormSrgb,
-		 .Astc8x5Unorm, .Astc8x5UnormSrgb, .Astc8x6Unorm, .Astc8x6UnormSrgb, .Astc8x8Unorm,
-	     .Astc8x8UnormSrgb, .Astc10x5Unorm, .Astc10x5UnormSrgb, .Astc10x6Unorm, .Astc10x6UnormSrgb,
-	     .Astc10x8Unorm, .Astc10x8UnormSrgb, .Astc10x10Unorm, .Astc10x10UnormSrgb,
-	     .Astc12x10Unorm, .Astc12x10UnormSrgb, .Astc12x12Unorm, .Astc12x12UnormSrgb:
+	case .Astc4x4_Unorm, .Astc4x4_Unorm_Srgb, .Astc5x4_Unorm, .Astc5x4_Unorm_Srgb,
+		 .Astc5x5_Unorm, .Astc5x5_Unorm_Srgb, .Astc6x5_Unorm, .Astc6x5_Unorm_Srgb, .Astc6x6_Unorm,
+		 .Astc6x6_Unorm_Srgb, .Astc8x5_Unorm, .Astc8x5_Unorm_Srgb, .Astc8x6_Unorm,
+		 .Astc8x6_Unorm_Srgb, .Astc8x8_Unorm, .Astc8x8_Unorm_Srgb, .Astc10x5_Unorm,
+		 .Astc10x5_Unorm_Srgb, .Astc10x6_Unorm, .Astc10x6_Unorm_Srgb, .Astc10x8_Unorm,
+		 .Astc10x8_Unorm_Srgb, .Astc10x10_Unorm, .Astc10x10_Unorm_Srgb, .Astc12x10_Unorm,
+		 .Astc12x10_Unorm_Srgb, .Astc12x12_Unorm, .Astc12x12_Unorm_Srgb:
 		return 4
 
 	case .Undefined:
@@ -934,29 +965,29 @@ texture_format_remove_srgb_suffix :: proc "contextless" (
 	ret = self
 	// odinfmt: disable
 	#partial switch self {
-	case .Rgba8UnormSrgb: return .Rgba8Unorm
-	case .Bgra8UnormSrgb: return .Bgra8Unorm
-	case .Bc1RgbaUnormSrgb: return .Bc1RgbaUnorm
-	case .Bc2RgbaUnormSrgb: return .Bc2RgbaUnorm
-	case .Bc3RgbaUnormSrgb: return .Bc3RgbaUnorm
-	case .Bc7RgbaUnormSrgb: return .Bc7RgbaUnorm
-	case .Etc2Rgb8UnormSrgb: return .Etc2Rgb8Unorm
-	case .Etc2Rgb8A1UnormSrgb: return .Etc2Rgb8A1Unorm
-	case .Etc2Rgba8UnormSrgb: return .Etc2Rgba8Unorm
-	case .Astc4x4UnormSrgb: return .Astc4x4Unorm
-	case .Astc5x4UnormSrgb: return .Astc5x4Unorm
-	case .Astc5x5UnormSrgb: return .Astc5x5Unorm
-	case .Astc6x5UnormSrgb: return .Astc6x5Unorm
-	case .Astc6x6UnormSrgb: return .Astc6x6Unorm
-	case .Astc8x5UnormSrgb: return .Astc8x5Unorm
-	case .Astc8x6UnormSrgb: return .Astc8x6Unorm
-	case .Astc8x8UnormSrgb: return .Astc8x8Unorm
-	case .Astc10x5UnormSrgb: return .Astc10x5Unorm
-	case .Astc10x6UnormSrgb: return .Astc10x6Unorm
-	case .Astc10x8UnormSrgb: return .Astc10x8Unorm
-	case .Astc10x10UnormSrgb: return .Astc10x10Unorm
-	case .Astc12x10UnormSrgb: return .Astc12x10Unorm
-	case .Astc12x12UnormSrgb: return .Astc12x12Unorm
+	case .Rgba8_Unorm_Srgb: return .Rgba8_Unorm
+	case .Bgra8_Unorm_Srgb: return .Bgra8_Unorm
+	case .Bc1_Rgba_Unorm_Srgb: return .Bc1_Rgba_Unorm
+	case .Bc2_Rgba_Unorm_Srgb: return .Bc2_Rgba_Unorm
+	case .Bc3_Rgba_Unorm_Srgb: return .Bc3_Rgba_Unorm
+	case .Bc7_Rgba_Unorm_Srgb: return .Bc7_Rgba_Unorm
+	case .Etc2_Rgb8_Unorm_Srgb: return .Etc2_Rgb8_Unorm
+	case .Etc2_Rgb8_A1_Unorm_Srgb: return .Etc2_Rgb8_A1_Unorm
+	case .Etc2_Rgba8_Unorm_Srgb: return .Etc2_Rgba8_Unorm
+	case .Astc4x4_Unorm_Srgb: return .Astc4x4_Unorm
+	case .Astc5x4_Unorm_Srgb: return .Astc5x4_Unorm
+	case .Astc5x5_Unorm_Srgb: return .Astc5x5_Unorm
+	case .Astc6x5_Unorm_Srgb: return .Astc6x5_Unorm
+	case .Astc6x6_Unorm_Srgb: return .Astc6x6_Unorm
+	case .Astc8x5_Unorm_Srgb: return .Astc8x5_Unorm
+	case .Astc8x6_Unorm_Srgb: return .Astc8x6_Unorm
+	case .Astc8x8_Unorm_Srgb: return .Astc8x8_Unorm
+	case .Astc10x5_Unorm_Srgb: return .Astc10x5_Unorm
+	case .Astc10x6_Unorm_Srgb: return .Astc10x6_Unorm
+	case .Astc10x8_Unorm_Srgb: return .Astc10x8_Unorm
+	case .Astc10x10_Unorm_Srgb: return .Astc10x10_Unorm
+	case .Astc12x10_Unorm_Srgb: return .Astc12x10_Unorm
+	case .Astc12x12_Unorm_Srgb: return .Astc12x12_Unorm
 	}
 	// odinfmt: enable
 	return
@@ -971,29 +1002,29 @@ texture_format_add_srgb_suffix :: proc "contextless" (
 	ret = self
 	// odinfmt: disable
 	#partial switch self {
-	case .Rgba8Unorm: return .Rgba8UnormSrgb
-	case .Bgra8Unorm: return .Bgra8UnormSrgb
-	case .Bc1RgbaUnorm: return .Bc1RgbaUnormSrgb
-	case .Bc2RgbaUnorm: return .Bc2RgbaUnormSrgb
-	case .Bc3RgbaUnorm: return .Bc3RgbaUnormSrgb
-	case .Bc7RgbaUnorm: return .Bc7RgbaUnormSrgb
-	case .Etc2Rgb8Unorm: return .Etc2Rgb8UnormSrgb
-	case .Etc2Rgb8A1Unorm: return .Etc2Rgb8A1UnormSrgb
-	case .Etc2Rgba8Unorm: return .Etc2Rgba8UnormSrgb
-	case .Astc4x4Unorm: return .Astc4x4UnormSrgb
-	case .Astc5x4Unorm: return .Astc5x4UnormSrgb
-	case .Astc5x5Unorm: return .Astc5x5UnormSrgb
-	case .Astc6x5Unorm: return .Astc6x5UnormSrgb
-	case .Astc6x6Unorm: return .Astc6x6UnormSrgb
-	case .Astc8x5Unorm: return .Astc8x5UnormSrgb
-	case .Astc8x6Unorm: return .Astc8x6UnormSrgb
-	case .Astc8x8Unorm: return .Astc8x8UnormSrgb
-	case .Astc10x5Unorm: return .Astc10x5UnormSrgb
-	case .Astc10x6Unorm: return .Astc10x6UnormSrgb
-	case .Astc10x8Unorm: return .Astc10x8UnormSrgb
-	case .Astc10x10Unorm: return .Astc10x10UnormSrgb
-	case .Astc12x10Unorm: return .Astc12x10UnormSrgb
-	case .Astc12x12Unorm: return .Astc12x12UnormSrgb
+	case .Rgba8_Unorm: return .Rgba8_Unorm_Srgb
+	case .Bgra8_Unorm: return .Bgra8_Unorm_Srgb
+	case .Bc1_Rgba_Unorm: return .Bc1_Rgba_Unorm_Srgb
+	case .Bc2_Rgba_Unorm: return .Bc2_Rgba_Unorm_Srgb
+	case .Bc3_Rgba_Unorm: return .Bc3_Rgba_Unorm_Srgb
+	case .Bc7_Rgba_Unorm: return .Bc7_Rgba_Unorm_Srgb
+	case .Etc2_Rgb8_Unorm: return .Etc2_Rgb8_Unorm_Srgb
+	case .Etc2_Rgb8_A1_Unorm: return .Etc2_Rgb8_A1_Unorm_Srgb
+	case .Etc2_Rgba8_Unorm: return .Etc2_Rgba8_Unorm_Srgb
+	case .Astc4x4_Unorm: return .Astc4x4_Unorm_Srgb
+	case .Astc5x4_Unorm: return .Astc5x4_Unorm_Srgb
+	case .Astc5x5_Unorm: return .Astc5x5_Unorm_Srgb
+	case .Astc6x5_Unorm: return .Astc6x5_Unorm_Srgb
+	case .Astc6x6_Unorm: return .Astc6x6_Unorm_Srgb
+	case .Astc8x5_Unorm: return .Astc8x5_Unorm_Srgb
+	case .Astc8x6_Unorm: return .Astc8x6_Unorm_Srgb
+	case .Astc8x8_Unorm: return .Astc8x8_Unorm_Srgb
+	case .Astc10x5_Unorm: return .Astc10x5_Unorm_Srgb
+	case .Astc10x6_Unorm: return .Astc10x6_Unorm_Srgb
+	case .Astc10x8_Unorm: return .Astc10x8_Unorm_Srgb
+	case .Astc10x10_Unorm: return .Astc10x10_Unorm_Srgb
+	case .Astc12x10_Unorm: return .Astc12x10_Unorm_Srgb
+	case .Astc12x12_Unorm: return .Astc12x12_Unorm_Srgb
 	}
 	// odinfmt: enable
 	return

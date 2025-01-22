@@ -86,7 +86,7 @@ Context :: app.Context(Example)
 
 EXAMPLE_TITLE :: "Tutorial 8 - Depth"
 
-DEPTH_FORMAT :: wgpu.Texture_Format.Depth32Float
+DEPTH_FORMAT :: wgpu.Texture_Format.Depth32_Float
 
 init :: proc(ctx: ^Context) -> (ok: bool) {
 	// Load our tree image to texture

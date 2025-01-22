@@ -25,7 +25,7 @@ Example :: struct {
 Context :: app.Context(Example)
 
 EXAMPLE_TITLE :: "Colored Cube"
-DEPTH_FORMAT :: wgpu.Texture_Format.Depth24Plus
+DEPTH_FORMAT :: wgpu.Texture_Format.Depth24_Plus
 
 init :: proc(ctx: ^Context) -> (ok: bool) {
 	CUBE_WGSL :: #load("./cube.wgsl")

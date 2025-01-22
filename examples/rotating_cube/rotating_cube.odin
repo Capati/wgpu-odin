@@ -25,7 +25,7 @@ Example :: struct {
 Context :: app.Context(Example)
 
 EXAMPLE_TITLE :: "Rotating Cube"
-DEPTH_FORMAT :: wgpu.Texture_Format.Depth24Plus
+DEPTH_FORMAT :: wgpu.Texture_Format.Depth24_Plus
 
 init :: proc(ctx: ^Context) -> (ok: bool) {
 	ctx.vertex_buffer = wgpu.device_create_buffer_with_data(

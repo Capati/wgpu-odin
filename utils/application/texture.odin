@@ -264,7 +264,7 @@ load_texture_from_file :: proc(
 	if format != .Undefined {
 		format = texture_format_for_color_space(format, options.color_space)
 	} else {
-		format = .Rgba8Unorm
+		format = .Rgba8_Unorm
 	}
 
 	texture_descriptor := wgpu.Texture_Descriptor {
@@ -550,33 +550,33 @@ image_info_texture_format :: proc(info: Image_Info) -> wgpu.Texture_Format {
 	if info.is_hdr {
 		switch info.channels {
 		case 1:
-			return .R32Float
+			return .R32_Float
 		case 2:
-			return .Rg32Float
+			return .Rg32_Float
 		case 3, 4:
-			return .Rgba32Float
+			return .Rgba32_Float
 		}
 	} else if info.depth == 16 {
 		switch info.channels {
 		case 1:
-			return .R16Uint
+			return .R16_Uint
 		case 2:
-			return .Rg16Uint
+			return .Rg16_Uint
 		case 3, 4:
-			return .Rgba16Uint
+			return .Rgba16_Uint
 		}
 	} else {
 		switch info.channels {
 		case 1:
-			return .R8Unorm
+			return .R8_Unorm
 		case 2:
-			return .Rg8Unorm
+			return .Rg8_Unorm
 		case 3, 4:
-			return .Rgba8Unorm
+			return .Rgba8_Unorm
 		}
 	}
 
-	return .Rgba8Unorm // Default to RGBA8 if channels are unexpected
+	return .Rgba8_Unorm // Default to RGBA8 if channels are unexpected
 }
 
 image_data_convert :: proc(img: ^Image_Data, allocator := context.allocator) -> (ok: bool) {

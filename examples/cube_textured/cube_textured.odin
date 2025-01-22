@@ -64,7 +64,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 			mip_level_count = 1,
 			sample_count = 1,
 			dimension = .D2,
-			format = .R8Uint,
+			format = .R8_Uint,
 			usage = {.Texture_Binding, .Copy_Dst},
 		},
 	) or_return
