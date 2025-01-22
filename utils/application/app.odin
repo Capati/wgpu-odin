@@ -107,7 +107,7 @@ Depth_Stencil_State_Descriptor :: struct {
 
 create_depth_stencil_state :: proc(
 	app: ^Application,
-	descriptor: Depth_Stencil_State_Descriptor = {.Depth24PlusStencil8, true},
+	descriptor: Depth_Stencil_State_Descriptor = {DEFAULT_DEPTH_FORMAT, true},
 ) -> wgpu.Depth_Stencil_State {
 	stencil_state_face_descriptor := wgpu.Stencil_Face_State {
 		compare       = .Always,
@@ -118,7 +118,7 @@ create_depth_stencil_state :: proc(
 
 	format := descriptor.format
 	if format == .Undefined {
-		format = .Depth24PlusStencil8
+		format = DEFAULT_DEPTH_FORMAT
 	}
 
 	return {
@@ -146,7 +146,7 @@ setup_depth_stencil :: proc(
 
 	format := options.format
 	if format == .Undefined {
-		format = .Depth24PlusStencil8
+		format = DEFAULT_DEPTH_FORMAT
 	}
 	app.depth_stencil.format = format
 
