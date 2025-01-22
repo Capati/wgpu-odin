@@ -1,6 +1,6 @@
 package application
 
-// Vendor
+// Packages
 import "vendor:glfw"
 
 KEY_COUNT :: Key.Last

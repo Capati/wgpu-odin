@@ -219,7 +219,6 @@ get_transformation_matrix :: proc(ctx: ^Context) -> (mvp_mat: la.Matrix4f32) {
 }
 
 resize :: proc(ctx: ^Context, size: app.Resize_Event) -> bool {
-	app.setup_depth_stencil(ctx, {format = DEFAULT_DEPTH_FORMAT}) or_return
 	set_projection_matrix(ctx, size.w, size.h)
 	return true
 }
