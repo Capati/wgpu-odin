@@ -139,12 +139,17 @@ microui_handle_events :: proc(app: ^Application, event: Event) {
 	}
 }
 
+Combobox_Item :: struct($T: typeid) where intr.type_is_enum(T) {
+	item: T,
+	name: string,
+}
+
 microui_combobox :: proc(
 	ctx: ^mu.Context,
 	name: string,
-	current_item: ^u32,
-	items: []string,
-) -> mu.Result_Set {
+	current_item: ^$T,
+	items: []Combobox_Item(T),
+) -> mu.Result_Set where intr.type_is_enum(T) {
 	id := mu.get_id(ctx, name)
 	rect := mu.layout_next(ctx)
 	mu.update_control(ctx, id, rect)
@@ -155,7 +160,15 @@ microui_combobox :: proc(
 	// Draw current selection
 	text_rect := rect
 	text_rect.w -= 20
-	mu.draw_control_text(ctx, items[current_item^], text_rect, .TEXT)
+	// Find the name for the current item
+	current_name := ""
+	for item in items {
+		if item.item == current_item^ {
+			current_name = item.name
+			break
+		}
+	}
+	mu.draw_control_text(ctx, current_name, text_rect, .TEXT)
 
 	// Draw dropdown arrow
 	arrow_rect := rect
@@ -191,9 +204,10 @@ microui_combobox :: proc(
 		win := mu.get_current_container(ctx)
 		mu.draw_rect(ctx, mu.get_current_container(ctx).rect, ctx.style.colors[.BASE])
 		mu.layout_row(ctx, {rect.w - ctx.style.padding * 2})
-		for item, i in items {
-			if .SUBMIT in mu.button(ctx, item) {
-				current_item^ = u32(i)
+
+		for item in items {
+			if .SUBMIT in mu.button(ctx, item.name) {
+				current_item^ = item.item
 				res += {.SUBMIT, .CHANGE}
 				win.open = false
 			}

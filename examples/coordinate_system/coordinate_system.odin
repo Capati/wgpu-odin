@@ -13,6 +13,22 @@ EXAMPLE_TITLE :: "Coordinate System"
 VERTICES_Y_UP :: 0
 VERTICES_Y_DOWN :: 1
 
+Quad_Type :: enum i32 {
+	Vertices_Y_Up,
+	Vertices_Y_Down,
+}
+
+Front_Face :: enum i32 {
+	CCW = 1,
+	CW  = 2,
+}
+
+Face :: enum i32 {
+	None  = 1,
+	Front = 2,
+	Back  = 3,
+}
+
 Example :: struct {
 	texture_cw:         app.Texture,
 	texture_ccw:        app.Texture,
@@ -29,15 +45,13 @@ Example :: struct {
 	},
 
 	// Settings
-	quad:               [2]wgpu.Buffer,
-	quad_str:           [2]string,
-	selected_quad:      u32,
-	order:              [2]wgpu.Front_Face,
-	order_str:          [2]string,
-	selected_order:     u32,
-	face:               [3]wgpu.Face,
-	face_str:           [3]string,
-	selected_face:      u32,
+	selected_quad:      Quad_Type,
+	quads:              [Quad_Type]wgpu.Buffer,
+	quad_types:         [len(Quad_Type)]app.Combobox_Item(Quad_Type),
+	selected_order:     Front_Face,
+	order_types:        [len(Front_Face)]app.Combobox_Item(Front_Face),
+	selected_face:      Face,
+	face_types:         [len(Face)]app.Combobox_Item(Face),
 }
 
 Vertex :: struct {
@@ -82,8 +96,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	}
 	// odinfmt: enable
 
-	ctx.quad_str[VERTICES_Y_UP] = "WebGPU (Y positive)"
-	ctx.quad[VERTICES_Y_UP] = wgpu.device_create_buffer_with_data(
+	ctx.quads[.Vertices_Y_Up] = wgpu.device_create_buffer_with_data(
 		ctx.gpu.device,
 		{
 			label = "Vertices buffer - Y up",
@@ -92,10 +105,8 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		},
 	) or_return
 	defer if !ok {
-		wgpu.release(ctx.quad[VERTICES_Y_UP])
+		wgpu.release(ctx.quads[.Vertices_Y_Up])
 	}
-
-	ctx.selected_quad = VERTICES_Y_UP
 
 	// odinfmt: disable
 	vertices_y_neg := [4]Vertex {
@@ -106,8 +117,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	}
 	// odinfmt: enable
 
-	ctx.quad_str[VERTICES_Y_DOWN] = "VK (Y negative)"
-	ctx.quad[VERTICES_Y_DOWN] = wgpu.device_create_buffer_with_data(
+	ctx.quads[.Vertices_Y_Down] = wgpu.device_create_buffer_with_data(
 		ctx.gpu.device,
 		{
 			label = "Vertices buffer - Y down",
@@ -116,7 +126,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		},
 	) or_return
 	defer if !ok {
-		wgpu.release(ctx.quad[VERTICES_Y_DOWN])
+		wgpu.release(ctx.quads[.Vertices_Y_Down])
 	}
 
 	// odinfmt: disable
@@ -228,12 +238,6 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		wgpu.release(ctx.shader_module)
 	}
 
-	ctx.order_str = {"Counter Clock Wise", "Clock Wise"}
-	ctx.order = {.CCW, .CW}
-
-	ctx.face_str = {"None", "Front", "Back"}
-	ctx.face = {.None, .Front, .Back}
-
 	prepare_pipelines(ctx) or_return
 
 	ctx.render_pass.color_attachments[0] = {
@@ -248,6 +252,18 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		color_attachments        = ctx.render_pass.color_attachments[:],
 		depth_stencil_attachment = &ctx.depth_stencil.descriptor,
 	}
+
+	ctx.selected_quad = .Vertices_Y_Up
+	ctx.quad_types = {
+		{.Vertices_Y_Up, "WebGPU (Y positive)"},
+		{.Vertices_Y_Down, "VK (Y negative)"},
+	}
+
+	ctx.selected_order = .CCW
+	ctx.order_types = {{.CCW, "CCW"}, {.CW, "CW"}}
+
+	ctx.selected_face = .Back
+	ctx.face_types = {{.None, "None"}, {.Front, "Front"}, {.Back, "Back"}}
 
 	return true
 }
@@ -294,8 +310,8 @@ prepare_pipelines :: proc(ctx: ^Context) -> (ok: bool) {
 			depth_stencil = app.create_depth_stencil_state(ctx),
 			primitive = {
 				topology = .Triangle_List,
-				front_face = ctx.order[ctx.selected_order],
-				cull_mode = ctx.face[ctx.selected_face],
+				front_face = wgpu.Front_Face(ctx.selected_order),
+				cull_mode = wgpu.Face(ctx.selected_face),
 			},
 			multisample = {count = 1, mask = max(u32)},
 		},
@@ -314,8 +330,8 @@ quit :: proc(ctx: ^Context) {
 
 	wgpu.release(ctx.buffer_indices_ccw)
 	wgpu.release(ctx.buffer_indices_cw)
-	wgpu.release(ctx.quad[VERTICES_Y_UP])
-	wgpu.release(ctx.quad[VERTICES_Y_DOWN])
+	wgpu.release(ctx.quads[.Vertices_Y_Up])
+	wgpu.release(ctx.quads[.Vertices_Y_Down])
 
 	app.texture_release(ctx.texture_ccw)
 	app.texture_release(ctx.texture_cw)
@@ -329,16 +345,21 @@ microui_update :: proc(ctx: ^Context, mu_ctx: ^mu.Context) -> (ok: bool) {
 		mu.label(mu_ctx, "Quad Type:")
 		mu.layout_row(mu_ctx, {-1})
 		if .CHANGE in
-		   app.microui_combobox(mu_ctx, "##quadtype", &ctx.selected_quad, ctx.quad_str[:]) {
-			log.infof("Quad type: %s", ctx.quad_str[ctx.selected_quad])
+		   app.microui_combobox(mu_ctx, "##quadtype", &ctx.selected_quad, ctx.quad_types[:]) {
+			log.infof("Quad type: %s", ctx.selected_quad)
 		}
 
 		mu.layout_row(mu_ctx, {-1, -1})
 		mu.label(mu_ctx, "Winding Order:")
 		mu.layout_row(mu_ctx, {-1})
 		if .CHANGE in
-		   app.microui_combobox(mu_ctx, "##windingorder", &ctx.selected_order, ctx.order_str[:]) {
-			log.infof("Winding order: %s", ctx.order_str[ctx.selected_order])
+		   app.microui_combobox(
+			   mu_ctx,
+			   "##windingorder",
+			   &ctx.selected_order,
+			   ctx.order_types[:],
+		   ) {
+			log.infof("Winding order: %s", ctx.selected_order)
 			prepare_pipelines(ctx) or_return
 		}
 
@@ -346,8 +367,8 @@ microui_update :: proc(ctx: ^Context, mu_ctx: ^mu.Context) -> (ok: bool) {
 		mu.label(mu_ctx, "Cull Mode:")
 		mu.layout_row(mu_ctx, {-1})
 		if .CHANGE in
-		   app.microui_combobox(mu_ctx, "##cullmode", &ctx.selected_face, ctx.face_str[:]) {
-			log.infof("Cull mode: %s", ctx.face_str[ctx.selected_face])
+		   app.microui_combobox(mu_ctx, "##cullmode", &ctx.selected_face, ctx.face_types[:]) {
+			log.infof("Cull mode: %s", ctx.selected_face)
 			prepare_pipelines(ctx) or_return
 		}
 	}
@@ -377,7 +398,7 @@ draw :: proc(ctx: ^Context) -> (ok: bool) {
      is determined by pipeline settings */
 	wgpu.render_pass_set_bind_group(render_pass, 0, ctx.bind_group_cw)
 	wgpu.render_pass_set_index_buffer(render_pass, {buffer = ctx.buffer_indices_cw}, .Uint32)
-	wgpu.render_pass_set_vertex_buffer(render_pass, 0, {buffer = ctx.quad[ctx.selected_quad]})
+	wgpu.render_pass_set_vertex_buffer(render_pass, 0, {buffer = ctx.quads[ctx.selected_quad]})
 	wgpu.render_pass_draw_indexed(render_pass, {0, 6})
 
 	wgpu.render_pass_set_bind_group(render_pass, 0, ctx.bind_group_ccw)
