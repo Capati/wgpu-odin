@@ -20,4 +20,8 @@ OPEN_GL_TO_WGPU_MATRIX :: la.Matrix4f32 {
 }
 // odinfmt: enable
 
-DEFAULT_TARGET_FRAME_TIME :: time.Millisecond * 7 // Rough 128fps
+
+// Rough 128fps
+DEFAULT_TARGET_FRAME_TIME :: #config(APP_DEFAULT_TARGET_FRAME_TIME, time.Millisecond * 7)
+// Rough 60fps
+TARGET_FRAME_TIME_60 :: time.Microsecond * 16667
