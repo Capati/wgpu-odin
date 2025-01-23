@@ -291,6 +291,13 @@ create :: proc(
 		surface_allowed_usages -= {.Texture_Binding}
 	}
 
+	// TODO(Capati): Remove this when the issue is fixed:
+	// https://github.com/gfx-rs/wgpu/issues/6932
+	desired_maximum_frame_latency := app.settings.desired_maximum_frame_latency
+	if adapter_info.backend == .Vulkan && present_mode == .Fifo {
+		desired_maximum_frame_latency = 1
+	}
+
 	app.gpu.config = wgpu.Surface_Configuration {
 		device                        = app.gpu.device,
 		usage                         = surface_allowed_usages,
@@ -299,7 +306,7 @@ create :: proc(
 		height                        = size.h,
 		present_mode                  = present_mode,
 		alpha_mode                    = .Auto,
-		desired_maximum_frame_latency = app.settings.desired_maximum_frame_latency,
+		desired_maximum_frame_latency = desired_maximum_frame_latency,
 	}
 
 	app.framebuffer_size = size
