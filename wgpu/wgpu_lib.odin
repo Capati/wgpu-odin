@@ -571,6 +571,12 @@ foreign _lib_ {
 		offset: u32,
 		size_bytes: u32,
 		data: rawptr) ---
+	wgpuRenderBundleEncoderSetPushConstants :: proc(
+		encoder: Render_Bundle_Encoder,
+		stages: Shader_Stage,
+		offset: u32,
+		size_bytes: u32,
+		data: rawptr) ---
 
 	wgpuRenderPassEncoderMultiDrawIndirect :: proc(
 		encoder: Render_Pass,
