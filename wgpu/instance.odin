@@ -297,7 +297,9 @@ print_report :: proc(self: Instance) {
 	}
 
 	print_hub_report :: proc(report: Hub_Report, prefix: cstring) {
-		fmt.printf("  %s:\n", prefix)
+		if len(prefix) > 0 {
+			fmt.printf("  %s:\n", prefix)
+		}
 		print_registry_report(report.adapters, "adapters.")
 		print_registry_report(report.devices, "devices.")
 		print_registry_report(report.pipeline_layouts, "pipeline_layouts.")
