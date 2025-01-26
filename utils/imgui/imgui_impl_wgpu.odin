@@ -742,7 +742,9 @@ wgpu_shutdown :: proc() {
 	wgpu_delete_frame_resources(&bd.frame_resources)
 	wgpu_delete_render_resources(&bd.render_resources)
 
-	wgpu.release(bd.device)
+	wgpu.release(bd.pipeline_state)
+	wgpu.release(bd.default_queue)
+	wgpu.release(bd.device) // decrease ref count
 
 	free(bd)
 }
