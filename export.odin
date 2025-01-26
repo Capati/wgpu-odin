@@ -474,6 +474,7 @@ render_bundle_encoder_set_bind_group :: wgpu.render_bundle_encoder_set_bind_grou
 render_bundle_encoder_set_index_buffer :: wgpu.render_bundle_encoder_set_index_buffer
 render_bundle_encoder_set_label :: wgpu.render_bundle_encoder_set_label
 render_bundle_encoder_set_pipeline :: wgpu.render_bundle_encoder_set_pipeline
+render_bundle_encoder_set_push_constants :: wgpu.render_bundle_encoder_set_push_constants
 render_bundle_encoder_set_vertex_buffer :: wgpu.render_bundle_encoder_set_vertex_buffer
 render_bundle_encoder_add_ref :: wgpu.render_bundle_encoder_add_ref
 render_bundle_encoder_release :: wgpu.render_bundle_encoder_release
