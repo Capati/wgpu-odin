@@ -233,6 +233,12 @@ destroy :: proc(self: ^Application) {
 	wgpu.device_release(self.gpu.device)
 	wgpu.adapter_release(self.gpu.adapter)
 	wgpu.surface_release(self.gpu.surface)
+
+	when ODIN_DEBUG {
+		wgpu.check_for_memory_leaks(self.gpu.instance)
+		// wgpu.print_report(self.gpu.instance)
+	}
+
 	wgpu.instance_release(self.gpu.instance)
 
 	glfw.DestroyWindow(self.window)

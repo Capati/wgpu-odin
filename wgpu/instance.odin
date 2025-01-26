@@ -327,6 +327,66 @@ print_report :: proc(self: Instance) {
 	fmt.print("}\n")
 }
 
+/*
+Checks for memory leaks in various registries of the `Instance`. It generates a memory leak report
+and prints it to the console.
+*/
+check_for_memory_leaks :: proc(self: Instance) {
+	fmt.println("WGPU Memory Leak Report:")
+	fmt.println("===================")
+
+	// Helper function to check for leaks in a registry
+	check_registry_leaks :: proc(
+		name: string,
+		registry: Registry_Report,
+	) -> (
+		leaks_detected: bool,
+	) {
+		// Safely check for leaks without underflow
+		if registry.num_allocated > registry.num_released_from_user {
+			leaked := registry.num_allocated - registry.num_released_from_user
+			fmt.printf(
+				"%s: %d leaked objects (size: %d bytes each)\n",
+				name,
+				leaked,
+				registry.element_size,
+			)
+			leaks_detected = true
+		}
+		return
+	}
+
+	report := generate_report(self)
+
+	// Check for leaks in surfaces
+	leaks_detected := check_registry_leaks("Surfaces", report.surfaces)
+
+	// Check for leaks in hub components
+	leaks_detected |= check_registry_leaks("Adapters", report.hub.adapters)
+	leaks_detected |= check_registry_leaks("Devices", report.hub.devices)
+	leaks_detected |= check_registry_leaks("Queues", report.hub.queues)
+	leaks_detected |= check_registry_leaks("Pipeline Layouts", report.hub.pipeline_layouts)
+	leaks_detected |= check_registry_leaks("Shader Modules", report.hub.shader_modules)
+	leaks_detected |= check_registry_leaks("Bind Group Layouts", report.hub.bind_group_layouts)
+	leaks_detected |= check_registry_leaks("Bind Groups", report.hub.bind_groups)
+	leaks_detected |= check_registry_leaks("Command Buffers", report.hub.command_buffers)
+	leaks_detected |= check_registry_leaks("Render Bundles", report.hub.render_bundles)
+	leaks_detected |= check_registry_leaks("Render Pipelines", report.hub.render_pipelines)
+	leaks_detected |= check_registry_leaks("Compute Pipelines", report.hub.compute_pipelines)
+	leaks_detected |= check_registry_leaks("Pipeline Caches", report.hub.pipeline_caches)
+	leaks_detected |= check_registry_leaks("Query Sets", report.hub.query_sets)
+	leaks_detected |= check_registry_leaks("Buffers", report.hub.buffers)
+	leaks_detected |= check_registry_leaks("Textures", report.hub.textures)
+	leaks_detected |= check_registry_leaks("Texture Views", report.hub.texture_views)
+	leaks_detected |= check_registry_leaks("Samplers", report.hub.samplers)
+
+	if !leaks_detected {
+		fmt.println("No leaks detected.")
+	}
+
+	fmt.println("===================")
+}
+
 /* Increase the reference count. */
 instance_add_ref :: wgpuInstanceAddRef
 
