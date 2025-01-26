@@ -16,17 +16,6 @@ Corresponds to [WebGPU `GPU`](https://gpuweb.github.io/gpuweb/#gpu-interface).
 */
 Instance :: distinct rawptr
 
-@(private)
-WGPU_Instance_Extras :: struct {
-	chain:                Chained_Struct,
-	backends:             Backends,
-	flags:                Instance_Flags,
-	dx12_shader_compiler: Dx12_Compiler,
-	gles3_minor_version:  Gles3_Minor_Version,
-	dxil_path:            String_View,
-	dxc_path:             String_View,
-}
-
 /*
 Create an new instance of wgpu.
 
@@ -353,6 +342,17 @@ instance_release_safe :: #force_inline proc(self: ^Instance) {
 		wgpuInstanceRelease(self^)
 		self^ = nil
 	}
+}
+
+@(private)
+WGPU_Instance_Extras :: struct {
+	chain:                Chained_Struct,
+	backends:             Backends,
+	flags:                Instance_Flags,
+	dx12_shader_compiler: Dx12_Compiler,
+	gles3_minor_version:  Gles3_Minor_Version,
+	dxil_path:            String_View,
+	dxc_path:             String_View,
 }
 
 @(private)
