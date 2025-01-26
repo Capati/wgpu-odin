@@ -208,8 +208,8 @@ instance_create_surface :: proc(
 	case Surface_Source_Windows_HWND:
 		t.chain.stype = .Surface_Source_Windows_HWND
 		raw_desc.next_in_chain = &t.chain
-	case Surface_Source_XBC_Window:
-		t.chain.stype = .Surface_Source_XBC_Window
+	case Surface_Source_XCB_Window:
+		t.chain.stype = .Surface_Source_XCB_Window
 		raw_desc.next_in_chain = &t.chain
 	case Surface_Source_Xlib_Window:
 		t.chain.stype = .Surface_Source_Xlib_Window

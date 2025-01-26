@@ -38,7 +38,7 @@ Surface_Source_Windows_HWND :: struct {
 	hwnd:      rawptr,
 }
 
-Surface_Source_XBC_Window :: struct {
+Surface_Source_XCB_Window :: struct {
 	chain:      Chained_Struct,
 	connection: rawptr,
 	window:     u32,
@@ -58,7 +58,7 @@ Surface_Descriptor :: struct {
 		Surface_Source_Metal_Layer,
 		Surface_Source_Wayland_Surface,
 		Surface_Source_Windows_HWND,
-		Surface_Source_XBC_Window,
+		Surface_Source_XCB_Window,
 		Surface_Source_Xlib_Window,
 	},
 }

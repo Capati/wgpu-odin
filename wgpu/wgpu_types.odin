@@ -1403,7 +1403,7 @@ SType :: enum i32 {
 	Surface_Source_Xlib_Window           = 0x00000006,
 	Surface_Source_Wayland_Surface       = 0x00000007,
 	Surface_Source_Android_Native_Window = 0x00000008,
-	Surface_Source_XBC_Window            = 0x00000009,
+	Surface_Source_XCB_Window            = 0x00000009,
 
 	// Native
 	Device_Extras                        = 0x00030001,

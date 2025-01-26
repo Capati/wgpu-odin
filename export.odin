@@ -578,7 +578,7 @@ Surface_Source_Android_Native_Window :: wgpu.Surface_Source_Android_Native_Windo
 Surface_Source_Metal_Layer :: wgpu.Surface_Source_Metal_Layer
 Surface_Source_Wayland_Surface :: wgpu.Surface_Source_Wayland_Surface
 Surface_Source_Windows_HWND :: wgpu.Surface_Source_Windows_HWND
-Surface_Source_XBC_Window :: wgpu.Surface_Source_XBC_Window
+Surface_Source_XCB_Window :: wgpu.Surface_Source_XCB_Window
 Surface_Source_Xlib_Window :: wgpu.Surface_Source_Xlib_Window
 Surface_Descriptor :: wgpu.Surface_Descriptor
 surface_get_capabilities :: wgpu.surface_get_capabilities
