@@ -462,7 +462,7 @@ Multisample :: enum Flags {
 	X16,
 }
 
-MultisampleFlags :: bit_set[Multisample;Flags]
+Multisample_Flags :: bit_set[Multisample;Flags]
 
 /* Converts a Multisample enum value to its corresponding `u32` value.*/
 multisample_to_value :: proc(self: Multisample) -> u32 {

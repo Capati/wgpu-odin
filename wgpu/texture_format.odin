@@ -40,7 +40,7 @@ sample_count_supported :: texture_format_feature_flags_sample_count_supported
 texture_format_feature_flags_supported_sample_counts :: proc(
 	self: Texture_Format_Feature_Flags,
 ) -> (
-	flags: MultisampleFlags,
+	flags: Multisample_Flags,
 ) {
 	if .Multisample_X2 in self {
 		flags += {.X2}

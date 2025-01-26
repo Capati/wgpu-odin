@@ -63,7 +63,7 @@ DEFAULT_PRIMITIVE_STATE :: wgpu.DEFAULT_PRIMITIVE_STATE
 Multisample_State :: wgpu.Multisample_State
 DEFAULT_MULTISAMPLE_STATE :: wgpu.DEFAULT_MULTISAMPLE_STATE
 Multisample :: wgpu.Multisample
-MultisampleFlags :: wgpu.MultisampleFlags
+Multisample_Flags :: wgpu.Multisample_Flags
 multisample_to_value :: wgpu.multisample_to_value
 Color_Write :: wgpu.Color_Write
 Color_Writes :: wgpu.Color_Writes
