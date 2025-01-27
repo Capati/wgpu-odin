@@ -12,14 +12,14 @@ import "core:strings"
 Represents the sets of limits an adapter/device supports.
 
 We provide three different defaults.
-- [`Limits::downlevel_defaults()`].This is a set of limits that is guaranteed to work on almost
+- `DOWNLEVEL_LIMITS`. This is a set of limits that is guaranteed to work on almost
 all backends, including "downlevel" backends such as OpenGL and D3D11, other than WebGL.For
 most applications we recommend using these limits, assuming they are high enough for your
 application, and you do not intent to support WebGL.
-- [`Limits::downlevel_webgl2_defaults()`] This is a set of limits that is lower even than the
-[`downlevel_defaults()`], configured to be low enough to support running in the browser using
+- `DOWNLEVEL_WEBGL2_LIMITS`. This is a set of limits that is lower even than the
+`DOWNLEVEL_LIMITS`, configured to be low enough to support running in the browser using
 WebGL2.
-- [`Limits::default()`].This is the set of limits that is guaranteed to work on all modern
+- `DEFAULT_LIMITS`.This is the set of limits that is guaranteed to work on all modern
 backends and is guaranteed to be supported by WebGPU.Applications needing more modern
 features can use this as a reasonable set of limits if they are targeting only desktop and
 modern mobile devices.
@@ -128,8 +128,7 @@ DEFAULT_LIMITS :: Limits {
 This is a set of limits that is guaranteed to work on almost all backends, including
 “downlevel” backends such as OpenGL and D3D11, other than WebGL.For most applications
 we recommend using these limits, assuming they are high enough for your application,
-and you {
-not intent to support WebGL.}
+and you not intent to support WebGL.
 */
 DOWNLEVEL_LIMITS :: Limits {
 	// WebGPU
