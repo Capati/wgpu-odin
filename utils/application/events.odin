@@ -151,13 +151,16 @@ event_is_empty :: proc(self: ^Event_State) -> bool {
 size_callback :: proc "c" (window: Window, width, height: i32) {
 	context = runtime.default_context()
 	app := cast(^Application)glfw.GetWindowUserPointer(window)
-	size := Window_Size{u32(width), u32(height)}
-	app.framebuffer_size = size
+
+	current_size := Window_Size{u32(width), u32(height)}
+	app.framebuffer_size = current_size
+
 	// Avoid stack multiple events while user is resizing
 	if app.should_resize {
 		return
 	}
-	event_push(&app.events, size)
+
+	event_push(&app.events, current_size)
 	app.should_resize = true
 }
 
