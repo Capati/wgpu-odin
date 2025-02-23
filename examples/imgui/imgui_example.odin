@@ -10,8 +10,10 @@ https://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples#exam
 import "core:log"
 
 // Local packages
+import im "root:libs/imgui"
+import im_glfw "root:libs/imgui/imgui_impl_glfw"
 import app "root:utils/application"
-import im "root:utils/imgui"
+import im_wgpu "root:utils/imgui"
 import "root:wgpu"
 
 Example :: struct {
@@ -41,19 +43,19 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 	im.style_colors_dark()
 
 	// Initialize the platform, application also uses GLFW
-	ensure(im.glfw_init(ctx.window, true))
+	ensure(im_glfw.init_for_other(ctx.window, true))
 	defer if !ok {
-		im.glfw_shutdown()
+		im_glfw.shutdown()
 	}
 
-	init_info := im.DEFAULT_WGPU_INIT_INFO
+	init_info := im_wgpu.DEFAULT_WGPU_INIT_INFO
 	init_info.device = ctx.gpu.device
 	init_info.render_target_format = ctx.gpu.config.format
 
 	// Initialize the WGPU renderer
-	ensure(im.wgpu_init(init_info))
+	ensure(im_wgpu.init(init_info))
 	defer if !ok {
-		im.wgpu_shutdown()
+		im_wgpu.shutdown()
 	}
 
 	// Create the texture
@@ -83,13 +85,13 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 quit :: proc(ctx: ^Context) {
 	app.release(ctx.texture)
 
-	im.wgpu_shutdown()
-	im.glfw_shutdown()
+	im_wgpu.shutdown()
+	im_glfw.shutdown()
 	im.destroy_context(ctx.im_ctx)
 }
 
 resize :: proc(ctx: ^Context, size: app.Window_Size) -> (ok: bool) {
-	im.wgpu_recreate_device_objects() or_return
+	im_wgpu.recreate_device_objects() or_return
 	return true
 }
 
@@ -99,8 +101,8 @@ set_clear_value :: proc(ctx: ^Context, clear_color: [3]f32) #no_bounds_check {
 }
 
 imgui_update :: proc(ctx: ^Context) -> (ok: bool) {
-	im.wgpu_new_frame() or_return
-	im.glfw_new_frame()
+	im_glfw.new_frame()
+	im_wgpu.new_frame() or_return
 
 	// Start a new Dear ImGui frame, you can submit any command from this point
 	im.new_frame()
@@ -188,7 +190,7 @@ draw :: proc(ctx: ^Context) -> bool {
 	defer wgpu.release(render_pass)
 
 	// Render elements using the given pass
-	im.wgpu_render_draw_data(im.get_draw_data(), render_pass) or_return
+	im_wgpu.render_draw_data(im.get_draw_data(), render_pass) or_return
 
 	wgpu.render_pass_end(render_pass) or_return
 
