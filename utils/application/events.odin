@@ -11,7 +11,6 @@ import "vendor:glfw"
 import mu "vendor:microui"
 
 // Local packages
-import im "./../imgui"
 import wmu "./../microui"
 
 Input_Action :: enum u8 {
@@ -303,11 +302,6 @@ process_events :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization
 				if app.depth_stencil.enabled {
 					setup_depth_stencil(app, {format = app.depth_stencil.format}) or_return
 				}
-				when ENABLE_IMGUI {
-					if imgui_is_initialized(app) {
-						im.wgpu_recreate_device_objects() or_return
-					}
-				}
 				if microui_is_initialized(app) {
 					wmu.resize(i32(app.framebuffer_size.w), i32(app.framebuffer_size.h))
 				}
@@ -333,8 +327,6 @@ Callback_List :: struct($T: typeid) where intr.type_is_struct(T) {
 	init:           proc(ctx: ^Context(T)) -> bool,
 	// Callback procedure triggered when the application is closed.
 	quit:           proc(ctx: ^Context(T)),
-	// Callback procedure used to update the state of the ImGui every frame.
-	imgui_update:   proc(ctx: ^Context(T), im_ctx: ^im.Context) -> (ok: bool),
 	// Callback procedure used to update the state of the MicroUI every frame.
 	microui_update: proc(ctx: ^Context(T), mu_ctx: ^mu.Context) -> (ok: bool),
 	// Callback procedure used to update the state of the application every frame.

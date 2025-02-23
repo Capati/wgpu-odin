@@ -9,7 +9,6 @@ import mu "vendor:microui"
 
 // Local packages
 import wgpu "./../../wgpu"
-import im "./../imgui"
 
 WINDOW_TITLE_BUFFER_LEN :: #config(WINDOW_TITLE_BUFFER_LEN, 256)
 
@@ -44,7 +43,6 @@ Application :: struct {
 
 	// UI
 	_mu_ctx:           ^mu.Context,
-	_im_ctx:           ^im.Context,
 
 	// State
 	title_buffer:      [WINDOW_TITLE_BUFFER_LEN]byte,
@@ -212,12 +210,6 @@ release :: proc {
 }
 
 destroy :: proc(self: ^Application) {
-	when ENABLE_IMGUI {
-		if imgui_is_initialized(self) {
-			imgui_destroy(self)
-		}
-	}
-
 	if microui_is_initialized(self) {
 		microui_destroy(self)
 	}
