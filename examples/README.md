@@ -1,6 +1,6 @@
 # Odin WGPU Examples
 
-> [INFO]
+> [NOTE]
 > Tested in Odin: `dev-2025-02:584fdc0d4`.
 
 ## Table of Contents
