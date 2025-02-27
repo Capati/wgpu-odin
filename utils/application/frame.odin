@@ -37,7 +37,7 @@ get_current_frame :: proc(app: ^Application) -> (ok: bool) {
 			continue // Try again with the new size
 		case .Timeout:
 			if attempt < GET_CURRENT_TEXTURE_MAX_ATTEMPTS - 1 {
-				log.warn("[Timeout] getting current texture. Retrying...")
+				log.warn("[\x1b[33mTimeout\x1b[0m] getting current texture. Retrying...")
 				time.sleep(RENDERER_THROTTLE_DURATION)
 				continue
 			}
@@ -46,7 +46,7 @@ get_current_frame :: proc(app: ^Application) -> (ok: bool) {
 			app.frame.skip = true
 			resize_surface(app, get_framebuffer_size(app)) or_return
 			if attempt < GET_CURRENT_TEXTURE_MAX_ATTEMPTS - 1 {
-				log.warnf("Surface [%v]. Resized and retrying...", app.frame.status)
+				log.warnf("Surface \x1b[33m%v\x1b[0m. Resized and retrying...", app.frame.status)
 				time.sleep(RENDERER_THROTTLE_DURATION)
 				continue
 			}
@@ -56,7 +56,7 @@ get_current_frame :: proc(app: ^Application) -> (ok: bool) {
 		}
 	}
 
-	log.fatalf("Failed to acquire surface texture: %s\n", app.frame.status)
+	log.fatalf("Failed to acquire surface texture: \x1b[31m%v\x1b[0m\n", app.frame.status)
 	return
 }
 
@@ -65,7 +65,7 @@ resize_surface :: proc(app: ^Application, size: Window_Size) -> (ok: bool) {
 
 	// Panic if width or height is zero.
 	if size.w == 0 || size.h == 0 {
-		log.errorf("Invalid surface size: %v", size)
+		log.errorf("Invalid surface size: \x1b[31m%v\x1b[0m", size)
 		app.frame.skip = true
 		time.sleep(RENDERER_THROTTLE_DURATION)
 		return true

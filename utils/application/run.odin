@@ -1,11 +1,13 @@
 #+vet !unused-imports
 package application
 
-// Packages
+// Core
 import intr "base:intrinsics"
 import "core:fmt"
 import "core:log"
 import "core:time"
+
+// Vendor
 import "vendor:glfw"
 import mu "vendor:microui"
 
@@ -15,11 +17,11 @@ import wmu "./../microui"
 run :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Context) {
 	// Initialize application specific (the `init` callback)
 	if app.callbacks.init != nil {
-		log.infof("Initializing '%s'", app.settings.title)
+		log.debugf("Initializing \x1b[32m%s\x1b[0m", app.settings.title)
 		if !app.callbacks.init(app) {
 			log.fatal(
-				"Failed to initialize application, " +
-				"make sure your 'init' procedure is returning 'true'",
+				"Failed to initialize application:\n" +
+				"   Make sure your 'init' procedure is returning 'true'",
 			)
 			return
 		}
@@ -56,7 +58,7 @@ run :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Cont
 		update_ui(app) or_return
 
 		if app.callbacks.update != nil && !app.callbacks.update(app, dt) {
-			log.fatal("Error in 'update' procedure!")
+			log.fatal("Error in \x1b[31mupdate\x1b[0m procedure!")
 			return
 		}
 
@@ -76,7 +78,7 @@ run :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Cont
 		}
 
 		if app.callbacks.draw != nil && !app.callbacks.draw(app) {
-			log.fatal("Error in 'draw' procedure!")
+			log.fatal("Error in \x1b[31mdraw\x1b[0m procedure!")
 			return
 		}
 
@@ -96,13 +98,13 @@ check_callbacks :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specializatio
 	// Check MicroUI initialization and callback
 	if microui_is_initialized(app) && app.callbacks.microui_update == nil {
 		log.warn(
-			"MicroUI initialization incomplete - " +
-			"'microui_update' callback procedure is required for frame updates",
+			"MicroUI initialization incomplete:\n" +
+			"   \x1b[33mmicroui_update\x1b[0m callback procedure is required for frame updates",
 		)
 	} else if app.callbacks.microui_update != nil && !microui_is_initialized(app) {
 		log.warn(
-			"'microui_update' callback procedure is set but MicroUI is not initialized - " +
-			"call app.microui_init(ctx) before setting callbacks",
+			"\x1b[33mmicroui_update\x1b[0m callback procedure is set but MicroUI is not " +
+			"initialized:\n   Call \x1b[33mapp.microui_init(ctx)\x1b[0m before run",
 		)
 	}
 
@@ -113,7 +115,7 @@ update_ui :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T
 	if microui_is_initialized(app) {
 		microui_new_frame(app)
 		if app.callbacks.microui_update != nil && !app.callbacks.microui_update(app, app._mu_ctx) {
-			log.error("Error in 'microui_update' procedure!")
+			log.error("Error in \x1b[31mmicroui_update\x1b[0m procedure!")
 			return
 		}
 		microui_end_frame(app)

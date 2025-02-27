@@ -167,10 +167,12 @@ create :: proc(
 
 		if backend_ok {
 			instance_descriptor.backends = {backend}
-			log.infof("Backend type selected with [WGPU_BACKEND_TYPE]: [%v]", backend)
+			log.warnf("Backend type selected with [WGPU_BACKEND_TYPE]: \x1b[33m%v\x1b[0m", backend)
 		} else {
 			log_loc(
-				"Backend type [%v] is invalid, possible values are from [Backends] (case sensitive): \n\tVulkan,\n\tGL,\n\tMetal,\n\tDX12,\n\tDX11,\n\tBrowser_WebGPU",
+				"Backend type \x1b[31m%v\x1b[0m is invalid, " +
+				"possible values are from [Backends] (case sensitive): " +
+				"\n\tVulkan,\n\tGL,\n\tMetal,\n\tDX12,\n\tDX11,\n\tBrowser_WebGPU",
 				WGPU_BACKEND_TYPE,
 				level = .Error,
 				loc = loc,
@@ -246,20 +248,23 @@ create :: proc(
 		preferred_format = app.gpu.caps.formats[0]
 	}
 
-	log.infof("Preferred surface format: [%v]", preferred_format)
+	log.debugf("Preferred surface format: \x1b[32m%v\x1b[0m", preferred_format)
 
 	app.gpu.is_srgb = wgpu.texture_format_is_srgb(preferred_format)
 
 	if app.settings.remove_srgb_from_surface && app.gpu.is_srgb {
 		app.gpu.is_srgb = false
 		preferred_format_non_srgb := wgpu.texture_format_remove_srgb_suffix(preferred_format)
-		log.infof("SRGB removed from surface format, now using: [%v]", preferred_format_non_srgb)
+		log.debugf(
+			"SRGB removed from surface format, now using: \x1b[32m%v\x1b[0m",
+			preferred_format_non_srgb,
+		)
 		preferred_format = preferred_format_non_srgb
 	}
 
 	if app.settings.desired_maximum_frame_latency != DEFAULT_DESIRED_MAXIMUM_FRAME_LATENCY {
-		log.infof(
-			"Desired maximum frame latency: [%d]",
+		log.debugf(
+			"Desired maximum frame latency: \x1b[32m%d\x1b[0m",
 			app.settings.desired_maximum_frame_latency,
 		)
 	}

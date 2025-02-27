@@ -295,7 +295,7 @@ process_events :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization
 
 		case Window_Size:
 			if app.should_resize && !app.minimized {
-				log.infof(
+				log.debugf(
 					"Framebuffer resize: %d x %d",
 					app.framebuffer_size.w,
 					app.framebuffer_size.h,
