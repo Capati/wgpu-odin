@@ -34,7 +34,6 @@ log_loc :: proc(fmt_str: string, args: ..any, level := Log_Level.Info, loc := #c
 		strings.write_byte(&builder, ':')
 		strings.write_int(&builder, int(loc.column))
 	}
-	strings.write_byte(&builder, ':')
 
 	str := strings.to_string(builder)
 	switch level {
