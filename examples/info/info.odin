@@ -26,7 +26,7 @@ run :: proc() -> (ok: bool) {
 
 	adapters := wgpu.instance_enumerate_adapters(instance, wgpu.BACKENDS_ALL, ta) or_return
 	for a in adapters {
-		info := wgpu.adapter_get_info(a, ta)
+		info := wgpu.adapter_get_info(a, ta) or_return
 		wgpu.adapter_info_print_info(info)
 	}
 
@@ -34,7 +34,7 @@ run :: proc() -> (ok: bool) {
 	defer wgpu.adapter_release(adapter)
 
 	fmt.println("\nSelected adapter:\n")
-	info := wgpu.adapter_get_info(adapter, ta)
+	info := wgpu.adapter_get_info(adapter, ta) or_return
 	wgpu.adapter_info_print_info(info)
 
 	return true
