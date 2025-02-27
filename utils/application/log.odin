@@ -1,7 +1,6 @@
 package application
 
-// Packages
-import "base:runtime"
+// Core
 import "core:fmt"
 import "core:log"
 import "core:strings"
@@ -14,12 +13,11 @@ Log_Level :: enum {
 	Fatal,
 }
 
-LOG_BUFFER_SIZE :: #config(APP_LOG_BUFFER_SIZE, 512)
+LOG_BUFFER_SIZE :: #config(APP_LOG_BUFFER_SIZE, 1024)
 
 log_loc :: proc(fmt_str: string, args: ..any, level := Log_Level.Info, loc := #caller_location) {
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-
-	builder := strings.builder_make(LOG_BUFFER_SIZE, context.temp_allocator)
+	buffer: [LOG_BUFFER_SIZE]byte
+	builder := strings.builder_from_bytes(buffer[:])
 
 	// Write the formatted string first
 	fmt.sbprintf(&builder, fmt_str, ..args)
