@@ -28,25 +28,13 @@ log_loc :: proc(fmt_str: string, args: ..any, level := Log_Level.Info, loc := #c
 
 	// Write the location
 	strings.write_string(&builder, loc.file_path)
-	when ODIN_ERROR_POS_STYLE == .Default {
-		strings.write_byte(&builder, '(')
-		strings.write_int(&builder, int(loc.line))
-		if loc.column != 0 {
-			strings.write_byte(&builder, ':')
-			strings.write_int(&builder, int(loc.column))
-		}
-		strings.write_byte(&builder, ')')
-	} else when ODIN_ERROR_POS_STYLE == .Unix {
+	strings.write_byte(&builder, ':')
+	strings.write_int(&builder, int(loc.line))
+	if loc.column != 0 {
 		strings.write_byte(&builder, ':')
-		strings.write_int(&builder, loc.line)
-		if loc.column != 0 {
-			strings.write_byte(&builder, ':')
-			strings.write_int(&builder, loc.column)
-		}
-		strings.write_byte(&builder, ':')
-	} else {
-		#panic("unhandled ODIN_ERROR_POS_STYLE")
+		strings.write_int(&builder, int(loc.column))
 	}
+	strings.write_byte(&builder, ':')
 
 	str := strings.to_string(builder)
 	switch level {
