@@ -88,8 +88,9 @@ surface_get_capabilities :: proc(
 	defer wgpuSurfaceCapabilitiesFreeMembers(raw_caps)
 
 	if status != .Success {
-		error_reset_and_update(Error_Type.Unknown, "Failed to get surface capabilities", loc)
-		return
+		// TODO(Capati): its failing on Unix, even when capabilities is filled ok
+		// error_reset_and_update(Error_Type.Unknown, "Failed to get surface capabilities", loc)
+		// return
 	}
 
 	caps.allocator = allocator
