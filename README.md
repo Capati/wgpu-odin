@@ -1,6 +1,6 @@
 # WGPU Odin Bindings
 
-Bindings to [wgpu-native][] **24.0.0.1** for the [Odin Language][].
+Bindings to [wgpu-native][] **24.0.0.2** for the [Odin Language][].
 
 This repository provides handcrafted Odin bindings for [wgpu-native][], offering an API similar to
 the [Rust API](https://docs.rs/wgpu/latest/wgpu/). This allows developers to easily translate
@@ -34,7 +34,7 @@ To keep this repository lightweight and maintainable, prebuilt binaries are not 
 exceed 130MB). You can build the library yourself or download the necessary files from the
 [wgpu-native][] releases page:
 
-<https://github.com/gfx-rs/wgpu-native/releases/tag/v24.0.0.1>
+<https://github.com/gfx-rs/wgpu-native/releases/tag/v24.0.0.2>
 
 **Ensure the version matches the upstream release**. Place the downloaded files in the `wgpu/lib/`
 directory according to the following structure:

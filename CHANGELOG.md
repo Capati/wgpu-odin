@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## [24.0.0.2] - 2025-28-02
+
+feat: upgrade to 24.0.0.2.
+
+[Compare changes](https://github.com/gfx-rs/wgpu-native/compare/v24.0.0.1...v24.0.0.2).
+
+### Fixed
+
+- Return status from `adapter_info` and `surface_get_capabilities`.
+
 ## [24.0.0.1] - 2025-22-02
 
 feat: upgrade to 24.0.0.1 and refactor core components

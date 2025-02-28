@@ -350,9 +350,8 @@ adapter_get_info :: proc(
 	defer wgpuAdapterInfoFreeMembers(raw_info)
 
 	if status != .Success {
-		// TODO(Capati): its failing on Unix, even when information is filled ok
-		// error_reset_and_update(Error_Type.Unknown, "Failed to fill adapter information", loc)
-		// return
+		error_reset_and_update(Error_Type.Unknown, "Failed to fill adapter information", loc)
+		return
 	}
 
 	fill_adapter_info(&info, &raw_info, allocator)
