@@ -47,6 +47,7 @@ repeating the package name, specially for submodules
   - This means there is no separation of two bindings, only the wrapper now
   - If you need raw version, I recommend the official bindings
 - Disallow `do`
+- Change the config `WGPU_CHECK_TO_BYTES` in favor of `ODIN_DEBUG`
 
 **Examples**:
 
