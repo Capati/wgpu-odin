@@ -18,6 +18,8 @@ feat: upgrade to 24.0.0.1 and refactor core components
 > There may be more changes than those listed here. Please refer to the examples, as
 > they are always updated.
 
+[Compare changes](https://github.com/gfx-rs/wgpu-native/compare/v22.1.0.5...v24.0.0.1).
+
 You can see a [list of changes](https://github.com/gfx-rs/wgpu-native/pull/427) in wgpu-native
 since latest update.
 
