@@ -24,3 +24,17 @@ set_window_title :: proc(app: ^Application, title: string) {
 	app.title_buffer[nul] = 0
 	glfw.SetWindowTitle(app.window, cstring(raw_data(app.title_buffer[:nul + 1])))
 }
+
+Monitor_Info :: struct {
+	refresh_rate:      u32,
+	frame_time_target: f64, // in seconds
+}
+
+get_primary_monitor_info :: proc() -> (info: Monitor_Info) {
+	mode := glfw.GetVideoMode(glfw.GetPrimaryMonitor())
+	info = Monitor_Info {
+		refresh_rate      = u32(mode.refresh_rate),
+		frame_time_target = 1.0 / f64(mode.refresh_rate),
+	}
+	return
+}
