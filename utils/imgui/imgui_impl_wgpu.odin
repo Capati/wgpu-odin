@@ -10,7 +10,7 @@ import im "../../libs/imgui"
 import "./../../wgpu"
 
 /* WGPU render-specific resources required for ImGui integration with WGPU backend. */
-WGPURenderResources :: struct {
+Render_Resources :: struct {
 	font_texture:            wgpu.Texture, /* Font texture */
 	font_texture_view:       wgpu.Texture_View, /* Texture view for font texture */
 	sampler:                 wgpu.Sampler, /* Sampler for the font texture */
@@ -21,7 +21,7 @@ WGPURenderResources :: struct {
 }
 
 /* GPU and host resources required for rendering ImGui frames. */
-WGPUFrameResources :: struct {
+Frame_Resources :: struct {
 	index_buffer:       wgpu.Buffer, /* WebGPU buffer containing indices for rendering */
 	vertex_buffer:      wgpu.Buffer, /* WebGPU buffer containing vertices for rendering */
 	index_buffer_host:  []im.Draw_Idx, /* Host-side array of draw indices */
@@ -30,12 +30,12 @@ WGPUFrameResources :: struct {
 	vertex_buffer_size: i32, /* Size of the vertex buffer in bytes */
 }
 
-WGPUUniforms :: struct {
+Uniforms :: struct {
 	mvp:   la.Matrix4f32,
 	gamma: f32,
 }
 
-WGPUInitInfo :: struct {
+Init_Info :: struct {
 	device:                     wgpu.Device,
 	num_frames_in_flight:       u32,
 	render_target_format:       wgpu.Texture_Format,
@@ -45,7 +45,7 @@ WGPUInitInfo :: struct {
 
 DEFAULT_WGPU_FRAMES_IN_FLIGHT :: #config(IMGUI_WGPU_FRAMES_IN_FLIGHT, 3)
 
-DEFAULT_WGPU_INIT_INFO :: WGPUInitInfo {
+INIT_INFO_DEFAULT :: Init_Info {
 	num_frames_in_flight       = DEFAULT_WGPU_FRAMES_IN_FLIGHT,
 	render_target_format       = .Undefined,
 	depth_stencil_format       = .Undefined,
@@ -53,15 +53,15 @@ DEFAULT_WGPU_INIT_INFO :: WGPUInitInfo {
 }
 
 /* Backend data stored in `io.backend_renderer_user_data` */
-WGPUData :: struct {
-	init_info:            WGPUInitInfo,
+Data :: struct {
+	init_info:            Init_Info,
 	device:               wgpu.Device,
 	default_queue:        wgpu.Queue,
 	render_target_format: wgpu.Texture_Format,
 	depth_stencil_format: wgpu.Texture_Format,
 	pipeline_state:       wgpu.Render_Pipeline,
-	render_resources:     WGPURenderResources,
-	frame_resources:      [dynamic]WGPUFrameResources,
+	render_resources:     Render_Resources,
+	frame_resources:      [dynamic]Frame_Resources,
 	num_frames_in_flight: u32,
 	frame_index:          u32,
 }
@@ -74,11 +74,11 @@ Render_State :: struct {
 WGPU_INDEX_BUFFER_SIZE :: #config(IMGUI_WGPU_INDEX_BUFFER_SIZE, 10000)
 WGPU_VERTEX_BUFFER_SIZE :: #config(IMGUI_WGPU_VERTEX_BUFFER_SIZE, 5000)
 
-/* Retrieves a pointer to the `WGPUData` structure. */
+/* Retrieves a pointer to the `Data` structure. */
 @(require_results)
-get_backend_data :: proc "contextless" () -> ^WGPUData {
+get_backend_data :: proc "contextless" () -> ^Data {
 	if ctx := im.get_current_context(); ctx != nil {
-		return cast(^WGPUData)(im.get_io().backend_renderer_user_data)
+		return cast(^Data)(im.get_io().backend_renderer_user_data)
 	}
 	return nil
 }
@@ -231,7 +231,7 @@ create_device_objects :: proc() -> (ok: bool) {
 			binding = 0,
 			resource = wgpu.Buffer_Binding {
 				buffer = bd.render_resources.uniforms,
-				size = wgpu.align_size(size_of(WGPUUniforms), 16),
+				size = wgpu.align_size(size_of(Uniforms), 16),
 			},
 		},
 		{binding = 1, resource = bd.render_resources.sampler},
@@ -338,7 +338,7 @@ create_uniform_buffer :: proc() -> (ok: bool) {
 	ub_dec := wgpu.Buffer_Descriptor {
 		label              = "Dear ImGui Uniform buffer",
 		usage              = {.Copy_Dst, .Uniform},
-		size               = wgpu.align_size(size_of(WGPUUniforms), 16),
+		size               = wgpu.align_size(size_of(Uniforms), 16),
 		mapped_at_creation = false,
 	}
 	bd.render_resources.uniforms = wgpu.device_create_buffer(bd.device, ub_dec) or_return
@@ -372,7 +372,7 @@ create_image_bind_group :: proc(
 setup_render_state :: proc(
 	draw_data: ^im.Draw_Data,
 	encoder: wgpu.Render_Pass,
-	fr: ^WGPUFrameResources,
+	fr: ^Frame_Resources,
 ) -> (
 	ok: bool,
 ) {
@@ -392,7 +392,7 @@ setup_render_state :: proc(
 	wgpu.queue_write_buffer(
 		bd.default_queue,
 		bd.render_resources.uniforms,
-		u64(offset_of(WGPUUniforms, mvp)),
+		u64(offset_of(Uniforms, mvp)),
 		wgpu.to_bytes(mvp),
 	) or_return
 
@@ -405,7 +405,7 @@ setup_render_state :: proc(
 	wgpu.queue_write_buffer(
 		bd.default_queue,
 		bd.render_resources.uniforms,
-		u64(offset_of(WGPUUniforms, gamma)),
+		u64(offset_of(Uniforms, gamma)),
 		wgpu.to_bytes(gamma),
 	) or_return
 
@@ -667,14 +667,14 @@ recreate_device_objects :: proc() -> (ok: bool) {
 }
 
 @(require_results)
-init :: proc(init_info: WGPUInitInfo, loc := #caller_location) -> (ok: bool) {
+init :: proc(init_info: Init_Info, loc := #caller_location) -> (ok: bool) {
 	ensure(init_info.device != nil, "Invalid device", loc = loc)
 
 	io := im.get_io()
 	assert(io.backend_renderer_user_data == nil, "Already initialized a renderer backend!")
 
-	bd := new(WGPUData)
-	ensure(bd != nil, "Failed to allocate WGPUData")
+	bd := new(Data)
+	ensure(bd != nil, "Failed to allocate Data")
 	io.backend_renderer_user_data = bd
 	io.backend_renderer_name = "imgui_impl_webgpu"
 	io.backend_flags += {.Renderer_Has_Vtx_Offset}
@@ -690,7 +690,7 @@ init :: proc(init_info: WGPUInitInfo, loc := #caller_location) -> (ok: bool) {
 
 	bd.render_resources.image_bind_groups = make(map[im.Texture_ID]wgpu.Bind_Group, 100)
 
-	bd.frame_resources = make([dynamic]WGPUFrameResources, bd.num_frames_in_flight)
+	bd.frame_resources = make([dynamic]Frame_Resources, bd.num_frames_in_flight)
 	for &fr in bd.frame_resources {
 		fr.index_buffer_size = WGPU_INDEX_BUFFER_SIZE
 		fr.vertex_buffer_size = WGPU_VERTEX_BUFFER_SIZE
@@ -708,18 +708,18 @@ new_frame :: proc() -> (ok: bool) {
 	return true
 }
 
-release_frame_resources :: proc(resources: ^[dynamic]WGPUFrameResources) {
+release_frame_resources :: proc(resources: ^[dynamic]Frame_Resources) {
 	for &fr in resources {
 		frame_resources_release(&fr)
 	}
 }
 
-delete_frame_resources :: proc(resources: ^[dynamic]WGPUFrameResources) {
+delete_frame_resources :: proc(resources: ^[dynamic]Frame_Resources) {
 	release_frame_resources(resources)
 	delete(resources^)
 }
 
-frame_resources_release :: proc(res: ^WGPUFrameResources) {
+frame_resources_release :: proc(res: ^Frame_Resources) {
 	wgpu.release_safe(&res.index_buffer)
 	wgpu.release_safe(&res.vertex_buffer)
 	if res.index_buffer_host != nil {
@@ -732,7 +732,7 @@ frame_resources_release :: proc(res: ^WGPUFrameResources) {
 	}
 }
 
-render_resources_release :: proc(res: ^WGPURenderResources) {
+render_resources_release :: proc(res: ^Render_Resources) {
 	wgpu.release_safe(&res.font_texture)
 	wgpu.release_safe(&res.font_texture_view)
 	wgpu.release_safe(&res.sampler)
@@ -741,7 +741,7 @@ render_resources_release :: proc(res: ^WGPURenderResources) {
 	wgpu.release_safe(&res.image_bind_group_layout)
 }
 
-delete_render_resources :: proc(res: ^WGPURenderResources) {
+delete_render_resources :: proc(res: ^Render_Resources) {
 	render_resources_release(res)
 	delete(res.image_bind_groups)
 }

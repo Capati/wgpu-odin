@@ -48,7 +48,7 @@ init :: proc(ctx: ^Context) -> (ok: bool) {
 		im_glfw.shutdown()
 	}
 
-	init_info := im_wgpu.DEFAULT_WGPU_INIT_INFO
+	init_info := im_wgpu.INIT_INFO_DEFAULT
 	init_info.device = ctx.gpu.device
 	init_info.render_target_format = ctx.gpu.config.format
 
