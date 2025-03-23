@@ -9,12 +9,8 @@ import "core:time"
 
 // Vendor
 import "vendor:glfw"
-import mu "vendor:microui"
 
-// Local packages
-import wmu "./../microui"
-
-run :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Context) {
+run :: proc(app: ^$T/Context) -> (ok: bool) {
 	// Initialize application specific (the `init` callback)
 	if app.callbacks.init != nil {
 		log.debugf("Initializing \x1b[32m%s\x1b[0m", app.settings.title)
@@ -36,47 +32,46 @@ run :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Cont
 		check_callbacks(app) or_return
 	}
 
-	timer_init(&app.timer)
-
-	dt: f64
+	monitor_info := get_primary_monitor_info()
+	timer_init(&app.timer, monitor_info.refresh_rate)
 
 	log.info("Entering main loop...")
 
 	loop: for !glfw.WindowShouldClose(app.window) {
-		// Reset state each frame
-		defer {
-			app.mouse.scroll = {}
-		}
+		timer_tick(&app.timer)
 
-		dt = timer_step(&app.timer)
+		// Poll events first to minimize input latency
+		glfw.PollEvents()
 
 		if !process_events(app) {
 			log.fatal("Error while processing events!")
 			return
 		}
 
-		update_ui(app) or_return
-
-		if app.callbacks.update != nil && !app.callbacks.update(app, dt) {
+		// Handle update (which processes inputs) right after events
+		if app.callbacks.update != nil &&
+		   !app.callbacks.update(app, timer_get_delta_time(app.timer)) {
 			log.fatal("Error in \x1b[31mupdate\x1b[0m procedure!")
 			return
 		}
 
-		if app.minimized {
-			enforce_frame_timing(app)
+		// Early out for rendering skips
+		if app.stop_rendering || app.skip_frame {
+			if app.skip_frame {
+				app.skip_frame = false
+			}
+			glfw.WaitEvents()
+			timer_init(&app.timer, monitor_info.refresh_rate)
 			continue
 		}
 
+		// UI updates after input processing but before acquire
+		update_ui(app) or_return
+
+		// Move the potentially blocking get_current_frame to after all input processing
 		get_current_frame(app) or_return
-		defer if !ok || app.frame.skip {
-			release_current_frame(app)
-		}
 
-		if app.frame.skip {
-			enforce_frame_timing(app)
-			continue
-		}
-
+		// Draw callback after frame acquisition
 		if app.callbacks.draw != nil && !app.callbacks.draw(app) {
 			log.fatal("Error in \x1b[31mdraw\x1b[0m procedure!")
 			return
@@ -85,8 +80,6 @@ run :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Cont
 		when ODIN_DEBUG {
 			update_window_title_with_fps(app)
 		}
-
-		enforce_frame_timing(app)
 	}
 
 	log.info("Exiting...")
@@ -94,7 +87,11 @@ run :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Cont
 	return true
 }
 
-check_callbacks :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Context) {
+stop_rendering :: #force_inline proc "contextless" (app: ^$T/Context) -> bool {
+	return app.stop_rendering
+}
+
+check_callbacks :: proc(app: ^$T/Context) -> (ok: bool) {
 	// Check MicroUI initialization and callback
 	if microui_is_initialized(app) && app.callbacks.microui_update == nil {
 		log.warn(
@@ -111,7 +108,7 @@ check_callbacks :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specializatio
 	return true
 }
 
-update_ui :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Context) {
+update_ui :: proc(app: ^$T/Context) -> (ok: bool) {
 	if microui_is_initialized(app) {
 		microui_new_frame(app)
 		if app.callbacks.microui_update != nil && !app.callbacks.microui_update(app, app._mu_ctx) {
@@ -129,28 +126,16 @@ enforce_frame_timing :: #force_inline proc(app: ^Application) {
 }
 
 when ODIN_DEBUG {
-	should_update_window_title_with_fps :: proc "contextless" (app: ^Application) -> bool {
-		if app.timer.prev_fps_update == app.timer.curr_time {
-			if app.timer.prev_fps != app.timer.fps {
-				return true
-			}
-		}
-		return false
-	}
-
-	WINDOW_TITLE_FPS_STR :: #config(WINDOW_TITLE_FPS_STR, " FPS")
-
 	update_window_title_with_fps :: proc(app: ^Application) {
-		if !should_update_window_title_with_fps(app) {
+		if !timer_check_fps_updated(app.timer) {
 			return
 		}
 
 		fmt.bprintf(
 			app.title_buffer[:],
-			"%s [%d%s]",
+			"%s - FPS = %.2f",
 			app.settings.title,
-			app.timer.fps,
-			WINDOW_TITLE_FPS_STR,
+			timer_get_fps(app.timer),
 		)
 
 		nul := nul_search_bytes(app.title_buffer[:])

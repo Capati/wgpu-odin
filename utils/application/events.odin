@@ -161,6 +161,7 @@ size_callback :: proc "c" (window: Window, width, height: i32) {
 	}
 
 	event_push(&app.events, current_size)
+
 	app.should_resize = true
 }
 
@@ -168,6 +169,7 @@ minimize_callback :: proc "c" (window: Window, iconified: i32) {
 	context = runtime.default_context()
 	app := cast(^Application)glfw.GetWindowUserPointer(window)
 	app.minimized = bool(iconified)
+	app.stop_rendering = app.minimized
 	event_push(&app.events, Minimized_Event{bool(iconified)})
 }
 
@@ -248,8 +250,6 @@ scroll_callback :: proc "c" (window: Window, xoffset, yoffset: f64) {
 
 @(require_results)
 process_events :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization_of(T, Context) {
-	glfw.PollEvents()
-
 	// Update input state
 	keyboard_update(app)
 	mouse_update(app)
@@ -295,23 +295,22 @@ process_events :: proc(app: ^$T) -> (ok: bool) where intr.type_is_specialization
 			}
 
 		case Window_Size:
-			if app.should_resize && !app.minimized {
-				log.debugf(
-					"Framebuffer resize: %d x %d",
-					app.framebuffer_size.w,
-					app.framebuffer_size.h,
-				)
+			if app.should_resize && !app.stop_rendering {
+				framebuffer_size := app.framebuffer_size
+				log.debugf("Framebuffer resize: %d x %d", framebuffer_size.w, framebuffer_size.h)
 				app.should_resize = false
-				resize_surface(app, app.framebuffer_size) or_return
+				resize_surface(app, framebuffer_size) or_return
 				if app.depth_stencil.enabled {
 					setup_depth_stencil(app, {format = app.depth_stencil.format}) or_return
 				}
 				if microui_is_initialized(app) {
-					wmu.resize(i32(app.framebuffer_size.w), i32(app.framebuffer_size.h))
+					wmu.resize(i32(framebuffer_size.w), i32(framebuffer_size.h))
 				}
 				if app.callbacks.resize != nil {
-					app.callbacks.resize(app, app.framebuffer_size)
+					app.callbacks.resize(app, framebuffer_size)
 				}
+				app.stop_rendering = false
+				app.skip_frame = true
 			}
 
 		case Quit_Event:

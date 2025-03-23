@@ -52,6 +52,8 @@ Application :: struct {
 	exit_key:          Key,
 	target_frame_time: time.Duration,
 	prepared:          bool,
+	skip_frame:        bool,
+	stop_rendering:    bool,
 
 	// Events
 	events:            Event_State,

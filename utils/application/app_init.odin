@@ -57,7 +57,7 @@ DEFAULT_DESIRED_MAXIMUM_FRAME_LATENCY :: 2
 DEFAULT_GPU_SETTINGS :: GPU_Settings {
 	power_preference              = .High_Performance,
 	required_limits               = wgpu.DOWNLEVEL_LIMITS,
-	desired_present_mode          = .Mailbox,
+	desired_present_mode          = .Fifo,
 	present_mode                  = .Fifo,
 	desired_maximum_frame_latency = DEFAULT_DESIRED_MAXIMUM_FRAME_LATENCY,
 	remove_srgb_from_surface      = true,
@@ -283,6 +283,8 @@ create :: proc(
 		present_mode = .Fifo
 	}
 
+	log.debugf("Selected present mode: \x1b[32m%v\x1b[0m", present_mode)
+
 	size := get_framebuffer_size(app)
 
 	surface_format_features := wgpu.texture_format_guaranteed_format_features(
@@ -296,12 +298,12 @@ create :: proc(
 		surface_allowed_usages -= {.Texture_Binding}
 	}
 
+	desired_maximum_frame_latency := app.settings.desired_maximum_frame_latency
 	// TODO(Capati): Remove this when the issue is fixed:
 	// https://github.com/gfx-rs/wgpu/issues/6932
-	desired_maximum_frame_latency := app.settings.desired_maximum_frame_latency
-	if adapter_info.backend == .Vulkan && present_mode == .Fifo {
-		desired_maximum_frame_latency = 1
-	}
+	// if adapter_info.backend == .Vulkan && present_mode == .Fifo {
+	// 	desired_maximum_frame_latency = 1
+	// }
 
 	app.gpu.config = wgpu.Surface_Configuration {
 		device                        = app.gpu.device,
