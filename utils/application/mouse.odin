@@ -13,6 +13,7 @@ Mouse_State :: struct {
 	last_button_pressed: Mouse_Button,
 	position:            [2]f64, /* x, y coordinates */
 	previous_position:   [2]f64,
+	previous_scroll:     [2]f64, /* x, y scroll offsets */
 	scroll:              [2]f64, /* x, y scroll offsets */
 	button_repeat:       bool,
 }
@@ -37,6 +38,9 @@ mouse_update :: proc(app: ^Application) #no_bounds_check {
 	// Update position
 	app.mouse.previous_position = app.mouse.position
 	app.mouse.position[0], app.mouse.position[1] = glfw.GetCursorPos(app.window)
+
+	app.mouse.previous_scroll = app.mouse.scroll
+    app.mouse.scroll = {0, 0}
 }
 
 /* Checks if a specific mouse button has been just pressed. */
@@ -102,5 +106,5 @@ Returns:
     element is the vertical scroll value.
 */
 mouse_get_scroll :: #force_inline proc(app: ^Application) -> [2]f64 {
-	return app.mouse.scroll
+	return app.mouse.previous_scroll
 }
