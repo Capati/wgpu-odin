@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 2025-23-03
+
+feat: upgrade to 24.0.3.1.
+
+### Changed
+
+**General**:
+
+- Refactor rendering loop to improve input latency, specially on Fifo present mode
+
 ## [24.0.0.2] - 2025-28-02
 
 feat: upgrade to 24.0.0.2.
