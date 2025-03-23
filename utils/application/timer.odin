@@ -1,95 +1,160 @@
 package application
 
-/* Packages */
+// Core
 import "core:time"
 
+FRAME_TIMES_NUMBER :: 60
+
+// Timing and FPS calculation with a rolling average.
 Timer :: struct {
-	/* Frame delta vars. */
-	start_time:           time.Time,
-	curr_time:            time.Tick,
-	prev_time:            time.Tick,
-	prev_fps_update:      time.Tick,
+	frame_time_target: f64, // Target frame time in seconds (e.g., 1/60 = 0.0166667)
+	sleep_window:      f64, // Slack time for sleep (e.g., 15% of frame time)
+	previous_time:     time.Tick, // Time of the last frame (in seconds)
+	delta_time:        f64,
 
-	/* Updated with a certain frequency. */
-	fps:                  int,
-	prev_fps:             int,
-	average_delta:        f64,
+	// FPS rolling average
+	frame_times:       [FRAME_TIMES_NUMBER]f64, // Array of recent frame times
+	frame_idx:         u32, // Current index in frame_times
+	frame_count:       u32, // Number of valid frames (up to 60)
+	frame_time_accum:  f64, // Running sum of frame times
 
-	/* The frequency by which to update the FPS. */
-	fps_update_frequency: f64,
-
-	/* Frames since last FPS update. */
-	frames:               int,
-
-	/* The current timestep. */
-	dt:                   f64,
+	// Periodic update tracking
+	start_time:        time.Time,
+	update_interval:   f64, // Interval for FPS updates (e.g., 1.0 s)
+	update_timer:      f64, // Time since last update
+	last_fps:          f64, // Most recent FPS value
+	fps_updated:       bool, // Flag indicating if FPS should be updated
 }
 
-/*
-Defines how often the FPS (Frames Per Second)counter should update, measured in seconds.
-Default value is 0.5 seconds if not configured otherwise.
-*/
-FPS_UPDATE_FREQUENCY: f64 : #config(FPS_UPDATE_FREQUENCY, 0.5)
-
-timer_init :: proc "contextless" (timer: ^Timer) {
-	timer.start_time = time.now()
-	timer.curr_time = time.tick_now()
-	timer.prev_time = timer.curr_time
-	timer.prev_fps_update = timer.curr_time
-	timer.fps_update_frequency = FPS_UPDATE_FREQUENCY
+// Initializes a `Timer` with a target refresh rate and update interval.
+//
+// Inputs:
+// - `refresh_rate` - Target monitor refresh rate in Hz (e.g., 60 or 120).
+// - `update_interval` - How often to update FPS (in seconds, e.g., 1.0).
+timer_init :: proc(t: ^Timer, refresh_rate: u32, update_interval: f64 = 1.0) {
+	t.start_time = time.now()
+	t.frame_time_target = 1.0 / f64(refresh_rate)
+	t.sleep_window = t.frame_time_target * 0.15
+	t.previous_time = time.tick_now()
+	t.delta_time = 0
+	t.frame_times = {}
+	t.frame_idx = 0
+	t.frame_count = 0
+	t.frame_time_accum = 0.0
+	t.update_interval = update_interval
+	t.update_timer = 0.0
+	t.last_fps = 0.0
+	t.fps_updated = false
 }
 
-/* Returns the average delta time over the last second. */
-timer_get_average_delta :: proc "contextless" (timer: ^Timer) -> f64 {
-	return timer.average_delta
+// Advances the timer, enforcing the target frame time and updating frame times. Sets the
+// update flag and calculates FPS when the update interval is reached.
+timer_tick :: proc(t: ^Timer) #no_bounds_check {
+	// Get the current timestamp using a high-precision timer
+	current_time := time.tick_now()
+
+	// Calculate time elapsed since last frame
+	t.delta_time = time.duration_seconds(time.tick_since(t.previous_time))
+
+	// Frame rate control: Ensures we don't run faster than target frame time
+	// This helps maintain consistent frame rates across different hardware
+	if t.delta_time < t.frame_time_target {
+		// Calculate how much time we need to wait to hit target frame rate
+		remaining_time := t.frame_time_target - t.delta_time
+
+		// Only sleep if remaining time exceeds sleep window threshold
+		// Sleep window prevents sleeping for tiny durations which can be inaccurate
+		if remaining_time > t.sleep_window {
+			// Calculate actual sleep time, leaving a small buffer (sleep_window)
+			sleep_time := remaining_time - t.sleep_window
+			// Convert to nanoseconds (multiply by 1 billion) and sleep
+			time.sleep(time.Duration(sleep_time * 1e9))
+			// Update current time after sleeping
+			current_time = time.tick_now()
+			// Recalculate delta time after sleep
+			t.delta_time = time.duration_seconds(time.tick_since(t.previous_time))
+		}
+
+		// We use a busy-wait loop to precisely hit our target frame time
+		// This is more CPU intensive but gives better timing precision
+		for time.duration_seconds(time.tick_since(t.previous_time)) < t.frame_time_target {
+			current_time = time.tick_now()
+		}
+	}
+
+	// Calculate the actual time this frame took (including any waiting we did)
+	actual_frame_time := time.duration_seconds(time.tick_since(t.previous_time))
+
+	// FPS calculation using a rolling average, maintains an array of recent frame times
+	if t.frame_count > 0 {
+		// Subtract oldest frame time before overwriting it
+		t.frame_time_accum -= t.frame_times[t.frame_idx]
+	}
+
+	// Store new frame time in circular buffer
+	t.frame_times[t.frame_idx] = actual_frame_time
+	// Add new frame time to our accumulator
+	t.frame_time_accum += actual_frame_time
+	// Move to next index, wrapping around when reaching end
+	t.frame_idx = (t.frame_idx + 1) % FRAME_TIMES_NUMBER
+	// Track number of frames recorded, up to maximum buffer size
+	t.frame_count = min(t.frame_count + 1, FRAME_TIMES_NUMBER)
+
+	// Track time since last FPS update
+	t.update_timer += actual_frame_time
+	// Check if it's time to update FPS calculation
+	t.fps_updated = t.update_timer >= t.update_interval
+	if t.fps_updated {
+		// Calculate the current FPS based on the average frame time
+		// If frame_time_accum is 0 (shouldn't happen), we avoid division by zero
+		t.last_fps = t.frame_time_accum > 0 ? 1.0 / (t.frame_time_accum / f64(t.frame_count)) : 0.0
+		// Subtract update interval, preserving any excess time
+		t.update_timer -= t.update_interval
+	}
+
+	// Store current time as previous time for next frame
+	t.previous_time = current_time
 }
 
-/* Returns the time between the last two frames. */
-timer_get_delta :: proc "contextless" (timer: ^Timer) -> f64 {
-	return timer.dt
+// Returns the delta time in seconds since the last tick.
+timer_get_delta_time :: proc(t: Timer) -> f64 {
+	return t.delta_time
 }
 
-/* Returns the current frames per second. */
-timer_get_fps :: proc "contextless" (timer: ^Timer) -> int {
-	return timer.fps
+// Returns whether it’s time to use the updated FPS value. Does not modify state—reflects the
+// update flag set by tick.
+timer_check_fps_updated :: proc(t: Timer) -> bool {
+	return t.fps_updated
+}
+
+// Returns the most recent FPS value calculated by the timer.
+timer_get_fps :: proc(t: Timer) -> f64 {
+	return t.last_fps
+}
+
+// Returns the last actual frame time (for debugging or logging).
+timer_get_frame_time :: proc(t: Timer) -> f64 #no_bounds_check {
+	return t.frame_times[(t.frame_idx - 1 + FRAME_TIMES_NUMBER) % FRAME_TIMES_NUMBER]
+}
+
+// Returns the target frame time (for debugging or logging).
+timer_get_frame_time_target :: proc(t: Timer) -> f64 {
+	return t.frame_time_target
+}
+
+// Returns the number of frames in the rolling average.
+timer_get_frame_count :: proc(t: Timer) -> u32 {
+	return t.frame_count
+}
+
+// Returns the accumulated frame time in the rolling average.
+timer_get_frame_time_accum :: proc(t: Timer) -> f64 {
+	return t.frame_time_accum
 }
 
 /* Returns the precise amount of time since some time in the past. */
 timer_get_time :: proc "contextless" (timer: ^Timer) -> f64 {
 	return time.duration_seconds(time.since(timer.start_time))
-}
-
-/* Pauses the current thread for the specified amount of time in seconds. */
-timer_sleep :: proc "contextless" (seconds: f64) {
-	time.sleep(time.Duration(seconds * f64(time.Second)))
-}
-
-/* Measures the time between two frames. */
-timer_step :: proc "contextless" (timer: ^Timer) -> f64 {
-	// Frames rendered
-	timer.frames += 1
-
-	// "Current" time is previous time by now.
-	timer.prev_time = timer.curr_time
-
-	// Get time from system using tick_now for high precision
-	timer.curr_time = time.tick_now()
-
-	// Calculate delta time in seconds
-	timer.dt = time.duration_seconds(time.tick_since(timer.prev_time))
-
-	/* Calculates the elapsed time in seconds since the last FPS update */
-	time_since_last := time.duration_seconds(time.tick_since(timer.prev_fps_update))
-
-	// Update FPS?
-	if time_since_last > timer.fps_update_frequency {
-		timer.fps = int((f64(timer.frames) / time_since_last) + 0.5)
-		timer.average_delta = time_since_last / f64(timer.frames)
-		timer.prev_fps_update = timer.curr_time
-		timer.frames = 0
-	}
-
-	return timer.dt
 }
 
 /* Returns the current time in seconds since the application started. */
