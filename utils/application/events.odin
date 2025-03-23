@@ -241,7 +241,8 @@ mouse_button_callback :: proc "c" (window: Window, button, action, mods: i32) {
 scroll_callback :: proc "c" (window: Window, xoffset, yoffset: f64) {
 	context = runtime.default_context()
 	app := cast(^Application)glfw.GetWindowUserPointer(window)
-	app.mouse.scroll = {xoffset, yoffset}
+	app.mouse.scroll.x += xoffset
+	app.mouse.scroll.y += yoffset
 	event_push(&app.events, Mouse_Wheel_Event{f32(xoffset), f32(yoffset)})
 }
 
