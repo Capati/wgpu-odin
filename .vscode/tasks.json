@@ -1,0 +1,60 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run",
+			"type": "shell",
+			"windows": {
+				"command": "build.bat ${input:exampleName} run"
+			},
+			"linux": {
+				"command": "./build.sh examples/${input:exampleName} run"
+			},
+			"osx": {
+				"command": "./build.sh examples/${input:exampleName} run"
+			},
+			"options": {
+				"cwd": "${workspaceFolder}/examples"
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		}
+	],
+	"inputs": [
+		{
+			"id": "exampleName",
+			"type": "pickString",
+			"description": "Select the example to run",
+			"options": [
+				"cameras",
+				"capture",
+				"clear_screen",
+				"compute",
+				"coordinate_system",
+				"cube",
+				"cubemap",
+				"cube_textured",
+				"image_blur",
+				"imgui",
+				"info",
+				"instanced_cube",
+				"microui",
+				"rotating_cube",
+				"square",
+				"stencil_triangles",
+				"textured_cube",
+				"texture_arrays",
+				"triangle",
+				"triangle_msaa",
+				"two_cubes",
+			]
+		}
+	]
+}
