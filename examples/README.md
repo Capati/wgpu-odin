@@ -1,7 +1,7 @@
 # Odin WGPU Examples
 
 > [!NOTE]
-> Tested in Odin: `dev-2025-02:584fdc0d4`.
+> Tested in Odin: `dev-2025-03:97d410c2a`.
 
 ## Table of Contents
 
@@ -78,8 +78,8 @@ You can use the `build.bat` with a example name as argument, for example:
 .\build.bat cube_textured run
 ```
 
-To run the examples you need `wgpu_native.dll` along side the examples executables, just place this
-file in the `build` directory.
+To run the examples you need `wgpu_native.dll` along side the examples executables, just place
+this file in the `build` directory.
 
 To build optimized for release mode, provide the option `release`:
 
@@ -115,8 +115,8 @@ Available script commands:
 + `release`: Build optimized for release mode
 + `clean`: Removes artifacts (.exe, .pdb, .a, etc) before build
 
-Any other argument is passed to the `odin` command, on Windows, wrap any additional arguments in
-double quotes:
+Any other argument is passed to the `odin` command, on Windows, wrap any additional arguments
+in double quotes:
 
 ```shell
 build.bat imgui run "-define:APP_ENABLE_IMGUI=true" "-use-separate-modules"
@@ -152,13 +152,14 @@ This example shows how to render a static colored square with only using vertex 
 
 #### Stencil Triangles
 
-This example renders two different sized triangles to display three same sized triangles, by demonstrating the use of stencil buffers.
+This example renders two different sized triangles to display three same sized triangles, by
+demonstrating the use of stencil buffers.
 
 #### [Two Cubes](./two_cubes/two_cubes.odin)
 
-This example shows some of the alignment requirements involved when updating and binding multiple
-slices of a uniform buffer. It renders two rotating cubes which have transform matrices at
-different offsets in a uniform buffer.
+This example shows some of the alignment requirements involved when updating and binding
+multiple slices of a uniform buffer. It renders two rotating cubes which have transform
+matrices at different offsets in a uniform buffer.
 
 #### [Cubemap](./cubemap/cubemap.odin)
 
@@ -166,8 +167,8 @@ This example shows how to render and sample from a cubemap texture.
 
 #### [Coordinate System](./coordinate_system/coordinate_system.odin)
 
-Demonstrates the coordinate system in WGPU by rendering a series of axes and grids to help visualize
-3D space orientation.
+Demonstrates the coordinate system in WGPU by rendering a series of axes and grids to help
+visualize 3D space orientation.
 
 #### [Cube](./cube/cube.odin)
 
@@ -188,7 +189,8 @@ techniques.
 
 #### [Instanced Cube](./instanced_cube/instanced_cube.odin)
 
-Demonstrates instance rendering by drawing multiple cubes efficiently using instancing techniques.
+Demonstrates instance rendering by drawing multiple cubes efficiently using instancing
+techniques.
 
 ### Compute
 
@@ -204,8 +206,8 @@ Shows how to implement a Gaussian blur effect using compute shaders for image pr
 
 #### [Texture Arrays](./texture_arrays/texture_arrays.odin)
 
-Shows how to use texture arrays in WGPU, allowing multiple textures to be stored and accessed as a
-single array texture.
+Shows how to use texture arrays in WGPU, allowing multiple textures to be stored and accessed
+as a single array texture.
 
 #### [Capture](./capture/capture.odin)
 
