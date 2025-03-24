@@ -30,6 +30,7 @@
   + [Compute](#compute)
     + [Simple Compute](#simple-compute)
   + [Graphics Techniques](#graphics-techniques)
+    + [Cameras](#cameras)
     + [Image Blur](#image-blur)
     + [Texture Arrays](#texture-arrays)
     + [Capture](#capture)
@@ -199,6 +200,10 @@ techniques.
 Shows how to use compute shaders and storage buffers in WGPU.
 
 ### Graphics Techniques
+
+#### [Cameras](./cameras/cameera.odin)
+
+This example provides example camera implementations.
 
 #### [Image Blur](./image_blur/image_blur.odin)
 
