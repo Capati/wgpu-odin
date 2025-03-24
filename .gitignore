@@ -22,6 +22,7 @@ examples/build
 
 # IDE/Editor
 /.vscode
+!/.vscode/launch.json
 !/.vscode/tasks.json
 *.sublime-workspace
 *.code-workspace
