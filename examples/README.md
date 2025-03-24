@@ -201,7 +201,7 @@ Shows how to use compute shaders and storage buffers in WGPU.
 
 ### Graphics Techniques
 
-#### [Cameras](./cameras/cameera.odin)
+#### [Cameras](./cameras/cameeras.odin)
 
 This example provides example camera implementations.
 
