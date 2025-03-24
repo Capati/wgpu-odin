@@ -16,24 +16,25 @@
     + [Info](#info)
   + [Basic Graphics](#basic-graphics)
     + [Clear Screen](#clear-screen)
-    + [Triangle MSAA](#triangle-msaa)
+    + [Coordinate System](#coordinate-system)
+    + [Cube Textured](#cube-textured)
+    + [Cube](#cube)
+    + [Cubemap](#cubemap)
+    + [Fractal Cube](#fractal-cube)
+    + [Instanced Cube](#instanced-cube)
+    + [Rotating Cube](#rotating-cube)
     + [Square](#square)
     + [Stencil Triangles](#stencil-triangles)
-    + [Two Cubes](#two-cubes)
-    + [Cubemap](#cubemap)
-    + [Coordinate System](#coordinate-system)
-    + [Cube](#cube)
-    + [Rotating Cube](#rotating-cube)
     + [Textured Cube](#textured-cube)
-    + [Cube Textured](#cube-textured)
-    + [Instanced Cube](#instanced-cube)
+    + [Triangle MSAA](#triangle-msaa)
+    + [Two Cubes](#two-cubes)
   + [Compute](#compute)
     + [Simple Compute](#simple-compute)
   + [Graphics Techniques](#graphics-techniques)
     + [Cameras](#cameras)
+    + [Capture](#capture)
     + [Image Blur](#image-blur)
     + [Texture Arrays](#texture-arrays)
-    + [Capture](#capture)
   + [UI and Integration](#ui-and-integration)
     + [ImGui](#imgui)
     + [MicroUI](#microui)
@@ -143,9 +144,37 @@ Print current WGPU version and selected adapter information.
 This example shows how to set up a render pass for clearing the screen. The screen clearing
 animation shows a fade-in and fade-out effect from blue to black.
 
-#### [Triangle MSAA](./triangle_msaa/triangle_msaa.odin)
+#### [Coordinate System](./coordinate_system/coordinate_system.odin)
 
-Shows multisampled rendering the previous triangle example.
+Demonstrates the coordinate system in WGPU by rendering a series of axes and grids to help
+visualize 3D space orientation.
+
+#### [Cube Textured](./cube_textured/cube_textured.odin)
+
+An alternative implementation of texture mapping on a cube, demonstrating different UV mapping
+techniques.
+
+#### [Cube](./cube/cube.odin)
+
+Basic example showing how to render a 3D cube with solid colors and depth testing.
+
+#### [Cubemap](./cubemap/cubemap.odin)
+
+This example shows how to render and sample from a cubemap texture.
+
+#### [Fractal Cube](./fractal_cube/fractal_cube.odin)
+
+This example uses the previous frame's rendering result as the source texture for the next
+frame.
+
+#### [Instanced Cube](./instanced_cube/instanced_cube.odin)
+
+Demonstrates instance rendering by drawing multiple cubes efficiently using instancing
+techniques.
+
+#### [Rotating Cube](./rotating_cube/rotating_cube.odin)
+
+This example shows how to upload uniform data every frame to render a rotating object.
 
 #### [Square](./square/square.odin)
 
@@ -156,42 +185,19 @@ This example shows how to render a static colored square with only using vertex 
 This example renders two different sized triangles to display three same sized triangles, by
 demonstrating the use of stencil buffers.
 
+#### [Textured Cube](./textured_cube/textured_cube.odin)
+
+This example shows how to bind and sample textures.
+
+#### [Triangle MSAA](./triangle_msaa/triangle_msaa.odin)
+
+Shows multisampled rendering the previous triangle example.
+
 #### [Two Cubes](./two_cubes/two_cubes.odin)
 
 This example shows some of the alignment requirements involved when updating and binding
 multiple slices of a uniform buffer. It renders two rotating cubes which have transform
 matrices at different offsets in a uniform buffer.
-
-#### [Cubemap](./cubemap/cubemap.odin)
-
-This example shows how to render and sample from a cubemap texture.
-
-#### [Coordinate System](./coordinate_system/coordinate_system.odin)
-
-Demonstrates the coordinate system in WGPU by rendering a series of axes and grids to help
-visualize 3D space orientation.
-
-#### [Cube](./cube/cube.odin)
-
-Basic example showing how to render a 3D cube with solid colors and depth testing.
-
-#### [Rotating Cube](./rotating_cube/rotating_cube.odin)
-
-This example shows how to upload uniform data every frame to render a rotating object.
-
-#### [Textured Cube](./textured_cube/textured_cube.odin)
-
-This example shows how to bind and sample textures.
-
-#### [Cube Textured](./cube_textured/cube_textured.odin)
-
-An alternative implementation of texture mapping on a cube, demonstrating different UV mapping
-techniques.
-
-#### [Instanced Cube](./instanced_cube/instanced_cube.odin)
-
-Demonstrates instance rendering by drawing multiple cubes efficiently using instancing
-techniques.
 
 ### Compute
 
