@@ -143,9 +143,6 @@ any local package.
 
 - **shaders**: Common WGSL shader library functions.
 
-- **tobj**: Wavefront .obj file loader and parser. Enables easy loading of 3D models and their
-  materials into your graphics applications.
-
 For detailed information about any specific utility, please refer to the README files in their
 respective directories.
 
