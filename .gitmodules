@@ -4,3 +4,6 @@
 [submodule "libs/imgui"]
 	path = libs/imgui
 	url = https://github.com/Capati/odin-imgui.git
+[submodule "libs/tobj"]
+	path = libs/tobj
+	url = https://github.com/Capati/odin-tobj.git
