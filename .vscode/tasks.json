@@ -8,10 +8,10 @@
 				"command": "build.bat ${input:exampleName} run"
 			},
 			"linux": {
-				"command": "./build.sh examples/${input:exampleName} run"
+				"command": "./build.sh ${input:exampleName} run"
 			},
 			"osx": {
-				"command": "./build.sh examples/${input:exampleName} run"
+				"command": "./build.sh ${input:exampleName} run"
 			},
 			"options": {
 				"cwd": "${workspaceFolder}/examples"
