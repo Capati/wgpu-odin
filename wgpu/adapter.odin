@@ -158,9 +158,7 @@ adapter_request_device :: proc(
 
 	native_limits := WGPU_Native_Limits {
 		chain = {stype = SType.Native_Limits},
-	}
-	native_limits = {
-		max_push_constant_size   = limits.max_push_constant_size,
+		max_push_constant_size = limits.max_push_constant_size,
 		max_non_sampler_bindings = limits.max_non_sampler_bindings,
 	}
 	base_limits.next_in_chain = &native_limits.chain
