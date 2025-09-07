@@ -7,8 +7,8 @@ import "core:path/filepath"
 import "core:strings"
 
 // Local packages
+import "root:libs/tobj"
 import app "root:utils/application"
-import "root:utils/tobj"
 import "root:wgpu"
 
 load_model :: proc(
