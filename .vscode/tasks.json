@@ -52,6 +52,7 @@
 				"stencil_triangles",
 				"texture_arrays",
 				"textured_cube",
+				"timestamp_query",
 				"triangle",
 				"triangle_msaa",
 				"two_cubes",

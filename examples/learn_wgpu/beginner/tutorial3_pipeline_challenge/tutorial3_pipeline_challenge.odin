@@ -1,141 +1,155 @@
 package tutorial3_pipeline_challenge
 
-// Packages
+// Core
 import "core:log"
 
 // Local Packages
-import app "root:utils/application"
-import "root:wgpu"
+import wgpu "../../../../" /* root folder */
+import app "../../../../utils/application"
 
-Example :: struct {
-	render_pipeline:           wgpu.Render_Pipeline,
-	challenge_render_pipeline: wgpu.Render_Pipeline,
-	render_pass:               struct {
-		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
-		descriptor:        wgpu.Render_Pass_Descriptor,
+CLIENT_WIDTH       :: 640
+CLIENT_HEIGHT      :: 480
+EXAMPLE_TITLE      :: "Tutorial 3 - Pipeline Challenge"
+VIDEO_MODE_DEFAULT :: app.Video_Mode {
+	width  = CLIENT_WIDTH,
+	height = CLIENT_HEIGHT,
+}
+
+Application :: struct {
+	using _app:                app.Application, /* #subtype */
+	render_pipeline:           wgpu.RenderPipeline,
+	challenge_render_pipeline: wgpu.RenderPipeline,
+	rpass:               struct {
+		colors:     [1]wgpu.RenderPassColorAttachment,
+		descriptor: wgpu.RenderPassDescriptor,
 	},
 }
 
-Context :: app.Context(Example)
+create :: proc() -> (self: ^Application) {
+	self = new(Application)
+	assert(self != nil, "Failed to allocate Application")
 
-EXAMPLE_TITLE :: "Tutorial 3 - Pipeline Challenge"
+	app.init(self, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE)
 
-init :: proc(ctx: ^Context) -> (ok: bool) {
 	// Use the same shader from the Tutorial 3 - Pipeline
-	SHADER_WGSL :: #load("./../tutorial3_pipeline/shader.wgsl")
-	shader_module := wgpu.device_create_shader_module(
-		ctx.gpu.device,
-		{source = string(SHADER_WGSL)},
-	) or_return
-	defer wgpu.release(shader_module)
+	SHADER_WGSL :: #load("./../tutorial3_pipeline/shader.wgsl", string)
+	shader_module := wgpu.DeviceCreateShaderModule(
+		self.gpu.device,
+		{source = SHADER_WGSL},
+	)
+	defer wgpu.Release(shader_module)
 
-	render_pipeline_layout := wgpu.device_create_pipeline_layout(
-		ctx.gpu.device,
+	render_pipeline_layout := wgpu.DeviceCreatePipelineLayout(
+		self.gpu.device,
 		{label = EXAMPLE_TITLE + " Render Pipeline Layout"},
-	) or_return
-	defer wgpu.release(render_pipeline_layout)
+	)
+	defer wgpu.Release(render_pipeline_layout)
 
-	render_pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
+	render_pipeline_descriptor := wgpu.RenderPipelineDescriptor {
 		label = EXAMPLE_TITLE + " Render Pipeline",
 		layout = render_pipeline_layout,
-		vertex = {module = shader_module, entry_point = "vs_main"},
+		vertex = {module = shader_module, entryPoint = "vs_main"},
 		fragment = &{
 			module = shader_module,
-			entry_point = "fs_main",
+			entryPoint = "fs_main",
 			targets = {
 				{
-					format = ctx.gpu.config.format,
+					format = self.gpu.config.format,
 					blend = &wgpu.BLEND_STATE_REPLACE,
-					write_mask = wgpu.COLOR_WRITES_ALL,
+					writeMask = wgpu.COLOR_WRITES_ALL,
 				},
 			},
 		},
-		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
-		multisample = {count = 1, mask = ~u32(0), alpha_to_coverage_enabled = false},
+		primitive = {topology = .TriangleList, frontFace = .CCW, cullMode = .Back},
+		multisample = {count = 1, mask = ~u32(0), alphaToCoverageEnabled = false},
 	}
 
-	ctx.render_pipeline = wgpu.device_create_render_pipeline(
-		ctx.gpu.device,
+	self.render_pipeline = wgpu.DeviceCreateRenderPipeline(
+		self.gpu.device,
 		render_pipeline_descriptor,
-	) or_return
-	defer if !ok {
-		wgpu.release(ctx.render_pipeline)
-	}
+	)
 
-	CHALLENGE_WGSL :: #load("./challenge.wgsl")
-	challenge_shader_module := wgpu.device_create_shader_module(
-		ctx.gpu.device,
-		{source = string(CHALLENGE_WGSL)},
-	) or_return
-	defer wgpu.release(challenge_shader_module)
+	CHALLENGE_WGSL :: #load("./challenge.wgsl", string)
+	challenge_shader_module := wgpu.DeviceCreateShaderModule(
+		self.gpu.device,
+		{source = CHALLENGE_WGSL},
+	)
+	defer wgpu.Release(challenge_shader_module)
 
-	challenge_render_pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
+	challenge_render_pipeline_descriptor := wgpu.RenderPipelineDescriptor {
 		label = EXAMPLE_TITLE + " Challenge Render Pipeline",
 		layout = render_pipeline_layout,
-		vertex = {module = challenge_shader_module, entry_point = "vs_main"},
+		vertex = {module = challenge_shader_module, entryPoint = "vs_main"},
 		fragment = &{
 			module = challenge_shader_module,
-			entry_point = "fs_main",
+			entryPoint = "fs_main",
 			targets = {
 				{
-					format = ctx.gpu.config.format,
+					format = self.gpu.config.format,
 					blend = &wgpu.BLEND_STATE_REPLACE,
-					write_mask = wgpu.COLOR_WRITES_ALL,
+					writeMask = wgpu.COLOR_WRITES_ALL,
 				},
 			},
 		},
-		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
-		multisample = {count = 1, mask = ~u32(0), alpha_to_coverage_enabled = false},
+		primitive = {topology = .TriangleList, frontFace = .CCW, cullMode = .Back},
+		multisample = {count = 1, mask = ~u32(0), alphaToCoverageEnabled = false},
 	}
 
-	ctx.challenge_render_pipeline = wgpu.device_create_render_pipeline(
-		ctx.gpu.device,
+	self.challenge_render_pipeline = wgpu.DeviceCreateRenderPipeline(
+		self.gpu.device,
 		challenge_render_pipeline_descriptor,
-	) or_return
+	)
 
-	ctx.render_pass.color_attachments[0] = {
+	self.rpass.colors[0] = {
 		view = nil, /* Assigned later */
 		ops  = {.Clear, .Store, {0.1, 0.2, 0.3, 1.0}},
 	}
 
-	ctx.render_pass.descriptor = {
-		label             = "Render pass descriptor",
-		color_attachments = ctx.render_pass.color_attachments[:],
+	self.rpass.descriptor = {
+		label            = "Render pass descriptor",
+		colorAttachments = self.rpass.colors[:],
 	}
 
-	return true
+	return
 }
 
-quit :: proc(ctx: ^Context) {
-	wgpu.release(ctx.challenge_render_pipeline)
-	wgpu.release(ctx.render_pipeline)
+release :: proc(self: ^Application) {
+	wgpu.Release(self.challenge_render_pipeline)
+	wgpu.Release(self.render_pipeline)
+
+	app.release(self)
+	free(self)
 }
 
-draw :: proc(ctx: ^Context) -> bool {
-	ctx.cmd = wgpu.device_create_command_encoder(ctx.gpu.device) or_return
-	defer wgpu.release(ctx.cmd)
+draw :: proc(self: ^Application) {
+	gpu := self.gpu
 
-	ctx.render_pass.color_attachments[0].view = ctx.frame.view
-	render_pass := wgpu.command_encoder_begin_render_pass(ctx.cmd, ctx.render_pass.descriptor)
-	defer wgpu.release(render_pass)
+	frame := app.gpu_get_current_frame(gpu)
+	if frame.skip { return }
+	defer app.gpu_release_current_frame(&frame)
 
-	if app.key_is_down(ctx, .Space) {
-		wgpu.render_pass_set_pipeline(render_pass, ctx.challenge_render_pipeline)
+	encoder := wgpu.DeviceCreateCommandEncoder(gpu.device)
+	defer wgpu.Release(encoder)
+
+	self.rpass.colors[0].view = frame.view
+	rpass := wgpu.CommandEncoderBeginRenderPass(encoder, self.rpass.descriptor)
+	defer wgpu.Release(rpass)
+
+	if app.key_is_down(self, .Space) {
+		wgpu.RenderPassSetPipeline(rpass, self.challenge_render_pipeline)
 	} else {
-		wgpu.render_pass_set_pipeline(render_pass, ctx.render_pipeline)
+		wgpu.RenderPassSetPipeline(rpass, self.render_pipeline)
 	}
 
-	wgpu.render_pass_draw(render_pass, {0, 3})
+	wgpu.RenderPassDraw(rpass, {0, 3})
 
-	wgpu.render_pass_end(render_pass) or_return
+	wgpu.RenderPassEnd(rpass)
 
-	cmdbuf := wgpu.command_encoder_finish(ctx.cmd) or_return
-	defer wgpu.release(cmdbuf)
+	cmdbuf := wgpu.CommandEncoderFinish(encoder)
+	defer wgpu.Release(cmdbuf)
 
-	wgpu.queue_submit(ctx.gpu.queue, cmdbuf)
-	wgpu.surface_present(ctx.gpu.surface) or_return
-
-	return true
+	wgpu.QueueSubmit(self.gpu.queue, { cmdbuf })
+	wgpu.SurfacePresent(self.gpu.surface)
 }
 
 main :: proc() {
@@ -144,21 +158,22 @@ main :: proc() {
 		defer log.destroy_console_logger(context.logger)
 	}
 
-	settings := app.DEFAULT_SETTINGS
-	settings.title = EXAMPLE_TITLE
+	example := create()
+	defer release(example)
 
-	example, ok := app.create(Context, settings)
-	if !ok {
-		log.fatalf("Failed to create example [%s]", EXAMPLE_TITLE)
-		return
+	running := true
+	MAIN_LOOP: for running {
+		event: app.Event
+		for app.poll_event(example, &event) {
+			#partial switch &ev in event {
+			case app.QuitEvent:
+				log.info("Exiting...")
+				running = false
+			}
+		}
+
+		app.begin_frame(example)
+		draw(example)
+		app.end_frame(example)
 	}
-	defer app.destroy(example)
-
-	example.callbacks = {
-		init = init,
-		quit = quit,
-		draw = draw,
-	}
-
-	app.run(example) // Start the main loop
 }

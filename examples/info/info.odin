@@ -1,14 +1,14 @@
 package info
 
-// Packages
+// Core
 import "base:runtime"
 import "core:fmt"
 
 // Local packages
-import "root:wgpu"
+import wgpu "../../"
 
-run :: proc() -> (ok: bool) {
-	wgpu_version := wgpu.get_version()
+main :: proc() {
+	wgpu_version := wgpu.GetVersion()
 
 	fmt.printf(
 		"WGPU version: %d.%d.%d.%d\n\n",
@@ -18,28 +18,49 @@ run :: proc() -> (ok: bool) {
 		wgpu_version.build,
 	)
 
-	instance := wgpu.create_instance() or_return
-	defer wgpu.instance_release(instance)
+	instance := wgpu.CreateInstance()
+	defer wgpu.Release(instance)
 
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 	ta := context.temp_allocator
 
-	adapters := wgpu.instance_enumerate_adapters(instance, wgpu.BACKENDS_ALL, ta) or_return
-	for a in adapters {
-		info := wgpu.adapter_get_info(a, ta) or_return
-		wgpu.adapter_info_print_info(info)
+	adapters := wgpu.InstanceEnumerateAdapters(instance, wgpu.BACKENDS_ALL, ta)
+	if len(adapters) == 0 {
+		fmt.eprintln("No adapters available")
+		return
 	}
 
-	adapter := wgpu.instance_request_adapter(instance) or_return
-	defer wgpu.adapter_release(adapter)
+	fmt.println("Available adapter(s):\n")
+
+	for a, i in adapters {
+		info, status := wgpu.AdapterGetInfo(a)
+		if status != .Success {
+			fmt.eprintfln("Failed to get adapter info at index [%d]", i)
+			continue
+		}
+		wgpu.AdapterInfoPrint(info)
+		wgpu.AdapterInfoFreeMembers(info)
+	}
+
+	adapter_res := wgpu.InstanceRequestAdapter(instance)
+	if (adapter_res.status != .Success) {
+		fmt.eprintfln(
+			"Failed to request the selected adapter [%v]: %s",
+			adapter_res.status,
+			adapter_res.message,
+		)
+		return
+	}
+
+	adapter := adapter_res.adapter
+	defer wgpu.Release(adapter)
 
 	fmt.println("\nSelected adapter:\n")
-	info := wgpu.adapter_get_info(adapter, ta) or_return
-	wgpu.adapter_info_print_info(info)
-
-	return true
-}
-
-main :: proc() {
-	run()
+	info, status := wgpu.AdapterGetInfo(adapter)
+	if status != .Success {
+		fmt.eprintln("Failed to get adapter info for the selected adapter")
+		return
+	}
+	wgpu.AdapterInfoPrint(info)
+	wgpu.AdapterInfoFreeMembers(info)
 }

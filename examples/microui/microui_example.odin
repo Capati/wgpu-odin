@@ -1,84 +1,122 @@
 package microui_example
 
-// Packages
+// Core
 import "core:log"
+
+// Vendor
 import mu "vendor:microui"
 
 // Local packages
-import app "root:utils/application"
-import "root:wgpu"
+import wgpu "../.."
+import app "../../utils/application"
+import wgpu_mu "../../utils/microui"
 
-Example :: struct {
+CLIENT_WIDTH       :: 800
+CLIENT_HEIGHT      :: 600
+EXAMPLE_TITLE      :: "MicroUI Example"
+VIDEO_MODE_DEFAULT :: app.Video_Mode {
+	width  = CLIENT_WIDTH,
+	height = CLIENT_HEIGHT,
+}
+
+Application :: struct {
+	using _app:      app.Application,
+	mu_ctx:          ^mu.Context,
 	log_buf:         [64000]u8,
 	log_buf_len:     int,
 	log_buf_updated: bool,
 	bg:              mu.Color,
-	render_pass:     struct {
-		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
-		descriptor:        wgpu.Render_Pass_Descriptor,
+	rpass: struct {
+		colors:     [1]wgpu.RenderPassColorAttachment,
+		descriptor: wgpu.RenderPassDescriptor,
 	},
 }
 
-Context :: app.Context(Example)
+create :: proc() -> (self: ^Application) {
+	self = new(Application)
+	assert(self != nil, "Failed to allocate Application")
 
-EXAMPLE_TITLE :: "MicroUI Example"
+	app.init(self, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE)
 
-init :: proc(ctx: ^Context) -> (ok: bool) {
+	mu_init_info := wgpu_mu.MICROUI_INIT_INFO_DEFAULT
+	mu_init_info.surface_config = self.gpu.config
+
+	self.mu_ctx = new(mu.Context)
+
+	mu.init(self.mu_ctx)
+	self.mu_ctx.text_width = mu.default_atlas_text_width
+	self.mu_ctx.text_height = mu.default_atlas_text_height
+
 	// Initialize MicroUI context with default settings
-	app.microui_init(ctx) or_return
+	wgpu_mu.init(mu_init_info)
 
 	// Set initial state
-	ctx.bg = {56, 130, 210, 255}
+	self.bg = {56, 130, 210, 255}
 
-	ctx.render_pass.color_attachments[0] = {
+	self.rpass.colors[0] = {
 		view = nil, /* Assigned later */
-		ops  = {.Clear, .Store, get_color_from_mu_color(ctx.bg)},
+		ops  = {.Clear, .Store, get_color_from_mu_color(self.bg)},
 	}
 
-	ctx.render_pass.descriptor = {
-		label             = "Render pass descriptor",
-		color_attachments = ctx.render_pass.color_attachments[:],
+	self.rpass.descriptor = {
+		label            = "Render pass descriptor",
+		colorAttachments = self.rpass.colors[:],
 	}
 
-	return true
+	app.add_resize_callback(self, { resize, self })
+
+	return
+}
+
+release :: proc(self: ^Application) {
+	wgpu_mu.destroy()
+	free(self.mu_ctx)
+
+	app.release(self)
+	free(self)
+}
+
+draw :: proc(self: ^Application) {
+	frame := app.gpu_get_current_frame(self.gpu)
+	if frame.skip { return }
+	defer app.gpu_release_current_frame(&frame)
+
+	encoder := wgpu.DeviceCreateCommandEncoder(self.gpu.device)
+	defer wgpu.Release(encoder)
+
+	self.rpass.colors[0].ops.clearValue = get_color_from_mu_color(self.bg)
+	self.rpass.colors[0].view = frame.view
+	rpass := wgpu.CommandEncoderBeginRenderPass(encoder, self.rpass.descriptor)
+	defer wgpu.Release(rpass)
+
+	wgpu_mu.render(self.mu_ctx, rpass)
+
+	wgpu.RenderPassEnd(rpass)
+
+	cmdbuf := wgpu.CommandEncoderFinish(encoder)
+	defer wgpu.Release(cmdbuf)
+
+	wgpu.QueueSubmit(self.gpu.queue, { cmdbuf })
+	wgpu.SurfacePresent(self.gpu.surface)
+}
+
+resize :: proc(window: ^app.Window, size: app.Vec2u, userdata: rawptr) {
+	self := cast(^Application)userdata
+	wgpu_mu.resize(i32(size.x), i32(size.y))
+	draw(self)
 }
 
 get_color_from_mu_color :: proc(color: mu.Color) -> wgpu.Color {
 	return {f64(color.r) / 255.0, f64(color.g) / 255.0, f64(color.b) / 255.0, 1.0}
 }
 
-microui_update :: proc(ctx: ^Context, mu_ctx: ^mu.Context) -> (ok: bool) {
+mu_update :: proc(self: ^Application) {
 	// UI definition
-	test_window(ctx, mu_ctx)
-	log_window(ctx, mu_ctx)
-	style_window(ctx, mu_ctx)
-	return true
-}
-
-update :: proc(ctx: ^Context, dt: f64) -> bool {
-	ctx.render_pass.color_attachments[0].ops.clear_value = get_color_from_mu_color(ctx.bg)
-	return true
-}
-
-draw :: proc(ctx: ^Context) -> bool {
-	ctx.cmd = wgpu.device_create_command_encoder(ctx.gpu.device) or_return
-	defer wgpu.release(ctx.cmd)
-
-	ctx.render_pass.color_attachments[0].view = ctx.frame.view
-	render_pass := wgpu.command_encoder_begin_render_pass(ctx.cmd, ctx.render_pass.descriptor)
-	defer wgpu.release(render_pass)
-
-	app.microui_draw(ctx, render_pass) or_return
-
-	wgpu.render_pass_end(render_pass) or_return
-
-	cmdbuf := wgpu.command_encoder_finish(ctx.cmd) or_return
-	defer wgpu.release(cmdbuf)
-
-	wgpu.queue_submit(ctx.gpu.queue, cmdbuf)
-	wgpu.surface_present(ctx.gpu.surface) or_return
-
-	return true
+	mu.begin(self.mu_ctx)
+	test_window(self, self.mu_ctx)
+	log_window(self, self.mu_ctx)
+	style_window(self, self.mu_ctx)
+	mu.end(self.mu_ctx)
 }
 
 main :: proc() {
@@ -87,22 +125,24 @@ main :: proc() {
 		defer log.destroy_console_logger(context.logger)
 	}
 
-	settings := app.DEFAULT_SETTINGS
-	settings.title = EXAMPLE_TITLE
+	example := create()
+	defer release(example)
 
-	example, ok := app.create(Context, settings)
-	if !ok {
-		log.fatalf("Failed to create example [%s]", EXAMPLE_TITLE)
-		return
+	running := true
+	MAIN_LOOP: for running {
+		event: app.Event
+		for app.poll_event(example, &event) {
+			app.mu_handle_events(example.mu_ctx, event)
+			#partial switch &ev in event {
+			case app.QuitEvent:
+				log.info("Exiting...")
+				running = false
+			}
+		}
+
+		app.begin_frame(example)
+		mu_update(example)
+		draw(example)
+		app.end_frame(example)
 	}
-	defer app.destroy(example)
-
-	example.callbacks = {
-		init           = init,
-		microui_update = microui_update,
-		update         = update,
-		draw           = draw,
-	}
-
-	app.run(example) // Start the main loop
 }

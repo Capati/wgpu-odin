@@ -1,16 +1,12 @@
-#+vet !unused-imports
 package square
 
-// Packages
-import "base:builtin"
+// Core
 import "core:log"
 
 // Local packages
-import "root:examples/common"
-import app "root:utils/application"
-import "root:wgpu"
+import wgpu "../../"
+import app "../../utils/application"
 
-// odinfmt: disable
 POSITIONS := [?]f32 {
     -0.5,  0.5, 0.0, // v0
      0.5,  0.5, 0.0, // v1
@@ -24,143 +20,159 @@ COLORS := [?]f32 {
     0.0, 0.0, 1.0, 1.0, // v2
     1.0, 1.0, 0.0, 1.0, // v3
 }
-// odinfmt: enable
 
-Example :: struct {
-	render_pass:      struct {
-		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
-		descriptor:        wgpu.Render_Pass_Descriptor,
-	},
-	positions_buffer: wgpu.Buffer,
-	colors_buffer:    wgpu.Buffer,
-	render_pipeline:  wgpu.Render_Pipeline,
+CLIENT_WIDTH  :: 640
+CLIENT_HEIGHT :: 480
+EXAMPLE_TITLE :: "Square"
+VIDEO_MODE_DEFAULT :: app.Video_Mode {
+	width  = CLIENT_WIDTH,
+	height = CLIENT_HEIGHT,
 }
 
-Context :: app.Context(Example)
+Application :: struct {
+	using _app:       app.Application, /* #subtype */
+	positions_buffer: wgpu.Buffer,
+	colors_buffer:    wgpu.Buffer,
+	render_pipeline:  wgpu.RenderPipeline,
+	rpass: struct {
+		colors:     [1]wgpu.RenderPassColorAttachment,
+		descriptor: wgpu.RenderPassDescriptor,
+	},
+}
 
-EXAMPLE_TITLE :: "Square"
+create :: proc() -> (self: ^Application) {
+	self = new(Application)
+	assert(self != nil, "Failed to allocate Application")
 
-init :: proc(ctx: ^Context) -> (ok: bool) {
-	ctx.positions_buffer = wgpu.device_create_buffer_with_data(
-		ctx.gpu.device,
+	app.init(self, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE)
+
+	self.positions_buffer = wgpu.DeviceCreateBufferWithData(
+		self.gpu.device,
 		{
 			label = "Positions buffer",
-			contents = wgpu.to_bytes(POSITIONS),
-			usage = {.Vertex, .Copy_Dst},
+			contents = wgpu.ToBytes(POSITIONS),
+			usage = {.Vertex, .CopyDst},
 		},
-	) or_return
-	defer if !ok {
-		wgpu.release(ctx.positions_buffer)
-	}
+	)
 
-	ctx.colors_buffer = wgpu.device_create_buffer_with_data(
-		ctx.gpu.device,
-		{label = "Colors buffer", contents = wgpu.to_bytes(COLORS), usage = {.Vertex, .Copy_Dst}},
-	) or_return
-	defer if !ok {
-		wgpu.release(ctx.colors_buffer)
-	}
+	self.colors_buffer = wgpu.DeviceCreateBufferWithData(
+		self.gpu.device,
+		{
+			label = "Colors buffer",
+			contents = wgpu.ToBytes(COLORS),
+			usage = {.Vertex, .CopyDst},
+		},
+	)
 
 	CUBE_WGSL :: #load("./square.wgsl")
-	shader_module := wgpu.device_create_shader_module(
-		ctx.gpu.device,
+	shader_module := wgpu.DeviceCreateShaderModule(
+		self.gpu.device,
 		{label = EXAMPLE_TITLE + " Module", source = string(CUBE_WGSL)},
-	) or_return
-	defer wgpu.release(shader_module)
+	)
+	defer wgpu.Release(shader_module)
 
-	pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
+	pipeline_descriptor := wgpu.RenderPipelineDescriptor {
 		label = EXAMPLE_TITLE + " Render Pipeline",
 		vertex = {
 			module = shader_module,
-			entry_point = "vs_main",
+			entryPoint = "vs_main",
 			buffers = {
 				{
-					array_stride = 3 * 4,
-					step_mode = .Vertex,
-					attributes = {{shader_location = 0, format = .Float32x3, offset = 0}},
+					arrayStride = 3 * 4,
+					stepMode = .Vertex,
+					attributes = {{shaderLocation = 0, format = .Float32x3, offset = 0}},
 				},
 				{
-					array_stride = 4 * 4,
-					step_mode = .Vertex,
-					attributes = {{shader_location = 1, format = .Float32x4, offset = 0}},
+					arrayStride = 4 * 4,
+					stepMode = .Vertex,
+					attributes = {{shaderLocation = 1, format = .Float32x4, offset = 0}},
 				},
 			},
 		},
 		fragment = &{
 			module = shader_module,
-			entry_point = "fs_main",
+			entryPoint = "fs_main",
 			targets = {
 				{
-					format = ctx.gpu.config.format,
+					format = self.gpu.config.format,
 					blend = &wgpu.BLEND_STATE_NORMAL,
-					write_mask = wgpu.COLOR_WRITES_ALL,
+					writeMask = wgpu.COLOR_WRITES_ALL,
 				},
 			},
 		},
 		primitive = {
-			topology = .Triangle_Strip,
-			strip_index_format = .Uint32,
-			front_face = .CCW,
-			cull_mode = .Front,
+			topology = .TriangleStrip,
+			stripIndexFormat = .Uint32,
+			frontFace = .CCW,
+			cullMode = .Front,
 		},
-		multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
+		multisample = wgpu.MULTISAMPLE_STATE_DEFAULT,
 	}
 
-	ctx.render_pipeline = wgpu.device_create_render_pipeline(
-		ctx.gpu.device,
+	self.render_pipeline = wgpu.DeviceCreateRenderPipeline(
+		self.gpu.device,
 		pipeline_descriptor,
-	) or_return
-	defer if !ok {
-		wgpu.release(ctx.render_pipeline)
-	}
+	)
 
-	ctx.render_pass.color_attachments[0] = {
+	self.rpass.colors[0] = {
 		view = nil, /* Assigned later */
 		ops  = {.Clear, .Store, app.Color_Black},
 	}
 
-	ctx.render_pass.descriptor = {
+	self.rpass.descriptor = {
 		label             = "Render pass descriptor",
-		color_attachments = ctx.render_pass.color_attachments[:],
+		colorAttachments = self.rpass.colors[:],
 	}
 
-	return true
+	app.add_resize_callback(self, { resize, self })
+
+	return
 }
 
-quit :: proc(ctx: ^Context) {
-	wgpu.release(ctx.render_pipeline)
-	wgpu.release(ctx.colors_buffer)
-	wgpu.release(ctx.positions_buffer)
+release :: proc(self: ^Application) {
+	wgpu.Release(self.render_pipeline)
+	wgpu.Release(self.colors_buffer)
+	wgpu.Release(self.positions_buffer)
+
+	app.release(self)
+	free(self)
 }
 
-draw :: proc(ctx: ^Context) -> bool {
-	encoder := wgpu.device_create_command_encoder(ctx.gpu.device) or_return
-	defer wgpu.release(encoder)
+draw :: proc(self: ^Application) {
+	frame := app.gpu_get_current_frame(self.gpu)
+	if frame.skip { return }
+	defer app.gpu_release_current_frame(&frame)
 
-	ctx.render_pass.color_attachments[0].view = ctx.frame.view
-	render_pass := wgpu.command_encoder_begin_render_pass(encoder, ctx.render_pass.descriptor)
-	defer wgpu.release(render_pass)
+	encoder := wgpu.DeviceCreateCommandEncoder(self.gpu.device)
+	defer wgpu.Release(encoder)
+
+	self.rpass.colors[0].view = frame.view
+	rpass := wgpu.CommandEncoderBeginRenderPass(encoder, self.rpass.descriptor)
+	defer wgpu.Release(rpass)
 
 	// Bind the rendering pipeline
-	wgpu.render_pass_set_pipeline(render_pass, ctx.render_pipeline)
+	wgpu.RenderPassSetPipeline(rpass, self.render_pipeline)
 
 	// Bind vertex buffers (contain position & colors)
-	wgpu.render_pass_set_vertex_buffer(render_pass, 0, {buffer = ctx.positions_buffer})
-	wgpu.render_pass_set_vertex_buffer(render_pass, 1, {buffer = ctx.colors_buffer})
+	wgpu.RenderPassSetVertexBuffer(rpass, 0, {buffer = self.positions_buffer})
+	wgpu.RenderPassSetVertexBuffer(rpass, 1, {buffer = self.colors_buffer})
 
 	// Draw quad
-	wgpu.render_pass_draw(render_pass, {0, 4})
+	wgpu.RenderPassDraw(rpass, {0, 4})
 
 	// End render pass
-	wgpu.render_pass_end(render_pass) or_return
+	wgpu.RenderPassEnd(rpass)
 
-	cmdbuf := wgpu.command_encoder_finish(encoder) or_return
-	defer wgpu.release(cmdbuf)
+	cmdbuf := wgpu.CommandEncoderFinish(encoder)
+	defer wgpu.Release(cmdbuf)
 
-	wgpu.queue_submit(ctx.gpu.queue, cmdbuf)
-	wgpu.surface_present(ctx.gpu.surface) or_return
+	wgpu.QueueSubmit(self.gpu.queue, { cmdbuf })
+	wgpu.SurfacePresent(self.gpu.surface)
+}
 
-	return true
+resize :: proc(window: ^app.Window, size: app.Vec2u, userdata: rawptr) {
+	self := cast(^Application)userdata
+	draw(self)
 }
 
 main :: proc() {
@@ -169,20 +181,22 @@ main :: proc() {
 		defer log.destroy_console_logger(context.logger)
 	}
 
-	settings := app.DEFAULT_SETTINGS
-	settings.title = EXAMPLE_TITLE
+	example := create()
+	defer release(example)
 
-	example, ok := app.create(Context, settings)
-	if !ok {
-		return
+	running := true
+	MAIN_LOOP: for running {
+		event: app.Event
+		for app.poll_event(example, &event) {
+			#partial switch &ev in event {
+			case app.QuitEvent:
+				log.info("Exiting...")
+				running = false
+			}
+		}
+
+		app.begin_frame(example)
+		draw(example)
+		app.end_frame(example)
 	}
-	defer app.destroy(example)
-
-	example.callbacks = {
-		init = init,
-		quit = quit,
-		draw = draw,
-	}
-
-	app.run(example) // Start the main loop
 }

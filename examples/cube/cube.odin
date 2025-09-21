@@ -1,249 +1,262 @@
-#+vet !unused-imports
 package cube_example
 
-// Packages
+// Core
 import "core:log"
 
 // Local packages
+import wgpu "../../"
+import app "../../utils/application"
 import "../common"
-import app "root:utils/application"
-import "root:wgpu"
 
-Example :: struct {
-	render_pass:     struct {
-		color_attachments:        [1]wgpu.Render_Pass_Color_Attachment,
-		depth_stencil_attachment: wgpu.Render_Pass_Depth_Stencil_Attachment,
-		descriptor:               wgpu.Render_Pass_Descriptor,
-	},
+CLIENT_WIDTH       :: 640
+CLIENT_HEIGHT      :: 480
+EXAMPLE_TITLE      :: "Colored Cube"
+VIDEO_MODE_DEFAULT :: app.Video_Mode {
+	width  = CLIENT_WIDTH,
+	height = CLIENT_HEIGHT,
+}
+DEPTH_FORMAT       :: wgpu.TextureFormat.Depth24Plus
+
+Application :: struct {
+	using _app:      app.Application,
 	vertex_buffer:   wgpu.Buffer,
-	render_pipeline: wgpu.Render_Pipeline,
+	render_pipeline: wgpu.RenderPipeline,
 	uniform_buffer:  wgpu.Buffer,
-	bind_group:      wgpu.Bind_Group,
-	depth_view:      wgpu.Texture_View,
+	bind_group:      wgpu.BindGroup,
+	depth_view:      wgpu.TextureView,
+	rpass: struct {
+		colors:     [1]wgpu.RenderPassColorAttachment,
+		descriptor: wgpu.RenderPassDescriptor,
+	},
 }
 
-Context :: app.Context(Example)
+create :: proc() -> (self: ^Application) {
+	self = new(Application)
+	assert(self != nil, "Failed to allocate Application")
 
-EXAMPLE_TITLE :: "Colored Cube"
-DEPTH_FORMAT :: wgpu.Texture_Format.Depth24_Plus
+	app.init(self, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE)
 
-init :: proc(ctx: ^Context) -> (ok: bool) {
-	CUBE_WGSL :: #load("./cube.wgsl")
-	shader_module := wgpu.device_create_shader_module(
-		ctx.gpu.device,
-		{label = EXAMPLE_TITLE + " Module", source = string(CUBE_WGSL)},
-	) or_return
-	defer wgpu.release(shader_module)
+	CUBE_WGSL :: #load("./cube.wgsl", string)
+	shader_module := wgpu.DeviceCreateShaderModule(
+		self.gpu.device,
+		{
+			label = EXAMPLE_TITLE + " Module",
+			source = CUBE_WGSL,
+		},
+	)
+	defer wgpu.Release(shader_module)
 
-	ctx.vertex_buffer = wgpu.device_create_buffer_with_data(
-		ctx.gpu.device,
+	self.vertex_buffer = wgpu.DeviceCreateBufferWithData(
+		self.gpu.device,
 		{
 			label = EXAMPLE_TITLE + " Buffer",
-			contents = wgpu.to_bytes(vertex_data),
+			contents = wgpu.ToBytes(vertex_data),
 			usage = {.Vertex},
 		},
-	) or_return
-	defer if !ok {
-		wgpu.release(ctx.vertex_buffer)
-	}
+	)
 
-	vertex_attributes := wgpu.vertex_attr_array(2, {0, .Float32x3}, {1, .Float32x3})
+	vertex_attributes := wgpu.VertexAttrArray(2, {0, .Float32x3}, {1, .Float32x3})
 
-	// Above line expands to:
-	// vertex_attributes := [?]wgpu.Vertex_Attribute {
-	// 	{format = .Float32x3, offset = 0, shader_location = 0},
+	// Above line "expands" to:
+	// vertex_attributes := [?]wgpu.VertexAttribute {
+	// 	{format = .Float32x3, offset = 0, shaderLocation = 0},
 	// 	{
 	// 		format = .Float32x3,
 	// 		offset = 12,
-	// 		shader_location = 1,
+	// 		shaderLocation = 1,
 	// 	},
 	// }
 
-	vertex_buffer_layout := wgpu.Vertex_Buffer_Layout {
-		array_stride = size_of(Vertex),
-		step_mode    = .Vertex,
-		attributes   = vertex_attributes[:],
+	vertex_buffer_layout := wgpu.VertexBufferLayout {
+		arrayStride = size_of(Vertex),
+		stepMode    = .Vertex,
+		attributes  = vertex_attributes[: ],
 	}
 
-	pipeline_descriptor := wgpu.Render_Pipeline_Descriptor {
+	pipeline_descriptor := wgpu.RenderPipelineDescriptor {
 		label = EXAMPLE_TITLE + " Render Pipeline",
 		vertex = {
 			module = shader_module,
-			entry_point = "vs_main",
+			entryPoint = "vs_main",
 			buffers = {vertex_buffer_layout},
 		},
 		fragment = &{
 			module = shader_module,
-			entry_point = "fs_main",
+			entryPoint = "fs_main",
 			targets = {
 				{
-					format = ctx.gpu.config.format,
+					format = self.gpu.config.format,
 					blend = &wgpu.BLEND_STATE_REPLACE,
-					write_mask = wgpu.COLOR_WRITES_ALL,
+					writeMask = wgpu.COLOR_WRITES_ALL,
 				},
 			},
 		},
-		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .Back},
+		primitive = {
+			topology = .TriangleList,
+			frontFace = .CCW,
+			cullMode = .Back,
+		},
 		// Enable depth testing so that the fragment closest to the camera
 		// is rendered in front.
-		depth_stencil = {
-			depth_write_enabled = true,
-			depth_compare = .Less,
+		depthStencil = {
+			depthWriteEnabled = true,
+			depthCompare = .Less,
 			format = DEPTH_FORMAT,
 			stencil = {
 				front = {compare = .Always},
 				back = {compare = .Always},
-				read_mask = 0xFFFFFFFF,
-				write_mask = 0xFFFFFFFF,
+				readMask = 0xFFFFFFFF,
+				writeMask = 0xFFFFFFFF,
 			},
 		},
-		multisample = wgpu.DEFAULT_MULTISAMPLE_STATE,
+		multisample = wgpu.MULTISAMPLE_STATE_DEFAULT,
 	}
 
-	ctx.render_pipeline = wgpu.device_create_render_pipeline(
-		ctx.gpu.device,
+	self.render_pipeline = wgpu.DeviceCreateRenderPipeline(
+		self.gpu.device,
 		pipeline_descriptor,
-	) or_return
-	defer if !ok {
-		wgpu.release(ctx.render_pipeline)
-	}
+	)
 
-	aspect := f32(ctx.gpu.config.width) / f32(ctx.gpu.config.height)
+	aspect := f32(self.gpu.config.width) / f32(self.gpu.config.height)
 	mvp_mat := common.create_view_projection_matrix(aspect)
 
-	ctx.uniform_buffer = wgpu.device_create_buffer_with_data(
-		ctx.gpu.device,
+	self.uniform_buffer = wgpu.DeviceCreateBufferWithData(
+		self.gpu.device,
 		{
 			label = EXAMPLE_TITLE + " Uniform Buffer",
-			contents = wgpu.to_bytes(mvp_mat),
-			usage = {.Uniform, .Copy_Dst},
+			contents = wgpu.ToBytes(mvp_mat),
+			usage = {.Uniform, .CopyDst},
 		},
-	) or_return
-	defer if !ok {
-		wgpu.release(ctx.uniform_buffer)
-	}
+	)
 
-	bind_group_layout := wgpu.render_pipeline_get_bind_group_layout(
-		ctx.render_pipeline,
-		0,
-	) or_return
-	defer wgpu.release(bind_group_layout)
+	bind_group_layout := wgpu.RenderPipelineGetBindGroupLayout(
+		self.render_pipeline,
+		groupIndex = 0,
+	)
+	defer wgpu.Release(bind_group_layout)
 
-	ctx.bind_group = wgpu.device_create_bind_group(
-		ctx.gpu.device,
+	self.bind_group = wgpu.DeviceCreateBindGroup(
+		self.gpu.device,
 		{
 			layout = bind_group_layout,
 			entries = {
 				{
 					binding = 0,
-					resource = wgpu.Buffer_Binding {
-						buffer = ctx.uniform_buffer,
+					resource = wgpu.BufferBinding {
+						buffer = self.uniform_buffer,
 						size = wgpu.WHOLE_SIZE,
 					},
 				},
 			},
 		},
-	) or_return
-	defer if !ok {
-		wgpu.release(ctx.bind_group)
-	}
-
-	create_depth_framebuffer(ctx) or_return
-
-	ctx.render_pass.color_attachments[0] = {
-		view = nil, /* Assigned later */
-		ops = {load = .Clear, store = .Store, clear_value = app.Color_Dark_Gray},
-	}
-
-	ctx.render_pass.descriptor = {
-		label                    = "Render pass descriptor",
-		color_attachments        = ctx.render_pass.color_attachments[:],
-		depth_stencil_attachment = &ctx.render_pass.depth_stencil_attachment,
-	}
-
-	return true
-}
-
-create_depth_framebuffer :: proc(ctx: ^Context) -> (ok: bool) {
-	format_features := wgpu.texture_format_guaranteed_format_features(
-		DEPTH_FORMAT,
-		ctx.gpu.features,
 	)
 
-	size := ctx.framebuffer_size
-
-	texture_descriptor := wgpu.Texture_Descriptor {
-		size            = {size.w, size.h, 1},
-		mip_level_count = 1,
-		sample_count    = 1,
-		dimension       = .D2,
-		format          = DEPTH_FORMAT,
-		usage           = format_features.allowed_usages,
+	self.rpass.colors[0] = {
+		view = nil, /* Assigned later */
+		ops = {
+			load = .Clear,
+			store = .Store,
+			clearValue = app.Color_Dark_Gray,
+		},
 	}
 
-	texture := wgpu.device_create_texture(ctx.gpu.device, texture_descriptor) or_return
-	defer wgpu.release(texture)
+	self.rpass.descriptor = {
+		label                  = "Render pass descriptor",
+		colorAttachments       = self.rpass.colors[:],
+		depthStencilAttachment = nil, /* Assigned later */
+	}
 
-	ctx.depth_view = wgpu.texture_create_view(texture) or_return
+	create_depth_framebuffer(self)
+
+	app.add_resize_callback(self, { resize, self })
+
+	return
+}
+
+release :: proc(self: ^Application) {
+	wgpu.Release(self.depth_view)
+	wgpu.Release(self.bind_group)
+	wgpu.Release(self.uniform_buffer)
+	wgpu.Release(self.render_pipeline)
+	wgpu.Release(self.vertex_buffer)
+
+	app.release(self)
+	free(self)
+}
+
+draw :: proc(self: ^Application) {
+	frame := app.gpu_get_current_frame(self.gpu)
+	if frame.skip { return }
+	defer app.gpu_release_current_frame(&frame)
+
+	encoder := wgpu.DeviceCreateCommandEncoder(self.gpu.device)
+	defer wgpu.Release(encoder)
+
+	self.rpass.colors[0].view = frame.view
+	rpass := wgpu.CommandEncoderBeginRenderPass(encoder, self.rpass.descriptor)
+	defer wgpu.Release(rpass)
+
+	wgpu.RenderPassSetPipeline(rpass, self.render_pipeline)
+	wgpu.RenderPassSetBindGroup(rpass, 0, self.bind_group)
+	wgpu.RenderPassSetVertexBuffer(rpass, 0, {buffer = self.vertex_buffer})
+	wgpu.RenderPassDraw(rpass, {0, u32(len(vertex_data))})
+
+	wgpu.RenderPassEnd(rpass)
+
+	cmdbuf := wgpu.CommandEncoderFinish(encoder)
+	defer wgpu.Release(cmdbuf)
+
+	wgpu.QueueSubmit(self.gpu.queue, { cmdbuf })
+	wgpu.SurfacePresent(self.gpu.surface)
+}
+
+create_depth_framebuffer :: proc(self: ^Application) {
+	format_features := wgpu.TextureFormatGuaranteedFormatFeatures(DEPTH_FORMAT, self.gpu.features)
+
+	size := app.window_get_size(self.window)
+
+	texture_descriptor := wgpu.TextureDescriptor {
+		size          = {size.x, size.y, 1},
+		mipLevelCount = 1,
+		sampleCount   = 1,
+		dimension     = ._2D,
+		format        = DEPTH_FORMAT,
+		usage         = format_features.allowedUsages,
+	}
+
+	texture := wgpu.DeviceCreateTexture(self.gpu.device, texture_descriptor)
+	defer wgpu.Release(texture)
+
+	self.depth_view = wgpu.TextureCreateView(texture)
 
 	// Setup depth stencil attachment
-	ctx.render_pass.depth_stencil_attachment = {
-		view              = ctx.depth_view,
-		depth_load_op     = .Clear,
-		depth_store_op    = .Store,
-		depth_clear_value = 1.0,
+	self.rpass.descriptor.depthStencilAttachment = wgpu.RenderPassDepthStencilAttachment{
+		view = self.depth_view,
+		depthOps = wgpu.RenderPassDepthOperations{
+			load       = .Clear,
+			store      = .Store,
+			clearValue = 1.0,
+		},
 	}
-
-	return true
 }
 
-quit :: proc(ctx: ^Context) {
-	wgpu.release(ctx.depth_view)
-	wgpu.release(ctx.bind_group)
-	wgpu.release(ctx.uniform_buffer)
-	wgpu.release(ctx.render_pipeline)
-	wgpu.release(ctx.vertex_buffer)
-}
+resize :: proc(window: ^app.Window, size: app.Vec2u, userdata: rawptr) {
+	self := cast(^Application)userdata
 
-resize :: proc(ctx: ^Context, size: app.Resize_Event) -> bool {
-	wgpu.release(ctx.depth_view)
-	create_depth_framebuffer(ctx) or_return
+	wgpu.Release(self.depth_view)
+	create_depth_framebuffer(self)
 
 	// Update uniform buffer with new aspect ratio
-	aspect := f32(size.w) / f32(size.h)
+	aspect := f32(size.x) / f32(size.y)
 	new_matrix := common.create_view_projection_matrix(aspect)
-	wgpu.queue_write_buffer(
-		ctx.gpu.queue,
-		ctx.uniform_buffer,
+	wgpu.QueueWriteBuffer(
+		self.gpu.queue,
+		self.uniform_buffer,
 		0,
-		wgpu.to_bytes(new_matrix),
-	) or_return
+		wgpu.ToBytes(new_matrix),
+	)
 
-	return true
-}
-
-draw :: proc(ctx: ^Context) -> bool {
-	ctx.cmd = wgpu.device_create_command_encoder(ctx.gpu.device) or_return
-	defer wgpu.release(ctx.cmd)
-
-	ctx.render_pass.color_attachments[0].view = ctx.frame.view
-	render_pass := wgpu.command_encoder_begin_render_pass(ctx.cmd, ctx.render_pass.descriptor)
-	defer wgpu.release(render_pass)
-
-	wgpu.render_pass_set_pipeline(render_pass, ctx.render_pipeline)
-	wgpu.render_pass_set_bind_group(render_pass, 0, ctx.bind_group)
-	wgpu.render_pass_set_vertex_buffer(render_pass, 0, {buffer = ctx.vertex_buffer})
-	wgpu.render_pass_draw(render_pass, {0, u32(len(vertex_data))})
-
-	wgpu.render_pass_end(render_pass) or_return
-
-	cmdbuf := wgpu.command_encoder_finish(ctx.cmd) or_return
-	defer wgpu.release(cmdbuf)
-
-	wgpu.queue_submit(ctx.gpu.queue, cmdbuf)
-	wgpu.surface_present(ctx.gpu.surface) or_return
-
-	return true
+	draw(self)
 }
 
 main :: proc() {
@@ -252,22 +265,22 @@ main :: proc() {
 		defer log.destroy_console_logger(context.logger)
 	}
 
-	settings := app.DEFAULT_SETTINGS
-	settings.title = EXAMPLE_TITLE
+	example := create()
+	defer release(example)
 
-	example, ok := app.create(Context, settings)
-	if !ok {
-		log.fatalf("Failed to create example [%s]", EXAMPLE_TITLE)
-		return
+	running := true
+	MAIN_LOOP: for running {
+		event: app.Event
+		for app.poll_event(example, &event) {
+			#partial switch &ev in event {
+			case app.QuitEvent:
+				log.info("Exiting...")
+				running = false
+			}
+		}
+
+		app.begin_frame(example)
+		draw(example)
+		app.end_frame(example)
 	}
-	defer app.destroy(example)
-
-	example.callbacks = {
-		init   = init,
-		quit   = quit,
-		resize = resize,
-		draw   = draw,
-	}
-
-	app.run(example) // Start the main loop
 }

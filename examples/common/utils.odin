@@ -4,7 +4,7 @@ package examples_common
 import "core:math"
 import la "core:math/linalg"
 
-create_view_projection_matrix :: proc(aspect: f32) -> la.Matrix4f32 {
+create_view_projection_matrix :: proc "contextless" (aspect: f32) -> la.Matrix4f32 {
 	// 72 deg FOV (2 * PI / 5 radians)
 	projection := la.matrix4_perspective_f32(2 * math.PI / 5, aspect, 1.0, 100.0)
 	view := la.matrix4_look_at_f32(

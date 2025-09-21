@@ -1,18 +1,18 @@
 package capture
 
-// Packages
+// Core
 import "base:runtime"
 import "core:fmt"
+
+// Vendor
 import "vendor:stb/image"
 
 // Local packages
-import "root:wgpu"
+import wgpu "../.."
 
-_log_callback :: proc "c" (level: wgpu.Log_Level, message: wgpu.String_View, user_data: rawptr) {
-	if message.length > 0 {
-		context = runtime.default_context()
-		fmt.eprintf("[wgpu] [%v] %s\n\n", level, wgpu.string_view_get_string(message))
-	}
+_log_callback :: proc "c" (level: wgpu.LogLevel, message: string, user_data: rawptr) {
+	context = runtime.default_context()
+	fmt.eprintf("[wgpu] [%v] %s\n\n", level, message)
 }
 
 Buffer_Dimensions :: struct {
@@ -38,111 +38,130 @@ buffer_dimensions_init :: proc(r: ^Buffer_Dimensions, width, height: uint) {
 IMAGE_WIDTH :: 100
 IMAGE_HEIGHT :: 200
 
-run :: proc() -> (ok: bool) {
-	wgpu.set_log_callback(_log_callback, nil)
-	wgpu.set_log_level(.Warn)
+main :: proc() {
+	wgpu.SetLogCallback(_log_callback, nil)
+	wgpu.SetLogLevel(.Warn)
 
-	instance_descriptor := wgpu.Instance_Descriptor {
+	instance_descriptor := wgpu.InstanceDescriptor {
 		backends = wgpu.BACKENDS_PRIMARY,
 	}
 
-	instance := wgpu.create_instance(instance_descriptor) or_return
-	defer wgpu.instance_release(instance)
+	instance := wgpu.CreateInstance(instance_descriptor)
+	defer wgpu.InstanceRelease(instance)
 
-	adapter := wgpu.instance_request_adapter(
+	adapter_res := wgpu.InstanceRequestAdapter(
 		instance,
-		wgpu.Request_Adapter_Options{power_preference = .High_Performance},
-	) or_return
-	defer wgpu.adapter_release(adapter)
+		wgpu.RequestAdapterOptions{powerPreference = .HighPerformance},
+	)
+	if (adapter_res.status != .Success) {
+		fmt.panicf(
+			"Failed to request the selected adapter [%v]: %s",
+			adapter_res.status,
+			adapter_res.message,
+		)
+	}
+	adapter := adapter_res.adapter
+	defer wgpu.AdapterRelease(adapter)
 
-	adapter_info := wgpu.adapter_get_info(adapter) or_return
-	defer wgpu.adapter_info_free_members(adapter_info)
+	adapter_info, info_status := wgpu.AdapterGetInfo(adapter)
+	if info_status != .Success {
+		fmt.panicf("Failed to get adapter info for the selected adapter: %v", info_status)
+	}
+	defer wgpu.AdapterInfoFreeMembers(adapter_info)
 
-	device_descriptor := wgpu.Device_Descriptor {
+	device_descriptor := wgpu.DeviceDescriptor {
 		label = adapter_info.description,
 	}
 
-	device := wgpu.adapter_request_device(adapter, device_descriptor) or_return
-	defer wgpu.device_release(device)
+	device_res := wgpu.AdapterRequestDevice(adapter, device_descriptor)
+	if (device_res.status != .Success) {
+		fmt.panicf(
+			"Failed to request the device [%v]: %s",
+			device_res.status,
+			device_res.message,
+		)
+	}
+	device := device_res.device
+	defer wgpu.DeviceRelease(device)
 
-	queue := wgpu.device_get_queue(device)
-	defer wgpu.queue_release(queue)
+	queue := wgpu.DeviceGetQueue(device)
+	defer wgpu.QueueRelease(queue)
 
-	buffer_dimensions := Buffer_Dimensions{}
+	buffer_dimensions: Buffer_Dimensions
 	buffer_dimensions_init(&buffer_dimensions, IMAGE_WIDTH, IMAGE_HEIGHT)
 
 	fmt.printf("%#v\n", buffer_dimensions)
 
 	buffer_size := buffer_dimensions.padded_bytes_per_row * buffer_dimensions.height
 
-	output_buffer := wgpu.device_create_buffer(
+	output_buffer := wgpu.DeviceCreateBuffer(
 		device,
-		wgpu.Buffer_Descriptor {
-			label = "Buffer output",
-			size = cast(u64)buffer_size,
-			usage = {.Map_Read, .Copy_Dst},
-			mapped_at_creation = false,
+		wgpu.BufferDescriptor {
+			label            = "Buffer output",
+			size             = cast(u64)buffer_size,
+			usage            = {.MapRead, .CopyDst},
+			mappedAtCreation = false,
 		},
-	) or_return
+	)
 
-	texture_extent := wgpu.Extent_3D {
-		width                 = cast(u32)buffer_dimensions.width,
-		height                = cast(u32)buffer_dimensions.height,
-		depth_or_array_layers = 1,
+	texture_extent := wgpu.Extent3D {
+		width              = cast(u32)buffer_dimensions.width,
+		height             = cast(u32)buffer_dimensions.height,
+		depthOrArrayLayers = 1,
 	}
 
-	texture := wgpu.device_create_texture(
+	texture := wgpu.DeviceCreateTexture(
 		device,
-		wgpu.Texture_Descriptor {
-			label = "Texture",
-			size = texture_extent,
-			mip_level_count = 1,
-			sample_count = 1,
-			dimension = .D2,
-			format = .Rgba8_Unorm_Srgb,
-			usage = {.Render_Attachment, .Copy_Src},
+		wgpu.TextureDescriptor {
+			label         = "Texture",
+			size          = texture_extent,
+			mipLevelCount = 1,
+			sampleCount   = 1,
+			dimension     = ._2D,
+			format        = .RGBA8UnormSrgb,
+			usage         = {.RenderAttachment, .CopySrc},
 		},
-	) or_return
-	defer wgpu.texture_release(texture)
+	)
+	defer wgpu.TextureRelease(texture)
 
-	texture_view := wgpu.texture_create_view(texture) or_return
-	defer wgpu.texture_view_release(texture_view)
+	texture_view := wgpu.TextureCreateView(texture)
+	defer wgpu.TextureViewRelease(texture_view)
 
-	command_encoder := wgpu.device_create_command_encoder(
+	command_encoder := wgpu.DeviceCreateCommandEncoder(
 		device,
-		wgpu.Command_Encoder_Descriptor{label = "command_encoder"},
-	) or_return
-	defer wgpu.command_encoder_release(command_encoder)
+		wgpu.CommandEncoderDescriptor{label = "command_encoder"},
+	)
+	defer wgpu.CommandEncoderRelease(command_encoder)
 
-	colors: []wgpu.Render_Pass_Color_Attachment = {
+	colors: []wgpu.RenderPassColorAttachment = {
 		{view = texture_view, ops = {.Clear, .Store, {1.0, 0.0, 0.0, 1.0}}},
 	}
 
-	render_pass := wgpu.command_encoder_begin_render_pass(
+	render_pass := wgpu.CommandEncoderBeginRenderPass(
 		command_encoder,
-		{label = "render_pass", color_attachments = colors},
+		{label = "render_pass", colorAttachments = colors},
 	)
-	wgpu.render_pass_end(render_pass) or_return
-	wgpu.render_pass_release(render_pass)
+	wgpu.RenderPassEnd(render_pass)
+	wgpu.RenderPassRelease(render_pass)
 
-	wgpu.command_encoder_copy_texture_to_buffer(
+	wgpu.CommandEncoderCopyTextureToBuffer(
 		command_encoder,
-		{texture = texture, mip_level = 0, origin = {}, aspect = .All},
+		{texture = texture, mipLevel = 0, origin = {}, aspect = .All},
 		{
 			buffer = output_buffer,
 			layout = {
 				offset = 0,
-				bytes_per_row = cast(u32)buffer_dimensions.padded_bytes_per_row,
-				rows_per_image = wgpu.COPY_STRIDE_UNDEFINED,
+				bytesPerRow = cast(u32)buffer_dimensions.padded_bytes_per_row,
+				rowsPerImage = wgpu.COPY_STRIDE_UNDEFINED,
 			},
 		},
 		texture_extent,
-	) or_return
+	)
 
-	command_buffer := wgpu.command_encoder_finish(command_encoder) or_return
-	defer wgpu.command_buffer_release(command_buffer)
+	command_buffer := wgpu.CommandEncoderFinish(command_encoder)
+	defer wgpu.CommandBufferRelease(command_buffer)
 
-	wgpu.queue_submit(queue, command_buffer)
+	wgpu.QueueSubmit(queue, { command_buffer })
 
 	Buffer_Map_Context :: struct {
 		buffer:     wgpu.Buffer,
@@ -150,8 +169,8 @@ run :: proc() -> (ok: bool) {
 	}
 
 	handle_buffer_map := proc "c" (
-		status: wgpu.Map_Async_Status,
-		message: wgpu.String_View,
+		status: wgpu.MapAsyncStatus,
+		message: string,
 		userdata1: rawptr,
 		userdata2: rawptr,
 	) {
@@ -163,13 +182,9 @@ run :: proc() -> (ok: bool) {
 		}
 
 		buffer_map := cast(^Buffer_Map_Context)userdata1
-		defer wgpu.buffer_release(buffer_map.buffer)
+		defer wgpu.BufferRelease(buffer_map.buffer)
 
-		data_view, data_ok := wgpu.buffer_get_mapped_range(buffer_map.buffer, []byte)
-		if !data_ok {
-			fmt.eprintln("ERROR: Failed to get data from buffer")
-			return
-		}
+		data_view := wgpu.BufferGetMappedRangeSlice(buffer_map.buffer, []byte)
 
 		result := image.write_png(
 			"red.png",
@@ -186,18 +201,12 @@ run :: proc() -> (ok: bool) {
 	}
 
 	buffer_map := Buffer_Map_Context{output_buffer, buffer_dimensions}
-	wgpu.buffer_map_async(
+	wgpu.BufferMapAsync(
 		output_buffer,
 		{.Read},
 		{start = 0, end = u64(buffer_size)},
 		{callback = handle_buffer_map, userdata1 = &buffer_map},
-	) or_return
+	)
 
-	wgpu.device_poll(device)
-
-	return true
-}
-
-main :: proc() {
-	run()
+	wgpu.DevicePoll(device)
 }

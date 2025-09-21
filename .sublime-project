@@ -1,0 +1,171 @@
+{
+	"folders":
+	[
+		{
+			"path": "."
+		}
+	],
+	"build_systems":
+	[
+		{
+			"name": "Odin Run (Debug)",
+			"working_dir": "${project_path}/examples",
+			"file_regex": "^(.+)\\(([0-9]+):([0-9]+)\\) (.+)$",
+            "shell_cmd": null,
+            "target": "terminus_exec",
+            "cancel": "terminus_cancel_build",
+		    "focus": true,
+		    "timeit": true,
+			"variants":
+			[
+				{
+					"name": "cameras",
+					"cmd": ["cmd", "/c", "build.bat", "cameras", "run"],
+				},
+				{
+					"name": "capture",
+					"cmd": ["cmd", "/c", "build.bat", "capture", "run"],
+				},
+				{
+					"name": "clear_screen",
+					"cmd": ["cmd", "/c", "build.bat", "clear_screen", "run"],
+				},
+				{
+					"name": "compute",
+					"cmd": ["cmd", "/c", "build.bat", "compute", "run"],
+				},
+				{
+					"name": "coordinate_system",
+					"cmd": ["cmd", "/c", "build.bat", "coordinate_system", "run"],
+				},
+				{
+					"name": "cube",
+					"cmd": ["cmd", "/c", "build.bat", "cube", "run"],
+				},
+				{
+					"name": "cube_textured",
+					"cmd": ["cmd", "/c", "build.bat", "cube_textured", "run"],
+				},
+				{
+					"name": "cubemap",
+					"cmd": ["cmd", "/c", "build.bat", "cubemap", "run"],
+				},
+				{
+					"name": "fractal_cube",
+					"cmd": ["cmd", "/c", "build.bat", "fractal_cube", "run"],
+				},
+				{
+					"name": "image_blur",
+					"cmd": ["cmd", "/c", "build.bat", "image_blur", "run"],
+				},
+				{
+					"name": "imgui",
+					"cmd": ["cmd", "/c", "build.bat", "imgui", "run"],
+				},
+				{
+					"name": "info",
+					"cmd": ["cmd", "/c", "build.bat", "info", "run"],
+				},
+				{
+					"name": "instanced_cube",
+					"cmd": ["cmd", "/c", "build.bat", "instanced_cube", "run"],
+				},
+				{
+					"name": "microui",
+					"cmd": ["cmd", "/c", "build.bat", "microui", "run"],
+				},
+				{
+					"name": "rotating_cube",
+					"cmd": ["cmd", "/c", "build.bat", "rotating_cube", "run"],
+				},
+				{
+					"name": "square",
+					"cmd": ["cmd", "/c", "build.bat", "square", "run"],
+				},
+				{
+					"name": "stencil_triangles",
+					"cmd": ["cmd", "/c", "build.bat", "stencil_triangles", "run"],
+				},
+				{
+					"name": "texture_arrays",
+					"cmd": ["cmd", "/c", "build.bat", "texture_arrays", "run"],
+				},
+				{
+					"name": "textured_cube",
+					"cmd": ["cmd", "/c", "build.bat", "textured_cube", "run"],
+				},
+				{
+					"name": "triangle",
+					"cmd": ["cmd", "/c", "build.bat", "triangle", "run"],
+				},
+				{
+					"name": "triangle_msaa",
+					"cmd": ["cmd", "/c", "build.bat", "triangle_msaa", "run"],
+				},
+				{
+					"name": "two_cubes",
+					"cmd": ["cmd", "/c", "build.bat", "two_cubes", "run"],
+				},
+				{
+					"name": "tutorial2_surface_challenge",
+					"cmd": ["cmd", "/c", "build.bat", "learn_wgpu/beginner/tutorial2_surface_challenge", "run"],
+				},
+				{
+					"name": "tutorial3_pipeline",
+					"cmd": ["cmd", "/c", "build.bat", "learn_wgpu/beginner/tutorial3_pipeline", "run"],
+				},
+				{
+					"name": "tutorial3_pipeline_challenge",
+					"cmd": ["cmd", "/c", "build.bat", "learn_wgpu/beginner/tutorial3_pipeline_challenge", "run"],
+				},
+				{
+					"name": "tutorial4_buffer",
+					"cmd": ["cmd", "/c", "build.bat", "learn_wgpu/beginner/tutorial4_buffer", "run"],
+				},
+				{
+					"name": "tutorial4_buffer_challenge",
+					"cmd": ["cmd", "/c", "build.bat", "learn_wgpu/beginner/tutorial4_buffer_challenge", "run"],
+				},
+				{
+					"name": "tutorial5_textures",
+					"cmd": ["cmd", "/c", "build.bat", "learn_wgpu/beginner/tutorial5_textures", "run"],
+				},
+				{
+					"name": "tutorial5_textures_challenge",
+					"cmd": ["cmd", "/c", "build.bat", "learn_wgpu/beginner/tutorial5_textures_challenge", "run"],
+				},
+				{
+					"name": "tutorial6_uniforms",
+					"cmd": ["cmd", "/c", "build.bat", "learn_wgpu/beginner/tutorial6_uniforms", "run"],
+				},
+				{
+					"name": "tutorial7_instancing",
+					"cmd": ["cmd", "/c", "build.bat", "learn_wgpu/beginner/tutorial7_instancing", "run"],
+				},
+				{
+					"name": "tutorial7_instancing_challenge",
+					"cmd": ["cmd", "/c", "build.bat", "learn_wgpu/beginner/tutorial7_instancing_challenge", "run"],
+				},
+				{
+					"name": "tutorial8_depth",
+					"cmd": ["cmd", "/c", "build.bat", "learn_wgpu/beginner/tutorial8_depth", "run"],
+				},
+				{
+					"name": "tutorial9_model_loading",
+					"cmd": ["cmd", "/c", "build.bat", "learn_wgpu/beginner/tutorial9_model_loading", "run"],
+				},
+			],
+		}
+	],
+	"settings":
+	{
+		"auto_complete": false,
+		"LSP":
+		{
+			"odin":
+			{
+				"enabled": true,
+			},
+		},
+	},
+}

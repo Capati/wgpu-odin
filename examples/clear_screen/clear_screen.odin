@@ -1,61 +1,81 @@
-package clear_screen
+package triangle_msaa
 
-// Packages
+// Core
 import "core:log"
-import "core:math"
 
 // Local packages
-import app "root:utils/application"
-import "root:wgpu"
+import wgpu "../.."
+import app "../../utils/application"
 
-EXAMPLE_TITLE :: "Clear Screen"
+CLIENT_WIDTH       :: 640
+CLIENT_HEIGHT      :: 480
+EXAMPLE_TITLE      :: "Clear Screen"
+VIDEO_MODE_DEFAULT :: app.Video_Mode {
+	width  = CLIENT_WIDTH,
+	height = CLIENT_HEIGHT,
+}
 
-Example :: struct {
-	render_pass: struct {
-		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
-		descriptor:        wgpu.Render_Pass_Descriptor,
+Application :: struct {
+	using app: app.Application,
+	rpass: struct {
+		colors:     [1]wgpu.RenderPassColorAttachment,
+		descriptor: wgpu.RenderPassDescriptor,
 	},
 }
 
-Context :: app.Context(Example)
+create :: proc() -> (self: ^Application) {
+	self = new(Application)
+	assert(self != nil, "Failed to allocate Application")
 
-init :: proc(ctx: ^Context) -> (ok: bool) {
-	ctx.render_pass.color_attachments[0] = {
+	app.init(self, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE)
+
+	self.rpass.colors[0] = {
 		view = nil, /* Assigned later */
-		ops = {load = .Clear, store = .Store, clear_value = {0.0, 0.0, 1.0, 1.0}},
+		ops = {
+			load = .Clear,
+			store = .Store,
+			clearValue = { 0.0, 0.0, 1.0, 1.0 },
+		},
 	}
 
-	ctx.render_pass.descriptor = {
-		label             = "Render pass descriptor",
-		color_attachments = ctx.render_pass.color_attachments[:],
+	self.rpass.descriptor = {
+		label            = "Render pass descriptor",
+		colorAttachments = self.rpass.colors[:],
 	}
 
-	return true
+	app.add_resize_callback(self, { resize, self })
+
+	return
 }
 
-update :: proc(ctx: ^Context, dt: f64) -> (ok: bool) {
-	t := math.cos_f64(app.timer_get_time(&ctx.timer)) * 0.5 + 0.5
-	color := app.color_lerp({}, {0.0, 0.0, 1.0, 1.0}, t)
-	ctx.render_pass.color_attachments[0].ops.clear_value = color
-	return true
+release :: proc(self: ^Application) {
+	app.release(self)
+	free(self)
 }
 
-draw :: proc(ctx: ^Context) -> (ok: bool) {
-	ctx.cmd = wgpu.device_create_command_encoder(ctx.gpu.device) or_return
-	defer wgpu.release(ctx.cmd)
+draw :: proc(self: ^Application) {
+	frame := app.gpu_get_current_frame(self.gpu)
+	if frame.skip { return }
+	defer app.gpu_release_current_frame(&frame)
 
-	ctx.render_pass.color_attachments[0].view = ctx.frame.view
-	render_pass := wgpu.command_encoder_begin_render_pass(ctx.cmd, ctx.render_pass.descriptor)
-	defer wgpu.release(render_pass)
-	wgpu.render_pass_end(render_pass) or_return
+	encoder := wgpu.DeviceCreateCommandEncoder(self.gpu.device)
+	defer wgpu.Release(encoder)
 
-	cmdbuf := wgpu.command_encoder_finish(ctx.cmd) or_return
-	defer wgpu.release(cmdbuf)
+	self.rpass.colors[0].view = frame.view
+	rpass := wgpu.CommandEncoderBeginRenderPass(encoder, self.rpass.descriptor)
+	wgpu.RenderPassEnd(rpass)
+	wgpu.Release(rpass)
 
-	wgpu.queue_submit(ctx.gpu.queue, cmdbuf)
-	wgpu.surface_present(ctx.gpu.surface) or_return
+	cmdbuf := wgpu.CommandEncoderFinish(encoder)
+	defer wgpu.Release(cmdbuf)
 
-	return true
+	wgpu.QueueSubmit(self.gpu.queue, { cmdbuf })
+	wgpu.SurfacePresent(self.gpu.surface)
+}
+
+resize :: proc(window: ^app.Window, size: app.Vec2u, userdata: rawptr) {
+	self := cast(^Application)userdata
+	draw(self)
 }
 
 main :: proc() {
@@ -64,21 +84,22 @@ main :: proc() {
 		defer log.destroy_console_logger(context.logger)
 	}
 
-	settings := app.DEFAULT_SETTINGS
-	settings.title = EXAMPLE_TITLE
+	example := create()
+	defer release(example)
 
-	example, ok := app.create(Context, settings)
-	if !ok {
-		log.fatalf("Failed to create example [%s]", EXAMPLE_TITLE)
-		return
+	running := true
+	MAIN_LOOP: for running {
+		event: app.Event
+		for app.poll_event(example, &event) {
+			#partial switch &ev in event {
+			case app.QuitEvent:
+				log.info("Exiting...")
+				running = false
+			}
+		}
+
+		app.begin_frame(example)
+		draw(example)
+		app.end_frame(example)
 	}
-	defer app.destroy(example)
-
-	example.callbacks = {
-		init   = init,
-		update = update,
-		draw   = draw,
-	}
-
-	app.run(example)
 }

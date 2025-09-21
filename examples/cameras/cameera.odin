@@ -1,6 +1,6 @@
 package cameras_example
 
-// Packages
+// Core
 import la "core:math/linalg"
 
 // User input state.

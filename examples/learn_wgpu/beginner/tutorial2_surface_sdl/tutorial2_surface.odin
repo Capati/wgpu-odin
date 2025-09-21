@@ -1,6 +1,6 @@
 package tutorial2_surface
 
-// Packages
+// Core
 import "base:runtime"
 import "core:fmt"
 import sdl "vendor:sdl2"

@@ -1,31 +1,30 @@
 #+build darwin
-package wgpu_utils_glfw
+package wgpu_glfw
 
-// Packages
+// Core
 import NS "core:sys/darwin/Foundation"
 import CA "vendor:darwin/QuartzCore"
 import "vendor:glfw"
 
 // Local packages
-import "./../../wgpu"
+import wgpu "../../"
 
-get_surface_descriptor :: proc(
+GetSurfaceDescriptor :: proc "c" (
 	window: glfw.WindowHandle,
 ) -> (
-	descriptor: wgpu.Surface_Descriptor,
-	ok: bool,
+	descriptor: wgpu.SurfaceDescriptor,
 ) {
-	native_window := (^NS.Window)(glfw.GetCocoaWindow(window))
+	nativeWindow := (^NS.Window)(glfw.GetCocoaWindow(window))
 
-	metal_layer := CA.MetalLayer.layer()
-	defer metal_layer->release()
+	metalLayer := CA.MetalLayer.layer()
+	defer metalLayer->release()
 
-	native_window->contentView()->setLayer(metal_layer)
+	nativeWindow->contentView()->setLayer(metalLayer)
 
 	// Setup surface information
-	descriptor.target = wgpu.Surface_Source_Metal_Layer {
-		layer = metal_layer,
+	descriptor.target = wgpu.SurfaceSourceMetalLayer {
+		layer = metalLayer,
 	}
 
-	return descriptor, true
+	return
 }

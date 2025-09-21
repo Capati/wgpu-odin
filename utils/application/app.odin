@@ -1,244 +1,140 @@
 package application
 
-// Packages
-import intr "base:intrinsics"
-import "core:log"
-import "core:time"
-import "vendor:glfw"
-import mu "vendor:microui"
+// Core
+import "base:runtime"
 
-// Local packages
-import wgpu "./../../wgpu"
+Settings :: struct {
+	using window: Window_Settings,
+	using gpu:    GPU_Settings,
+}
 
-WINDOW_TITLE_BUFFER_LEN :: #config(WINDOW_TITLE_BUFFER_LEN, 256)
-
-Window :: glfw.WindowHandle
-Monitor :: glfw.MonitorHandle
+SETTINGS_DEFAULT :: Settings {
+	window = WINDOW_SETTINGS_DEFAULT,
+	gpu    = GPU_SETTINGS_DEFAULT,
+}
 
 Application :: struct {
-	// Settings
-	settings:          Settings,
-
-	// Platform
-	monitor:           Monitor,
-	window:            Window,
-	aspect:            f32,
-
-	// Renderer
-	gpu:               Graphics_Context,
-	should_resize:     bool,
-	framebuffer_size:  Framebuffer_Size,
-	frame:             Frame_Texture,
-	cmd:               wgpu.Command_Encoder,
-	rpass:             wgpu.Render_Pass,
-	cpass:             wgpu.Compute_Pass,
-	cmdbuf:            wgpu.Command_Buffer,
-	depth_stencil:     struct {
-		enabled:    bool,
-		format:     wgpu.Texture_Format,
-		texture:    wgpu.Texture,
-		view:       wgpu.Texture_View,
-		descriptor: wgpu.Render_Pass_Depth_Stencil_Attachment,
-	},
-
-	// UI
-	_mu_ctx:           ^mu.Context,
+	/* Initialization */
+	custom_context: runtime.Context,
+	allocator:      runtime.Allocator,
+	settings:       Settings,
+	window:         ^Window,
+	gpu:            ^GPU_Context,
 
 	// State
-	title_buffer:      [WINDOW_TITLE_BUFFER_LEN]byte,
-	timer:             Timer,
-	keyboard:          Keyboard_State,
-	mouse:             Mouse_State,
-	exit_key:          Key,
-	target_frame_time: time.Duration,
-	prepared:          bool,
-	skip_frame:        bool,
-	stop_rendering:    bool,
-
-	// Events
-	events:            Event_State,
-	minimized:         bool,
-
-	// Debug
-	logger:            log.Logger, // For use outside of Odin context
+	title_buf:      String_Buffer,
+	timer:          Timer,
+	keyboard:       Keyboard_State,
+	mouse:          Mouse_State,
+	exit_key:       Key,
+	minimized:      bool,
+	prepared:       bool,
 }
 
-Context :: struct($T: typeid) where intr.type_is_struct(T) {
-	using app:   Application,
-	using state: T,
-	callbacks:   Callback_List(T),
-}
-
-Depth_Stencil_Texture_Creation_Options :: struct {
-	format:       wgpu.Texture_Format,
-	sample_count: u32,
-}
-
-set_target_frame_time :: proc(app: ^Application, d: time.Duration) {
-	app.target_frame_time = d
-}
-
-set_aspect_framebuffer :: proc(app: ^Application) {
-	app.aspect = f32(app.framebuffer_size.w) / f32(app.framebuffer_size.h)
-}
-
-set_aspect_from_value :: proc(app: ^Application, aspect: f32) {
-	app.aspect = aspect
-}
-
-set_aspect_from_size :: proc(app: ^Application, size: Window_Size) {
-	app.aspect = f32(size.w) / f32(size.h)
-}
-
-set_aspect :: proc {
-	set_aspect_framebuffer,
-	set_aspect_from_value,
-	set_aspect_from_size,
-}
-
-quit :: proc(app: ^Application) {
-	glfw.SetWindowShouldClose(app.window, true)
-}
-
-Depth_Stencil_State_Descriptor :: struct {
-	format:              wgpu.Texture_Format,
-	depth_write_enabled: bool,
-}
-
-create_depth_stencil_state :: proc(
-	app: ^Application,
-	descriptor: Depth_Stencil_State_Descriptor = {DEFAULT_DEPTH_FORMAT, true},
-) -> wgpu.Depth_Stencil_State {
-	stencil_state_face_descriptor := wgpu.Stencil_Face_State {
-		compare       = .Always,
-		fail_op       = .Keep,
-		depth_fail_op = .Keep,
-		pass_op       = .Keep,
-	}
-
-	format := descriptor.format
-	if format == .Undefined {
-		format = DEFAULT_DEPTH_FORMAT
-	}
-
-	return {
-		format = format,
-		depth_write_enabled = descriptor.depth_write_enabled,
-		stencil = {
-			front = stencil_state_face_descriptor,
-			back = stencil_state_face_descriptor,
-			read_mask = max(u32),
-			write_mask = max(u32),
-		},
-	}
-}
-
-setup_depth_stencil :: proc(
-	app: ^Application,
-	options: Depth_Stencil_Texture_Creation_Options = {},
-) -> (
-	ok: bool,
+init :: proc(
+	self: ^Application,
+	mode: Video_Mode,
+	title: string,
+	settings := SETTINGS_DEFAULT,
+	allocator := context.allocator,
+	loc := #caller_location,
 ) {
-	if app.depth_stencil.enabled {
-		wgpu.release(app.depth_stencil.texture)
-		wgpu.release(app.depth_stencil.view)
-	}
+	self.custom_context = context
+	self.allocator = allocator
+	self.settings = settings
 
-	format := options.format
-	if format == .Undefined {
-		format = DEFAULT_DEPTH_FORMAT
-	}
-	app.depth_stencil.format = format
+	self.window = window_create(mode, title, settings.window, allocator, loc)
+	self.gpu = gpu_create(self.window, settings.gpu, allocator, loc)
 
-	sample_count := options.sample_count
-	if sample_count == 0 {
-		sample_count = 1
-	}
-
-	texture_descriptor := wgpu.Texture_Descriptor {
-		usage = {.Render_Attachment, .Copy_Dst},
-		format = format,
-		dimension = .D2,
-		mip_level_count = 1,
-		sample_count = sample_count,
-		size = {
-			width = app.gpu.config.width,
-			height = app.gpu.config.height,
-			depth_or_array_layers = 1,
-		},
-	}
-
-	app.depth_stencil.texture = wgpu.device_create_texture(
-		app.gpu.device,
-		texture_descriptor,
-	) or_return
-	defer if !ok {
-		wgpu.release(app.depth_stencil.texture)
-	}
-
-	texture_view_descriptor := wgpu.Texture_View_Descriptor {
-		format            = texture_descriptor.format,
-		dimension         = .D2,
-		base_mip_level    = 0,
-		mip_level_count   = 1,
-		base_array_layer  = 0,
-		array_layer_count = 1,
-		aspect            = .All,
-	}
-
-	app.depth_stencil.view = wgpu.texture_create_view(
-		app.depth_stencil.texture,
-		texture_view_descriptor,
-	) or_return
-	defer if !ok {
-		wgpu.release(app.depth_stencil.view)
-	}
-
-	app.depth_stencil.descriptor = {
-		view                = app.depth_stencil.view,
-		depth_load_op       = .Clear,
-		depth_store_op      = .Store,
-		depth_clear_value   = 1.0,
-		stencil_clear_value = 0.0,
-	}
-
-	app.depth_stencil.enabled = true
-
-	return true
-}
-
-release :: proc {
-	texture_release,
-}
-
-destroy :: proc(self: ^Application) {
-	if microui_is_initialized(self) {
-		microui_destroy(self)
-	}
-
-	if self.depth_stencil.enabled {
-		wgpu.release(self.depth_stencil.texture)
-		wgpu.release(self.depth_stencil.view)
-	}
-
-	wgpu.surface_capabilities_free_members(self.gpu.caps)
-
-	wgpu.queue_release(self.gpu.queue)
-	wgpu.device_release(self.gpu.device)
-	wgpu.adapter_release(self.gpu.adapter)
-	wgpu.surface_release(self.gpu.surface)
+	margin_ms := 0.5 // Wake up early for busy wait accuracy
+	target_frame_time_ms := 1000.0 / f64(window_get_refresh_rate(self.window))
+	timer_init(&self.timer, margin_ms, target_frame_time_ms)
 
 	when ODIN_DEBUG {
-		wgpu.check_for_memory_leaks(self.gpu.instance)
-		// wgpu.print_report(self.gpu.instance)
+		self.exit_key = .Escape
 	}
 
-	wgpu.instance_release(self.gpu.instance)
+	self.prepared = true
+}
 
-	glfw.DestroyWindow(self.window)
-	glfw.Terminate()
+release :: proc(self: ^Application) {
+	gpu_destroy(self.gpu)
+	window_destroy(self.window)
+}
 
-	delete(self.events.data.data)
+begin_frame :: proc(self: ^Application) {
+	timer_begin_frame(&self.timer)
+	when ODIN_DEBUG {
+		_update_window_title_with_fps(self)
+	}
+	keyboard_update(self)
+	mouse_update(self)
+}
 
-	free(self)
+end_frame :: proc(self: ^Application) {
+	timer_end_frame(&self.timer)
+	gpu_pace_frame(self.gpu, &self.timer)
+}
+
+@(require_results)
+poll_event :: proc(self: ^Application, event: ^Event) -> (ok: bool) {
+	ok = window_poll_event(self.window, event)
+	if ok {
+		#partial switch &ev in event {
+		case Key_Pressed_Event:
+			when ODIN_DEBUG {
+				if ev.key == self.exit_key {
+					events_push(&self.window.events, QuitEvent{})
+				}
+			}
+
+		case Mouse_Wheel_Event:
+			self.mouse.scroll.x += f64(ev.x)
+			self.mouse.scroll.y += f64(ev.y)
+		}
+	}
+	return
+}
+
+@(require_results)
+get_aspect :: proc(self: ^Application) -> f32 {
+	return window_get_aspect(self.window)
+}
+
+add_resize_callback :: proc(self: ^Application, cb: Window_Resize_Info) {
+	window_add_resize_callback(self.window, cb)
+}
+
+@(require_results)
+get_time :: proc(self: ^Application) -> f32 {
+	return f32(timer_get_time(&self.timer))
+}
+
+@(require_results)
+get_delta_time :: proc(self: ^Application) -> f32 {
+	return f32(timer_get_delta(&self.timer))
+}
+
+// -----------------------------------------------------------------------------
+// @(private)
+// -----------------------------------------------------------------------------
+
+@(private, disabled = !ODIN_DEBUG)
+_update_window_title_with_fps :: proc(self: ^Application) {
+	if !timer_get_fps_update(&self.timer) {
+		return
+	}
+
+	title := string_buffer_get_string(&self.window.title_buf)
+
+	title_buf: String_Buffer
+	string_buffer_init(&title_buf, title)
+	string_buffer_append(&title_buf, " - FPS = ")
+
+	fps_buf: [4]u8
+	fps := timer_get_fps(&self.timer)
+	string_buffer_append_f64(&title_buf, fps_buf[:], fps, decimals = 1)
+
+	// This call does not change window.title_buf
+	window_set_title_cstring(self.window, string_buffer_get_cstring(&title_buf))
 }

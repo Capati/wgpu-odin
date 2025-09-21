@@ -1,6 +1,6 @@
 package tutorial2_surface_glfw
 
-// Packages
+// Core
 import "base:runtime"
 import "core:fmt"
 import "vendor:glfw"

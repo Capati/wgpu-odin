@@ -27,7 +27,7 @@
 			"name": "(Windows) Launch",
 			"type": "cppvsdbg",
 			"request": "launch",
-			"program": "${workspaceFolder}/examples/build/triangle.exe",
+			"program": "${workspaceFolder}/examples/build/timestamp_query.exe",
 			"args": [],
 			"stopAtEntry": false,
 			"cwd": "${workspaceFolder}/examples/build/",

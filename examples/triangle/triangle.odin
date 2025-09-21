@@ -1,13 +1,13 @@
 package triangle
 
-// Packages
+// Core
 import "base:runtime"
 import "core:fmt"
 import "core:time"
 import "vendor:glfw"
 
 // Local packages
-import "root:wgpu"
+import wgpu "../.."
 
 EXAMPLE_TITLE :: "Colored Triangle (Verbose)"
 
@@ -23,8 +23,8 @@ Example :: struct {
 	surface:          wgpu.Surface,
 	device:           wgpu.Device,
 	queue:            wgpu.Queue,
-	config:           wgpu.Surface_Configuration,
-	render_pipeline:  wgpu.Render_Pipeline,
+	config:           wgpu.SurfaceConfiguration,
+	render_pipeline:  wgpu.RenderPipeline,
 	framebuffer_size: Framebuffer_Size,
 	minimized:        bool,
 	should_resize:    bool,
@@ -32,7 +32,7 @@ Example :: struct {
 
 init :: proc(ctx: ^Example) -> (ok: bool) {
 	// Initialize GLFW library
-	if !glfw.Init() {panic("Failed to initialize GLFW")}
+	ensure(bool(glfw.Init()), "Failed to initialize GLFW")
 	defer if !ok {
 		glfw.Terminate()
 	}
@@ -69,96 +69,111 @@ init :: proc(ctx: ^Example) -> (ok: bool) {
 
 	// The log callback provides information based on a log level
 	gpu_log_callback :: proc "c" (
-		level: wgpu.Log_Level,
-		message: wgpu.String_View,
+		level: wgpu.LogLevel,
+		message: string,
 		userdata: rawptr,
 	) {
-		if message.length > 0 {
-			context = runtime.default_context()
-			// Strings in the C API are just a pointer and length,
-			message_str := string(message.data)[:message.length]
-			fmt.eprintf("[wgpu] [%v] %s\n\n", level, message_str)
-
-			// Most of theses String_View are wrapped in the string type, but there is no easy way
-			// to handle this for the callbacks
-			// But you can use a helper procedure:
-			// message_str := wgpu.string_view_get_string(message)
-		}
+		context = runtime.default_context()
+		fmt.eprintf("[WGPU] [%v] %s\n\n", level, message)
 	}
 
 	// Set the Warn log level to get helpful information
 	// API errors are handled from uncaptured errors
-	wgpu.set_log_level(.Warn)
+	wgpu.SetLogLevel(.Warn)
 	// We can pass some userdata to later retrieve it in the callback
-	wgpu.set_log_callback(gpu_log_callback, ctx)
+	wgpu.SetLogCallback(gpu_log_callback, ctx)
 
 	// Options for creating an instance
-	instance_descriptor := wgpu.Instance_Descriptor {
+	instance_descriptor := wgpu.InstanceDescriptor {
 		// We only want the backends: Vulkan, Metal, DX12 or Browser_WebGPU
 		backends = wgpu.BACKENDS_PRIMARY,
 		// Allow to show validation errors
 		flags    = {.Validation},
 	}
 
-	// Create an new instance of wgpu with the given descriptor (can be nil to use defaults)
-	instance := wgpu.create_instance(instance_descriptor) or_return
-	defer wgpu.instance_release(instance)
+	// Create a new instance of wgpu with the given descriptor (can be nil to use defaults)
+	instance := wgpu.CreateInstance(instance_descriptor)
+	defer wgpu.Release(instance)
 
 	// Create a surface for the current platform
-	// Check each surface file to learn more about the descriptor
-	ctx.surface = wgpu.instance_create_surface(
+	// Check each surface_<platform>.odin file to learn more about the descriptor
+	ctx.surface = wgpu.InstanceCreateSurface(
 		instance,
 		get_surface_descriptor(ctx.window),
-	) or_return
+	)
 	defer if !ok {
-		wgpu.surface_release(ctx.surface)
+		wgpu.Release(ctx.surface)
 	}
 
 	// Additional information required when requesting an adapter
-	adapter_options := wgpu.Request_Adapter_Options {
+	adapter_options := wgpu.RequestAdapterOptions {
 		// Ensure our surface can be presentable with the requested adapter
-		compatible_surface = ctx.surface,
+		compatibleSurface = ctx.surface,
 		// Power preference for the adapter
-		power_preference   = .High_Performance,
+		powerPreference   = .HighPerformance,
 	}
 
-	// Retrieves an Adapter which matches the given Request_Adapter_Options
-	adapter := wgpu.instance_request_adapter(instance, adapter_options) or_return
-	defer wgpu.adapter_release(adapter)
+	// Retrieves an Adapter which matches the given RequestAdapterOptions
+	adapter_res := wgpu.InstanceRequestAdapter(instance, adapter_options)
+	if (adapter_res.status != .Success) {
+		fmt.eprintfln(
+			"Failed to request the adapter [%v]: %s",
+			adapter_res.status,
+			adapter_res.message,
+		)
+		return
+	}
+
+	adapter := adapter_res.adapter
+	defer wgpu.Release(adapter)
 
 	// Get information about the selected adapter
 	// The information includes strings such as vendor, architecture, device, and description,
 	// which are owned by the user and must be properly managed
-	adapter_info := wgpu.adapter_get_info(adapter) or_return
+	adapter_info, info_status := wgpu.AdapterGetInfo(adapter)
+	if info_status != .Success {
+		fmt.eprintln("Failed to get adapter info")
+		return
+	}
 	// Ensure the allocated strings are properly freed after use
-	defer wgpu.adapter_info_free_members(adapter_info)
+	defer wgpu.AdapterInfoFreeMembers(adapter_info)
 
 	fmt.println("Selected adapter:")
-	wgpu.adapter_info_print_info(adapter_info)
+	wgpu.AdapterInfoPrint(adapter_info)
 
 	// Describes a Device.
-	device_descriptor := wgpu.Device_Descriptor {
+	device_descriptor := wgpu.DeviceDescriptor {
 		// Labels can be used to identify objects in debug mode
-		label           = adapter_info.device,
+		label          = adapter_info.device,
 		// This is a set of limits that is guaranteed to work on all primary backends
-		required_limits = wgpu.DOWNLEVEL_LIMITS,
+		requiredLimits = wgpu.LIMITS_DOWNLEVEL,
 	}
 
 	// Requests a connection to a physical device, creating a logical device
-	ctx.device = wgpu.adapter_request_device(adapter, device_descriptor) or_return
+	device_res := wgpu.AdapterRequestDevice(adapter, device_descriptor)
+	if (device_res.status != .Success) {
+		fmt.eprintfln(
+			"Failed to request the device [%v]: %s",
+			device_res.status,
+			device_res.message,
+		)
+		return
+	}
+
+	ctx.device = device_res.device
 	defer if !ok {
-		wgpu.device_release(ctx.device)
+		wgpu.Release(ctx.device)
 	}
 
 	// Get a handle to a command queue on the device
-	ctx.queue = wgpu.device_get_queue(ctx.device)
+	ctx.queue = wgpu.DeviceGetQueue(ctx.device)
 	defer if !ok {
-		wgpu.queue_release(ctx.queue)
+		wgpu.Release(ctx.queue)
 	}
 
 	// Returns the capabilities of the surface when used with the given adapter
-	caps := wgpu.surface_get_capabilities(ctx.surface, adapter) or_return
-	defer wgpu.surface_capabilities_free_members(caps)
+	caps := wgpu.SurfaceGetCapabilities(ctx.surface, adapter)
+	defer wgpu.SurfaceCapabilitiesFreeMembers(caps)
 
 	// We can assume that the first texture format is the "preferred" one
 	preferred_format := caps.formats[0]
@@ -166,75 +181,75 @@ init :: proc(ctx: ^Example) -> (ok: bool) {
 	// Lets use a non srgb format to avoid "washed out texture colors" in srgb displays
 	// More information here:
 	// https://github.com/gfx-rs/wgpu-native/issues/386#issuecomment-2122157612
-	if wgpu.texture_format_is_srgb(preferred_format) {
-		preferred_format = wgpu.texture_format_remove_srgb_suffix(preferred_format)
+	if wgpu.TextureFormatIsSrgb(preferred_format) {
+		preferred_format = wgpu.TextureFormatRemoveSrgbSuffix(preferred_format)
 	}
 
 	// Describes a Surface.
-	ctx.config = wgpu.Surface_Configuration {
-		device       = ctx.device,
-		// Describes how the surface textures will be used. Render_Attachment specifies that the
+	ctx.config = wgpu.SurfaceConfiguration {
+		device      = ctx.device,
+		// Describes how the surface textures will be used. RenderAttachment specifies that the
 		// textures will be used to write to the surface defined in the window.
-		usage        = {.Render_Attachment},
+		usage       = {.RenderAttachment},
 		// Defines how the surface texture will be stored on the GPU
-		format       = preferred_format,
+		format      = preferred_format,
 		// Define the size of the surface texture,
 		// which should usually be the width and height of the window
-		width        = ctx.framebuffer_size.w,
-		height       = ctx.framebuffer_size.h,
+		width       = ctx.framebuffer_size.w,
+		height      = ctx.framebuffer_size.h,
 		// The Fifo present mode is the default option guaranteed to be available
-		present_mode = .Fifo,
+		presentMode = .Fifo,
 		// Let wgpu choose the best alpha mode for performance
-		alpha_mode   = .Auto,
+		alphaMode   = .Auto,
 	}
 
 	// Initializes Surface for presentation.
-	wgpu.surface_configure(ctx.surface, ctx.config) or_return
+	wgpu.SurfaceConfigure(ctx.surface, ctx.config)
 
 	// Load and create a shader module
 	TRIANGLE_WGSL :: #load("./triangle.wgsl")
-	shader_module := wgpu.device_create_shader_module(
+	shader_module := wgpu.DeviceCreateShaderModule(
 		ctx.device,
 		{label = EXAMPLE_TITLE + " Module", source = string(TRIANGLE_WGSL)},
-	) or_return
-	defer wgpu.shader_module_release(shader_module)
+	)
+	defer wgpu.Release(shader_module)
 
 	// Create the triangle pipeline
-	ctx.render_pipeline = wgpu.device_create_render_pipeline(
+	ctx.render_pipeline = wgpu.DeviceCreateRenderPipeline(
 	ctx.device,
 	{
 		label = EXAMPLE_TITLE + " Render Pipeline",
-		vertex = {module = shader_module, entry_point = "vs_main"},
+		vertex = {module = shader_module, entryPoint = "vs_main"},
 		fragment = &{
 			module = shader_module,
-			entry_point = "fs_main",
+			entryPoint = "fs_main",
 			targets = {
 				{
 					format = ctx.config.format,
 					blend = &wgpu.BLEND_STATE_NORMAL,
-					write_mask = wgpu.COLOR_WRITES_ALL,
+					writeMask = wgpu.COLOR_WRITES_ALL,
 				},
 			},
 		},
-		primitive = {topology = .Triangle_List, front_face = .CCW, cull_mode = .None},
+		primitive = {topology = .TriangleList, frontFace = .CCW, cullMode = .None},
 		multisample = {
 			count = 1, // 1 means no sampling (will panic if 0)
 			mask  = max(u32), // 0xFFFFFFFF
 		},
 	},
-	) or_return
+	)
 	defer if !ok {
-		wgpu.render_pipeline_release(ctx.render_pipeline)
+		wgpu.Release(ctx.render_pipeline)
 	}
 
 	return true
 }
 
 quit :: proc(ctx: ^Example) {
-	wgpu.render_pipeline_release(ctx.render_pipeline)
-	wgpu.queue_release(ctx.queue)
-	wgpu.surface_release(ctx.surface)
-	wgpu.device_release(ctx.device)
+	wgpu.Release(ctx.render_pipeline)
+	wgpu.Release(ctx.queue)
+	wgpu.Release(ctx.surface)
+	wgpu.Release(ctx.device)
 
 	glfw.DestroyWindow(ctx.window)
 	glfw.Terminate()
@@ -261,14 +276,14 @@ resize_surface :: proc(ctx: ^Example, size: Framebuffer_Size) -> (ok: bool) {
 	}
 
 	// Wait for the device to finish all operations
-	wgpu.device_poll(ctx.device, true) or_return
+	wgpu.DevicePoll(ctx.device, true)
 
 	ctx.config.width = u32(size.w)
 	ctx.config.height = u32(size.h)
 
 	// Reconfigure the surface
-	wgpu.surface_unconfigure(ctx.surface)
-	wgpu.surface_configure(ctx.surface, ctx.config) or_return
+	wgpu.SurfaceUnconfigure(ctx.surface)
+	wgpu.SurfaceConfigure(ctx.surface, ctx.config)
 
 	return true
 }
@@ -281,25 +296,25 @@ get_framebuffer_size :: proc(ctx: ^Example) -> Framebuffer_Size {
 GET_CURRENT_TEXTURE_MAX_ATTEMPTS :: 3
 RENDERER_THROTTLE_DURATION :: 16 * time.Millisecond
 
-get_current_frame :: proc(ctx: ^Example) -> (frame: wgpu.Surface_Texture, ok: bool) {
+get_current_frame :: proc(ctx: ^Example) -> (frame: wgpu.SurfaceTexture, ok: bool) {
 	loop: for attempt in 0 ..< GET_CURRENT_TEXTURE_MAX_ATTEMPTS {
 		// Returns the next texture to be presented by the swapchain for drawing
-		frame = wgpu.surface_get_current_texture(ctx.surface) or_return
+		frame = wgpu.SurfaceGetCurrentTexture(ctx.surface)
 
 		switch frame.status {
-		case .Success_Optimal:
+		case .SuccessOptimal:
 			return frame, true
-		case .Success_Suboptimal:
+		case .SuccessSuboptimal:
 			fmt.println("Surface suboptimal. Resizing and retrying...")
 			if frame.texture != nil {
-				wgpu.texture_release(frame.texture)
+				wgpu.Release(frame.texture)
 			}
 			resize_surface(ctx, get_framebuffer_size(ctx)) or_return
 			continue // Try again with the new size
 		case .Timeout, .Outdated, .Lost:
 			fmt.printfln("Surface texture [%v]. Retrying...", frame.status)
 			if frame.texture != nil {
-				wgpu.texture_release(frame.texture)
+				wgpu.Release(frame.texture)
 			}
 			if ctx.should_resize {
 				resize_surface(ctx, get_framebuffer_size(ctx)) or_return
@@ -310,7 +325,7 @@ get_current_frame :: proc(ctx: ^Example) -> (frame: wgpu.Surface_Texture, ok: bo
 				continue // Try again
 			}
 			break loop
-		case .Out_Of_Memory, .Device_Lost, .Error:
+		case .OutOfMemory, .DeviceLost, .Error:
 			break loop
 		}
 	}
@@ -321,41 +336,46 @@ get_current_frame :: proc(ctx: ^Example) -> (frame: wgpu.Surface_Texture, ok: bo
 
 render :: proc(ctx: ^Example) -> (ok: bool) {
 	frame := get_current_frame(ctx) or_return
-	defer wgpu.texture_release(frame.texture)
+	defer wgpu.Release(frame.texture)
 
 	// Creates a view for the frame texture
-	frame_view := wgpu.texture_create_view(frame.texture)
-	defer wgpu.texture_view_release(frame_view)
+	frame_view := wgpu.TextureCreateView(frame.texture)
+	defer wgpu.Release(frame_view)
 
 	// Creates an empty Command_Encoder
-	encoder := wgpu.device_create_command_encoder(ctx.device) or_return
-	defer wgpu.command_encoder_release(encoder)
+	encoder := wgpu.DeviceCreateCommandEncoder(ctx.device)
+	defer wgpu.Release(encoder)
 
 	// Describes the attachments of a render pass
-	render_pass_descriptor := wgpu.Render_Pass_Descriptor {
+	render_pass_descriptor := wgpu.RenderPassDescriptor {
 		label             = "Render pass descriptor",
-		color_attachments = {{view = frame_view, ops = {.Clear, .Store, {0.0, 0.0, 0.0, 1.0}}}},
+		colorAttachments = {
+			{
+				view = frame_view,
+				ops = {.Clear, .Store, {0.0, 0.0, 0.0, 1.0}},
+			},
+		},
 	}
 
 	// Begins recording of a render pass
-	render_pass := wgpu.command_encoder_begin_render_pass(encoder, render_pass_descriptor)
-	defer wgpu.render_pass_release(render_pass)
+	render_pass := wgpu.CommandEncoderBeginRenderPass(encoder, render_pass_descriptor)
+	defer wgpu.Release(render_pass)
 
 	// Sets the active render pipeline
-	wgpu.render_pass_set_pipeline(render_pass, ctx.render_pipeline)
+	wgpu.RenderPassSetPipeline(render_pass, ctx.render_pipeline)
 	// Draws primitives in the range of vertices
-	wgpu.render_pass_draw(render_pass, {start = 0, end = 3})
+	wgpu.RenderPassDraw(render_pass, {start = 0, end = 3})
 	// Record the end of the render pass
-	wgpu.render_pass_end(render_pass) or_return
+	wgpu.RenderPassEnd(render_pass)
 
 	// Finishes recording and returns a Command_Buffer that can be submitted for execution
-	cmdbuf := wgpu.command_encoder_finish(encoder) or_return
-	defer wgpu.command_buffer_release(cmdbuf)
+	cmdbuf := wgpu.CommandEncoderFinish(encoder)
+	defer wgpu.Release(cmdbuf)
 
 	// Submits a series of finished command buffers for execution
-	wgpu.queue_submit(ctx.queue, cmdbuf)
+	wgpu.QueueSubmit(ctx.queue, {cmdbuf})
 	// Schedule the frame texture to be presented on the owning surface
-	wgpu.surface_present(ctx.surface) or_return
+	wgpu.SurfacePresent(ctx.surface)
 
 	return true
 }

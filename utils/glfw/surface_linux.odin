@@ -1,17 +1,16 @@
 #+build linux
-package wgpu_utils_glfw
+package wgpu_glfw
 
-// Packages
+// Core
 import "vendor:glfw"
 
 // Local packages
-import "./../../wgpu"
+import wgpu "../../"
 
-get_surface_descriptor :: proc(
+GetSurfaceDescriptor :: proc "c" (
 	window: glfw.WindowHandle,
 ) -> (
-	descriptor: wgpu.Surface_Descriptor,
-	ok: bool,
+	descriptor: wgpu.SurfaceDescriptor,
 ) {
 	switch glfw.GetPlatform() {
 	case glfw.PLATFORM_WAYLAND:
@@ -25,8 +24,8 @@ get_surface_descriptor :: proc(
 			window  = u64(glfw.GetX11Window(window)),
 		}
 	case:
-		return
+		panic_contextless("Unsupported platform")
 	}
 
-	return descriptor, true
+	return
 }

@@ -1,41 +1,58 @@
 package tutorial2_surface_challenge
 
-// Packages
+// Core
 import "core:log"
 
 // Local packages
-import app "root:utils/application"
-import "root:wgpu"
+import wgpu "../../../../"
+import app "../../../../utils/application"
 
-Example :: struct {
+CLIENT_WIDTH  :: 640
+CLIENT_HEIGHT :: 480
+EXAMPLE_TITLE :: "Tutorial 2 - Surface Challenge"
+
+Application :: struct {
+	using _app:  app.Application, /* #subtype */
 	clear_value: app.Color,
-	render_pass: struct {
-		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
-		descriptor:        wgpu.Render_Pass_Descriptor,
+	rpass: struct {
+		colors:     [1]wgpu.RenderPassColorAttachment,
+		descriptor: wgpu.RenderPassDescriptor,
 	},
 }
 
-Context :: app.Context(Example)
+create :: proc() -> (self: ^Application) {
+	self = new(Application)
+	assert(self != nil, "Failed to allocate Application")
 
-EXAMPLE_TITLE :: "Tutorial 2 - Surface Challenge"
+	app.init(self,
+		mode = {
+			width = CLIENT_WIDTH,
+			height = CLIENT_HEIGHT,
+		},
+		title = EXAMPLE_TITLE,
+		settings = app.SETTINGS_DEFAULT)
 
-init :: proc(ctx: ^Context) -> (ok: bool) {
-	ctx.clear_value = app.Color_Royal_Blue
+	self.clear_value = app.Color_Royal_Blue
 
-	ctx.render_pass.color_attachments[0] = {
+	self.rpass.colors[0] = {
 		view = nil, /* Assigned later */
-		ops  = {.Clear, .Store, ctx.clear_value},
+		ops  = {.Clear, .Store, self.clear_value},
 	}
 
-	ctx.render_pass.descriptor = {
-		label             = "Render pass descriptor",
-		color_attachments = ctx.render_pass.color_attachments[:],
+	self.rpass.descriptor = {
+		label            = "Render pass descriptor",
+		colorAttachments = self.rpass.colors[:],
 	}
 
-	return true
+	return
 }
 
-calculate_color_from_position :: proc(x, y: f32, w, h: u32) -> (color: app.Color) {
+release :: proc(self: ^Application) {
+	app.release(self)
+	free(self)
+}
+
+color_from_mouse_position :: proc(x, y: f32, w, h: u32) -> (color: app.Color) {
 	color.r = cast(f64)x / cast(f64)w
 	color.g = cast(f64)y / cast(f64)h
 	color.b = 1.0
@@ -43,32 +60,36 @@ calculate_color_from_position :: proc(x, y: f32, w, h: u32) -> (color: app.Color
 	return
 }
 
-mouse_position :: proc(ctx: ^Context, event: app.Mouse_Moved_Event) {
-	ctx.clear_value = calculate_color_from_position(
-		event.x,
-		event.y,
-		ctx.gpu.config.width,
-		ctx.gpu.config.height,
+mouse_moved_event :: proc(self: ^Application, event: app.Mouse_Moved_Event) {
+	self.clear_value = color_from_mouse_position(
+		event.pos.x,
+		event.pos.y,
+		self.gpu.config.width,
+		self.gpu.config.height,
 	)
 }
 
-draw :: proc(ctx: ^Context) -> bool {
-	ctx.cmd = wgpu.device_create_command_encoder(ctx.gpu.device) or_return
-	defer wgpu.release(ctx.cmd)
+draw :: proc(self: ^Application) {
+	gpu := self.gpu
 
-	ctx.render_pass.color_attachments[0].view = ctx.frame.view
-	ctx.render_pass.color_attachments[0].ops.clear_value = ctx.clear_value
-	render_pass := wgpu.command_encoder_begin_render_pass(ctx.cmd, ctx.render_pass.descriptor)
-	defer wgpu.release(render_pass)
-	wgpu.render_pass_end(render_pass) or_return
+	frame := app.gpu_get_current_frame(gpu)
+	if frame.skip { return }
+	defer app.gpu_release_current_frame(&frame)
 
-	cmdbuf := wgpu.command_encoder_finish(ctx.cmd) or_return
-	defer wgpu.release(cmdbuf)
+	encoder := wgpu.DeviceCreateCommandEncoder(gpu.device)
+	defer wgpu.Release(encoder)
 
-	wgpu.queue_submit(ctx.gpu.queue, cmdbuf)
-	wgpu.surface_present(ctx.gpu.surface) or_return
+	self.rpass.colors[0].view = frame.view
+	self.rpass.colors[0].ops.clearValue = self.clear_value
+	rpass := wgpu.CommandEncoderBeginRenderPass(encoder, self.rpass.descriptor)
+	defer wgpu.Release(rpass)
+	wgpu.RenderPassEnd(rpass)
 
-	return true
+	cmdbuf := wgpu.CommandEncoderFinish(encoder)
+	defer wgpu.Release(cmdbuf)
+
+	wgpu.QueueSubmit(self.gpu.queue, { cmdbuf })
+	wgpu.SurfacePresent(self.gpu.surface)
 }
 
 main :: proc() {
@@ -77,21 +98,25 @@ main :: proc() {
 		defer log.destroy_console_logger(context.logger)
 	}
 
-	settings := app.DEFAULT_SETTINGS
-	settings.title = EXAMPLE_TITLE
+	example := create()
+	defer release(example)
 
-	example, ok := app.create(Context, settings)
-	if !ok {
-		log.fatalf("Failed to create example [%s]", EXAMPLE_TITLE)
-		return
+	running := true
+	MAIN_LOOP: for running {
+		event: app.Event
+		for app.poll_event(example, &event) {
+			#partial switch &ev in event {
+			case app.Mouse_Moved_Event:
+				mouse_moved_event(example, ev)
+
+			case app.QuitEvent:
+				log.info("Exiting...")
+				running = false
+			}
+		}
+
+		app.begin_frame(example)
+		draw(example)
+		app.end_frame(example)
 	}
-	defer app.destroy(example)
-
-	example.callbacks = {
-		init           = init,
-		mouse_position = mouse_position,
-		draw           = draw,
-	}
-
-	app.run(example) // Start the main loop
 }

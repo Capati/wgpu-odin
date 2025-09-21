@@ -1,88 +1,103 @@
 package compute
 
-// Packages
+// Core
 import "base:runtime"
 import "core:fmt"
 
 // Local packages
-import "root:wgpu"
+import wgpu "../../"
 
-_log_callback :: proc "c" (level: wgpu.Log_Level, message: wgpu.String_View, user_data: rawptr) {
-	if message.length > 0 {
-		context = runtime.default_context()
-		temp := string(message.data)[:message.length]
-		fmt.eprintf("[wgpu] [%v] %s\n\n", level, temp)
-	}
+_log_callback :: proc "c" (level: wgpu.LogLevel, message: string, user_data: rawptr) {
+	context = runtime.default_context()
+	fmt.eprintf("[wgpu] [%v] %s\n\n", level, message)
 }
 
-run :: proc() -> (ok: bool) {
-	wgpu.set_log_callback(_log_callback, nil)
-	wgpu.set_log_level(.Error)
+main :: proc() {
+	wgpu.SetLogCallback(_log_callback, nil)
+	wgpu.SetLogLevel(.Error)
 
 	numbers: []u32 = {1, 2, 3, 4}
 	numbers_size: u32 = size_of(numbers)
 	numbers_length: u32 = numbers_size / size_of(u32)
 
 	// Instantiates instance of WebGPU
-	instance := wgpu.create_instance(
-		wgpu.Instance_Descriptor{backends = wgpu.BACKENDS_PRIMARY},
-	) or_return
-	defer wgpu.instance_release(instance)
+	instance := wgpu.CreateInstance(
+		wgpu.InstanceDescriptor{backends = wgpu.BACKENDS_PRIMARY},
+	)
+	defer wgpu.InstanceRelease(instance)
 
 	// Instantiates the general connection to the GPU
-	adapter := wgpu.instance_request_adapter(
+	adapter_res := wgpu.InstanceRequestAdapter(
 		instance,
-		wgpu.Request_Adapter_Options{power_preference = .High_Performance},
-	) or_return
-	defer wgpu.adapter_release(adapter)
+		wgpu.RequestAdapterOptions{powerPreference = .HighPerformance},
+	)
+	if (adapter_res.status != .Success) {
+		fmt.panicf(
+			"Failed to request the selected adapter [%v]: %s",
+			adapter_res.status,
+			adapter_res.message,
+		)
+	}
+	adapter := adapter_res.adapter
+	defer wgpu.AdapterRelease(adapter)
 
-	adapter_info := wgpu.adapter_get_info(adapter) or_return
-	defer wgpu.adapter_info_free_members(adapter_info)
+	adapter_info, info_status := wgpu.AdapterGetInfo(adapter)
+	if info_status != .Success {
+		fmt.panicf("Failed to get adapter info for the selected adapter: %v", info_status)
+	}
+	defer wgpu.AdapterInfoFreeMembers(adapter_info)
 
 	// Instantiates the feature specific connection to the GPU, defining some parameters,
 	// `features` being the available features.
-	device := wgpu.adapter_request_device(
+	device_res := wgpu.AdapterRequestDevice(
 		adapter,
-		wgpu.Device_Descriptor{label = adapter_info.description},
-	) or_return
-	defer wgpu.device_release(device)
+		wgpu.DeviceDescriptor{label = adapter_info.description},
+	)
+	if (device_res.status != .Success) {
+		fmt.panicf(
+			"Failed to request the device [%v]: %s",
+			device_res.status,
+			device_res.message,
+		)
+	}
+	device := device_res.device
+	defer wgpu.DeviceRelease(device)
 
-	queue := wgpu.device_get_queue(device)
-	defer wgpu.queue_release(queue)
+	queue := wgpu.DeviceGetQueue(device)
+	defer wgpu.QueueRelease(queue)
 
 	// Shader module
 	shader_source := #load("./compute.wgsl")
-	shader_module := wgpu.device_create_shader_module(
+	shader_module := wgpu.DeviceCreateShaderModule(
 		device,
 		{label = "Compute module", source = string(shader_source)},
-	) or_return
-	defer wgpu.shader_module_release(shader_module)
+	)
+	defer wgpu.ShaderModuleRelease(shader_module)
 
 	// Instantiates buffer without data.
 	// `usage` of buffer specifies how it can be used:
 	//   `Map_Read` allows it to be read (outside the shader).
 	//   `Copy_Dst` allows it to be the destination of the copy.
-	staging_buffer := wgpu.device_create_buffer(
+	staging_buffer := wgpu.DeviceCreateBuffer(
 		device,
-		{label = "staging_buffer", size = cast(u64)numbers_size, usage = {.Map_Read, .Copy_Dst}},
-	) or_return
-	defer wgpu.buffer_release(staging_buffer)
+		{label = "staging_buffer", size = cast(u64)numbers_size, usage = {.MapRead, .CopyDst}},
+	)
+	defer wgpu.BufferRelease(staging_buffer)
 
 	// Instantiates buffer with data (`numbers`).
 	// Usage allowing the buffer to be:
-	//   A storage buffer (can be bound within a bind group and thus available to a
-	// shader).
+	//   A storage buffer (can be bound within a bind group and thus available to a shader).
 	//   The destination of a copy.
 	//   The source of a copy.
-	storage_buffer := wgpu.device_create_buffer_with_data(
+	storage_buffer := wgpu.DeviceCreateBufferWithData(
 		device,
 		{
 			label = "storage_buffer",
-			contents = wgpu.to_bytes(numbers),
-			usage = {.Storage, .Copy_Src, .Copy_Dst},
+			contents = wgpu.ToBytes(numbers),
+			usage = {.Storage, .CopySrc, .CopyDst},
 		},
-	) or_return
-	defer wgpu.buffer_release(storage_buffer)
+	)
+	defer wgpu.BufferRelease(storage_buffer)
 
 	// A bind group defines how buffers are accessed by shaders.
 	// It is to WebGPU what a descriptor set is to Vulkan.
@@ -92,102 +107,96 @@ run :: proc() -> (ok: bool) {
 	// A pipeline specifies the operation of a shader
 
 	// Instantiates the pipeline.
-	compute_pipeline := wgpu.device_create_compute_pipeline(
+	compute_pipeline := wgpu.DeviceCreateComputePipeline(
 		device,
-		wgpu.Compute_Pipeline_Descriptor {
+		wgpu.ComputePipelineDescriptor {
 			label = "compute_pipeline",
 			module = shader_module,
-			entry_point = "main",
+			entryPoint = "main",
 		},
-	) or_return
-	defer wgpu.compute_pipeline_release(compute_pipeline)
+	)
+	defer wgpu.ComputePipelineRelease(compute_pipeline)
 
 	// Instantiates the bind group, once again specifying the binding of buffers.
-	bind_group_layout := wgpu.compute_pipeline_get_bind_group_layout(compute_pipeline, 0) or_return
-	defer wgpu.bind_group_layout_release(bind_group_layout)
+	bind_group_layout := wgpu.ComputePipelineGetBindGroupLayout(compute_pipeline, 0)
+	defer wgpu.BindGroupLayoutRelease(bind_group_layout)
 
 	// Setup a bindGroup to tell the shader which
 	// buffer to use for the computation
-	bind_group := wgpu.device_create_bind_group(
+	bind_group := wgpu.DeviceCreateBindGroup(
 		device,
 		{
 			layout = bind_group_layout,
-			entries = {{binding = 0, resource = wgpu.buffer_as_entire_binding(storage_buffer)}},
+			entries = {{binding = 0, resource = wgpu.BufferAsEntireBinding(storage_buffer)}},
 			label = "bind_group_layout",
 		},
-	) or_return
-	defer wgpu.bind_group_release(bind_group)
+	)
+	defer wgpu.BindGroupRelease(bind_group)
 
 	// A command encoder executes one or many pipelines.
 	// It is to WebGPU what a command buffer is to Vulkan.
-	encoder := wgpu.device_create_command_encoder(
+	encoder := wgpu.DeviceCreateCommandEncoder(
 		device,
-		wgpu.Command_Encoder_Descriptor{label = "command_encoder"},
-	) or_return
-	defer wgpu.command_encoder_release(encoder)
+		wgpu.CommandEncoderDescriptor{label = "command_encoder"},
+	)
+	defer wgpu.CommandEncoderRelease(encoder)
 
-	compute_pass := wgpu.command_encoder_begin_compute_pass(
+	compute_pass := wgpu.CommandEncoderBeginComputePass(
 		encoder,
-		wgpu.Compute_Pass_Descriptor{label = "compute_pass"},
-	) or_return
+		wgpu.ComputePassDescriptor{label = "compute_pass"},
+	)
 
-	wgpu.compute_pass_set_pipeline(compute_pass, compute_pipeline)
-	wgpu.compute_pass_set_bind_group(compute_pass, 0, bind_group)
-	wgpu.compute_pass_dispatch_workgroups(compute_pass, numbers_length, 1, 1)
-	wgpu.compute_pass_end(compute_pass) or_return
+	wgpu.ComputePassSetPipeline(compute_pass, compute_pipeline)
+	wgpu.ComputePassSetBindGroup(compute_pass, 0, bind_group)
+	wgpu.ComputePassDispatchWorkgroups(compute_pass, numbers_length, 1, 1)
+	wgpu.ComputePassEnd(compute_pass)
 
 	// Release the compute_pass before we submit or we get the error:
 	// Command_Buffer cannot be destroyed because is still in use
-	wgpu.compute_pass_release(compute_pass)
+	wgpu.ComputePassRelease(compute_pass)
 
 	// Sets adds copy operation to command encoder.
 	// Will copy data from storage buffer on GPU to staging buffer on CPU.
-	wgpu.command_encoder_copy_buffer_to_buffer(
+	wgpu.CommandEncoderCopyBufferToBuffer(
 		encoder,
 		storage_buffer,
 		0,
 		staging_buffer,
 		0,
 		u64(numbers_size),
-	) or_return
+	)
 
 	// Submits command encoder for processing
-	command_buffer := wgpu.command_encoder_finish(encoder) or_return
-	defer wgpu.command_buffer_release(command_buffer)
+	command_buffer := wgpu.CommandEncoderFinish(encoder)
+	defer wgpu.CommandBufferRelease(command_buffer)
 
-	wgpu.queue_submit(queue, command_buffer)
+	wgpu.QueueSubmit(queue, { command_buffer })
 
-	result: wgpu.Map_Async_Status
+	result: wgpu.MapAsyncStatus
 
 	handle_buffer_map := proc "c" (
-		status: wgpu.Map_Async_Status,
-		message: wgpu.String_View,
+		status: wgpu.MapAsyncStatus,
+		message: string,
 		userdata1: rawptr,
 		userdata2: rawptr,
 	) {
-		result := cast(^wgpu.Map_Async_Status)userdata1
+		result := cast(^wgpu.MapAsyncStatus)userdata1
 		result^ = status
 	}
-	wgpu.buffer_map_async(
+	wgpu.BufferMapAsync(
 		staging_buffer,
 		{.Read},
-		{start = 0, end = wgpu.buffer_size(staging_buffer)},
+		{start = 0, end = wgpu.BufferGetSize(staging_buffer)},
 		{callback = handle_buffer_map, userdata1 = &result},
 	)
 
-	wgpu.device_poll(device) or_return
+	wgpu.DevicePoll(device)
 
 	if result == .Success {
-		data_view := wgpu.buffer_get_mapped_range(staging_buffer, type_of(numbers)) or_return
+		data_view := wgpu.BufferGetMappedRange(staging_buffer, type_of(numbers))
 		data := data_view.data
 		fmt.printf("Steps: [%d, %d, %d, %d]\n", data[0], data[1], data[2], data[3])
 	} else {
 		fmt.eprintf("ERROR: Failed to map async result buffer: %v\n", result)
 	}
-
-	return true
-}
-
-main :: proc() {
-	run()
 }

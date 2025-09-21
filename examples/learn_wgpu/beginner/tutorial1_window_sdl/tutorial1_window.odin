@@ -1,6 +1,6 @@
 package tutorial1_window_sdl
 
-// Packages
+// Core
 import "core:fmt"
 import sdl "vendor:sdl2"
 

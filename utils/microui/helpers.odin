@@ -1,6 +1,6 @@
 package wgpu_microui
 
-// Packages
+// Vendor
 import mu "vendor:microui"
 
 update_window_rect :: proc(ctx: ^mu.Context, window_name: string, rect: mu.Rect) {

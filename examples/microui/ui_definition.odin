@@ -1,15 +1,17 @@
 package microui_example
 
-// Packages
+// Core
 import "core:fmt"
+
+// Vendor
 import mu "vendor:microui"
 
 // Local packages
-import app "root:utils/application"
+import app "../../utils/application"
 
 SLIDER_FMT :: "%.0f"
 
-test_window :: proc(ctx: ^Context, mu_ctx: ^mu.Context) {
+test_window :: proc(self: ^Application, mu_ctx: ^mu.Context) {
 	if mu.begin_window(mu_ctx, "Demo Window", {40, 40, 300, 450}) {
 		win := mu.get_current_container(mu_ctx)
 		win.rect.w = max(win.rect.w, 240)
@@ -30,16 +32,16 @@ test_window :: proc(ctx: ^Context, mu_ctx: ^mu.Context) {
 		if .ACTIVE in mu.header(mu_ctx, "Test Buttons", {.EXPANDED}) {
 			mu.layout_row(mu_ctx, {86, -110, -1}, 0)
 			mu.label(mu_ctx, "Test buttons 1:")
-			if .SUBMIT in mu.button(mu_ctx, "Button 1") {write_log(ctx, "Pressed button 1")}
-			if .SUBMIT in mu.button(mu_ctx, "Button 2") {write_log(ctx, "Pressed button 2")}
+			if .SUBMIT in mu.button(mu_ctx, "Button 1") {write_log(self, "Pressed button 1")}
+			if .SUBMIT in mu.button(mu_ctx, "Button 2") {write_log(self, "Pressed button 2")}
 			mu.label(mu_ctx, "Test buttons 2:")
-			if .SUBMIT in mu.button(mu_ctx, "Button 3") {write_log(ctx, "Pressed button 3")}
+			if .SUBMIT in mu.button(mu_ctx, "Button 3") {write_log(self, "Pressed button 3")}
 			if .SUBMIT in mu.button(mu_ctx, "Popup") {
 				mu.open_popup(mu_ctx, "Test Popup")
 			}
 			if (mu.begin_popup(mu_ctx, "Test Popup")) {
-				if .SUBMIT in mu.button(mu_ctx, "Hello") {write_log(ctx, "Hello")}
-				if .SUBMIT in mu.button(mu_ctx, "World") {write_log(ctx, "World")}
+				if .SUBMIT in mu.button(mu_ctx, "Hello") {write_log(self, "Hello")}
+				if .SUBMIT in mu.button(mu_ctx, "World") {write_log(self, "World")}
 				mu.end_popup(mu_ctx)
 			}
 		}
@@ -54,17 +56,17 @@ test_window :: proc(ctx: ^Context, mu_ctx: ^mu.Context) {
 				}
 				if .ACTIVE in mu.treenode(mu_ctx, "Test 1b") {
 					if .SUBMIT in
-					   mu.button(mu_ctx, "Button 1") {write_log(ctx, "Pressed button 1")}
+					   mu.button(mu_ctx, "Button 1") {write_log(self, "Pressed button 1")}
 					if .SUBMIT in
-					   mu.button(mu_ctx, "Button 2") {write_log(ctx, "Pressed button 2")}
+					   mu.button(mu_ctx, "Button 2") {write_log(self, "Pressed button 2")}
 				}
 			}
 			if .ACTIVE in mu.treenode(mu_ctx, "Test 2") {
 				mu.layout_row(mu_ctx, {53, 53})
-				if .SUBMIT in mu.button(mu_ctx, "Button 4") {write_log(ctx, "Pressed button 4")}
-				if .SUBMIT in mu.button(mu_ctx, "Button 5") {write_log(ctx, "Pressed button 5")}
-				if .SUBMIT in mu.button(mu_ctx, "Button 6") {write_log(ctx, "Pressed button 6")}
-				if .SUBMIT in mu.button(mu_ctx, "Button 7") {write_log(ctx, "Pressed button 7")}
+				if .SUBMIT in mu.button(mu_ctx, "Button 4") {write_log(self, "Pressed button 4")}
+				if .SUBMIT in mu.button(mu_ctx, "Button 5") {write_log(self, "Pressed button 5")}
+				if .SUBMIT in mu.button(mu_ctx, "Button 6") {write_log(self, "Pressed button 6")}
+				if .SUBMIT in mu.button(mu_ctx, "Button 7") {write_log(self, "Pressed button 7")}
 			}
 			if .ACTIVE in mu.treenode(mu_ctx, "Test 3") {
 				@(static) checks := [3]bool{true, false, true}
@@ -95,25 +97,25 @@ test_window :: proc(ctx: ^Context, mu_ctx: ^mu.Context) {
 				mu.label(
 					mu_ctx,
 					"Red:",
-				);app.microui_slider(mu_ctx, &ctx.bg.r, 0, 255, 0, SLIDER_FMT)
+				);app.mu_slider(mu_ctx, &self.bg.r, 0, 255, 0, SLIDER_FMT)
 				mu.label(
 					mu_ctx,
 					"Green:",
-				);app.microui_slider(mu_ctx, &ctx.bg.g, 0, 255, 0, SLIDER_FMT)
+				);app.mu_slider(mu_ctx, &self.bg.g, 0, 255, 0, SLIDER_FMT)
 				mu.label(
 					mu_ctx,
 					"Blue:",
-				);app.microui_slider(mu_ctx, &ctx.bg.b, 0, 255, 0, SLIDER_FMT)
+				);app.mu_slider(mu_ctx, &self.bg.b, 0, 255, 0, SLIDER_FMT)
 			}
 			mu.layout_end_column(mu_ctx)
 
 			// Preview
 			rect := mu.layout_next(mu_ctx)
-			mu.draw_rect(mu_ctx, rect, {u8(ctx.bg.r), u8(ctx.bg.g), u8(ctx.bg.b), 255})
+			mu.draw_rect(mu_ctx, rect, {u8(self.bg.r), u8(self.bg.g), u8(self.bg.b), 255})
 			mu.draw_box(mu_ctx, mu.expand_rect(rect, 1), mu_ctx.style.colors[.BORDER])
 			mu.draw_control_text(
 				mu_ctx,
-				fmt.tprintf("#%02x%02x%02x", ctx.bg.r, ctx.bg.g, ctx.bg.b),
+				fmt.tprintf("#%02x%02x%02x", self.bg.r, self.bg.g, self.bg.b),
 				rect,
 				.TEXT,
 				{.ALIGN_CENTER},
@@ -124,18 +126,18 @@ test_window :: proc(ctx: ^Context, mu_ctx: ^mu.Context) {
 	}
 }
 
-log_window :: proc(ctx: ^Context, mu_ctx: ^mu.Context) {
+log_window :: proc(self: ^Application, mu_ctx: ^mu.Context) {
 	if mu.begin_window(mu_ctx, "Log Window", {350, 40, 300, 200}) {
 		// output text panel
 		mu.layout_row(mu_ctx, {-1}, -28)
 		mu.begin_panel(mu_ctx, "Log Output")
 		mu.layout_row(mu_ctx, {-1}, -1)
-		mu.text(mu_ctx, read_log(ctx))
+		mu.text(mu_ctx, read_log(self))
 
-		if ctx.log_buf_updated {
+		if self.log_buf_updated {
 			panel := mu.get_current_container(mu_ctx)
 			panel.scroll.y = panel.content_size.y
-			ctx.log_buf_updated = false
+			self.log_buf_updated = false
 		}
 		mu.end_panel(mu_ctx)
 
@@ -156,7 +158,7 @@ log_window :: proc(ctx: ^Context, mu_ctx: ^mu.Context) {
 		}
 
 		if submitted {
-			write_log(ctx, string(buf[:buf_len]))
+			write_log(self, string(buf[:buf_len]))
 			buf_len = 0
 		}
 
@@ -164,22 +166,22 @@ log_window :: proc(ctx: ^Context, mu_ctx: ^mu.Context) {
 	}
 }
 
-write_log :: proc(ctx: ^Context, text: string) {
-	ctx.log_buf_len += copy(ctx.log_buf[ctx.log_buf_len:], text)
-	ctx.log_buf_len += copy(ctx.log_buf[ctx.log_buf_len:], "\n")
-	ctx.log_buf_updated = true
+write_log :: proc(self: ^Application, text: string) {
+	self.log_buf_len += copy(self.log_buf[self.log_buf_len:], text)
+	self.log_buf_len += copy(self.log_buf[self.log_buf_len:], "\n")
+	self.log_buf_updated = true
 }
 
-read_log :: proc(ctx: ^Context) -> string {
-	return string(ctx.log_buf[:ctx.log_buf_len])
+read_log :: proc(self: ^Application) -> string {
+	return string(self.log_buf[:self.log_buf_len])
 }
 
-reset_log :: proc(ctx: ^Context) {
-	ctx.log_buf_updated = true
-	ctx.log_buf_len = 0
+reset_log :: proc(self: ^Application) {
+	self.log_buf_updated = true
+	self.log_buf_len = 0
 }
 
-style_window :: proc(ctx: ^Context, mu_ctx: ^mu.Context) {
+style_window :: proc(self: ^Application, mu_ctx: ^mu.Context) {
 	if mu.window(mu_ctx, "Style Window", {350, 250, 300, 240}) {
 		@(static) colors := [mu.Color_Type]string {
 			.TEXT         = "text",
@@ -203,10 +205,10 @@ style_window :: proc(ctx: ^Context, mu_ctx: ^mu.Context) {
 		mu.layout_row(mu_ctx, {80, sw, sw, sw, sw, -1})
 		for label, col in colors {
 			mu.label(mu_ctx, label)
-			app.microui_slider(mu_ctx, &mu_ctx.style.colors[col].r, 0, 255, 0, SLIDER_FMT)
-			app.microui_slider(mu_ctx, &mu_ctx.style.colors[col].g, 0, 255, 0, SLIDER_FMT)
-			app.microui_slider(mu_ctx, &mu_ctx.style.colors[col].b, 0, 255, 0, SLIDER_FMT)
-			app.microui_slider(mu_ctx, &mu_ctx.style.colors[col].a, 0, 255, 0, SLIDER_FMT)
+			app.mu_slider(mu_ctx, &mu_ctx.style.colors[col].r, 0, 255, 0, SLIDER_FMT)
+			app.mu_slider(mu_ctx, &mu_ctx.style.colors[col].g, 0, 255, 0, SLIDER_FMT)
+			app.mu_slider(mu_ctx, &mu_ctx.style.colors[col].b, 0, 255, 0, SLIDER_FMT)
+			app.mu_slider(mu_ctx, &mu_ctx.style.colors[col].a, 0, 255, 0, SLIDER_FMT)
 			mu.draw_rect(mu_ctx, mu.layout_next(mu_ctx), mu_ctx.style.colors[col])
 		}
 	}

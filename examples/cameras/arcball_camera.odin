@@ -1,6 +1,6 @@
 package cameras_example
 
-// Packages
+// Core
 import "core:math"
 import la "core:math/linalg"
 

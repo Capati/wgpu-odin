@@ -1,25 +1,25 @@
 package examples_common
 
-// Packages
+// Core
 import "base:runtime"
-import la "core:math/linalg"
 import "core:path/filepath"
 import "core:strings"
+import la "core:math/linalg"
 
 // Local packages
-import "root:libs/tobj"
-import app "root:utils/application"
-import "root:wgpu"
+import wgpu "../../"
+import app "../../utils/application"
+import "../../libs/tobj"
 
 load_model :: proc(
 	ctx: ^app.Application,
 	filename: string,
-	layout: wgpu.Bind_Group_Layout,
+	layout: wgpu.BindGroupLayout,
 	allocator := context.allocator,
 ) -> (
 	model: ^Model,
 	ok: bool,
-) {
+) #optional_ok {
 	ta := context.temp_allocator
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == ta)
 
@@ -34,7 +34,7 @@ load_model :: proc(
 	for &m in obj_materials {
 		mtl_filename := filepath.join({mtl_dir, m.diffuse_texture}, allocator = ta)
 		diffuse_texture := app.create_texture_from_file(ctx, mtl_filename) or_return
-		bind_group := wgpu.device_create_bind_group(
+		bind_group := wgpu.DeviceCreateBindGroup(
 			ctx.gpu.device,
 			{
 				layout = layout,
@@ -43,7 +43,7 @@ load_model :: proc(
 					{binding = 1, resource = diffuse_texture.sampler},
 				},
 			},
-		) or_return
+		)
 		append(
 			&materials,
 			Material {
@@ -71,15 +71,15 @@ load_model :: proc(
 			append(&vertices, Model_Vertex{pos, texture_coords, normals})
 		}
 
-		vertex_buffer := wgpu.device_create_buffer_with_data(
+		vertex_buffer := wgpu.DeviceCreateBufferWithData(
 			ctx.gpu.device,
-			{contents = wgpu.to_bytes(vertices[:]), usage = {.Vertex}},
-		) or_return
+			{contents = wgpu.ToBytes(vertices[:]), usage = {.Vertex}},
+		)
 
-		index_buffer := wgpu.device_create_buffer_with_data(
+		index_buffer := wgpu.DeviceCreateBufferWithData(
 			ctx.gpu.device,
-			{contents = wgpu.to_bytes(m.mesh.indices), usage = {.Index}},
-		) or_return
+			{contents = wgpu.ToBytes(m.mesh.indices), usage = {.Index}},
+		)
 
 		mesh := Mesh {
 			allocator     = allocator,
@@ -102,8 +102,8 @@ load_model :: proc(
 destroy_mesh :: proc(mesh: Mesh) {
 	context.allocator = mesh.allocator
 	delete(mesh.name)
-	wgpu.release(mesh.vertex_buffer)
-	wgpu.release(mesh.index_buffer)
+	wgpu.Release(mesh.vertex_buffer)
+	wgpu.Release(mesh.index_buffer)
 }
 
 destroy_meshes :: proc(mesh: []Mesh) {
@@ -120,8 +120,8 @@ destroy_meshes :: proc(mesh: []Mesh) {
 destroy_material :: proc(material: Material) {
 	context.allocator = material.allocator
 	delete(material.name)
-	app.release(material.diffuse_texture)
-	wgpu.release(material.bind_group)
+	app.texture_release(material.diffuse_texture)
+	wgpu.Release(material.bind_group)
 }
 
 destroy_materials :: proc(materials: []Material) {

@@ -50,6 +50,6 @@ vertex_data := []Vertex {
 	vertex(0.5, 0.5, -0.5, 1, 1, 0),
 }
 
-vertex :: proc(pos1, pos2, pos3, r, g, b: f32) -> Vertex {
+vertex :: proc "contextless" (pos1, pos2, pos3, r, g, b: f32) -> Vertex {
 	return Vertex{position = {pos1, pos2, pos3}, color = {r, g, b}}
 }

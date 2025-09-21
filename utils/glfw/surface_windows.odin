@@ -1,26 +1,27 @@
 #+build windows
-package wgpu_utils_glfw
+package wgpu_glfw
 
-// Packages
+// Core
 import win "core:sys/windows"
+
+// Vendor
 import "vendor:glfw"
 
 // Local packages
-import "./../../wgpu"
+import wgpu "../../"
 
-get_surface_descriptor :: proc(
+GetSurfaceDescriptor :: proc "c" (
 	window: glfw.WindowHandle,
 ) -> (
-	descriptor: wgpu.Surface_Descriptor,
-	ok: bool,
+	descriptor: wgpu.SurfaceDescriptor,
 ) {
 	instance := win.GetModuleHandleW(nil)
 
 	// Setup surface information
-	descriptor.target = wgpu.Surface_Source_Windows_HWND {
+	descriptor.target = wgpu.SurfaceSourceWindowsHWND {
 		hinstance = instance,
 		hwnd      = glfw.GetWin32Window(window),
 	}
 
-	return descriptor, true
+	return
 }

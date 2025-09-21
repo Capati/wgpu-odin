@@ -1,128 +1,146 @@
-#+vet !unused-imports
 package triangle_msaa
 
-// Packages
+// Core
 import "core:log"
 
 // Local packages
-import app "root:utils/application"
-import "root:wgpu"
+import wgpu "../.."
+import app "../../utils/application"
 
-Example :: struct {
-	render_pipeline: wgpu.Render_Pipeline,
-	msaa_view:       wgpu.Texture_View,
-	render_pass:     struct {
-		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
-		descriptor:        wgpu.Render_Pass_Descriptor,
+CLIENT_WIDTH       :: 640
+CLIENT_HEIGHT      :: 480
+EXAMPLE_TITLE      :: "Triangle 4x MSAA"
+VIDEO_MODE_DEFAULT :: app.Video_Mode {
+	width  = CLIENT_WIDTH,
+	height = CLIENT_HEIGHT,
+}
+SAMPLE_COUNT       :: 4 // This value is guaranteed to be supported
+
+Application :: struct {
+	using _app:      app.Application,
+	render_pipeline: wgpu.RenderPipeline,
+	msaa_view:       wgpu.TextureView,
+	rpass:       struct {
+		color_attachments: [1]wgpu.RenderPassColorAttachment,
+		descriptor:        wgpu.RenderPassDescriptor,
 	},
 }
 
-Context :: app.Context(Example)
+create :: proc() -> (self: ^Application) {
+	self = new(Application)
+	assert(self != nil, "Failed to allocate Application")
 
-EXAMPLE_TITLE :: "Triangle 4x MSAA"
-SAMPLE_COUNT: u32 : 4 // This value is guaranteed to be supported
+	app.init(self, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE)
 
-init :: proc(ctx: ^Context) -> bool {
 	// Use the same shader from the triangle example
-	TRIANGLE_WGSL: string : #load("./../triangle/triangle.wgsl", string)
-	shader_module := wgpu.device_create_shader_module(
-		ctx.gpu.device,
-		{label = EXAMPLE_TITLE + " Module", source = string(TRIANGLE_WGSL)},
-	) or_return
-	defer wgpu.shader_module_release(shader_module)
+	TRIANGLE_WGSL :: #load("./../triangle/triangle.wgsl", string)
+	shader_module := wgpu.DeviceCreateShaderModule(
+		self.gpu.device,
+		{
+			label = EXAMPLE_TITLE + " Module",
+			source = TRIANGLE_WGSL,
+		},
+	)
+	defer wgpu.Release(shader_module)
 
-	ctx.render_pipeline = wgpu.device_create_render_pipeline(
-		ctx.gpu.device,
+	self.render_pipeline = wgpu.DeviceCreateRenderPipeline(
+		self.gpu.device,
 		{
 			label = EXAMPLE_TITLE + " Render Pipeline",
-			vertex = {module = shader_module, entry_point = "vs_main"},
+			vertex = { module = shader_module, entryPoint = "vs_main" },
 			fragment = &{
 				module = shader_module,
-				entry_point = "fs_main",
+				entryPoint = "fs_main",
 				targets = {
 					{
-						format = ctx.gpu.config.format,
-						blend = &wgpu.BLEND_STATE_NORMAL,
-						write_mask = wgpu.COLOR_WRITES_ALL,
+						format    = self.gpu.config.format,
+						blend     = &wgpu.BLEND_STATE_NORMAL,
+						writeMask = wgpu.COLOR_WRITES_ALL,
 					},
 				},
 			},
 			multisample = {count = SAMPLE_COUNT, mask = max(u32)},
 		},
-	) or_return
-
-	create_msaa_framebuffer(ctx) or_return
-
-	ctx.render_pass.color_attachments[0] = {
-		view = nil, /* Assigned later */
-		resolve_target = nil, /* Assigned later */
-		ops = {load = .Clear, store = .Store, clear_value = app.Color_Black},
-	}
-
-	ctx.render_pass.descriptor = {
-		label             = "Render pass descriptor",
-		color_attachments = ctx.render_pass.color_attachments[:],
-	}
-
-	return true
-}
-
-create_msaa_framebuffer :: proc(ctx: ^Context) -> (ok: bool) {
-	format_features := wgpu.texture_format_guaranteed_format_features(
-		ctx.gpu.config.format,
-		ctx.gpu.features,
 	)
 
-	size := ctx.framebuffer_size
+	create_msaa_framebuffer(self)
 
-	texture_descriptor := wgpu.Texture_Descriptor {
-		size            = {size.w, size.h, 1},
-		mip_level_count = 1,
-		sample_count    = SAMPLE_COUNT,
-		dimension       = .D2,
-		format          = ctx.gpu.config.format,
-		usage           = format_features.allowed_usages,
+	self.rpass.color_attachments[0] = {
+		view = nil, /* Assigned later */
+		resolveTarget = nil, /* Assigned later */
+		ops = {
+			load = .Clear,
+			store = .Store,
+			clearValue = app.Color_Black,
+		},
 	}
 
-	texture := wgpu.device_create_texture(ctx.gpu.device, texture_descriptor) or_return
-	defer wgpu.release(texture)
+	self.rpass.descriptor = {
+		label            = "Render pass descriptor",
+		colorAttachments = self.rpass.color_attachments[:],
+	}
 
-	ctx.msaa_view = wgpu.texture_create_view(texture) or_return
+	app.add_resize_callback(self, { resize, self })
 
-	return true
+	return
 }
 
-quit :: proc(ctx: ^Context) {
-	wgpu.release(ctx.msaa_view)
-	wgpu.render_pipeline_release(ctx.render_pipeline)
+release :: proc(self: ^Application) {
+	wgpu.Release(self.msaa_view)
+	wgpu.Release(self.render_pipeline)
+	app.release(self)
+	free(self)
 }
 
-resize :: proc(ctx: ^Context, size: app.Resize_Event) -> (ok: bool) {
-	wgpu.release(ctx.msaa_view)
-	create_msaa_framebuffer(ctx) or_return
-	return true
+draw :: proc(self: ^Application) {
+	frame := app.gpu_get_current_frame(self.gpu)
+	if frame.skip { return }
+	defer app.gpu_release_current_frame(&frame)
+
+	encoder := wgpu.DeviceCreateCommandEncoder(self.gpu.device)
+	defer wgpu.Release(encoder)
+
+	self.rpass.color_attachments[0].view = self.msaa_view
+	self.rpass.color_attachments[0].resolveTarget = frame.view
+	rpass := wgpu.CommandEncoderBeginRenderPass(encoder, self.rpass.descriptor)
+	defer wgpu.Release(rpass)
+
+	wgpu.RenderPassSetPipeline(rpass, self.render_pipeline)
+	wgpu.RenderPassDraw(rpass, {0, 3})
+	wgpu.RenderPassEnd(rpass)
+
+	cmdbuf := wgpu.CommandEncoderFinish(encoder)
+	defer wgpu.Release(cmdbuf)
+
+	wgpu.QueueSubmit(self.gpu.queue, { cmdbuf })
+	wgpu.SurfacePresent(self.gpu.surface)
 }
 
-draw :: proc(ctx: ^Context) -> bool {
-	ctx.cmd = wgpu.device_create_command_encoder(ctx.gpu.device) or_return
-	defer wgpu.release(ctx.cmd)
+create_msaa_framebuffer :: proc(self: ^Application) {
+	format_features := wgpu.TextureFormatGuaranteedFormatFeatures(self.gpu.config.format, self.gpu.features)
 
-	ctx.render_pass.color_attachments[0].view = ctx.msaa_view
-	ctx.render_pass.color_attachments[0].resolve_target = ctx.frame.view
-	render_pass := wgpu.command_encoder_begin_render_pass(ctx.cmd, ctx.render_pass.descriptor)
-	defer wgpu.release(render_pass)
+	size := app.window_get_size(self.window)
 
-	wgpu.render_pass_set_pipeline(render_pass, ctx.render_pipeline)
-	wgpu.render_pass_draw(render_pass, {0, 3})
-	wgpu.render_pass_end(render_pass) or_return
+	texture_descriptor := wgpu.TextureDescriptor {
+		size          = { size.x, size.y, 1 },
+		mipLevelCount = 1,
+		sampleCount   = SAMPLE_COUNT,
+		dimension     = ._2D,
+		format        = self.gpu.config.format,
+		usage         = format_features.allowedUsages,
+	}
 
-	cmdbuf := wgpu.command_encoder_finish(ctx.cmd) or_return
-	defer wgpu.release(cmdbuf)
+	texture := wgpu.DeviceCreateTexture(self.gpu.device, texture_descriptor)
+	defer wgpu.Release(texture)
 
-	wgpu.queue_submit(ctx.gpu.queue, cmdbuf)
-	wgpu.surface_present(ctx.gpu.surface) or_return
+	self.msaa_view = wgpu.TextureCreateView(texture)
+}
 
-	return true
+resize :: proc(window: ^app.Window, size: app.Vec2u, userdata: rawptr) {
+	self := cast(^Application)userdata
+	wgpu.Release(self.msaa_view)
+	create_msaa_framebuffer(self)
+	draw(self)
 }
 
 main :: proc() {
@@ -131,22 +149,22 @@ main :: proc() {
 		defer log.destroy_console_logger(context.logger)
 	}
 
-	settings := app.DEFAULT_SETTINGS
-	settings.title = EXAMPLE_TITLE
+	example := create()
+	defer release(example)
 
-	example, ok := app.create(Context, settings)
-	if !ok {
-		log.fatalf("Failed to create example [%s]", EXAMPLE_TITLE)
-		return
+	running := true
+	MAIN_LOOP: for running {
+		event: app.Event
+		for app.poll_event(example, &event) {
+			#partial switch &ev in event {
+			case app.QuitEvent:
+				log.info("Exiting...")
+				running = false
+			}
+		}
+
+		app.begin_frame(example)
+		draw(example)
+		app.end_frame(example)
 	}
-	defer app.destroy(example)
-
-	example.callbacks = {
-		init   = init,
-		quit   = quit,
-		resize = resize,
-		draw   = draw,
-	}
-
-	app.run(example) // Start the main loop
 }

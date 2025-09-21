@@ -6,114 +6,149 @@ https://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples
 https://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples#example-for-webgpu-users
 */
 
-// Packages
+// Core
 import "core:log"
 
 // Local packages
-import im "root:libs/imgui"
-import im_glfw "root:libs/imgui/imgui_impl_glfw"
-import app "root:utils/application"
-import im_wgpu "root:utils/imgui"
-import "root:wgpu"
+import wgpu "../.."
+import app "../../utils/application"
+import im "../../libs/imgui"
+import im_glfw "../../libs/imgui/imgui_impl_glfw"
+import im_wgpu "../../utils/imgui"
 
-Example :: struct {
-	texture:             app.Texture,
+CLIENT_WIDTH       :: 1024
+CLIENT_HEIGHT      :: 768
+EXAMPLE_TITLE      :: "ImGui"
+VIDEO_MODE_DEFAULT :: app.Video_Mode {
+	width  = CLIENT_WIDTH,
+	height = CLIENT_HEIGHT,
+}
+
+Texture :: app.Texture
+
+Application :: struct {
+	using _app:          app.Application,
+	texture:             Texture,
 	clear_color:         [3]f32,
 	show_demo_window:    bool,
 	show_another_window: bool,
 	im_ctx:              ^im.Context,
 	im_io:               ^im.IO,
-	render_pass:         struct {
-		color_attachments: [1]wgpu.Render_Pass_Color_Attachment,
-		descriptor:        wgpu.Render_Pass_Descriptor,
+	rpass: struct {
+		colors:     [1]wgpu.RenderPassColorAttachment,
+		descriptor: wgpu.RenderPassDescriptor,
 	},
 }
 
-Context :: app.Context(Example)
+create :: proc() -> (self: ^Application) {
+	self = new(Application)
+	assert(self != nil, "Failed to allocate Application")
 
-EXAMPLE_TITLE :: "ImGui"
+	app.init(self, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE)
 
-init :: proc(ctx: ^Context) -> (ok: bool) {
-	ctx.im_ctx = im.create_context()
-	ensure(ctx.im_ctx != nil, "Failed to create Imgui context")
-	defer if !ok {
-		im.destroy_context(ctx.im_ctx)
-	}
+	self.im_ctx = im.create_context()
+	ensure(self.im_ctx != nil, "Failed to create Imgui context")
 
 	im.style_colors_dark()
 
 	// Initialize the platform, application also uses GLFW
-	ensure(im_glfw.init_for_other(ctx.window, true))
-	defer if !ok {
-		im_glfw.shutdown()
-	}
+	ensure(im_glfw.init_for_other(self.window.handle, true))
 
 	init_info := im_wgpu.INIT_INFO_DEFAULT
-	init_info.device = ctx.gpu.device
-	init_info.render_target_format = ctx.gpu.config.format
+	init_info.device = self.gpu.device
+	init_info.render_target_format = self.gpu.config.format
 
 	// Initialize the WGPU renderer
 	ensure(im_wgpu.init(init_info))
-	defer if !ok {
-		im_wgpu.shutdown()
-	}
 
 	// Create the texture
-	ctx.texture = app.create_texture_from_file(ctx, "assets/textures/MyImage01.jpg") or_return
-	defer if !ok {
-		app.release(ctx.texture)
-	}
+	self.texture = app.create_texture_from_file(self, "assets/textures/MyImage01.jpg")
 
-	ctx.render_pass.color_attachments[0] = {
+	self.rpass.colors[0] = {
 		view = nil, /* Assigned later */
-		ops = {load = .Clear, store = .Store, clear_value = app.Color_Black},
+		ops = {load = .Clear, store = .Store, clearValue = app.Color_Black},
 	}
 
-	ctx.clear_color = {0.1, 0.2, 0.3}
-	set_clear_value(ctx, ctx.clear_color)
+	self.clear_color = {0.1, 0.2, 0.3}
+	set_clear_value(self, self.clear_color)
 
-	ctx.im_io = im.get_io()
+	self.im_io = im.get_io()
 
-	ctx.render_pass.descriptor = {
-		label             = "Render pass descriptor",
-		color_attachments = ctx.render_pass.color_attachments[:],
+	self.rpass.descriptor = {
+		label            = "Render pass descriptor",
+		colorAttachments = self.rpass.colors[:],
 	}
 
-	return true
+	app.add_resize_callback(self, { resize, self })
+
+	return
 }
 
-quit :: proc(ctx: ^Context) {
-	app.release(ctx.texture)
+release :: proc(self: ^Application) {
+	app.texture_release(self.texture)
 
 	im_wgpu.shutdown()
 	im_glfw.shutdown()
-	im.destroy_context(ctx.im_ctx)
+	im.destroy_context(self.im_ctx)
+
+	app.release(self)
+	free(self)
 }
 
-resize :: proc(ctx: ^Context, size: app.Window_Size) -> (ok: bool) {
-	im_wgpu.recreate_device_objects() or_return
-	return true
+draw :: proc (self: ^Application) {
+	frame := app.gpu_get_current_frame(self.gpu)
+	if frame.skip { return }
+	defer app.gpu_release_current_frame(&frame)
+
+	encoder := wgpu.DeviceCreateCommandEncoder(self.gpu.device)
+	defer wgpu.Release(encoder)
+
+	// Update ImGui frame data
+	imgui_update(self)
+
+	self.rpass.colors[0].view = frame.view
+	rpass := wgpu.CommandEncoderBeginRenderPass(encoder, self.rpass.descriptor)
+	defer wgpu.Release(rpass)
+
+	// Render elements using the given pass
+	im_wgpu.render_draw_data(im.get_draw_data(), rpass)
+
+	wgpu.RenderPassEnd(rpass)
+
+	cmdbuf := wgpu.CommandEncoderFinish(encoder)
+	defer wgpu.Release(cmdbuf)
+
+	wgpu.QueueSubmit(self.gpu.queue, { cmdbuf })
+	wgpu.SurfacePresent(self.gpu.surface)
+
+	return
 }
 
-set_clear_value :: proc(ctx: ^Context, clear_color: [3]f32) #no_bounds_check {
+resize :: proc(window: ^app.Window, size: app.Vec2u, userdata: rawptr) {
+	self := cast(^Application)userdata
+	context = self.custom_context
+	im_wgpu.recreate_device_objects()
+}
+
+set_clear_value :: proc(self: ^Application, clear_color: [3]f32) #no_bounds_check {
 	r, g, b := expand_values(clear_color)
-	ctx.render_pass.color_attachments[0].ops.clear_value = {f64(r), f64(g), f64(b), 1.0}
+	self.rpass.colors[0].ops.clearValue = {f64(r), f64(g), f64(b), 1.0}
 }
 
-imgui_update :: proc(ctx: ^Context) -> (ok: bool) {
+imgui_update :: proc(self: ^Application) -> (ok: bool) {
 	im_glfw.new_frame()
-	im_wgpu.new_frame() or_return
+	im_wgpu.new_frame()
 
 	// Start a new Dear ImGui frame, you can submit any command from this point
 	im.new_frame()
 
 	// Display an image
 	if im.begin("WebGPU Texture Test") {
-		im.text("Pointer = = %p", ctx.texture.view)
-		im.text("Size = %d x %d", ctx.texture.size.width, ctx.texture.size.height)
+		im.text("Pointer = = %p", self.texture.view)
+		im.text("Size = %d x %d", self.texture.size.width, self.texture.size.height)
 		im.image(
-			im.Texture_ID(uintptr(ctx.texture.view)),
-			{f32(ctx.texture.size.width), f32(ctx.texture.size.height)},
+			im.Texture_ID(uintptr(self.texture.view)),
+			{f32(self.texture.size.width), f32(self.texture.size.height)},
 		)
 	}
 	im.end()
@@ -126,16 +161,16 @@ imgui_update :: proc(ctx: ^Context) -> (ok: bool) {
 		im.text("This is some useful text.")
 
 		// Edit bools storing our window open/close state
-		im.checkbox("Demo Window", &ctx.show_demo_window)
-		im.checkbox("Another Window", &ctx.show_another_window)
+		im.checkbox("Demo Window", &self.show_demo_window)
+		im.checkbox("Another Window", &self.show_another_window)
 
 		@(static) f: f32
 		// Edit 1 float using a slider from 0.0 to 1.0
 		im.slider_float("float", &f, 0.0, 1.0)
 
 		// Edit 3 floats representing a color
-		if im.color_edit3("Clear Color", &ctx.clear_color) {
-			set_clear_value(ctx, ctx.clear_color)
+		if im.color_edit3("Clear Color", &self.clear_color) {
+			set_clear_value(self, self.clear_color)
 		}
 
 		@(static) counter: int
@@ -148,26 +183,26 @@ imgui_update :: proc(ctx: ^Context) -> (ok: bool) {
 
 		im.text(
 			"Application average %.3f ms/frame (%.1f FPS)",
-			1000.0 / ctx.im_io.framerate,
-			ctx.im_io.framerate,
+			1000.0 / self.im_io.framerate,
+			self.im_io.framerate,
 		)
 	}
 	im.end()
 
 	// Show the big demo window (Most of the sample code is in im.show_demo_window()! You can
 	// browse its code to learn more about Dear ImGui!).
-	if ctx.show_demo_window {
+	if self.show_demo_window {
 		im.show_demo_window()
 	}
 
 	// Show another simple window
-	if ctx.show_another_window {
+	if self.show_another_window {
 		// Pass a pointer to our bool variable (the window will have a closing button that will
 		// clear the bool when clicked)
-		im.begin("Another Window", &ctx.show_another_window)
+		im.begin("Another Window", &self.show_another_window)
 		im.text("Hello from another window!")
 		if im.button("Close Me") {
-			ctx.show_another_window = false
+			self.show_another_window = false
 		}
 		im.end()
 	}
@@ -178,53 +213,28 @@ imgui_update :: proc(ctx: ^Context) -> (ok: bool) {
 	return true
 }
 
-draw :: proc(ctx: ^Context) -> bool {
-	// Update ImGui frame data
-	imgui_update(ctx) or_return
-
-	ctx.cmd = wgpu.device_create_command_encoder(ctx.gpu.device) or_return
-	defer wgpu.release(ctx.cmd)
-
-	ctx.render_pass.color_attachments[0].view = ctx.frame.view
-	render_pass := wgpu.command_encoder_begin_render_pass(ctx.cmd, ctx.render_pass.descriptor)
-	defer wgpu.release(render_pass)
-
-	// Render elements using the given pass
-	im_wgpu.render_draw_data(im.get_draw_data(), render_pass) or_return
-
-	wgpu.render_pass_end(render_pass) or_return
-
-	cmdbuf := wgpu.command_encoder_finish(ctx.cmd) or_return
-	defer wgpu.release(cmdbuf)
-
-	wgpu.queue_submit(ctx.gpu.queue, cmdbuf)
-	wgpu.surface_present(ctx.gpu.surface) or_return
-
-	return true
-}
-
 main :: proc() {
 	when ODIN_DEBUG {
 		context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
 		defer log.destroy_console_logger(context.logger)
 	}
 
-	settings := app.DEFAULT_SETTINGS
-	settings.title = EXAMPLE_TITLE
+	example := create()
+	defer release(example)
 
-	example, ok := app.create(Context, settings)
-	if !ok {
-		log.fatalf("Failed to create example [%s]", EXAMPLE_TITLE)
-		return
+	running := true
+	MAIN_LOOP: for running {
+		event: app.Event
+		for app.poll_event(example, &event) {
+			#partial switch &ev in event {
+			case app.QuitEvent:
+				log.info("Exiting...")
+				running = false
+			}
+		}
+
+		app.begin_frame(example)
+		draw(example)
+		app.end_frame(example)
 	}
-	defer app.destroy(example)
-
-	example.callbacks = {
-		init   = init,
-		quit   = quit,
-		resize = resize,
-		draw   = draw,
-	}
-
-	app.run(example) // Start the main loop
 }

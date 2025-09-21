@@ -1,18 +1,17 @@
-package wgpu_utils_glfw
+package wgpu_glfw
 
-// Packages
+// Core
 import "vendor:glfw"
 
 // Local packages
-import "./../../wgpu"
+import wgpu "../../"
 
-create_surface :: proc(
+CreateSurface :: proc "c" (
 	window: glfw.WindowHandle,
 	instance: wgpu.Instance,
 ) -> (
 	surface: wgpu.Surface,
-	ok: bool,
-) #optional_ok {
-	surface_descriptor := get_surface_descriptor(window) or_return
-	return wgpu.instance_create_surface(instance, surface_descriptor)
+) {
+	descriptor := GetSurfaceDescriptor(window)
+	return wgpu.InstanceCreateSurface(instance, descriptor)
 }

@@ -1,6 +1,6 @@
 package tutorial1_window_glfw
 
-// Packages
+// Core
 import "core:fmt"
 import "vendor:glfw"
 
