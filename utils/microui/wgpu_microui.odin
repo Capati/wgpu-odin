@@ -344,6 +344,9 @@ prepare_and_draw :: proc "contextless" () -> (ok: bool) {
 	vertices_slice := sa.slice(&r.vertices)
 	indices_slice := sa.slice(&r.indices)
 
+	vertex_data_size := u64(len(vertices_slice)) * u64(size_of(Vertex))
+	index_data_size := u64(len(indices_slice)) * u64(size_of(u32))
+
 	wgpu.QueueWriteBuffer(
 		r.queue,
 		r.vertex_buffer,
@@ -361,11 +364,19 @@ prepare_and_draw :: proc "contextless" () -> (ok: bool) {
 	wgpu.RenderPassSetVertexBuffer(
 		r.current_pass,
 		0,
-		{buffer = r.vertex_buffer, offset = r.vertex_buffer_offset},
+		{
+			buffer = r.vertex_buffer,
+			offset = r.vertex_buffer_offset,
+			size = vertex_data_size,
+		},
 	)
 	wgpu.RenderPassSetIndexBuffer(
 		r.current_pass,
-		{buffer = r.index_buffer, offset = r.index_buffer_offset},
+		{
+			buffer = r.index_buffer,
+			offset = r.index_buffer_offset,
+			size = index_data_size,
+		},
 		.Uint32,
 	)
 
