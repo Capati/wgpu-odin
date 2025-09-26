@@ -13,12 +13,12 @@ get_sys_info :: proc "c" (window: ^sdl.Window) -> (wmInfo: sdl.SysWMinfo) {
 	return
 }
 
-CreateSurface :: proc "c" (
+create_surface :: proc "c" (
 	window: ^sdl.Window,
 	instance: wgpu.Instance,
 ) -> (
 	surface: wgpu.Surface,
 ) {
-	descriptor := GetSurfaceDescriptor(window)
+	descriptor := get_surface_descriptor(window)
 	return wgpu.InstanceCreateSurface(instance, descriptor)
 }

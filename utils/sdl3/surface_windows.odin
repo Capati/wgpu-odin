@@ -7,7 +7,7 @@ import sdl "vendor:sdl3"
 // Local packages
 import wgpu "../../"
 
-GetSurfaceDescriptor :: proc "c" (window: ^sdl.Window) -> (descriptor: wgpu.SurfaceDescriptor) {
+get_surface_descriptor :: proc "c" (window: ^sdl.Window) -> (descriptor: wgpu.SurfaceDescriptor) {
 	hinstance := sdl.GetPointerProperty(
 		sdl.GetWindowProperties(window),
 		sdl.PROP_WINDOW_WIN32_INSTANCE_POINTER,

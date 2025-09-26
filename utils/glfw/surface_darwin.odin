@@ -9,7 +9,7 @@ import "vendor:glfw"
 // Local packages
 import wgpu "../../"
 
-GetSurfaceDescriptor :: proc "c" (
+get_surface_descriptor :: proc "c" (
 	window: glfw.WindowHandle,
 ) -> (
 	descriptor: wgpu.SurfaceDescriptor,

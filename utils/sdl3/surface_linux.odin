@@ -7,7 +7,7 @@ import sdl "vendor:sdl3"
 // Local packages
 import wgpu "../../"
 
-GetSurfaceDescriptor :: proc "c" (window: ^sdl.Window) -> (descriptor: wgpu.SurfaceDescriptor) {
+get_surface_descriptor :: proc "c" (window: ^sdl.Window) -> (descriptor: wgpu.SurfaceDescriptor) {
 	switch sdl.GetCurrentVideoDriver() {
 	case "wayland":
 		display := sdl.GetPointerProperty(

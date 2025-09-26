@@ -9,7 +9,7 @@ import sdl "vendor:sdl2"
 // Local packages
 import wgpu "../../"
 
-GetSurfaceDescriptor :: proc "c" (window: ^sdl.Window) -> (descriptor: wgpu.SurfaceDescriptor) {
+get_surface_descriptor :: proc "c" (window: ^sdl.Window) -> (descriptor: wgpu.SurfaceDescriptor) {
 	wmInfo := get_sys_info(window)
 
 	nativeWindow := (^NS.Window)(wmInfo.info.cocoa.window)

@@ -6,12 +6,12 @@ import sdl "vendor:sdl3"
 // Local packages
 import wgpu "../../"
 
-CreateSurface :: proc "c" (
+create_surface :: proc "c" (
 	window: ^sdl.Window,
 	instance: wgpu.Instance,
 ) -> (
 	surface: wgpu.Surface,
 ) {
-	descriptor := GetSurfaceDescriptor(window)
+	descriptor := get_surface_descriptor(window)
 	return wgpu.InstanceCreateSurface(instance, descriptor)
 }
