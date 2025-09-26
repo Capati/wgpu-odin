@@ -6,7 +6,7 @@ The API is similar to the [Rust API](https://docs.rs/wgpu/latest/wgpu/). This al
 easily translate Rust/WebGPU tutorials and examples into Odin code.
 
 Explore the [examples](./examples) to get started, or jump straight into the
-[Triangle](./examples/triangle/triangle.odin) example.
+[Triangle](./examples/triangle) example.
 
 ## Status
 
@@ -65,7 +65,7 @@ import "libs:wgpu"
 ## Examples
 
 Explore [all examples](./examples) to see WGPU in action. Start with the
-[Triangle](./examples/triangle/triangle.odin) for a verbose example.
+[Triangle](./examples/triangle) for a verbose example.
 
 ## Utilities
 
