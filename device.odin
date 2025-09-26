@@ -21,25 +21,6 @@ Corresponds to [WebGPU
 Device :: wgpu.Device
 
 /*
-Check for resource cleanups and mapping callbacks. Will block if `wait` is `true`.
-
-Return `true` if the queue is empty, or `false` if there are more queue
-submissions still in flight. (Note that, unless access to the [`Queue`] is
-coordinated somehow, this information could be out of date by the time the
-caller receives it. `Queue`s can be shared between threads, so other threads
-could submit new work at any time.)
-
-When running on WebGPU, this is a no-op. `Device`s are automatically polled.
-*/
-DevicePoll :: proc "c" (
-	self: Device,
-	wait: bool = true,
-	submissionIndex: ^SubmissionIndex = nil,
-) -> bool {
-	return bool(wgpu.DevicePoll(self, b32(wait), submissionIndex))
-}
-
-/*
 List all features that may be used with this device.
 
 Functions may panic if you use unsupported features.
@@ -77,21 +58,25 @@ List all limits that were requested of this device.
 If any of these limits are exceeded, procedures may panic.
 */
 DeviceLimits :: proc "c" (self: Device) -> (limits: Limits) {
-	rawLimits: wgpu.Limits
+	raw_limits: wgpu.Limits
 
 	when ODIN_OS != .JS {
 		native := wgpu.NativeLimits {
 			chain = { sType = .NativeLimits },
 		}
-		rawLimits.nextInChain = &native.chain
+		raw_limits.nextInChain = &native.chain
 	}
 
-	status := wgpu.RawDeviceGetLimits(self, &rawLimits)
+	status := wgpu.RawDeviceGetLimits(self, &raw_limits)
 	if status != .Success {
 		return
 	}
 
-	limits = _LimitsMergeWebGPUWithNative(rawLimits, native)
+	when ODIN_OS != .JS {
+		limits = _LimitsMergeWebGPUWithNative(raw_limits, native)
+	} else {
+		limits = _LimitsMergeWebGPUWithNative(raw_limits, {})
+	}
 
 	// WGPU returns 0 for unused limits
 	// Enforce minimum values for all limits even if the returned values are lower
@@ -191,32 +176,6 @@ DeviceCreateShaderModule :: proc "c" (
 		raw_desc.nextInChain = &glsl.chain
 		shaderModule = wgpu.DeviceCreateShaderModule(self, &raw_desc)
 	}
-
-	return
-}
-
-ShaderModuleDescriptorSpirV :: struct {
-	label: string,
-	sources: []u32,
-}
-
-/* Creates a shader module from SPIR-V binary directly. */
-@(require_results)
-DeviceCreateShaderModuleSpirV :: proc "c" (
-	self: Device,
-	descriptor: ShaderModuleDescriptorSpirV,
-) -> (
-	shaderModule: ShaderModule,
-) {
-	assert_contextless(descriptor.sources != nil && len(descriptor.sources) > 0,
-		"SPIR-V source is required")
-
-	raw_desc: wgpu.ShaderModuleDescriptorSpirV
-	raw_desc.label = descriptor.label
-	raw_desc.sourceSize = cast(u32)len(descriptor.sources)
-	raw_desc.source = raw_data(descriptor.sources)
-
-	shaderModule = wgpu.DeviceCreateShaderModuleSpirV(self, &raw_desc)
 
 	return
 }
@@ -1668,13 +1627,19 @@ DeviceGetAdapterInfo :: wgpu.DeviceGetAdapterInfo
 DeviceGetQueue :: wgpu.DeviceGetQueue
 
 /* Sets a debug label for the given `Device`. */
-DeviceSetLabel :: wgpu.DeviceSetLabel
+DeviceSetLabel :: #force_inline proc "c" (self: Device, label: string) {
+	wgpu.DeviceSetLabel(self, label)
+}
 
 // Increase the `Device` reference count.
-DeviceAddRef :: wgpu.DeviceAddRef
+DeviceAddRef :: #force_inline proc "c" (self: Device) {
+	wgpu.DeviceAddRef(self)
+}
 
 // Release the `Device` resources, use to decrease the reference count.
-DeviceRelease :: wgpu.DeviceRelease
+DeviceRelease :: #force_inline proc "c" (self: Device) {
+	wgpu.DeviceRelease(self)
+}
 
 /*
 Safely releases the `Device` resources and invalidates the handle.

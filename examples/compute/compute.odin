@@ -183,6 +183,7 @@ main :: proc() {
 		result := cast(^wgpu.MapAsyncStatus)userdata1
 		result^ = status
 	}
+
 	wgpu.BufferMapAsync(
 		staging_buffer,
 		{.Read},

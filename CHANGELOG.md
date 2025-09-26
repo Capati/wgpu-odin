@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## 09-26-2025
+
+feat: initial WASM support.
+
+### Added
+
+- Initial WASM support
+  - Bindings is working fine, however, some examples rely on native features or contain code that is
+    not yet supported in the web environment
+
+- Add `InstanceRequestAdapterSync` and `AdapterRequestDeviceSync`
+  - This version returns the result only, no need to handle callbacks
+  - Only available on native
+
+### Changed
+
+- `InstanceRequestAdapter` and `AdapterRequestDevice` now requires a `CallbackInfo` argument
+  - To support web, the user need to handle the callbacks
+
+- Refactor examples `application` to work on both native and web
+
 ## [25.0.2.1] - 09-21-2025
 
 feat: upgrade to WGPU 25.0.2.1.

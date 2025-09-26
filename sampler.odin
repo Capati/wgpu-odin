@@ -19,13 +19,19 @@ Corresponds to [WebGPU
 Sampler :: wgpu.Sampler
 
 /* Sets a debug label for the given `Sampler`. */
-SamplerSetLabel :: wgpu.SamplerSetLabel
+SamplerSetLabel :: #force_inline proc "c" (self: Sampler, label: string) {
+	wgpu.SamplerSetLabel(self, label)
+}
 
 /* Increase the `Sampler` reference count. */
-SamplerAddRef :: wgpu.SamplerAddRef
+SamplerAddRef :: #force_inline proc "c" (self: Sampler) {
+	wgpu.SamplerAddRef(self)
+}
 
 /* Release the `Sampler` resources, use to decrease the reference count. */
-SamplerRelease :: wgpu.SamplerRelease
+SamplerRelease :: #force_inline proc "c" (self: Sampler) {
+	wgpu.SamplerRelease(self)
+}
 
 /*
 Safely releases the `Sampler` resources and invalidates the handle.

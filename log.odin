@@ -1,3 +1,4 @@
+#+build !js
 package webgpu
 
 // Vendor
@@ -33,7 +34,7 @@ Inputs:
 - `level`: The severity level of the log message
 - `message`: The content of the log message as a string view
 - `userData`: Optional pointer to user-provided data that was passed when
-  setting the callback
+	setting the callback
 */
 LogCallback :: #type proc "c" (level: LogLevel, message: string, userData: rawptr)
 

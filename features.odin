@@ -295,7 +295,7 @@ _FeaturesSliceToFlags :: proc "contextless" (features: []wgpu.FeatureName) -> (r
 }
 
 @(private)
-_FeatureFlagsToName :: proc "contextless" (
+_feature_flags_to_name :: proc "contextless" (
 	featureName: Feature,
 ) -> (
 	feature: wgpu.FeatureName,

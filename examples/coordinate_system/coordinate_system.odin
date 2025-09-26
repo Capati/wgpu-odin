@@ -70,12 +70,7 @@ Vertex :: struct {
 	uv:  app.Vec2,
 }
 
-create :: proc() -> (self: ^Application) {
-	self = new(Application)
-	assert(self != nil, "Failed to allocate Application")
-
-	app.init(self, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE)
-
+init :: proc(self: ^Application) -> (ok: bool) {
 	microui_init_info := wgpu_mu.MICROUI_INIT_INFO_DEFAULT
 	microui_init_info.surface_config = self.gpu.config
 	// This example uses depth stencil created by the application framework
@@ -245,37 +240,12 @@ create :: proc() -> (self: ^Application) {
 	self.selected_face = .Back
 	self.face_types = {{.None, "None"}, {.Front, "Front"}, {.Back, "Back"}}
 
-	app.add_resize_callback(self, { resize, self })
-
-	return
+	return true
 }
 
-release :: proc(self: ^Application) {
-	app.gpu_release_depth_stencil_texture(self.depth_texture)
+step :: proc(self: ^Application, dt: f32) -> (ok: bool) {
+	microui_update(self)
 
-	wgpu.Release(self.render_pipeline)
-	wgpu.Release(self.pipeline_layout)
-	wgpu.Release(self.shader_module)
-
-	wgpu.Release(self.bind_group_ccw)
-	wgpu.Release(self.bind_group_cw)
-
-	wgpu.Release(self.buffer_indices_ccw)
-	wgpu.Release(self.buffer_indices_cw)
-	wgpu.Release(self.quads[.Vertices_Y_Up])
-	wgpu.Release(self.quads[.Vertices_Y_Down])
-
-	app.texture_release(self.texture_ccw)
-	app.texture_release(self.texture_cw)
-
-	wgpu_mu.destroy()
-	free(self.mu_ctx)
-
-	app.release(self)
-	free(self)
-}
-
-draw :: proc(self: ^Application) {
 	frame := app.gpu_get_current_frame(self.gpu)
 	if frame.skip { return }
 	defer app.gpu_release_current_frame(&frame)
@@ -314,13 +284,47 @@ draw :: proc(self: ^Application) {
 
 	wgpu.QueueSubmit(self.gpu.queue, { cmdbuf })
 	wgpu.SurfacePresent(self.gpu.surface)
+
+	return true
 }
 
-resize :: proc(window: ^app.Window, size: app.Vec2u, userdata: rawptr) {
-	self := cast(^Application)userdata
+event :: proc(self: ^Application, event: app.Event) -> (ok: bool) {
+	app.mu_handle_events(self.mu_ctx, event)
+    #partial switch &ev in event {
+        case app.Quit_Event:
+            log.info("Exiting...")
+            return
+		case app.Resize_Event:
+			resize(self, ev.size)
+    }
+    return true
+}
+
+quit :: proc(self: ^Application) {
+	app.gpu_release_depth_stencil_texture(self.depth_texture)
+
+	wgpu.Release(self.render_pipeline)
+	wgpu.Release(self.pipeline_layout)
+	wgpu.Release(self.shader_module)
+
+	wgpu.Release(self.bind_group_ccw)
+	wgpu.Release(self.bind_group_cw)
+
+	wgpu.Release(self.buffer_indices_ccw)
+	wgpu.Release(self.buffer_indices_cw)
+	wgpu.Release(self.quads[.Vertices_Y_Up])
+	wgpu.Release(self.quads[.Vertices_Y_Down])
+
+	app.texture_release(self.texture_ccw)
+	app.texture_release(self.texture_cw)
+
+	wgpu_mu.destroy()
+	free(self.mu_ctx)
+}
+
+resize :: proc(self: ^Application, size: app.Vec2u) {
 	recreate_depth_stencil_texture(self)
 	wgpu_mu.resize(size.x, size.y)
-	draw(self)
 }
 
 create_depth_stencil_texture :: proc(self: ^Application) {
@@ -423,29 +427,17 @@ microui_update :: proc(self: ^Application) {
 }
 
 main :: proc() {
-	when ODIN_DEBUG {
-		context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
-		defer log.destroy_console_logger(context.logger)
-	}
+    when ODIN_DEBUG {
+        context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
+        defer log.destroy_console_logger(context.logger)
+    }
 
-	example := create()
-	defer release(example)
+    callbacks := app.Application_Callbacks{
+        init  = app.App_Init_Callback(init),
+        step  = app.App_Step_Callback(step),
+        event = app.App_Event_Callback(event),
+        quit  = app.App_Quit_Callback(quit),
+    }
 
-	running := true
-	MAIN_LOOP: for running {
-		event: app.Event
-		for app.poll_event(example, &event) {
-			app.mu_handle_events(example.mu_ctx, event)
-			#partial switch &ev in event {
-			case app.QuitEvent:
-				log.info("Exiting...")
-				running = false
-			}
-		}
-
-		app.begin_frame(example)
-		microui_update(example)
-		draw(example)
-		app.end_frame(example)
-	}
+    app.init(Application, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE, callbacks)
 }

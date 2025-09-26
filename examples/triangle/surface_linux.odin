@@ -7,11 +7,9 @@ import "vendor:glfw"
 // Local packages
 import wgpu "../.."
 
-get_surface_descriptor :: proc(
-	window: glfw.WindowHandle,
-) -> (
-	descriptor: wgpu.SurfaceDescriptor,
-) {
+os_get_surface :: proc(instance: wgpu.Instance) -> (surface: wgpu.Surface) {
+	descriptor: wgpu.SurfaceDescriptor
+
 	switch glfw.GetPlatform() {
 	case glfw.PLATFORM_WAYLAND:
 		descriptor.target = wgpu.SurfaceSourceWaylandSurface {
@@ -27,5 +25,5 @@ get_surface_descriptor :: proc(
 		panic("Unsupported Linux platform")
 	}
 
-	return descriptor
+	return wgpu.InstanceCreateSurface(instance, descriptor)
 }

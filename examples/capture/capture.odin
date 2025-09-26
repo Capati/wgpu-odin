@@ -1,3 +1,4 @@
+#+build !js
 package capture
 
 // Core
@@ -49,7 +50,7 @@ main :: proc() {
 	instance := wgpu.CreateInstance(instance_descriptor)
 	defer wgpu.InstanceRelease(instance)
 
-	adapter_res := wgpu.InstanceRequestAdapter(
+	adapter_res := wgpu.InstanceRequestAdapterSync(
 		instance,
 		wgpu.RequestAdapterOptions{powerPreference = .HighPerformance},
 	)
@@ -73,7 +74,7 @@ main :: proc() {
 		label = adapter_info.description,
 	}
 
-	device_res := wgpu.AdapterRequestDevice(adapter, device_descriptor)
+	device_res := wgpu.AdapterRequestDeviceSync(adapter, device_descriptor)
 	if (device_res.status != .Success) {
 		fmt.panicf(
 			"Failed to request the device [%v]: %s",

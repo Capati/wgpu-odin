@@ -23,7 +23,7 @@ with the returned `BindGroupLayout` can only be used with this pipeline.
 This method will raise a validation error if there is no bind group layout at `index`.
 */
 @(require_results)
-ComputePipelineGetBindGroupLayout :: proc "contextless" (
+ComputePipelineGetBindGroupLayout :: proc "c" (
 	self: ComputePipeline,
 	group_index: u32,
 ) -> BindGroupLayout {
@@ -31,13 +31,19 @@ ComputePipelineGetBindGroupLayout :: proc "contextless" (
 }
 
 /* Sets a debug label for the given `ComputePipeline`. */
-ComputePipelineSetLabel ::wgpu.ComputePipelineSetLabel
+ComputePipelineSetLabel :: #force_inline proc "c" (self: ComputePipeline, label: string) {
+	wgpu.ComputePipelineSetLabel(self, label)
+}
 
 /* Increase the `ComputePipeline` reference count. */
-ComputePipelineAddRef :: wgpu.ComputePipelineAddRef
+ComputePipelineAddRef :: #force_inline proc "c" (self: ComputePipeline) {
+	wgpu.ComputePipelineAddRef(self)
+}
 
 /* Release the `ComputePipeline` resources, use to decrease the reference count. */
-ComputePipelineRelease :: wgpu.ComputePipelineRelease
+ComputePipelineRelease :: #force_inline proc "c" (self: ComputePipeline) {
+	wgpu.ComputePipelineRelease(self)
+}
 
 /*
 Safely releases the `ComputePipeline` resources and invalidates the handle.

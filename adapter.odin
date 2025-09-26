@@ -1,9 +1,6 @@
 package webgpu
 
 // Core
-import "base:runtime"
-import "core:fmt"
-import "core:strings"
 import sa "core:container/small_array"
 
 // Vendor
@@ -45,12 +42,6 @@ DeviceDescriptor :: struct {
 	tracePath:                   string,
 }
 
-RequestDeviceResult :: struct {
-	status:  RequestDeviceStatus,
-	message: string,
-	device:  Device,
-}
-
 /*
 Requests a connection to a physical device, creating a logical device.
 
@@ -68,17 +59,17 @@ a fresh `Adapter`. However, `wgpu` does not currently enforce this restriction.
 [Per the WebGPU specification]:
 https://www.w3.org/TR/webgpu/#dom-gpuadapter-requestdevice
 */
-@(require_results)
 AdapterRequestDevice :: proc "c" (
 	self: Adapter,
 	descriptor: Maybe(DeviceDescriptor) = nil,
+	callbackInfo: RequestDeviceCallbackInfo,
 	loc := #caller_location,
 ) -> (
-	res: RequestDeviceResult,
+	future: Future,
 ) {
 	desc, desc_ok := descriptor.?
 	if !desc_ok {
-		return _adapter_request_device(self, nil)
+		return wgpu.AdapterRequestDevice(self, nil, callbackInfo)
 	}
 
 	raw_desc: wgpu.DeviceDescriptor
@@ -101,7 +92,7 @@ AdapterRequestDevice :: proc "c" (
 			if f not_in adapter_features {
 				panic_contextless("Required feature not supported by device/backend.", loc)
 			}
-			sa.push_back(&features, _FeatureFlagsToName(f))
+			sa.push_back(&features, _feature_flags_to_name(f))
 		}
 
 		raw_desc.requiredFeatureCount = uint(sa.len(features))
@@ -186,42 +177,7 @@ AdapterRequestDevice :: proc "c" (
 		}
 	}
 
-	return _adapter_request_device(self, &raw_desc)
-}
-
-@(private)
-_adapter_request_device :: proc "c" (
-	self: Adapter,
-	descriptor: ^wgpu.DeviceDescriptor = nil,
-) -> (
-	res: RequestDeviceResult,
-) {
-	adapter_request_device_callback :: proc "c" (
-		status: RequestDeviceStatus,
-		device: Device,
-		message: string,
-		userdata1: rawptr,
-		userdata2: rawptr,
-	) {
-		result := cast(^RequestDeviceResult)userdata1
-
-		result.status = status
-		result.message = message
-		result.device = nil
-
-		if status == .Success {
-			result.device = device
-		}
-	}
-
-	callback_info := wgpu.RequestDeviceCallbackInfo {
-		callback  = adapter_request_device_callback,
-		userdata1 = &res,
-	}
-
-	wgpu.AdapterRequestDevice(self, descriptor, callback_info)
-
-	return
+	return wgpu.AdapterRequestDevice(self, &raw_desc, callbackInfo)
 }
 
 /* Returns whether this adapter may present to the passed surface. */
@@ -276,7 +232,11 @@ AdapterLimits :: proc "c" (self: Adapter) -> (limits: Limits) {
 		return
 	}
 
-	limits = _LimitsMergeWebGPUWithNative(raw_limits, native)
+	when ODIN_OS != .JS {
+		limits = _LimitsMergeWebGPUWithNative(raw_limits, native)
+	} else {
+		limits = _LimitsMergeWebGPUWithNative(raw_limits, {})
+	}
 
 	// WGPU returns 0 for unused limits
 	// Enforce minimum values for all limits even if the returned values are lower
@@ -311,11 +271,15 @@ AdapterGetTextureFormatFeatures :: proc "c" (
 	return TextureFormatGuaranteedFormatFeatures(format, adapter_features)
 }
 
-/*  Increase the `Adapter` reference count. */
-AdapterAddRef :: wgpu.AdapterAddRef
+/* Increase the `Adapter` reference count. */
+AdapterAddRef :: #force_inline proc "c" (self: Adapter) {
+	wgpu.AdapterAddRef(self)
+}
 
-/*  Release the `Adapter` resources, use to decrease the reference count. */
-AdapterRelease :: wgpu.AdapterRelease
+/* Release the `Adapter` resources, use to decrease the reference count. */
+AdapterRelease :: #force_inline proc "c" (self: Adapter) {
+	wgpu.AdapterRelease(self)
+}
 
 /*
 Safely releases the `Adapter` resources and invalidates the handle.
@@ -328,78 +292,4 @@ AdapterReleaseSafe :: proc "c" (self: ^Adapter) {
 		wgpu.AdapterRelease(self^)
 		self^ = nil
 	}
-}
-
-/* Get info about the adapter itself as `string`. */
-AdapterInfoString :: proc(
-	info: AdapterInfo,
-	allocator := context.allocator,
-) -> (
-	str: string,
-) {
-	sb: strings.Builder
-	err: runtime.Allocator_Error
-
-	ta := context.temp_allocator
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == ta)
-	if sb, err = strings.builder_make(ta); err != nil {
-		return
-	}
-	defer strings.builder_destroy(&sb)
-
-	strings.write_string(&sb, info.device)
-	strings.write_byte(&sb, '\n')
-
-	strings.write_string(&sb, "  - Driver: ")
-	strings.write_string(&sb, info.description if info.description != "" else "Unknown")
-	strings.write_byte(&sb, '\n')
-
-	adapterType: string
-	switch info.adapterType {
-	case .DiscreteGPU:
-		adapterType = "Discrete GPU with separate CPU/GPU memory"
-	case .IntegratedGPU:
-		adapterType = "Integrated GPU with shared CPU/GPU memory"
-	case .CPU:
-		adapterType = "Cpu / Software Rendering"
-	case .Unknown:
-		adapterType = "Unknown"
-	}
-	strings.write_string(&sb, "  - Type: ")
-	strings.write_string(&sb, adapterType)
-	strings.write_byte(&sb, '\n')
-
-	backend: string
-	#partial switch info.backendType {
-	case .Null:
-		backend = "Empty"
-	case .WebGPU:
-		backend = "WebGPU in the browser"
-	case .D3D11:
-		backend = "Direct3D-11"
-	case .D3D12:
-		backend = "Direct3D-12"
-	case .Metal:
-		backend = "Metal API"
-	case .Vulkan:
-		backend = "Vulkan API"
-	case .OpenGL:
-		backend = "OpenGL"
-	case .OpenGLES:
-		backend = "OpenGLES"
-	}
-	strings.write_string(&sb, "  - Backend: ")
-	strings.write_string(&sb, backend)
-
-	if str, err = strings.clone(strings.to_string(sb), allocator); err != nil {
-		return
-	}
-
-	return
-}
-
-/* Print info about the adapter itself. */
-AdapterInfoPrint :: proc(info: AdapterInfo) {
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-	fmt.printfln("%s", AdapterInfoString(info, context.temp_allocator))
 }

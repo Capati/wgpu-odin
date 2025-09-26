@@ -26,13 +26,19 @@ This method will raise a validation error if there is no bind group layout at `i
 RenderPipelineGetBindGroupLayout :: wgpu.RenderPipelineGetBindGroupLayout
 
 /* Sets a label for the given `RenderPipeline`. */
-RenderPipelineSetLabel :: wgpu.RenderPipelineSetLabel
+RenderPipelineSetLabel :: #force_inline proc "c" (self: RenderPipeline, label: string) {
+	wgpu.RenderPipelineSetLabel(self, label)
+}
 
 /* Increase the `RenderPipeline` reference count. */
-RenderPipelineAddRef :: wgpu.RenderPipelineAddRef
+RenderPipelineAddRef :: #force_inline proc "c" (self: RenderPipeline) {
+	wgpu.RenderPipelineAddRef(self)
+}
 
 /* Release the `RenderPipeline` resources, use to decrease the reference count. */
-RenderPipelineRelease :: wgpu.RenderPipelineRelease
+RenderPipelineRelease :: #force_inline proc "c" (self: RenderPipeline) {
+	wgpu.RenderPipelineRelease(self)
+}
 
 /*
 Safely releases the `RenderPipeline` resources and invalidates the handle.

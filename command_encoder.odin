@@ -404,13 +404,19 @@ This may depend both on the backend and the driver.
 CommandEncoderWriteTimestamp :: wgpu.CommandEncoderWriteTimestamp
 
 /* Sets a debug label for the given `CommandEncoder`. */
-CommandEncoderSetLabel :: wgpu.CommandEncoderSetLabel
+CommandEncoderSetLabel :: #force_inline proc "c" (self: CommandEncoder, label: string) {
+	wgpu.CommandEncoderSetLabel(self, label)
+}
 
 /* Increase the `CommandEncoder` reference count. */
-CommandEncoderAddRef :: wgpu.CommandEncoderAddRef
+CommandEncoderAddRef :: #force_inline proc "c" (self: CommandEncoder) {
+	wgpu.CommandEncoderAddRef(self)
+}
 
 /* Release the `CommandEncoder` resources, use to decrease the reference count. */
-CommandEncoderRelease :: wgpu.CommandEncoderRelease
+CommandEncoderRelease :: #force_inline proc "c" (self: CommandEncoder) {
+	wgpu.CommandEncoderRelease(self)
+}
 
 /*
 Safely releases the `CommandEncoder` resources and invalidates the handle.

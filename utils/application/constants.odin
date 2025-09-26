@@ -6,13 +6,13 @@ import la "core:math/linalg"
 // Local packages
 import wgpu "../../"
 
-DEFAULT_DEPTH_FORMAT :: wgpu.TextureFormat.Depth24PlusStencil8
+DEFAULT_DEPTH_FORMAT :: wgpu.TextureFormat.Depth24Plus
 
 // Note: Models centered on (0, 0, 0) will be halfway inside the clipping area. This is
 // for when you aren't using a camera matrix.
 OPEN_GL_TO_WGPU_MATRIX :: la.Matrix4f32 {
-    1.0, 0.0, 0.0, 0.0,
-    0.0, 1.0, 0.0, 0.0,
-    0.0, 0.0, 0.5, 0.5,
-    0.0, 0.0, 0.0, 1.0,
+	1.0, 0.0, 0.0, 0.0,
+	0.0, 1.0, 0.0, 0.0,
+	0.0, 0.0, 0.5, 0.5,
+	0.0, 0.0, 0.0, 1.0,
 }

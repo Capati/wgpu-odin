@@ -38,12 +38,7 @@ Application :: struct {
 	},
 }
 
-create :: proc() -> (self: ^Application) {
-	self = new(Application)
-	assert(self != nil, "Failed to allocate Application")
-
-	app.init(self, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE)
-
+init :: proc(self: ^Application) -> (ok: bool) {
 	self.vertex_buffer = wgpu.DeviceCreateBufferWithData(
 		self.gpu.device,
 		{
@@ -179,36 +174,7 @@ create :: proc() -> (self: ^Application) {
 
 	set_projection_matrix(self, self.gpu.config.width, self.gpu.config.height)
 
-	app.add_resize_callback(self, { resize, self })
-
-	return
-}
-
-release :: proc(self: ^Application) {
-	app.gpu_release_depth_stencil_texture(self.depth_texture)
-	app.texture_release(self.cube_texture)
-
-	wgpu.Release(self.uniform_bind_group)
-	wgpu.Release(self.uniform_buffer)
-	wgpu.Release(self.render_pipeline)
-	wgpu.Release(self.index_buffer)
-	wgpu.Release(self.vertex_buffer)
-
-	app.release(self)
-	free(self)
-}
-
-resize :: proc(window: ^app.Window, size: app.Vec2u, userdata: rawptr) {
-	self := cast(^Application)userdata
-
-	app.gpu_release_depth_stencil_texture(self.depth_texture)
-	self.depth_texture = app.gpu_create_depth_stencil_texture(self.gpu)
-	self.rpass.descriptor.depthStencilAttachment = self.depth_texture.descriptor
-
-	set_projection_matrix(self, size.x, size.y)
-
-	update(self)
-	draw(self)
+	return true
 }
 
 update :: proc(self: ^Application) {
@@ -221,10 +187,8 @@ update :: proc(self: ^Application) {
 	)
 }
 
-draw :: proc(self: ^Application) {
-	gpu := self.gpu
-
-	frame := app.gpu_get_current_frame(gpu)
+step :: proc(self: ^Application, dt: f32) -> (ok: bool) {
+	frame := app.gpu_get_current_frame(self.gpu)
 	if frame.skip { return }
 	defer app.gpu_release_current_frame(&frame)
 
@@ -247,6 +211,38 @@ draw :: proc(self: ^Application) {
 
 	wgpu.QueueSubmit(self.gpu.queue, { cmdbuf })
 	wgpu.SurfacePresent(self.gpu.surface)
+
+	return true
+}
+
+event :: proc(self: ^Application, event: app.Event) -> (ok: bool) {
+    #partial switch &ev in event {
+        case app.Quit_Event:
+            log.info("Exiting...")
+            return
+		case app.Resize_Event:
+			resize(self, ev.size)
+    }
+    return true
+}
+
+quit :: proc(self: ^Application) {
+	app.gpu_release_depth_stencil_texture(self.depth_texture)
+	app.texture_release(self.cube_texture)
+
+	wgpu.Release(self.uniform_bind_group)
+	wgpu.Release(self.uniform_buffer)
+	wgpu.Release(self.render_pipeline)
+	wgpu.Release(self.index_buffer)
+	wgpu.Release(self.vertex_buffer)
+}
+
+resize :: proc(self: ^Application, size: app.Vec2u) {
+	app.gpu_release_depth_stencil_texture(self.depth_texture)
+	self.depth_texture = app.gpu_create_depth_stencil_texture(self.gpu)
+	self.rpass.descriptor.depthStencilAttachment = self.depth_texture.descriptor
+
+	set_projection_matrix(self, size.x, size.y)
 }
 
 set_projection_matrix :: proc(self: ^Application, w, h: u32) {
@@ -274,30 +270,17 @@ get_transformation_matrix :: proc(self: ^Application) -> (mvp_mat: la.Matrix4f32
 }
 
 main :: proc() {
-	when ODIN_DEBUG {
-		context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
-		defer log.destroy_console_logger(context.logger)
-	}
+    when ODIN_DEBUG {
+        context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
+        defer log.destroy_console_logger(context.logger)
+    }
 
-	example := create()
-	defer release(example)
+    callbacks := app.Application_Callbacks{
+        init  = app.App_Init_Callback(init),
+        step  = app.App_Step_Callback(step),
+        event = app.App_Event_Callback(event),
+        quit  = app.App_Quit_Callback(quit),
+    }
 
-	running := true
-	MAIN_LOOP: for running {
-		event: app.Event
-		for app.poll_event(example, &event) {
-			#partial switch &ev in event {
-			case app.QuitEvent:
-				log.info("Exiting...")
-				running = false
-			}
-		}
-
-		app.begin_frame(example)
-
-		update(example)
-		draw(example)
-
-		app.end_frame(example)
-	}
+    app.init(Application, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE, callbacks)
 }

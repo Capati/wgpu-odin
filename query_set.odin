@@ -25,10 +25,14 @@ QuerySetGetType :: wgpu.QuerySetGetType
 QuerySetSetLabel :: wgpu.QuerySetSetLabel
 
 /* Increase the `QuerySet` reference count. */
-QuerySetAddRef :: wgpu.QuerySetAddRef
+QuerySetAddRef :: #force_inline proc "c" (self: QuerySet) {
+	wgpu.QuerySetAddRef(self)
+}
 
 /* Release the `QuerySet` resources, use to decrease the reference count. */
-QuerySetRelease :: wgpu.QuerySetRelease
+QuerySetRelease :: #force_inline proc "c" (self: QuerySet) {
+	wgpu.QuerySetRelease(self)
+}
 
 /*
 Safely releases the `QuerySet` resources and invalidates the handle.

@@ -1,242 +1,167 @@
 # Odin WGPU Examples
 
-> [!NOTE]
-> Tested in Odin: `dev-2025-03:97d410c2a`.
+A comprehensive collection of WebGPU examples and tutorials, demonstrating graphics programming
+concepts from basic rendering to advanced techniques.
 
-## Table of Contents
+## 🚀 Quick Start
 
-+ [Assets](#assets)
-+ [How to Build](#how-to-build)
-  + [Build Script](#build-script)
-    + [Windows](#windows)
-    + [Unix](#unix)
-+ [Examples](#examples)
-  + [Triangle](#triangle)
-  + [Misc](#misc)
-    + [Info](#info)
-  + [Basic Graphics](#basic-graphics)
-    + [Clear Screen](#clear-screen)
-    + [Coordinate System](#coordinate-system)
-    + [Cube Textured](#cube-textured)
-    + [Cube](#cube)
-    + [Cubemap](#cubemap)
-    + [Fractal Cube](#fractal-cube)
-    + [Instanced Cube](#instanced-cube)
-    + [Rotating Cube](#rotating-cube)
-    + [Square](#square)
-    + [Stencil Triangles](#stencil-triangles)
-    + [Textured Cube](#textured-cube)
-    + [Triangle MSAA](#triangle-msaa)
-    + [Two Cubes](#two-cubes)
-  + [Compute](#compute)
-    + [Simple Compute](#simple-compute)
-  + [Graphics Techniques](#graphics-techniques)
-    + [Cameras](#cameras)
-    + [Capture](#capture)
-    + [Image Blur](#image-blur)
-    + [Texture Arrays](#texture-arrays)
-  + [UI and Integration](#ui-and-integration)
-    + [ImGui](#imgui)
-    + [MicroUI](#microui)
-  + [Tutorials](#tutorials)
-    + [Learn WGPU](#learn-wgpu)
+### Prerequisites
 
-## Assets
+- [Odin compiler](https://odin-lang.org/) (tested in `dev-2025-09:e9d20a9b4`)
+- Git
+- Python 3 (to serve web examples)
 
-The repository includes the directory `examples/build/assets` as a Git submodule
-containing shared resources used across multiple examples:
+### Installation
 
-+ Textures: Image files for various texture mapping examples
-+ Models: 3D model files used in rendering examples
-+ Shaders: Common shader files that may be shared between examples
+The repository includes the directory `examples/build/assets` and `libs` as a Git submodule
+containing shared resources used across multiple examples.
 
 To properly clone the repository with assets, use:
 
-```shell
+```bash
 git clone --recursive https://github.com/Capati/wgpu-odin.git
+cd wgpu-odin/examples
 ```
 
-Or if you've already cloned the repository:
+If you've already cloned without submodules:
 
-```shell
+```bash
 git submodule update --init --recursive
 ```
 
-Note: Most shader files are `#load` at compile time and are located within the example.
+### 📁 Project Structure
 
-## How to Build
+```
+examples/
+├── build/
+│   ├── assets/        # Shared resources (textures, models, shaders)
+│   └── web/           # Web build output
+├── [example-name]/    # Individual example directories
+├── build.bat          # Windows build script
+├── build.sh           # Unix build script
+└── README.md
+```
+
+### Build and Run
 
 Execute the `odin build` command inside the `examples` folder or use the script.
 
-### Build Script
+> [!NOTE]
+> Make sure you read the `doc.odin` from `<odin-folder>/vendor/wgpu/doc.odin` to learn more about
+> how it works.
+
+#### Build Script Options
+
+The build scripts support several commands and options:
+
+| Command | Description |
+|---------|-------------|
+| `run` | Build and immediately run the example |
+| `release` | Build with optimizations enabled |
+| `clean` | Remove build artifacts before building |
+| `web` | Build for WebAssembly/WebGPU |
 
 By default when using the script, the examples are built in debug mode with the flag `-debug`.
 
 #### Windows
 
-You can use the `build.bat` with a example name as argument, for example:
-
-```shell
-.\build.bat cube_textured run
+```batch
+.\build.bat triangle run
 ```
 
-To run the examples you need `wgpu_native.dll` along side the examples executables, just place
-this file in the `build` directory.
-
-To build optimized for release mode, provide the option `release`:
-
-```shell
-.\build.bat cube_textured release
-```
+By default, the wgpu bindings use the static release version. To speed up compilation during
+development, the script sets the flag `-define:WGPU_SHARED=true`. This requires `wgpu_native.dll`
+to be placed alongside the example executables in the build directory. The script will also copy
+this file for you automatically.
 
 If you want to enforce `DirectX 12`, just provide the config `-define:WGPU_BACKEND_TYPE=DX12`:
 
 ```bat
-.\build.bat cube_textured run -define:WGPU_BACKEND_TYPE=DX12
+.\build.bat triangle run "-define:WGPU_BACKEND_TYPE=DX12"
 ```
 
-#### Unix
+#### Unix/Linux/macOS
 
-You can use the `build.sh`, for example:
-
-```shell
-./build.sh cube_textured run
+```bash
+./build.sh triangle run
 ```
 
-To build optimized for release mode, provide the option `release`:
+####  Web
 
-```shell
-./build.sh cube_textured release
-```
+Most examples support WebGPU and can run in modern browsers. Examples marked with ❌ are native-only
+due to:
 
-#### Options
+- File system access requirements
+- Unimplemented web texture loading
+- Platform-specific APIs
 
-Available script commands:
+**Running Web Examples**:
 
-+ `run`: Run the example after a sussefull build
-+ `release`: Build optimized for release mode
-+ `clean`: Removes artifacts (.exe, .pdb, .a, etc) before build
+1. Build for web: `./build.bat|sh [example] web`. The files are stored in `build/web/`.
+2. Serve locally: `python -m http.server 8080`
+3. Open `http://localhost:8080` in a WebGPU-compatible browser
 
-Any other argument is passed to the `odin` command, on Windows, wrap any additional arguments
-in double quotes:
-
-```shell
-build.bat imgui run "-define:APP_ENABLE_IMGUI=true" "-use-separate-modules"
-```
-
-## Examples
-
-### [Triangle](./triangle/triangle.odin)
-
-Verbose example for getting a colored triangle rendered to the screen. This is meant as a
-starting point for learning WGPU from the ground up.
+## Examples Overview
 
 ### Misc
 
-#### [Info](./info/info.odin)
+| Example | Description | WebGPU Support |
+|---------|-------------|----------------|
+| [**Info**](./info/info.odin) | Display WGPU version and adapter information | ❌ |
 
-Print current WGPU version and selected adapter information.
+###  Getting Started
 
-### Basic Graphics
+| Example | Description | WebGPU Support |
+|---------|-------------|----------------|
+| [**Triangle**](./triangle/triangle.odin) | Verbose example for getting a colored triangle rendered to the screen. This is meant as a starting point for learning WGPU from the ground up. | ✅ |
+| [**Clear Screen**](./clear_screen/clear_screen.odin) | How to set up a render pass for clearing the screen. The screen clearing animation shows a fade-in and fade-out effect from red and green. | ✅ |
+| [**Square**](./square/square.odin) | How to render a static colored square with only using vertex buffers. | ✅ |
 
-#### [Clear Screen](./clear_screen/clear_screen.odin)
+### Basic 3D Graphics
 
-This example shows how to set up a render pass for clearing the screen. The screen clearing
-animation shows a fade-in and fade-out effect from blue to black.
+| Example | Description | WebGPU Support |
+|---------|-------------|----------------|
+| [**Cube**](./cube/cube.odin) | Basic example showing how to render a 3D cube with solid colors and depth testing. | ✅ |
+| [**Rotating Cube**](./rotating_cube/rotating_cube.odin) | This example shows how to upload uniform data every frame to render a rotating object. | ✅ |
+| [**Textured Cube**](./textured_cube/textured_cube.odin) | This example shows how to bind and sample textures. | ✅ |
+| [**Cube Textured**](./cube_textured/cube_textured.odin) | An alternative implementation of texture mapping on a cube, by loading an image from file. | ✅ |
+| [**Two Cubes**](./two_cubes/two_cubes.odin) | This example shows some of the alignment requirements involved when updating and binding multiple slices of a uniform buffer. It renders two rotating cubes which have transform matrices at different offsets in a uniform buffer. | ✅ |
+| [**Instanced Cube**](./instanced_cube/instanced_cube.odin) | Demonstrates instance rendering by drawing multiple cubes efficiently using instancing techniques. | ✅ |
 
-#### [Coordinate System](./coordinate_system/coordinate_system.odin)
+### 🔬 Advanced Techniques
 
-Demonstrates the coordinate system in WGPU by rendering a series of axes and grids to help
-visualize 3D space orientation.
+| Example | Description | WebGPU Support |
+|---------|-------------|----------------|
+| [**Triangle MSAA**](./triangle_msaa/triangle_msaa.odin) | Multisampling anti-aliasing demonstration | ✅ |
+| [**Stencil Triangles**](./stencil_triangles/stencil_triangles.odin) | This example renders two different sized triangles to display three same sized triangles, by demonstrating the use of stencil buffers. | ✅ |
+| [**Fractal Cube**](./fractal_cube/fractal_cube.odin) | This example uses the previous frame's rendering result as the source texture for the next frame. | ✅ |
+| [**Coordinate System**](./coordinate_system/coordinate_system.odin) | Demonstrates the coordinate system in WGPU by rendering a series of axes and grids to help visualize 3D space orientation. | ❌ |
+| [**Cubemap**](./cubemap/cubemap.odin) | This example shows how to render and sample from a cubemap texture. | ❌ |
 
-#### [Cube Textured](./cube_textured/cube_textured.odin)
+### Compute Shaders
 
-An alternative implementation of texture mapping on a cube, demonstrating different UV mapping
-techniques.
-
-#### [Cube](./cube/cube.odin)
-
-Basic example showing how to render a 3D cube with solid colors and depth testing.
-
-#### [Cubemap](./cubemap/cubemap.odin)
-
-This example shows how to render and sample from a cubemap texture.
-
-#### [Fractal Cube](./fractal_cube/fractal_cube.odin)
-
-This example uses the previous frame's rendering result as the source texture for the next
-frame.
-
-#### [Instanced Cube](./instanced_cube/instanced_cube.odin)
-
-Demonstrates instance rendering by drawing multiple cubes efficiently using instancing
-techniques.
-
-#### [Rotating Cube](./rotating_cube/rotating_cube.odin)
-
-This example shows how to upload uniform data every frame to render a rotating object.
-
-#### [Square](./square/square.odin)
-
-This example shows how to render a static colored square with only using vertex buffers.
-
-#### Stencil Triangles
-
-This example renders two different sized triangles to display three same sized triangles, by
-demonstrating the use of stencil buffers.
-
-#### [Textured Cube](./textured_cube/textured_cube.odin)
-
-This example shows how to bind and sample textures.
-
-#### [Triangle MSAA](./triangle_msaa/triangle_msaa.odin)
-
-Shows multisampled rendering the previous triangle example.
-
-#### [Two Cubes](./two_cubes/two_cubes.odin)
-
-This example shows some of the alignment requirements involved when updating and binding
-multiple slices of a uniform buffer. It renders two rotating cubes which have transform
-matrices at different offsets in a uniform buffer.
-
-### Compute
-
-#### [Simple Compute](./compute/compute.odin)
-
-Shows how to use compute shaders and storage buffers in WGPU.
+| Example | Description | WebGPU Support |
+|---------|-------------|----------------|
+| [**Simple Compute**](./compute/compute.odin) | Shows how to use compute shaders and storage buffers in WGPU. | ✅ |
+| [**Image Blur**](./image_blur/image_blur.odin) | Shows how to implement a Gaussian blur effect using compute shaders for image processing. | ❌ |
 
 ### Graphics Techniques
 
-#### [Cameras](./cameras/cameeras.odin)
+| Example | Description | WebGPU Support |
+|---------|-------------|----------------|
+| [**Cameras**](./cameras/cameras.odin) | This example provides example camera implementations. | ✅ |
+| [**Texture Arrays**](./texture_arrays/texture_arrays.odin) | Shows how to use texture arrays in WGPU, allowing multiple textures to be stored and accessed as a single array texture. | ✅ |
+| [**Capture**](./capture/capture.odin) | Demonstrates how to capture and save the contents of a render target to an image file. | ❌ |
 
-This example provides example camera implementations.
+### UI Integration
 
-#### [Image Blur](./image_blur/image_blur.odin)
+| Example | Description | WebGPU Support |
+|---------|-------------|----------------|
+| [**ImGui**](./imgui/imgui_example.odin) | Dear ImGui integration | ❌ |
+| [**MicroUI**](./microui/microui.odin) | MicroUI integration | ✅ |
 
-Shows how to implement a Gaussian blur effect using compute shaders for image processing.
+### Learning Resources
 
-#### [Texture Arrays](./texture_arrays/texture_arrays.odin)
-
-Shows how to use texture arrays in WGPU, allowing multiple textures to be stored and accessed
-as a single array texture.
-
-#### [Capture](./capture/capture.odin)
-
-Demonstrates how to capture and save the contents of a render target to an image file.
-
-### UI and Integration
-
-#### [ImGui](./imgui/imgui_example.odin)
-
-Shows integration with the ImGui for creating user interfaces in WGPU.
-
-#### [MicroUI](./microui/microui.odin)
-
-Shows integration with the MicroUI for creating user interfaces in WGPU.
-
-### Tutorials
-
-#### [Learn WGPU](./learn_wgpu)
-
-This is a great Rust tutorial you can read from <https://sotrh.github.io/learn-wgpu>.
-The challenges are included.
+| Example | Description | WebGPU Support |
+|---------|-------------|----------------|
+| [**Learn WGPU**](./learn_wgpu/) | Port of the Rust WebGPU tutorial | ❌ |

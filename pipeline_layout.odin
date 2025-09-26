@@ -18,10 +18,14 @@ PipelineLayout :: wgpu.PipelineLayout
 PipelineLayoutSetLabel :: wgpu.PipelineLayoutSetLabel
 
 /* Increase the `PipelineLayout` reference count. */
-PipelineLayoutAddRef :: wgpu.PipelineLayoutAddRef
+PipelineLayoutAddRef :: #force_inline proc "c" (self: PipelineLayout) {
+	wgpu.PipelineLayoutAddRef(self)
+}
 
 /* Release the `PipelineLayout` resources, use to decrease the reference count. */
-PipelineLayoutRelease :: wgpu.PipelineLayoutRelease
+PipelineLayoutRelease :: #force_inline proc "c" (self: PipelineLayout) {
+	wgpu.PipelineLayoutRelease(self)
+}
 
 /*
 Safely releases the `PipelineLayout` resources and invalidates the handle. The

@@ -92,12 +92,7 @@ Application :: struct {
 
 DEPTH_FORMAT :: wgpu.TextureFormat.Depth32Float
 
-create :: proc() -> (self: ^Application) {
-	self = new(Application)
-	assert(self != nil, "Failed to allocate Application")
-
-	app.init(self, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE)
-
+init :: proc(self: ^Application) -> (ok: bool) {
 	// Load our tree image to texture
 	diffuse_texture := app.create_texture_from_file(
 		self,
@@ -359,40 +354,21 @@ create :: proc() -> (self: ^Application) {
 
 	create_depth_texture(self)
 
-	app.add_resize_callback(self, { resize, self })
-
-	return
+	return true
 }
 
-release :: proc(self: ^Application) {
-	wgpu.Release(self.depth_texture.sampler)
-	wgpu.Release(self.depth_texture.view)
-	wgpu.Release(self.depth_texture.texture)
-	wgpu.Release(self.index_buffer)
-	wgpu.Release(self.vertex_buffer)
-	wgpu.Release(self.render_pipeline)
-	wgpu.Release(self.camera_bind_group)
-	wgpu.Release(self.diffuse_bind_group)
-	wgpu.Release(self.camera_buffer)
-	wgpu.Release(self.instance_buffer)
-
-	app.release(self)
-	free(self)
-}
-
-handle_input :: proc(self: ^Application) {
+handle_input :: proc(self: ^Application, dt: f32) -> (ok: bool) {
 	controller := &self.camera_controller
-	controller.is_forward_pressed = app.key_is_down(self, .W)
-	controller.is_left_pressed = app.key_is_down(self, .A)
-	controller.is_backward_pressed = app.key_is_down(self, .S)
-	controller.is_right_pressed = app.key_is_down(self, .D)
+	controller.is_forward_pressed = app.key_is_down(.W)
+	controller.is_left_pressed = app.key_is_down(.A)
+	controller.is_backward_pressed = app.key_is_down(.S)
+	controller.is_right_pressed = app.key_is_down(.D)
+	return true
 }
 
 ROTATION_SPEED_RAD: f32 = 0.5 * math.PI // radians per second
 
-update :: proc(self: ^Application) {
-	dt := app.get_delta_time(self)
-
+update :: proc(self: ^Application, dt: f32) -> (ok: bool) {
 	update_camera_controller(&self.camera_controller, &self.camera, dt)
 	update_view_proj(&self.camera_uniform, &self.camera)
 
@@ -419,9 +395,11 @@ update :: proc(self: ^Application) {
 		0,
 		wgpu.ToBytes(instance_data[:]),
 	)
+
+	return true
 }
 
-draw :: proc(self: ^Application) {
+draw :: proc(self: ^Application, dt: f32) -> (ok: bool) {
 	frame := app.gpu_get_current_frame(self.gpu)
 	if frame.skip { return }
 	defer app.gpu_release_current_frame(&frame)
@@ -456,11 +434,42 @@ draw :: proc(self: ^Application) {
 
 	wgpu.QueueSubmit(self.gpu.queue, { cmdbuf })
 	wgpu.SurfacePresent(self.gpu.surface)
+
+	return true
 }
 
-resize :: proc(window: ^app.Window, size: app.Vec2u, userdata: rawptr) {
-	self := cast(^Application)userdata
+step :: proc(self: ^Application, dt: f32) -> (ok: bool) {
+	handle_input(self, dt) or_return
+	update(self, dt) or_return
+	draw(self, dt) or_return
+	return true
+}
 
+event :: proc(self: ^Application, event: app.Event) -> (ok: bool) {
+    #partial switch &ev in event {
+        case app.Quit_Event:
+            log.info("Exiting...")
+            return
+		case app.Resize_Event:
+			resize(self, ev.size)
+    }
+    return true
+}
+
+quit :: proc(self: ^Application) {
+	wgpu.Release(self.depth_texture.sampler)
+	wgpu.Release(self.depth_texture.view)
+	wgpu.Release(self.depth_texture.texture)
+	wgpu.Release(self.index_buffer)
+	wgpu.Release(self.vertex_buffer)
+	wgpu.Release(self.render_pipeline)
+	wgpu.Release(self.camera_bind_group)
+	wgpu.Release(self.diffuse_bind_group)
+	wgpu.Release(self.camera_buffer)
+	wgpu.Release(self.instance_buffer)
+}
+
+resize :: proc(self: ^Application, size: app.Vec2u) {
 	create_depth_texture(self)
 
 	self.camera.aspect = cast(f32)size.x / cast(f32)size.y
@@ -471,9 +480,6 @@ resize :: proc(window: ^app.Window, size: app.Vec2u, userdata: rawptr) {
 		0,
 		wgpu.ToBytes(self.camera_uniform.view_proj),
 	)
-
-	update(self)
-	draw(self)
 }
 
 create_depth_texture :: proc(self: ^Application) {
@@ -607,29 +613,17 @@ instance_to_raw :: proc(i: Instance) -> Instance_Raw {
 }
 
 main :: proc() {
-	when ODIN_DEBUG {
-		context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
-		defer log.destroy_console_logger(context.logger)
-	}
+    when ODIN_DEBUG {
+        context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
+        defer log.destroy_console_logger(context.logger)
+    }
 
-	example := create()
-	defer release(example)
+    callbacks := app.Application_Callbacks{
+        init  = app.App_Init_Callback(init),
+        step  = app.App_Step_Callback(step),
+        event = app.App_Event_Callback(event),
+        quit  = app.App_Quit_Callback(quit),
+    }
 
-	running := true
-	MAIN_LOOP: for running {
-		event: app.Event
-		for app.poll_event(example, &event) {
-			#partial switch &ev in event {
-			case app.QuitEvent:
-				log.info("Exiting...")
-				running = false
-			}
-		}
-
-		app.begin_frame(example)
-		handle_input(example)
-		update(example)
-		draw(example)
-		app.end_frame(example)
-	}
+    app.init(Application, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE, callbacks)
 }

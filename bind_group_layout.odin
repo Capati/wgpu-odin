@@ -20,13 +20,19 @@ https://gpuweb.github.io/gpuweb/#gpubindgrouplayout).
 BindGroupLayout :: wgpu.BindGroupLayout
 
 /* Sets a debug label for the given `BindGroupLayout`. */
-BindGroupLayoutSetLabel :: wgpu.BindGroupLayoutSetLabel
+BindGroupLayoutSetLabel :: #force_inline proc "c" (self: BindGroupLayout, label: cstring) {
+	wgpu.BindGroupLayoutSetLabel(self, label)
+}
 
 /* Increase the reference count. */
-BindGroupLayoutAddRef :: wgpu.BindGroupLayoutAddRef
+BindGroupLayoutAddRef :: #force_inline proc "c" (self: BindGroupLayout) {
+	wgpu.BindGroupLayoutAddRef(self)
+}
 
 /* Release resources, use to decrease the reference count. */
-BindGroupLayoutRelease :: wgpu.BindGroupLayoutRelease
+BindGroupLayoutRelease :: #force_inline proc "c" (self: BindGroupLayout) {
+	wgpu.BindGroupLayoutRelease(self)
+}
 
 /*
 Safely releases the `BindGroupLayout` resources and invalidates the handle. The

@@ -2,6 +2,8 @@ package tutorial1_window_sdl
 
 // Core
 import "core:fmt"
+
+// Vendor
 import sdl "vendor:sdl2"
 
 main :: proc() {

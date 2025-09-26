@@ -17,6 +17,7 @@ VIDEO_MODE_DEFAULT :: app.Video_Mode {
 	height = CLIENT_HEIGHT,
 }
 TEXEL_SIZE         :: 256
+DEPTH_FORMAT       :: wgpu.TextureFormat.Depth24Plus
 
 Application :: struct {
 	using _app:      app.Application, /* #subtype */
@@ -32,12 +33,7 @@ Application :: struct {
 	},
 }
 
-create :: proc() -> (self: ^Application) {
-	self = new(Application)
-	assert(self != nil, "Failed to allocate Application")
-
-	app.init(self, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE)
-
+init :: proc(self: ^Application) -> (ok: bool) {
 	self.vertex_buffer = wgpu.DeviceCreateBufferWithData(
 		self.gpu.device,
 		{
@@ -73,10 +69,10 @@ create :: proc() -> (self: ^Application) {
 			usage         = {.TextureBinding, .CopyDst},
 		},
 	)
-	defer wgpu.Release(texture)
+	defer wgpu.TextureRelease(texture)
 
 	texture_view := wgpu.TextureCreateView(texture)
-	defer wgpu.Release(texture_view)
+	defer wgpu.TextureViewRelease(texture_view)
 
 	texels := create_texels()
 
@@ -84,7 +80,7 @@ create :: proc() -> (self: ^Application) {
 		self.gpu.queue,
 		{texture = texture, mipLevel = 0, origin = {}, aspect = .All},
 		wgpu.ToBytes(texels),
-		{offset = 0, bytesPerRow = TEXEL_SIZE, rowsPerImage = wgpu.COPY_STRIDE_UNDEFINED},
+		{offset = 0, bytesPerRow = TEXEL_SIZE, rowsPerImage = TEXEL_SIZE},
 		texture_extent,
 	)
 
@@ -106,7 +102,7 @@ create :: proc() -> (self: ^Application) {
 		self.gpu.device,
 		{label = EXAMPLE_TITLE + " Module", source = string(CUBE_TEXTURED_WGSL)},
 	)
-	defer wgpu.Release(shader_module)
+	defer wgpu.ShaderModuleRelease(shader_module)
 
 	vertex_buffer_layout := wgpu.VertexBufferLayout {
 		arrayStride = size_of(Vertex),
@@ -150,7 +146,7 @@ create :: proc() -> (self: ^Application) {
 		self.render_pipeline,
 		groupIndex = 0,
 	)
-	defer wgpu.Release(bind_group_layout)
+	defer wgpu.BindGroupLayoutRelease(bind_group_layout)
 
 	self.bind_group = wgpu.DeviceCreateBindGroup(
 		self.gpu.device,
@@ -161,7 +157,7 @@ create :: proc() -> (self: ^Application) {
 					binding = 0,
 					resource = wgpu.BufferBinding {
 						buffer = self.uniform_buffer,
-						size = wgpu.WHOLE_SIZE,
+						size = wgpu.BufferGetSize(self.uniform_buffer),
 					},
 				},
 				{binding = 1, resource = texture_view},
@@ -182,37 +178,20 @@ create :: proc() -> (self: ^Application) {
 
 	create_depth_stencil_texture(self)
 
-	app.add_resize_callback(self, { resize, self })
-
-	return
+	return true
 }
 
-release :: proc(self: ^Application) {
-	app.gpu_release_depth_stencil_texture(self.depth_texture)
-
-	wgpu.Release(self.bind_group)
-	wgpu.Release(self.render_pipeline)
-	wgpu.Release(self.uniform_buffer)
-	wgpu.Release(self.index_buffer)
-	wgpu.Release(self.vertex_buffer)
-
-	app.release(self)
-	free(self)
-}
-
-draw :: proc(self: ^Application) {
-	gpu := self.gpu
-
-	frame := app.gpu_get_current_frame(gpu)
+step :: proc(self: ^Application, dt: f32) -> (ok: bool) {
+	frame := app.gpu_get_current_frame(self.gpu)
 	if frame.skip { return }
 	defer app.gpu_release_current_frame(&frame)
 
 	encoder := wgpu.DeviceCreateCommandEncoder(self.gpu.device)
-	defer wgpu.Release(encoder)
+	defer wgpu.CommandEncoderRelease(encoder)
 
 	self.rpass.colors[0].view = frame.view
 	rpass := wgpu.CommandEncoderBeginRenderPass(encoder, self.rpass.descriptor)
-	defer wgpu.Release(rpass)
+	defer wgpu.RenderPassRelease(rpass)
 
 	wgpu.RenderPassSetPipeline(rpass, self.render_pipeline)
 	wgpu.RenderPassSetBindGroup(rpass, 0, self.bind_group)
@@ -223,15 +202,36 @@ draw :: proc(self: ^Application) {
 	wgpu.RenderPassEnd(rpass)
 
 	cmdbuf := wgpu.CommandEncoderFinish(encoder)
-	defer wgpu.Release(cmdbuf)
+	defer wgpu.CommandBufferRelease(cmdbuf)
 
 	wgpu.QueueSubmit(self.gpu.queue, { cmdbuf })
 	wgpu.SurfacePresent(self.gpu.surface)
+
+	return true
 }
 
-resize :: proc(window: ^app.Window, size: app.Vec2u, userdata: rawptr) {
-	self := cast(^Application)userdata
+event :: proc(self: ^Application, event: app.Event) -> (ok: bool) {
+    #partial switch &ev in event {
+        case app.Quit_Event:
+            log.info("Exiting...")
+            return
+		case app.Resize_Event:
+	      	resize(self, ev.size)
+    }
+    return true
+}
 
+quit :: proc(self: ^Application) {
+	app.gpu_release_depth_stencil_texture(self.depth_texture)
+
+	wgpu.BindGroupRelease(self.bind_group)
+	wgpu.RenderPipelineRelease(self.render_pipeline)
+	wgpu.BufferRelease(self.uniform_buffer)
+	wgpu.BufferRelease(self.index_buffer)
+	wgpu.BufferRelease(self.vertex_buffer)
+}
+
+resize :: proc(self: ^Application, size: app.Vec2u) {
 	recreate_depth_stencil_texture(self)
 
 	data := create_view_projection_matrix(f32(size.x) / f32(size.y))
@@ -241,8 +241,6 @@ resize :: proc(window: ^app.Window, size: app.Vec2u, userdata: rawptr) {
 		0,
 		wgpu.ToBytes(data),
 	)
-
-	draw(self)
 }
 
 create_depth_stencil_texture :: proc(self: ^Application) {
@@ -283,28 +281,17 @@ create_view_projection_matrix :: proc(aspect: f32) -> la.Matrix4f32 {
 }
 
 main :: proc() {
-	when ODIN_DEBUG {
-		context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
-		defer log.destroy_console_logger(context.logger)
-	}
+    when ODIN_DEBUG {
+        context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
+        defer log.destroy_console_logger(context.logger)
+    }
 
-	example := create()
-	defer release(example)
+    callbacks := app.Application_Callbacks{
+        init  = app.App_Init_Callback(init),
+        step  = app.App_Step_Callback(step),
+        event = app.App_Event_Callback(event),
+        quit  = app.App_Quit_Callback(quit),
+    }
 
-	running := true
-	MAIN_LOOP: for running {
-		event: app.Event
-		for app.poll_event(example, &event) {
-			#partial switch &ev in event {
-			case app.QuitEvent:
-				log.info("Exiting...")
-				running = false
-			}
-		}
-
-		app.begin_frame(example)
-		draw(example)
-		app.end_frame(example)
-	}
+    app.init(Application, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE, callbacks)
 }
-

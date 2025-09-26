@@ -65,12 +65,7 @@ Application :: struct {
 	camera_types: [2]Combobox_Item(Camera_Type),
 }
 
-create :: proc() -> (self: ^Application) {
-	self = new(Application)
-	assert(self != nil, "Failed to allocate Application")
-
-	app.init(self, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE)
-
+init :: proc(self: ^Application) -> (ok: bool) {
 	mu_init_info := wgpu_mu.MICROUI_INIT_INFO_DEFAULT
 	mu_init_info.surface_config = self.gpu.config
 	// This example uses depth stencil, the microui renderer will use the same
@@ -201,35 +196,16 @@ create :: proc() -> (self: ^Application) {
 		depthStencilAttachment = self.depth_texture.descriptor,
 	}
 
-	app.add_resize_callback(self, { resize, self })
-
-	return
-}
-
-release :: proc(self: ^Application) {
-	app.gpu_release_depth_stencil_texture(self.depth_texture)
-
-	wgpu.Release(self.uniform_bind_group)
-	app.texture_release(self.cube_texture)
-	wgpu.Release(self.uniform_buffer)
-	wgpu.Release(self.render_pipeline)
-	wgpu.Release(self.index_buffer)
-	wgpu.Release(self.vertex_buffer)
-
-	wgpu_mu.destroy()
-	free(self.mu_ctx)
-
-	app.release(self)
-	free(self)
+	return true
 }
 
 update :: proc(self: ^Application) {
 	analog := &self.cameras.input.analog
-	mouse_is_down := app.mouse_button_is_down(self, .Left)
+	mouse_is_down := app.mouse_button_is_down(.Left)
 	analog.touching = mouse_is_down
-	analog.zoom = f32(app.mouse_get_scroll(self).y)
+	analog.zoom = f32(app.mouse_get_scroll().y)
 	if mouse_is_down {
-		movement := app.mouse_get_movement(self)
+		movement := app.mouse_get_movement()
 		analog.x = f32(movement.x)
 		analog.y = f32(movement.y)
 	} else {
@@ -240,12 +216,12 @@ update :: proc(self: ^Application) {
 	if self.current_type == .WASD {
 		digital := &self.cameras.input.digital
 
-		digital.left     = app.key_is_down(self, .A)
-		digital.right    = app.key_is_down(self, .D)
-		digital.forward  = app.key_is_down(self, .W)
-		digital.backward = app.key_is_down(self, .S)
-		digital.up       = app.key_is_down(self, .Up)
-		digital.down     = app.key_is_down(self, .Down)
+		digital.left     = app.key_is_down(.A)
+		digital.right    = app.key_is_down(.D)
+		digital.forward  = app.key_is_down(.W)
+		digital.backward = app.key_is_down(.S)
+		digital.up       = app.key_is_down(.Up)
+		digital.down     = app.key_is_down(.Down)
 	}
 
 	transformation_matrix := get_model_view_projection_matrix(self, app.get_delta_time(self))
@@ -257,7 +233,10 @@ update :: proc(self: ^Application) {
 	)
 }
 
-draw :: proc(self: ^Application) {
+step :: proc(self: ^Application, dt: f32) -> (ok: bool) {
+	microui_update(self)
+	update(self)
+
 	frame := app.gpu_get_current_frame(self.gpu)
 	if frame.skip { return }
 	defer app.gpu_release_current_frame(&frame)
@@ -285,11 +264,37 @@ draw :: proc(self: ^Application) {
 
 	wgpu.QueueSubmit(self.gpu.queue, { cmdbuf })
 	wgpu.SurfacePresent(self.gpu.surface)
+
+	return true
 }
 
-resize :: proc(window: ^app.Window, size: app.Vec2u, userdata: rawptr) {
-	self := cast(^Application)userdata
+event :: proc(self: ^Application, event: app.Event) -> (ok: bool) {
+	app.mu_handle_events(self.mu_ctx, event)
+    #partial switch &ev in event {
+        case app.Quit_Event:
+            log.info("Exiting...")
+            return
+		case app.Resize_Event:
+			resize(self, ev.size)
+    }
+    return true
+}
 
+quit :: proc(self: ^Application) {
+	app.gpu_release_depth_stencil_texture(self.depth_texture)
+
+	wgpu.Release(self.uniform_bind_group)
+	app.texture_release(self.cube_texture)
+	wgpu.Release(self.uniform_buffer)
+	wgpu.Release(self.render_pipeline)
+	wgpu.Release(self.index_buffer)
+	wgpu.Release(self.vertex_buffer)
+
+	wgpu_mu.destroy()
+	free(self.mu_ctx)
+}
+
+resize :: proc(self: ^Application, size: app.Vec2u) {
 	app.gpu_release_depth_stencil_texture(self.depth_texture)
 	self.depth_texture = app.gpu_create_depth_stencil_texture(self.gpu)
 	self.rpass.descriptor.depthStencilAttachment = self.depth_texture.descriptor
@@ -297,9 +302,6 @@ resize :: proc(window: ^app.Window, size: app.Vec2u, userdata: rawptr) {
 	set_projection_matrix(self, size.x, size.y)
 
 	wgpu_mu.resize(size.x, size.y)
-
-	update(self)
-	draw(self)
 }
 
 microui_update :: proc(self: ^Application) {
@@ -338,32 +340,17 @@ get_model_view_projection_matrix :: proc(
 }
 
 main :: proc() {
-	when ODIN_DEBUG {
-		context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
-		defer log.destroy_console_logger(context.logger)
-	}
+    when ODIN_DEBUG {
+        context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
+        defer log.destroy_console_logger(context.logger)
+    }
 
-	example := create()
-	defer release(example)
+    callbacks := app.Application_Callbacks{
+        init  = app.App_Init_Callback(init),
+        step  = app.App_Step_Callback(step),
+        event = app.App_Event_Callback(event),
+        quit  = app.App_Quit_Callback(quit),
+    }
 
-	running := true
-	MAIN_LOOP: for running {
-		event: app.Event
-		for app.poll_event(example, &event) {
-			app.mu_handle_events(example.mu_ctx, event)
-			#partial switch &ev in event {
-			case app.QuitEvent:
-				log.info("Exiting...")
-				running = false
-			}
-		}
-
-		app.begin_frame(example)
-
-		microui_update(example)
-		update(example)
-		draw(example)
-
-		app.end_frame(example)
-	}
+    app.init(Application, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE, callbacks)
 }

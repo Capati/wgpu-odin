@@ -17,13 +17,19 @@ Corresponds to [WebGPU
 BindGroup :: wgpu.BindGroup
 
 /* Sets a debug label for the given `BindGroup`. */
-BindGroupSetLabel :: wgpu.BindGroupSetLabel
+BindGroupSetLabel :: #force_inline proc "c" (self: BindGroup, label: string) {
+	wgpu.BindGroupSetLabel(self, label)
+}
 
 /* Increase reference count. */
-BindGroupAddRef :: wgpu.BindGroupAddRef
+BindGroupAddRef :: #force_inline proc "c" (self: BindGroup) {
+	wgpu.BindGroupAddRef(self)
+}
 
 /* Release resources, use to decrease the reference count. */
-BindGroupRelease :: wgpu.BindGroupRelease
+BindGroupRelease :: #force_inline proc "c" (self: BindGroup) {
+	wgpu.BindGroupRelease(self)
+}
 
 /*
 Safely releases the `BindGroup` resources and invalidates the handle.

@@ -15,13 +15,19 @@ Corresponds to [WebGPU
 TextureView :: wgpu.TextureView
 
 /* Sets a debug label for the given `TextureView`. */
-TextureViewSetLabel :: wgpu.TextureViewSetLabel
+TextureViewSetLabel :: #force_inline proc "c" (self: TextureView, label: string) {
+	wgpu.TextureViewSetLabel(self, label)
+}
 
 /* Increase the `TextureView` reference count. */
-TextureViewAddRef :: wgpu.TextureViewAddRef
+TextureViewAddRef :: #force_inline proc "c" (self: TextureView) {
+	wgpu.TextureViewAddRef(self)
+}
 
 /* Release the `TextureView` resources, use to decrease the reference count. */
-TextureViewRelease :: wgpu.TextureViewRelease
+TextureViewRelease :: #force_inline proc "c" (self: TextureView) {
+	wgpu.TextureViewRelease(self)
+}
 
 /*
 Safely releases the `TextureView` resources and invalidates the handle.

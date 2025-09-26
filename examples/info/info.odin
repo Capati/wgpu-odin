@@ -1,3 +1,4 @@
+#+build !js
 package info
 
 // Core
@@ -42,7 +43,7 @@ main :: proc() {
 		wgpu.AdapterInfoFreeMembers(info)
 	}
 
-	adapter_res := wgpu.InstanceRequestAdapter(instance)
+	adapter_res := wgpu.InstanceRequestAdapterSync(instance)
 	if (adapter_res.status != .Success) {
 		fmt.eprintfln(
 			"Failed to request the selected adapter [%v]: %s",

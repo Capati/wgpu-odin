@@ -17,21 +17,25 @@ Corresponds to [WebGPU
 CommandBuffer :: wgpu.CommandBuffer
 
 /* Sets a debug label for the given `CommandBuffer`. */
-CommandBufferSetLabel :: wgpu.CommandBufferSetLabel
+CommandBufferSetLabel :: #force_inline proc "c" (self: CommandBuffer, label: string) {
+	wgpu.CommandBufferSetLabel(self, label)
+}
 
 /* Increase the `CommandBuffer` reference count. */
-CommandBufferAddRef :: wgpu.CommandBufferAddRef
+CommandBufferAddRef :: #force_inline proc "c" (self: CommandBuffer) {
+	wgpu.CommandBufferAddRef(self)
+}
 
 /* Release the `CommandBuffer` resources, use to decrease the reference count. */
-CommandBufferRelease :: wgpu.CommandBufferRelease
+CommandBufferRelease :: #force_inline proc "c" (self: CommandBuffer) {
+	wgpu.CommandBufferRelease(self)
+}
 
 /*
 Safely releases the `CommandBuffer` resources and invalidates the handle. The
-procedure checks both the pointer validity and Command buffer handle before
-releasing.
+procedure checks both the pointer validity and Command buffer handle before releasing.
 
-Note: After calling this, Command buffer handle will be set to `nil` and should
-not be used.
+Note: After calling this, Command buffer handle will be set to `nil` and should not be used.
 */
 CommandBufferReleaseSafe :: proc "c" (self: ^CommandBuffer) {
 	if self != nil && self^ != nil {

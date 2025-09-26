@@ -136,10 +136,14 @@ QueueOnSubmittedWorkDone :: proc "c" (
 QueueSetLabel :: wgpu.QueueSetLabel
 
 /* Increase the `Queue` reference count. */
-QueueAddRef :: wgpu.QueueAddRef
+QueueAddRef :: #force_inline proc "c" (self: Queue) {
+	wgpu.QueueAddRef(self)
+}
 
 /* Release the `Queue` resources, use to decrease the reference count. */
-QueueRelease :: wgpu.QueueRelease
+QueueRelease :: #force_inline proc "c" (self: Queue) {
+	wgpu.QueueRelease(self)
+}
 
 /*
 Safely releases the `Queue` resources and invalidates the handle.

@@ -104,6 +104,7 @@ This is always equal to the `usage` that was specified when creating the buffer.
 */
 BufferGetUsage :: wgpu.BufferGetUsage
 
+/* Map state of a `Buffer`. */
 BufferMapState :: wgpu.BufferMapState
 
 /*
@@ -118,6 +119,7 @@ BufferSlice :: struct {
 	size:   BufferSize,
 }
 
+/* Map mode of a `Buffer`. */
 MapMode :: wgpu.MapMode
 
 /* Type of buffer mapping. */
@@ -149,7 +151,7 @@ BufferMapAsync :: proc "c" (
 		self,
 		mode,
 		uint(bounds.start),
-		uint(bounds.end) if bounds.end > 0 else uint(WHOLE_SIZE),
+		uint(bounds.end) if bounds.end > 0 else uint(BufferGetSize(self)),
 		callbackInfo,
 	)
 }
@@ -176,7 +178,7 @@ BufferSliceMapAsync :: proc "c" (
 		self.buffer,
 		mode,
 		uint(self.offset),
-		uint(self.size) if self.size > 0 else uint(WHOLE_SIZE),
+		uint(self.size) if self.size > 0 else uint(BufferGetSize(self.buffer)),
 		callbackInfo,
 	)
 }
@@ -358,13 +360,19 @@ BufferGetConstMappedRange :: proc {
 }
 
 /* Sets a debug label for the given `Buffer`. */
-BufferSetLabel :: wgpu.BufferSetLabel
+BufferSetLabel :: #force_inline proc "c" (self: Buffer, label: string) {
+	wgpu.BufferSetLabel(self, label)
+}
 
 /* Increase the `Buffer` reference count. */
-BufferAddRef :: wgpu.BufferAddRef
+BufferAddRef :: #force_inline proc "c" (self: Buffer) {
+	wgpu.BufferAddRef(self)
+}
 
 /* Release the `Buffer` resources, use to decrease the reference count. */
-BufferRelease :: wgpu.BufferRelease
+BufferRelease :: #force_inline proc "c" (self: Buffer) {
+	wgpu.BufferRelease(self)
+}
 
 /*
 Safely releases the `Buffer` resources and invalidates the handle.

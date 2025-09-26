@@ -13,9 +13,12 @@
 *.res
 *.manifest
 
-build
-examples/build
-!examples/build/assets
+/build/**/*
+/examples/build/*
+!/examples/build/assets
+!/examples/build/.gitkeep
+!/examples/build/web/.gitkeep
+!/examples/build/web/index.html
 
 # Keep obj models in this folder
 !/utils/tobj/**/*.obj

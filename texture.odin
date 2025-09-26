@@ -427,13 +427,19 @@ TextureGetDescriptor :: proc "c" (self: Texture) -> (desc: TextureDescriptor) {
 }
 
 /* Set a debug label for the given `Texture`. */
-TextureSetLabel :: wgpu.TextureSetLabel
+TextureSetLabel :: #force_inline proc "c" (self: Texture, label: string) {
+	wgpu.TextureSetLabel(self, label)
+}
 
 /* Increase the `Texture` reference count. */
-TextureAddRef :: wgpu.TextureAddRef
+TextureAddRef :: #force_inline proc "c" (self: Texture) {
+	wgpu.TextureAddRef(self)
+}
 
 /* Release the `Texture` resources, use to decrease the reference count. */
-TextureRelease :: wgpu.TextureRelease
+TextureRelease :: #force_inline proc "c" (self: Texture) {
+	wgpu.TextureRelease(self)
+}
 
 /*
 Safely releases the `Texture` resources and invalidates the handle.

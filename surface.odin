@@ -127,8 +127,9 @@ SurfaceGetDefaultConfig :: proc(
 	ok: bool,
 ) #optional_ok {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+	ta := context.temp_allocator
 
-	caps, caps_ok := SurfaceGetCapabilities(self, adapter, context.temp_allocator)
+	caps, caps_ok := SurfaceGetCapabilities(self, adapter, ta)
 	if !caps_ok { return }
 
 	config = {
@@ -159,13 +160,22 @@ SurfaceConfigure :: proc "c" (
 	assert_contextless(config.width != 0, "Surface width cannot be zero", loc)
 	assert_contextless(config.height != 0, "Surface height cannot be zero", loc)
 
+	alpha_mode := config.alphaMode
+
+	// Alpha mode 'Auto' is not a valid enum value for WebGPU
+	when ODIN_OS == .JS {
+		if alpha_mode == .Auto {
+			alpha_mode = .Opaque
+		}
+	}
+
 	raw_config := wgpu.SurfaceConfiguration {
 		device      = config.device,
 		format      = config.format,
 		usage       = config.usage,
 		width       = config.width,
 		height      = config.height,
-		alphaMode   = config.alphaMode,
+		alphaMode   = alpha_mode,
 		presentMode = config.presentMode,
 	}
 
@@ -286,13 +296,19 @@ SurfaceTextureReleaseSafe :: #force_inline proc "c" (self: ^SurfaceTexture) {
 }
 
 /* Sets a debug label for the given `Surface`. */
-SurfaceSetLabel :: wgpu.SurfaceSetLabel
+SurfaceSetLabel :: #force_inline proc "c" (self: Surface, label: string)  {
+	wgpu.SurfaceSetLabel(self, label)
+}
 
 /* Increase the `Surface` reference count. */
-SurfaceAddRef :: wgpu.SurfaceAddRef
+SurfaceAddRef :: #force_inline proc "c" (self: Surface)  {
+	wgpu.SurfaceAddRef(self)
+}
 
 /* Release the `Surface` resources, use to decrease the reference count. */
-SurfaceRelease :: wgpu.SurfaceRelease
+SurfaceRelease :: #force_inline proc "c" (self: Surface)  {
+	wgpu.SurfaceRelease(self)
+}
 
 /*
 Safely releases the `Surface` resources and invalidates the handle.

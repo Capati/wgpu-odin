@@ -19,10 +19,14 @@ RenderBundle :: wgpu.RenderBundle
 RenderBundleSetLabel :: wgpu.RenderBundleSetLabel
 
 /* Increase the `RenderBundle` reference count. */
-RenderBundleAddRef :: wgpu.RenderBundleAddRef
+RenderBundleAddRef :: #force_inline proc "c" (self: RenderBundle) {
+	wgpu.RenderBundleAddRef(self)
+}
 
 /* Release the `RenderBundle` resources, use to decrease the reference count. */
-RenderBundleRelease :: wgpu.RenderBundleRelease
+RenderBundleRelease :: #force_inline proc "c" (self: RenderBundle) {
+	wgpu.RenderBundleRelease(self)
+}
 
 /*
 Safely releases the `RenderBundle` resources and invalidates the handle.

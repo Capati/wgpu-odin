@@ -2,7 +2,6 @@ package application
 
 // Core
 import "core:time"
-import win32 "core:sys/windows"
 
 TIMER_NUM_SAMPLES :: 60
 
@@ -27,7 +26,7 @@ timer_init :: proc "contextless" (t: ^Timer, margin_ms: f64, target_frame: f64) 
 	assert_contextless(t != nil)
 
 	when ODIN_OS == .Windows {
-		win32.timeBeginPeriod(1)
+		_win32_timer_init(t)
 	}
 
 	t.start_time           = time.now()

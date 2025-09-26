@@ -40,19 +40,14 @@ Application :: struct {
 	},
 }
 
-create :: proc() -> (self: ^Application) {
-	self = new(Application)
-	assert(self != nil, "Failed to allocate Application")
-
-	app.init(self, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE)
-
+init :: proc(self: ^Application) -> (ok: bool) {
 	self.im_ctx = im.create_context()
 	ensure(self.im_ctx != nil, "Failed to create Imgui context")
 
 	im.style_colors_dark()
 
 	// Initialize the platform, application also uses GLFW
-	ensure(im_glfw.init_for_other(self.window.handle, true))
+	ensure(im_glfw.init_for_other(app.window_get_handle(self.window), true))
 
 	init_info := im_wgpu.INIT_INFO_DEFAULT
 	init_info.device = self.gpu.device
@@ -79,32 +74,19 @@ create :: proc() -> (self: ^Application) {
 		colorAttachments = self.rpass.colors[:],
 	}
 
-	app.add_resize_callback(self, { resize, self })
-
-	return
+	return true
 }
 
-release :: proc(self: ^Application) {
-	app.texture_release(self.texture)
+step :: proc(self: ^Application, dt: f32) -> (ok: bool) {
+	// Update ImGui frame data
+	imgui_update(self) or_return
 
-	im_wgpu.shutdown()
-	im_glfw.shutdown()
-	im.destroy_context(self.im_ctx)
-
-	app.release(self)
-	free(self)
-}
-
-draw :: proc (self: ^Application) {
 	frame := app.gpu_get_current_frame(self.gpu)
 	if frame.skip { return }
 	defer app.gpu_release_current_frame(&frame)
 
 	encoder := wgpu.DeviceCreateCommandEncoder(self.gpu.device)
 	defer wgpu.Release(encoder)
-
-	// Update ImGui frame data
-	imgui_update(self)
 
 	self.rpass.colors[0].view = frame.view
 	rpass := wgpu.CommandEncoderBeginRenderPass(encoder, self.rpass.descriptor)
@@ -121,12 +103,29 @@ draw :: proc (self: ^Application) {
 	wgpu.QueueSubmit(self.gpu.queue, { cmdbuf })
 	wgpu.SurfacePresent(self.gpu.surface)
 
-	return
+	return true
 }
 
-resize :: proc(window: ^app.Window, size: app.Vec2u, userdata: rawptr) {
-	self := cast(^Application)userdata
-	context = self.custom_context
+event :: proc(self: ^Application, event: app.Event) -> (ok: bool) {
+    #partial switch &ev in event {
+        case app.Quit_Event:
+            log.info("Exiting...")
+            return
+		case app.Resize_Event:
+			resize(self, ev.size)
+    }
+    return true
+}
+
+quit :: proc(self: ^Application) {
+	app.texture_release(self.texture)
+
+	im_wgpu.shutdown()
+	im_glfw.shutdown()
+	im.destroy_context(self.im_ctx)
+}
+
+resize :: proc(self: ^Application, size: app.Vec2u) {
 	im_wgpu.recreate_device_objects()
 }
 
@@ -214,27 +213,17 @@ imgui_update :: proc(self: ^Application) -> (ok: bool) {
 }
 
 main :: proc() {
-	when ODIN_DEBUG {
-		context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
-		defer log.destroy_console_logger(context.logger)
-	}
+    when ODIN_DEBUG {
+        context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
+        defer log.destroy_console_logger(context.logger)
+    }
 
-	example := create()
-	defer release(example)
+    callbacks := app.Application_Callbacks{
+        init  = app.App_Init_Callback(init),
+        step  = app.App_Step_Callback(step),
+        event = app.App_Event_Callback(event),
+        quit  = app.App_Quit_Callback(quit),
+    }
 
-	running := true
-	MAIN_LOOP: for running {
-		event: app.Event
-		for app.poll_event(example, &event) {
-			#partial switch &ev in event {
-			case app.QuitEvent:
-				log.info("Exiting...")
-				running = false
-			}
-		}
-
-		app.begin_frame(example)
-		draw(example)
-		app.end_frame(example)
-	}
+    app.init(Application, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE, callbacks)
 }

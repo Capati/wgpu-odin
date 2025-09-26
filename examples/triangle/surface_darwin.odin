@@ -4,16 +4,14 @@ package triangle
 // Core
 import NS "core:sys/darwin/Foundation"
 import CA "vendor:darwin/QuartzCore"
+
+// Vendor
 import "vendor:glfw"
 
 // Local packages
 import wgpu "../.."
 
-get_surface_descriptor :: proc(
-	window: glfw.WindowHandle,
-) -> (
-	descriptor: wgpu.SurfaceDescriptor,
-) {
+os_get_surface :: proc(instance: wgpu.Instance) -> (surface: wgpu.Surface) {
 	native_window := (^NS.Window)(glfw.GetCocoaWindow(window))
 
 	metal_layer := CA.MetalLayer.layer()
@@ -21,10 +19,9 @@ get_surface_descriptor :: proc(
 
 	native_window->contentView()->setLayer(metal_layer)
 
-	// Setup surface information
-	descriptor.target = wgpu.SurfaceSourceMetalLayer {
-		layer = metal_layer,
-	}
-
-	return descriptor
+	return wgpu.InstanceCreateSurface(instance, {
+		target = wgpu.SurfaceSourceMetalLayer {
+			layer = metal_layer,
+		}
+	})
 }

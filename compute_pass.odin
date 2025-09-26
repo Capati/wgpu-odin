@@ -50,53 +50,23 @@ The structure expected in `indirect_buffer` must conform to `Dispatch_Indirect`.
 */
 ComputePassDispatchWorkgroupsIndirect :: wgpu.ComputePassEncoderDispatchWorkgroupsIndirect
 
-/*
-Set push constant data for subsequent dispatch calls.
-
-Write the bytes in `data` at offset `offset` within push constant storage.  Both
-`offset` and the length of `data` must be multiples of
-`PUSH_CONSTANT_ALIGNMENT`, which is always 4.
-
-For example, if `offset` is `4` and `data` is eight bytes long, this call will
-write `data` to bytes `4..12` of push constant storage.
-*/
-ComputePassSetPushConstants :: proc "c" (self: ComputePass, offset: u32, data: []byte) {
-	wgpu.ComputePassEncoderSetPushConstants(self, offset, u32(len(data)), raw_data(data))
-}
-
-/*
-Issue a timestamp command at this point in the queue. The timestamp will be written to the specified query set, at the specified index.
-
-Must be multiplied by `queue_get_timestamp_period` to get
-the value in nanoseconds. Absolute values have no meaning,
-but timestamps can be subtracted to get the time it takes
-for a string of operations to complete.
-*/
-ComputePassWriteTimestamp :: wgpu.ComputePassEncoderWriteTimestamp
-
-/*
-Start a pipeline statistics query on this compute pass. It can be ended with
-`compute_pass_end_pipeline_statistics_query`. Pipeline statistics queries may not be nested.
-*/
-ComputePassBeginPipelineStatisticsQuery :: wgpu.ComputePassEncoderBeginPipelineStatisticsQuery
-
-/*
-End the pipeline statistics query on this compute pass. It can be started with
-`compute_pass_begin_pipeline_statistics_query`. Pipeline statistics queries may not be nested.
-*/
-ComputePassEndPipelineStatisticsQuery :: wgpu.ComputePassEncoderEndPipelineStatisticsQuery
-
 /* Record the end of the compute pass. */
 ComputePassEnd :: wgpu.ComputePassEncoderEnd
 
 /* Sets a debug label for the given `ComputePass`. */
-ComputePassSetLabel :: wgpu.ComputePassEncoderSetLabel
+ComputePassSetLabel :: #force_inline proc "c" (self: ComputePass, label: string) {
+	wgpu.ComputePassEncoderSetLabel(self, label)
+}
 
 /* Increase the `ComputePass` reference count. */
-ComputePassAddRef :: wgpu.ComputePassEncoderAddRef
+ComputePassAddRef :: #force_inline proc "c" (self: ComputePass) {
+	wgpu.ComputePassEncoderAddRef(self)
+}
 
 /* Release the `ComputePass` resources, use to decrease the reference count. */
-ComputePassRelease :: wgpu.ComputePassEncoderRelease
+ComputePassRelease :: #force_inline proc "c" (self: ComputePass) {
+	wgpu.ComputePassEncoderRelease(self)
+}
 
 /*
 Safely releases the `ComputePass` resources and invalidates the handle.

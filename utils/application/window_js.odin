@@ -7,7 +7,9 @@ import "core:sys/wasm/js"
 // Local packages
 import wgpu "../../"
 
-Window :: struct {
+CANVAS_ID_DEFAUULT :: "#canvas"
+
+Window_Impl :: struct {
 	using _base: Window_Base,
 	canvas_id:   string,
 }
@@ -16,26 +18,16 @@ Window :: struct {
 window_create :: proc(
 	mode: Video_Mode,
 	title: string,
-	canvas_id: string,
 	settings := WINDOW_SETTINGS_DEFAULT,
 	allocator := context.allocator,
 	loc := #caller_location,
-) -> (window: ^Window) {
-	window = new(Window, allocator)
-	ensure(window != nil, "Failed to allocate the window implementation", loc)
-	window_init(window, mode, title, canvas_id, settings, allocator, loc)
-	return
-}
+) -> Window {
+	assert(mode.width >= MIN_CLIENT_WIDTH, "Invalid window width", loc)
+	assert(mode.height >= MIN_CLIENT_HEIGHT, "Invalid window height", loc)
 
-window_init :: proc(
-	window: ^Window,
-	mode: Video_Mode,
-	title: string,
-	canvas_id: string,
-	settings := WINDOW_SETTINGS_DEFAULT,
-	allocator := context.allocator,
-	loc := #caller_location,
-) {
+	impl := new(Window_Impl, allocator)
+	ensure(impl != nil, "Failed to allocate the window implementation", loc)
+
 	styles := settings.styles
 	state := settings.state
 
@@ -51,26 +43,62 @@ window_init :: proc(
 		mode.refresh_rate = desktop_mode.refresh_rate // ensure valid refresh rate
 	}
 
-	window.custom_context = context
-	window.allocator = allocator
-	window.settings = settings
-	window.canvas_id = canvas_id
-	window.mode = mode
-
-	// Setup event listeners
-	_window_setup_event_listeners(window)
+	impl.custom_context = context
+	impl.allocator = allocator
+	impl.resize_callbacks.allocator = allocator
+	impl.settings = settings
+	impl.canvas_id = CANVAS_ID_DEFAUULT
+	impl.mode = mode
 
 	// Initial size calculation
-	window.aspect = f32(mode.width) / f32(mode.height)
+	impl.aspect = f32(mode.width) / f32(mode.height)
+
+	return cast(Window)impl
+}
+
+window_destroy :: proc(window: Window) {
+	impl := _window_get_impl(window)
+	context = impl.custom_context
+	_window_cleanup_callbacks(window)
+	delete(impl.resize_callbacks)
+	free(impl)
+}
+
+window_process_events :: proc(window: Window) {
 }
 
 @(require_results)
-window_get_surface :: proc(window: ^Window, instance: wgpu.Instance) -> wgpu.Surface {
+window_poll_event :: proc(window: Window, event: ^Event) -> (ok: bool) {
+	return
+}
+
+@(require_results)
+window_get_handle :: proc "contextless" (window: Window) -> string {
+	impl := _window_get_impl(window)
+	return impl.canvas_id
+}
+
+window_get_size :: proc(window: Window) -> (size: Vec2u) {
+	// Get body dimensions as proxy for viewport
+	body_rect := js.get_bounding_client_rect("body")
+
+	// Get device pixel ratio
+	dpi := js.device_pixel_ratio()
+
+	size.x = u32(f64(body_rect.width) * dpi)
+	size.y = u32(f64(body_rect.height) * dpi)
+
+	return
+}
+
+@(require_results)
+window_get_surface :: proc(window: Window, instance: wgpu.Instance) -> wgpu.Surface {
+	impl := _window_get_impl(window)
 	return wgpu.InstanceCreateSurface(
 		instance,
 		wgpu.SurfaceDescriptor{
 			target = wgpu.SurfaceSourceCanvasHTMLSelector{
-				selector = "#wgpu-canvas",
+				selector = impl.canvas_id,
 			},
 		},
 	)
@@ -80,73 +108,219 @@ window_get_surface :: proc(window: ^Window, instance: wgpu.Instance) -> wgpu.Sur
 // @(private)
 // -----------------------------------------------------------------------------
 
+@(private, require_results)
+_window_get_user_pointer :: #force_inline proc "c" (
+	handle: js.Event,
+	loc := #caller_location,
+) -> ^Window_Impl {
+	window := cast(^Window_Impl)handle.user_data
+	assert_contextless(window != nil, "Invalid Window pointer", loc)
+	return window
+}
+
 @(private)
-_window_setup_event_listeners :: proc(window: ^Window) {
+_window_setup_callbacks :: proc(window: Window) {
+	impl := _window_get_impl(window)
+
 	// Window/document events
-	js.add_window_event_listener(.Resize, window, _window_resize_callback)
-	js.add_window_event_listener(.Visibility_Change, window, _window_visibility_callback)
+	ensure(js.add_window_event_listener(.Resize, impl, _window_resize_callback))
+	ensure(js.add_window_event_listener(.Visibility_Change, impl, _window_visibility_callback))
 
-	// Canvas-specific events
-	js.add_event_listener(window.canvas_id, .Click, window, _window_mouse_button_callback)
-	js.add_event_listener(window.canvas_id, .Mouse_Down, window, _window_mouse_button_callback)
-	js.add_event_listener(window.canvas_id, .Mouse_Up, window, _window_mouse_button_callback)
-	js.add_event_listener(window.canvas_id, .Mouse_Move, window, _window_mouse_move_callback)
-	js.add_event_listener(window.canvas_id, .Wheel, window, _window_scroll_callback)
-	js.add_event_listener(window.canvas_id, .Context_Menu, window, _window_context_menu_callback)
+	// // Canvas-specific events
+	// ensure(js.add_event_listener("canvas", .Click, impl, _window_mouse_button_callback))
+	ensure(js.add_event_listener("canvas", .Mouse_Down, impl, _window_mouse_button_callback))
+	ensure(js.add_event_listener("canvas", .Mouse_Up, impl, _window_mouse_button_callback))
+	ensure(js.add_event_listener("canvas", .Mouse_Move, impl, _window_mouse_move_callback))
+	ensure(js.add_event_listener("canvas", .Wheel, impl, _window_scroll_callback))
+	ensure(js.add_event_listener("canvas", .Context_Menu, impl, _window_context_menu_callback))
 
-	// Key events (typically handled at window level)
-	js.add_window_event_listener(.Key_Down, window, _window_key_callback)
-	js.add_window_event_listener(.Key_Up, window, _window_key_callback)
+	// // Key events (typically handled at window level)
+	ensure(js.add_window_event_listener(.Key_Down, impl, _window_key_callback))
+	ensure(js.add_window_event_listener(.Key_Up, impl, _window_key_callback))
 
-	// Focus events
-	js.add_event_listener(window.canvas_id, .Focus, window, _window_focus_callback)
-	js.add_event_listener(window.canvas_id, .Blur, window, _window_focus_callback)
+	// // Focus events
+	// js.add_event_listener(impl.canvas_id, .Focus, impl, _window_focus_callback)
+	// js.add_event_listener(impl.canvas_id, .Blur, impl, _window_focus_callback)
 }
 
 @(private)
-_window_cleanup_event_listeners :: proc(window: ^Window) {
-	js.remove_window_event_listener(.Resize, window, _window_resize_callback)
-	js.remove_window_event_listener(.Visibility_Change, window, _window_visibility_callback)
-	js.remove_event_listener(window.canvas_id, .Click, window, _window_mouse_button_callback)
-	js.remove_event_listener(window.canvas_id, .Mouse_Down, window, _window_mouse_button_callback)
-	js.remove_event_listener(window.canvas_id, .Mouse_Up, window, _window_mouse_button_callback)
-	js.remove_event_listener(window.canvas_id, .Mouse_Move, window, _window_mouse_move_callback)
-	js.remove_event_listener(window.canvas_id, .Wheel, window, _window_scroll_callback)
-	js.remove_event_listener(window.canvas_id, .Context_Menu, window, _window_context_menu_callback)
-	js.remove_window_event_listener(.Key_Down, window, _window_key_callback)
-	js.remove_window_event_listener(.Key_Up, window, _window_key_callback)
-	js.remove_event_listener(window.canvas_id, .Focus, window, _window_focus_callback)
-	js.remove_event_listener(window.canvas_id, .Blur, window, _window_focus_callback)
+_window_cleanup_callbacks :: proc(window: Window) {
+	impl := _window_get_impl(window)
+	js.remove_window_event_listener(.Resize, impl, _window_resize_callback)
+	js.remove_window_event_listener(.Visibility_Change, impl, _window_visibility_callback)
+	// js.remove_event_listener(impl.canvas_id, .Click, impl, _window_mouse_button_callback)
+	js.remove_event_listener(impl.canvas_id, .Mouse_Down, impl, _window_mouse_button_callback)
+	js.remove_event_listener(impl.canvas_id, .Mouse_Up, impl, _window_mouse_button_callback)
+	js.remove_event_listener(impl.canvas_id, .Mouse_Move, impl, _window_mouse_move_callback)
+	js.remove_event_listener(impl.canvas_id, .Wheel, impl, _window_scroll_callback)
+	js.remove_event_listener(impl.canvas_id, .Context_Menu, impl, _window_context_menu_callback)
+	js.remove_window_event_listener(.Key_Down, impl, _window_key_callback)
+	js.remove_window_event_listener(.Key_Up, impl, _window_key_callback)
+	// js.remove_event_listener(impl.canvas_id, .Focus, impl, _window_focus_callback)
+	// js.remove_event_listener(impl.canvas_id, .Blur, impl, _window_focus_callback)
 }
 
 @(private)
-_window_resize_callback :: proc "contextless" (event: js.Event) {
+_window_resize_callback :: proc(event: js.Event) {
+	impl := _window_get_user_pointer(event)
+	window := cast(Window)impl
+
+	new_size := window_get_size(window)
+
+	// First execute all registered resize callbacks immediately.
+	for &cb in impl.resize_callbacks {
+		if cb.callback != nil {
+			cb.callback(window, new_size, cb.userdata)
+		}
+	}
+
+	dispatch_event(Resize_Event{ new_size })
 }
 
 @(private)
-_window_visibility_callback :: proc "contextless" (event: js.Event) {
+_window_visibility_callback :: proc(event: js.Event) {
+	// impl := cast(^Window_Impl)event.user_data
+	// window := cast(Window)impl
+	is_visible := event.visibility_change.is_visible
+	dispatch_event(Restored_Event{ restored = is_visible })
 }
 
 @(private)
-_window_mouse_button_callback :: proc "contextless" (event: js.Event) {
+_window_mouse_button_callback :: proc(event: js.Event) {
+	// impl := cast(^Window_Impl)event.user_data
+	// window := cast(Window)impl
+
+	dpi := js.device_pixel_ratio()
+
+	pos := Vec2f{
+		cast(f32)(f64(event.mouse.offset.x) * dpi),
+        cast(f32)(f64(event.mouse.offset.y) * dpi),
+	}
+
+	button: Mouse_Button
+	switch event.mouse.button {
+	case 0: button = .Left
+	case 1: button = .Middle
+	case 2: button = .Right
+	case: button = .Left // fallback
+	}
+
+	#partial switch event.kind {
+	case .Mouse_Down, .Click:
+		dispatch_event(Mouse_Button_Pressed_Event{button = button, pos = pos})
+	case .Mouse_Up:
+		dispatch_event(Mouse_Button_Released_Event{button = button, pos = pos})
+	}
 }
 
 @(private)
-_window_mouse_move_callback :: proc "contextless" (event: js.Event) {
+_window_mouse_move_callback :: proc(event: js.Event) {
+	// impl := cast(^Window_Impl)event.user_data
+	// context = impl.custom_context
+	// window := cast(Window)impl
+
+	dpi := js.device_pixel_ratio()
+
+	pos := Vec2f{
+		cast(f32)(f64(event.mouse.offset.x) * dpi),
+        cast(f32)(f64(event.mouse.offset.y) * dpi),
+	}
+
+	// Determine which buttons are currently pressed using button bit set
+	button: Mouse_Button = .Unknown
+	action: Input_Action = .None
+
+	if 0 in event.mouse.buttons {  // Left button
+		button = .Left
+		action = .Pressed
+	} else if 2 in event.mouse.buttons {  // Right button
+		button = .Right
+		action = .Pressed
+	} else if 1 in event.mouse.buttons {  // Middle button
+		button = .Middle
+		action = .Pressed
+	}
+
+	dispatch_event(Mouse_Moved_Event{
+		pos = pos,
+		button = button,
+		action = action,
+	})
 }
 
 @(private)
-_window_scroll_callback :: proc "contextless" (event: js.Event) {
+_window_scroll_callback :: proc(event: js.Event) {
+	// impl := cast(^Window_Impl)event.user_data
+	// window := cast(Window)impl
+
+	delta := Vec2f{
+		cast(f32)event.wheel.delta.x,
+		cast(f32)event.wheel.delta.y,
+	}
+	dispatch_event(Mouse_Wheel_Event(delta))
 }
 
 @(private)
-_window_context_menu_callback :: proc "contextless" (event: js.Event) {
+_window_context_menu_callback :: proc(event: js.Event) {
+	// impl := cast(^Window_Impl)event.user_data
+	// window := cast(Window)impl
+
+	dpi := js.device_pixel_ratio()
+
+	// Get mouse position for context menu event
+	pos := Vec2f{
+		cast(f32)(f64(event.mouse.offset.x) * dpi),
+        cast(f32)(f64(event.mouse.offset.y) * dpi),
+	}
+
+	// Dispatch right-click event for context menu
+	dispatch_event(Mouse_Button_Pressed_Event{
+		button = .Right,
+		pos = pos,
+	})
+}
+import "core:log"
+@(private)
+_window_key_callback :: proc(_event: js.Event) {
+	// impl := cast(^Window_Impl)_event.user_data
+	// context = impl.custom_context
+	// window := cast(Window)impl
+
+	key := _to_key(_event.key.key)
+
+	event := Key_Event{
+		key      = key,
+		scancode = Scancode(_to_scancode(_event.key.code)),
+		ctrl     = _event.key.ctrl,
+		shift    = _event.key.shift,
+		alt      = _event.key.alt,
+	}
+
+	app := app_context
+
+	#partial switch _event.kind {
+	case .Key_Down:
+		// Update keyboard state
+		if key != .Unknown {
+			app.keyboard.current[key] = true
+			// Only set as last pressed if it wasn't already pressed (avoid repeat events)
+			if !app.keyboard.previous[key] {
+				app.keyboard.last_key_pressed = key
+			}
+		}
+
+		dispatch_event(Key_Pressed_Event(event))
+	case .Key_Up:
+		// Update keyboard state
+		if key != .Unknown {
+			app.keyboard.current[key] = false
+			app.keyboard.last_key_released = key
+		}
+
+		dispatch_event(Key_Released_Event(event))
+	}
 }
 
-@(private)
-_window_key_callback :: proc "contextless" (event: js.Event) {
-}
-
-@(private)
-_window_focus_callback :: proc "contextless" (event: js.Event) {
-}
+// @(private)
+// _window_focus_callback :: proc(event: js.Event) {
+// }

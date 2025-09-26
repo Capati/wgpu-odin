@@ -5,9 +5,9 @@ import "base:runtime"
 import "core:fmt"
 import sdl "vendor:sdl2"
 
-// Local packages
-import wgpu_sdl "root:utils/sdl"
-import "root:wgpu"
+// Local Packages
+import wgpu "../../../../" /* root folder */
+import wgpu_sdl "../../../../utils/sdl2"
 
 State :: struct {
 	window:    ^sdl.Window,
@@ -15,7 +15,7 @@ State :: struct {
 	surface:   wgpu.Surface,
 	device:    wgpu.Device,
 	queue:     wgpu.Queue,
-	config:    wgpu.Surface_Configuration,
+	config:    wgpu.SurfaceConfiguration,
 }
 
 Physical_Size :: struct {
@@ -23,16 +23,14 @@ Physical_Size :: struct {
 	height: u32,
 }
 
-_log_callback :: proc "c" (level: wgpu.Log_Level, message: wgpu.String_View, userdata: rawptr) {
+_log_callback :: proc "c" (level: wgpu.LogLevel, message: string, userdata: rawptr) {
 	context = runtime.default_context()
-	fmt.eprintf("[wgpu] [%v] %s\n\n", level, wgpu.string_view_get_string(message))
+	fmt.eprintf("[wgpu] [%v] %s\n\n", level, message)
 }
 
 init :: proc() -> (state: ^State, ok: bool) {
 	state = new(State)
-	defer if !ok {
-		free(state)
-	}
+	defer if !ok do free(state)
 
 	sdl_flags := sdl.InitFlags{.VIDEO, .JOYSTICK, .GAMECONTROLLER, .EVENTS}
 
@@ -40,12 +38,9 @@ init :: proc() -> (state: ^State, ok: bool) {
 		fmt.eprintf("ERROR: Failed to initialize SDL: [%s]\n", sdl.GetError())
 		return
 	}
-	defer if !ok {
-		sdl.Quit()
-	}
+	defer if !ok do sdl.Quit()
 
 	window_flags: sdl.WindowFlags = {.SHOWN, .ALLOW_HIGHDPI, .RESIZABLE}
-
 	state.window = sdl.CreateWindow(
 		"Tutorial 2 - Surface",
 		sdl.WINDOWPOS_CENTERED,
@@ -58,78 +53,91 @@ init :: proc() -> (state: ^State, ok: bool) {
 		fmt.eprintf("ERROR: Failed to create the SDL Window: [%s]\n", sdl.GetError())
 		return
 	}
-	defer if !ok {
-		sdl.DestroyWindow(state.window)
-	}
+	defer if !ok do sdl.DestroyWindow(state.window)
 
-	wgpu.set_log_callback(_log_callback, nil)
-	wgpu.set_log_level(.Warn)
+	wgpu.SetLogCallback(_log_callback, nil)
+	wgpu.SetLogLevel(.Warn)
 
-	instance_descriptor := wgpu.Instance_Descriptor {
+	instance_descriptor := wgpu.InstanceDescriptor {
 		backends = wgpu.BACKENDS_PRIMARY,
 	}
 
-	instance := wgpu.create_instance(instance_descriptor) or_return
-	defer wgpu.release(instance)
+	instance := wgpu.CreateInstance(instance_descriptor)
+	defer wgpu.Release(instance)
 
-	surface_descriptor := wgpu_sdl.get_surface_descriptor(state.window) or_return
-	state.surface = wgpu.instance_create_surface(instance, surface_descriptor) or_return
-	defer if !ok {
-		wgpu.release(state.surface)
+	state.surface = wgpu_sdl.create_surface(state.window, instance)
+	defer if !ok do wgpu.Release(state.surface)
+
+	adapter_options := wgpu.RequestAdapterOptions {
+		powerPreference      = .HighPerformance,
+		compatibleSurface    = state.surface,
+		forceFallbackAdapter = false,
 	}
 
-	adapter_options := wgpu.Request_Adapter_Options {
-		power_preference       = .High_Performance,
-		compatible_surface     = state.surface,
-		force_fallback_adapter = false,
+	adapter_res := wgpu.InstanceRequestAdapterSync(instance, adapter_options)
+	if (adapter_res.status != .Success) {
+		fmt.eprintfln(
+			"Failed to request the selected adapter [%v]: %s",
+			adapter_res.status,
+			adapter_res.message,
+		)
+		return
+	}
+	adapter := adapter_res.adapter
+	defer wgpu.AdapterRelease(adapter)
+
+	adapter_info, info_status := wgpu.AdapterGetInfo(adapter)
+	if info_status != .Success {
+		fmt.eprintln("Failed to get adapter info for the selected adapter")
+		return
+	}
+	defer wgpu.AdapterInfoFreeMembers(adapter_info)
+
+	device_descriptor := wgpu.DeviceDescriptor {
+		label          = adapter_info.device,
+		requiredLimits = wgpu.LIMITS_DEFAULT,
 	}
 
-	adapter := wgpu.instance_request_adapter(instance, adapter_options) or_return
-	defer wgpu.release(adapter)
-
-	adapter_info := wgpu.adapter_get_info(adapter)
-	defer wgpu.adapter_info_free_members(adapter_info)
-
-	device_descriptor := wgpu.Device_Descriptor {
-		label           = adapter_info.description,
-		required_limits = wgpu.DEFAULT_LIMITS,
+	device_res := wgpu.AdapterRequestDeviceSync(adapter, device_descriptor)
+	if (device_res.status != .Success) {
+		fmt.eprintfln(
+			"Failed to request the selected device [%v]: %s",
+			device_res.status,
+			device_res.message,
+		)
+		return
 	}
+	state.device = device_res.device
+	defer if !ok do wgpu.Release(state.device)
 
-	state.device = wgpu.adapter_request_device(adapter, device_descriptor) or_return
-	defer if !ok {
-		wgpu.release(state.device)
-	}
+	state.queue = wgpu.DeviceGetQueue(state.device)
+	defer if !ok do wgpu.Release(state.queue)
 
-	state.queue = wgpu.device_get_queue(state.device)
-	defer if !ok {
-		wgpu.release(state.queue)
-	}
-
-	caps := wgpu.surface_get_capabilities(state.surface, adapter) or_return
-	defer wgpu.surface_capabilities_free_members(caps)
+	caps := wgpu.SurfaceGetCapabilities(state.surface, adapter)
+	defer wgpu.SurfaceCapabilitiesFreeMembers(caps)
 
 	width, height: i32
 	sdl.GetWindowSize(state.window, &width, &height)
 
 	state.config = {
-		device       = state.device,
-		usage        = {.Render_Attachment},
-		format       = caps.formats[0],
-		width        = cast(u32)width,
-		height       = cast(u32)height,
-		present_mode = .Fifo,
-		alpha_mode   = caps.alpha_modes[0],
+		device      = state.device,
+		usage       = {.RenderAttachment},
+		format      = caps.formats[0],
+		width       = cast(u32)width,
+		height      = cast(u32)height,
+		presentMode = .Fifo,
+		alphaMode   = caps.alphaModes[0],
 	}
 
-	wgpu.surface_configure(state.surface, state.config) or_return
+	wgpu.SurfaceConfigure(state.surface, state.config)
 
 	return state, true
 }
 
 deinit :: proc(state: ^State) {
-	wgpu.release(state.queue)
-	wgpu.release(state.device)
-	wgpu.release(state.surface)
+	wgpu.Release(state.queue)
+	wgpu.Release(state.device)
+	wgpu.Release(state.surface)
 	sdl.DestroyWindow(state.window)
 	sdl.Quit()
 	free(state)
@@ -143,43 +151,43 @@ resize_surface :: proc(state: ^State, size: Physical_Size) -> bool {
 	state.config.width = size.width
 	state.config.height = size.height
 
-	wgpu.surface_unconfigure(state.surface)
-	wgpu.surface_configure(state.surface, state.config) or_return
+	wgpu.SurfaceUnconfigure(state.surface)
+	wgpu.SurfaceConfigure(state.surface, state.config)
 
 	return true
 }
 
 render :: proc(state: ^State) -> (ok: bool) {
-	frame := wgpu.surface_get_current_texture(state.surface) or_return
-	defer wgpu.release(frame.texture)
+	frame := wgpu.SurfaceGetCurrentTexture(state.surface)
+	defer wgpu.Release(frame.texture)
 
-	view := wgpu.texture_create_view(frame.texture) or_return
-	defer wgpu.release(view)
+	view := wgpu.TextureCreateView(frame.texture)
+	defer wgpu.Release(view)
 
-	encoder := wgpu.device_create_command_encoder(
+	encoder := wgpu.DeviceCreateCommandEncoder(
 		state.device,
-		wgpu.Command_Encoder_Descriptor{label = "Command Encoder"},
-	) or_return
-	defer wgpu.release(encoder)
+		wgpu.CommandEncoderDescriptor{label = "Command Encoder"},
+	)
+	defer wgpu.Release(encoder)
 
-	render_pass := wgpu.command_encoder_begin_render_pass(
+	render_pass := wgpu.CommandEncoderBeginRenderPass(
 		encoder,
 		{
 			label = "Render Pass",
-			color_attachments = []wgpu.Render_Pass_Color_Attachment {
-				{view = view, resolve_target = nil, ops = {.Clear, .Store, {0.1, 0.2, 0.3, 1.0}}},
+			colorAttachments = []wgpu.RenderPassColorAttachment {
+				{view = view, resolveTarget = nil, ops = {.Clear, .Store, {0.1, 0.2, 0.3, 1.0}}},
 			},
-			depth_stencil_attachment = nil,
+			depthStencilAttachment = nil,
 		},
 	)
-	defer wgpu.release(render_pass)
-	wgpu.render_pass_end(render_pass) or_return
+	defer wgpu.Release(render_pass)
+	wgpu.RenderPassEnd(render_pass)
 
-	command_buffer := wgpu.command_encoder_finish(encoder) or_return
-	defer wgpu.release(command_buffer)
+	command_buffer := wgpu.CommandEncoderFinish(encoder)
+	defer wgpu.Release(command_buffer)
 
-	wgpu.queue_submit(state.queue, command_buffer)
-	wgpu.surface_present(state.surface)
+	wgpu.QueueSubmit(state.queue, { command_buffer })
+	wgpu.SurfacePresent(state.surface)
 
 	return true
 }

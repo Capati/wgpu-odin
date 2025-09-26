@@ -40,12 +40,7 @@ vertex :: proc(x, y: f32) -> Vertex {
 	return {pos = {x, y, 0.0, 1.0}}
 }
 
-create :: proc() -> (self: ^Application) {
-	self = new(Application)
-	assert(self != nil, "Failed to allocate Application")
-
-	app.init(self, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE)
-
+init :: proc(self: ^Application) -> (ok: bool) {
 	outer_vertices := []Vertex{vertex(-1.0, -1.0), vertex(1.0, -1.0), vertex(0.0, 1.0)}
 	self.outer_vertex_buffer = wgpu.DeviceCreateBufferWithData(
 		self.gpu.device,
@@ -142,24 +137,10 @@ create :: proc() -> (self: ^Application) {
 
 	create_stencil_buffer(self)
 
-	app.add_resize_callback(self, { resize, self })
-
-	return
+	return true
 }
 
-release :: proc(self: ^Application) {
-	destroy_stencil_buffer(self)
-
-	wgpu.Release(self.outer_pipeline)
-	wgpu.Release(self.mask_pipeline)
-	wgpu.Release(self.mask_vertex_buffer)
-	wgpu.Release(self.outer_vertex_buffer)
-
-	app.release(self)
-	free(self)
-}
-
-draw :: proc(self: ^Application) {
+step :: proc(self: ^Application, dt: f32) -> (ok: bool) {
 	gpu := self.gpu
 
 	frame := app.gpu_get_current_frame(gpu)
@@ -190,12 +171,32 @@ draw :: proc(self: ^Application) {
 
 	wgpu.QueueSubmit(self.gpu.queue, { cmdbuf })
 	wgpu.SurfacePresent(self.gpu.surface)
+
+	return true
 }
 
-resize :: proc(window: ^app.Window, size: app.Vec2u, userdata: rawptr) {
-	self := cast(^Application)userdata
+event :: proc(self: ^Application, event: app.Event) -> (ok: bool) {
+    #partial switch &ev in event {
+        case app.Quit_Event:
+            log.info("Exiting...")
+            return
+		case app.Resize_Event:
+			resize(self, ev.size)
+    }
+    return true
+}
+
+quit :: proc(self: ^Application) {
+	destroy_stencil_buffer(self)
+
+	wgpu.Release(self.outer_pipeline)
+	wgpu.Release(self.mask_pipeline)
+	wgpu.Release(self.mask_vertex_buffer)
+	wgpu.Release(self.outer_vertex_buffer)
+}
+
+resize :: proc(self: ^Application, size: app.Vec2u) {
 	recreate_stencil_buffer(self)
-	draw(self)
 }
 
 create_stencil_buffer :: proc(self: ^Application) {
@@ -260,27 +261,17 @@ recreate_stencil_buffer :: proc(self: ^Application) {
 }
 
 main :: proc() {
-	when ODIN_DEBUG {
-		context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
-		defer log.destroy_console_logger(context.logger)
-	}
+    when ODIN_DEBUG {
+        context.logger = log.create_console_logger(opt = {.Level, .Terminal_Color})
+        defer log.destroy_console_logger(context.logger)
+    }
 
-	example := create()
-	defer release(example)
+    callbacks := app.Application_Callbacks{
+        init  = app.App_Init_Callback(init),
+        step  = app.App_Step_Callback(step),
+        event = app.App_Event_Callback(event),
+        quit  = app.App_Quit_Callback(quit),
+    }
 
-	running := true
-	MAIN_LOOP: for running {
-		event: app.Event
-		for app.poll_event(example, &event) {
-			#partial switch &ev in event {
-			case app.QuitEvent:
-				log.info("Exiting...")
-				running = false
-			}
-		}
-
-		app.begin_frame(example)
-		draw(example)
-		app.end_frame(example)
-	}
+    app.init(Application, VIDEO_MODE_DEFAULT, EXAMPLE_TITLE, callbacks)
 }

@@ -86,13 +86,19 @@ ShaderModuleGetCompilationInfo :: proc(self: ShaderModule) -> CompilationInfo {
 }
 
 /* Sets a debug label for the given `ShaderModule`. */
-ShaderModuleSetLabel :: wgpu.ShaderModuleSetLabel
+ShaderModuleSetLabel :: #force_inline proc "c" (self: ShaderModule, label: string) {
+	wgpu.ShaderModuleSetLabel(self, label)
+}
 
 /* Increase the `ShaderModule` reference count. */
-ShaderModuleAddRef :: wgpu.ShaderModuleAddRef
+ShaderModuleAddRef :: #force_inline proc "c" (self: ShaderModule) {
+	wgpu.ShaderModuleAddRef(self)
+}
 
 /* Release the `ShaderModule` resources, use to decrease the reference count. */
-ShaderModuleRelease :: wgpu.ShaderModuleRelease
+ShaderModuleRelease :: #force_inline proc "c" (self: ShaderModule) {
+	wgpu.ShaderModuleRelease(self)
+}
 
 /*
 Safely releases the `ShaderModule` resources and invalidates the handle. The
