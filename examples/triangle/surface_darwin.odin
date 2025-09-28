@@ -12,7 +12,7 @@ import "vendor:glfw"
 import wgpu "../.."
 
 os_get_surface :: proc(instance: wgpu.Instance) -> (surface: wgpu.Surface) {
-	native_window := (^NS.Window)(glfw.GetCocoaWindow(window))
+	native_window := (^NS.Window)(glfw.GetCocoaWindow(state.os.window))
 
 	metal_layer := CA.MetalLayer.layer()
 	defer metal_layer->release()
@@ -22,6 +22,6 @@ os_get_surface :: proc(instance: wgpu.Instance) -> (surface: wgpu.Surface) {
 	return wgpu.InstanceCreateSurface(instance, {
 		target = wgpu.SurfaceSourceMetalLayer {
 			layer = metal_layer,
-		}
+		},
 	})
 }

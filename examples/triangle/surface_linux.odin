@@ -14,12 +14,12 @@ os_get_surface :: proc(instance: wgpu.Instance) -> (surface: wgpu.Surface) {
 	case glfw.PLATFORM_WAYLAND:
 		descriptor.target = wgpu.SurfaceSourceWaylandSurface {
 			display = glfw.GetWaylandDisplay(),
-			surface = glfw.GetWaylandWindow(window),
+			surface = glfw.GetWaylandWindow(state.os.window),
 		}
 	case glfw.PLATFORM_X11:
 		descriptor.target = wgpu.SurfaceSourceXlibWindow {
 			display = glfw.GetX11Display(),
-			window  = u64(glfw.GetX11Window(window)),
+			window  = u64(glfw.GetX11Window(state.os.window)),
 		}
 	case:
 		panic("Unsupported Linux platform")
