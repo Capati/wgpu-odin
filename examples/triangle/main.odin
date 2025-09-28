@@ -42,8 +42,12 @@ main :: proc() {
 		wgpu.SetLogLevel(.Warn)
 	}
 
+	instance_descriptor := wgpu.InstanceDescriptor {
+		backends = wgpu.BACKENDS_PRIMARY,
+	}
+
 	// Create a new instance of wgpu with defaults
-	state.instance = wgpu.CreateInstance()
+	state.instance = wgpu.CreateInstance(instance_descriptor)
 
 	// Create a surface for the current platform
 	// Check each surface_<platform>.odin file to learn more
