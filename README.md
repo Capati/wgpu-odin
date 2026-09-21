@@ -1,3 +1,8 @@
+> [!IMPORTANT]
+> **This repository has been archived** in favor of my own WebGPU implementation
+> at [odin-gpu](https://github.com/Capati/odin-gpu). Another reason is that `vendor:wgpu`
+> already exists — it was not in the official bindings when I started this project.
+
 # WGPU Odin Bindings
 
 Bindings to [wgpu-native][] **25.0.2.1** for the [Odin Language][].
